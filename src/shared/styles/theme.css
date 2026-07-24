@@ -1,0 +1,282 @@
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   Chazin Food – Design tokens
+   Palette: #F5F5F5 | #F05454 (coral red) | #30475E (navy) | #121212
+   ============================================================ */
+
+/* ── Dark mode: Surfaces ─────────────────────────────────── */
+.dark .bg-white        { background-color: #1d3349 !important; }
+.dark .bg-gray-50      { background-color: #121212 !important; }
+.dark .bg-gray-100     { background-color: #243748 !important; }
+.dark .bg-gray-200     { background-color: #2a4259 !important; }
+.dark .bg-gray-900     { background-color: #30475e !important; }
+.dark .bg-gray-950     { background-color: #121212 !important; }
+
+/* ── Dark mode: Text ─────────────────────────────────────── */
+.dark .text-gray-800   { color: #f1f5f9 !important; }
+.dark .text-gray-700   { color: #e0ecf8 !important; }
+.dark .text-gray-600   { color: #a8c0d5 !important; }
+.dark .text-gray-500   { color: #7a9db8 !important; }
+.dark .text-gray-400   { color: #b8cde0 !important; }
+.dark .text-gray-300   { color: #c8d8e8 !important; }
+.dark .text-gray-100   { color: #f1f5f9 !important; }
+
+/* ── Dark mode: Borders ──────────────────────────────────── */
+.dark .border-gray-200 { border-color: #2a4259 !important; }
+.dark .border-gray-300 { border-color: #2e4d66 !important; }
+.dark .border-gray-700 { border-color: #2a4259 !important; }
+.dark .border-gray-800 { border-color: #1d3349 !important; }
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2a4259 !important;
+}
+
+/* ── Dark mode: Form fields ──────────────────────────────── */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select,
+.dark textarea {
+  background-color: #1d3349 !important;
+  color: #f1f5f9 !important;
+  border-color: #2a4259 !important;
+}
+.dark input[readonly],
+.dark input.bg-gray-50,
+.dark input.bg-gray-100 {
+  background-color: #121212 !important;
+}
+
+/* ── Dark mode: Hover states ─────────────────────────────── */
+.dark .hover\:bg-gray-50:hover  { background-color: #243748 !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #243748 !important; }
+.dark .hover\:bg-gray-800:hover { background-color: #243748 !important; }
+
+/* ── Dark mode: Tinted icon backgrounds ──────────────────── */
+.dark .bg-red-50        { background-color: rgba(240, 84, 84, 0.15) !important; }
+.dark .bg-red-100       { background-color: rgba(240, 84, 84, 0.25) !important; }
+.dark .bg-orange-50     { background-color: rgba(154, 52, 18, 0.15) !important; }
+.dark .bg-orange-100    { background-color: rgba(154, 52, 18, 0.25) !important; }
+.dark .bg-blue-50       { background-color: rgba(30, 58, 138, 0.15) !important; }
+.dark .bg-blue-100      { background-color: rgba(30, 58, 138, 0.25) !important; }
+.dark .bg-green-50      { background-color: rgba(20, 83, 45, 0.15) !important; }
+.dark .bg-green-100     { background-color: rgba(20, 83, 45, 0.25) !important; }
+.dark .bg-yellow-100    { background-color: rgba(120, 53, 15, 0.25) !important; }
+.dark .bg-purple-50     { background-color: rgba(76, 29, 149, 0.15) !important; }
+.dark .bg-purple-100    { background-color: rgba(76, 29, 149, 0.25) !important; }
+.dark .bg-pink-100      { background-color: rgba(131, 24, 67, 0.25) !important; }
+
+/* ── Dark mode: Badge text ───────────────────────────────── */
+.dark .text-red-600     { color: #f07878 !important; }
+.dark .text-red-700     { color: #f5a5a5 !important; }
+.dark .text-red-400     { color: #f07878 !important; }
+.dark .text-blue-600    { color: #60a5fa !important; }
+.dark .text-blue-700    { color: #93c5fd !important; }
+.dark .text-green-600   { color: #4ade80 !important; }
+.dark .text-green-700   { color: #86efac !important; }
+.dark .text-yellow-600  { color: #facc15 !important; }
+.dark .text-purple-600  { color: #c084fc !important; }
+.dark .text-purple-700  { color: #d8b4fe !important; }
+
+/* ── Dark mode: Shadows ──────────────────────────────────── */
+.dark .shadow-md  { box-shadow: 0 4px 6px -1px rgba(0,0,0,.5), 0 2px 4px -2px rgba(0,0,0,.5) !important; }
+.dark .shadow-lg  { box-shadow: 0 10px 15px -3px rgba(0,0,0,.5), 0 4px 6px -4px rgba(0,0,0,.5) !important; }
+.dark .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,.7) !important; }
+
+/* ── Dark mode: Red hover/active utilities ───────────────── */
+.dark .hover\:bg-red-50:hover   { background-color: rgba(240, 84, 84, 0.15) !important; }
+.dark .hover\:bg-red-900\/20:hover { background-color: rgba(240, 84, 84, 0.12) !important; }
+
+/* ── Red color scale (coral red #F05454 as red-600) ─────── */
+@theme {
+  --color-red-50:  #fff2f2;
+  --color-red-100: #ffdede;
+  --color-red-200: #ffbfbf;
+  --color-red-300: #f99090;
+  --color-red-400: #f47272;
+  --color-red-500: #f26060;
+  --color-red-600: #f05454;
+  --color-red-700: #d33030;
+  --color-red-800: #a81f1f;
+  --color-red-900: #7a1212;
+  --color-red-950: #440808;
+}
+
+/* ── CSS custom properties ───────────────────────────────── */
+:root {
+  --font-size: 16px;
+  --background: #f5f5f5;
+  --foreground: #121212;
+  --card: #ffffff;
+  --card-foreground: #121212;
+  --popover: #ffffff;
+  --popover-foreground: #121212;
+  --primary: #f05454;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f4f8;
+  --secondary-foreground: #30475e;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #f0e8e8;
+  --accent-foreground: #30475e;
+  --destructive: #f05454;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #f05454;
+  --chart-1: #f05454;
+  --chart-2: #30475e;
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #121212;
+  --sidebar-primary: #f05454;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff2f2;
+  --sidebar-accent-foreground: #f05454;
+  --sidebar-border: rgba(0, 0, 0, 0.1);
+  --sidebar-ring: #f05454;
+}
+
+.dark {
+  --background: #121212;
+  --foreground: #f1f5f9;
+  --card: #1d3349;
+  --card-foreground: #f1f5f9;
+  --popover: #1d3349;
+  --popover-foreground: #f1f5f9;
+  --primary: #f05454;
+  --primary-foreground: #ffffff;
+  --secondary: #243748;
+  --secondary-foreground: #f1f5f9;
+  --muted: #243748;
+  --muted-foreground: #7a9db8;
+  --accent: #243748;
+  --accent-foreground: #f1f5f9;
+  --destructive: #f05454;
+  --destructive-foreground: #ffffff;
+  --border: #2a4259;
+  --input: #2a4259;
+  --ring: #f05454;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #f05454;
+  --chart-2: #30475e;
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #30475e;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #f05454;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(240, 84, 84, 0.15);
+  --sidebar-accent-foreground: #f07878;
+  --sidebar-border: #2a4259;
+  --sidebar-ring: #f05454;
+
+  --color-gray-700: #2a4259;
+  --color-gray-800: #3d5a75;
+  --color-gray-900: #30475e;
+  --color-gray-950: #121212;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
