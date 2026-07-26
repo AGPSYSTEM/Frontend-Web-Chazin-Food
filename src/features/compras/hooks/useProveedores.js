@@ -20,7 +20,7 @@ export function useProveedores() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchProveedores();

@@ -32,7 +32,7 @@ export function useUsuarios() {
     } finally {
       setLoading(false);
     }
-  }, [notifError]);
+  }, []);
 
   const fetchRoles = useCallback(async () => {
     try {

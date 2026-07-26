@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Shield } from "lucide-react";
+import { Plus, Search, Shield, Users } from "lucide-react";
 import { useRoles } from "../hooks/useRoles";
 import { RolesGrid } from "../components/roles/RolesGrid";
 import { RolModal } from "../components/roles/RolModal";
@@ -15,7 +15,8 @@ export function Roles() {
     createRol,
     updateRol,
     updatePermisos,
-    toggleEstadoRol
+    toggleEstadoRol,
+    deleteRol
   } = useRoles();
 
   const [rolModalOpen, setRolModalOpen] = useState(false);
@@ -23,6 +24,10 @@ export function Roles() {
 
   const [permisosModalOpen, setPermisosModalOpen] = useState(false);
   const [permisosRol, setPermisosRol] = useState(null);
+
+  const totalRoles = roles.length;
+  const rolesActivos = roles.filter((r) => r.estado === "Activo").length;
+  const totalUsuariosAsignados = roles.reduce((acc, r) => acc + (r.usuarios || 0), 0);
 
   const handleOpenCreate = () => {
     setEditingRol(null);
@@ -62,56 +67,92 @@ export function Roles() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full flex flex-col items-center justify-center gap-3">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#F05454]"></div>
+        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium animate-pulse">Cargando roles desde la base de datos...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full">
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Shield className="w-7 h-7 text-[#F05454]" />
-            Gestión de Roles y Permisos
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Define los roles de acceso al sistema y configura sus permisos correspondientes.
-          </p>
-        </div>
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nuevo Rol</span>
-        </button>
+      <div className="mb-6">
+        <h1 className="text-gray-900 dark:text-gray-100">Gestión de Roles</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Administra los roles y permisos del sistema</p>
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between gap-4">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por rol o descripción..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
-          />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#F05454]/10 rounded-xl flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-[#F05454]" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Roles</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalRoles}</p>
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
-          Total Roles: {roles.length}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Roles Activos</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{rolesActivos}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Usuarios Asignados</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalUsuariosAsignados}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Roles Grid */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando roles...</div>
-      ) : (
-        <RolesGrid
-          roles={filteredRoles}
-          onOpenPermisos={handleOpenPermisos}
-          onEdit={handleOpenEdit}
-          onToggleEstado={toggleEstadoRol}
-        />
-      )}
+      {/* Search Bar + Nuevo Rol */}
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4 mb-6">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Buscar rol..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm"
+            />
+          </div>
+          <button
+            onClick={handleOpenCreate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#F05454] hover:bg-[#d94444] text-white rounded-xl text-sm font-medium transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nuevo Rol</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Role Cards */}
+      <RolesGrid
+        roles={filteredRoles}
+        onOpenPermisos={handleOpenPermisos}
+        onEdit={handleOpenEdit}
+        onToggleEstado={toggleEstadoRol}
+        onDelete={deleteRol}
+      />
 
       {/* Modals */}
       <RolModal

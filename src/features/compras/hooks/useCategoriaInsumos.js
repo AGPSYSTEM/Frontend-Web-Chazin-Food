@@ -19,7 +19,7 @@ export function useCategoriaInsumos() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchCategorias();

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Tag } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useCategoriaInsumos } from "../hooks/useCategoriaInsumos";
 import { CategoriaInsumosTable } from "../components/categorias/CategoriaInsumosTable";
 import { CategoriaInsumoModal } from "../components/categorias/CategoriaInsumoModal";
@@ -47,12 +47,11 @@ export function CategoriaInsumos() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Tag className="w-7 h-7 text-[#F05454]" />
-            Categorías de Insumos
+          <h1 className="text-2xl font-bold text-[#1e293b] dark:text-gray-100">
+            Categoría de Insumos
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Gestiona la clasificación de materias primas e insumos de cocina.
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Gestiona las categorías de insumos del negocio
           </p>
         </div>
         <button

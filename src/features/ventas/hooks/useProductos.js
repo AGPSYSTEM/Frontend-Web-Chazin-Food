@@ -26,7 +26,7 @@ export function useProductos() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchProductos();

@@ -19,7 +19,7 @@ export function useFichasTecnicas() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchFichas();

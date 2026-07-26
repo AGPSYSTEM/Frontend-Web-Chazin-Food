@@ -15,5 +15,14 @@ export const authService = {
 
   getProfile: async () => {
     return await apiClient.get("/auth/me");
+  },
+
+  recuperarContrasena: async (email) => {
+    return await apiClient.post("/usuarios/recuperar-contrasena", { email });
+  },
+
+  restablecerContrasena: async (token, email, contrasena) => {
+    return await apiClient.post("/usuarios/restablecer-contrasena", { token, email, contrasena });
   }
 };
+

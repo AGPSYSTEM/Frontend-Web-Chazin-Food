@@ -48,6 +48,8 @@ export function Layout() {
     setSidebarOpen(false);
   };
 
+  // ── Permission helper ──
+  // Administrador always has all permissions; for other roles, check the permisos array
   const isAdmin = user?.rol?.toLowerCase() === "administrador";
   const userPermisos = user?.permisos || [];
   const hasPerm = (permName) => isAdmin || userPermisos.includes(permName);
@@ -68,6 +70,15 @@ export function Layout() {
     } else fn(!cur);
   };
 
+  const openSection = (section) => {
+    setComprasExpanded(section === "compras");
+    setProduccionExpanded(section === "produccion");
+    setVentasExpanded(section === "ventas");
+    setConfigExpanded(section === "config");
+    setSidebarOpen(true);
+  };
+
+  // Filter nav items based on permissions
   const allComprasItems = [
     { to: "/compras/categoria-insumos", label: "Categoría Insumos", perm: "Categoría Insumos" },
     { to: "/compras/insumos", label: "Insumos", perm: "Insumos" },
@@ -104,6 +115,7 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      {/* ── Overlay backdrop (both mobile drawer & desktop collapsed) ── */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
@@ -112,9 +124,12 @@ export function Layout() {
         />
       )}
 
-      {/* DESKTOP SIDEBAR */}
+      {/* ═══════════════════════════════════════════════════════════
+         DESKTOP SIDEBAR  (lg+) — only visible when `sidebarOpen` is true
+         ═══════════════════════════════════════════════════════════ */}
       {sidebarOpen && (
         <aside className="hidden flex-col w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-800 transition-all duration-300">
+          {/* Brand */}
           <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -138,9 +153,11 @@ export function Layout() {
             </div>
           </div>
 
+          {/* Nav */}
           <nav className="flex-1 p-3 overflow-y-auto">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5 mt-1">Administración</p>
             <ul className="space-y-1">
+              {/* Dashboard */}
               {hasPerm("Dashboard") && (
                 <li>
                   <Link to="/" title="Dashboard" className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${isActive("/") ? "bg-red-600 text-white shadow-md" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -150,6 +167,7 @@ export function Layout() {
                 </li>
               )}
 
+              {/* Configuración */}
               {showConfig && (
                 <li>
                   <button onClick={() => handleSectionClick(setConfigExpanded, configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -158,16 +176,13 @@ export function Layout() {
                   </button>
                   {sidebarOpen && configExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
-                      {configItems.map(({ to, label }) => (
-                        <li key={to}>
-                          <Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link>
-                        </li>
-                      ))}
+                      {configItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
                   )}
                 </li>
               )}
 
+              {/* Compras */}
               {showCompras && (
                 <li>
                   <button onClick={() => handleSectionClick(setComprasExpanded, comprasExpanded)} title="Compras" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -176,16 +191,13 @@ export function Layout() {
                   </button>
                   {sidebarOpen && comprasExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
-                      {comprasItems.map(({ to, label }) => (
-                        <li key={to}>
-                          <Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link>
-                        </li>
-                      ))}
+                      {comprasItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
                   )}
                 </li>
               )}
 
+              {/* Producción */}
               {showProduccion && (
                 <li>
                   <button onClick={() => handleSectionClick(setProduccionExpanded, produccionExpanded)} title="Producción" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -194,16 +206,13 @@ export function Layout() {
                   </button>
                   {sidebarOpen && produccionExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
-                      {produccionItems.map(({ to, label }) => (
-                        <li key={to}>
-                          <Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link>
-                        </li>
-                      ))}
+                      {produccionItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
                   )}
                 </li>
               )}
 
+              {/* Ventas */}
               {showVentas && (
                 <li>
                   <button onClick={() => handleSectionClick(setVentasExpanded, ventasExpanded)} title="Ventas" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -212,17 +221,14 @@ export function Layout() {
                   </button>
                   {sidebarOpen && ventasExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
-                      {ventasItems.map(({ to, label }) => (
-                        <li key={to}>
-                          <Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link>
-                        </li>
-                      ))}
+                      {ventasItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
                   )}
                 </li>
               )}
             </ul>
 
+            {/* CUENTA */}
             <div className="mx-2 my-3 h-px bg-gray-100 dark:bg-gray-800" />
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
             <Link
@@ -254,7 +260,9 @@ export function Layout() {
         </aside>
       )}
 
-      {/* MOBILE LEFT DRAWER */}
+      {/* ═══════════════════════════════════════════════════════════
+         MOBILE LEFT DRAWER  (< lg)  — slides in from left
+         ═══════════════════════════════════════════════════════════ */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-[42vw] max-w-[280px] min-w-[168px]

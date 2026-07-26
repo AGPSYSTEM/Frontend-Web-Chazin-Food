@@ -19,7 +19,7 @@ export function useRoles() {
     } finally {
       setLoading(false);
     }
-  }, [notifError]);
+  }, []);
 
   useEffect(() => {
     fetchRoles();
@@ -83,6 +83,23 @@ export function useRoles() {
     }
   };
 
+  const deleteRol = async (id, nombre) => {
+    const confirmed = await confirmDelete(
+      `¿Eliminar rol ${nombre}?`,
+      "Esta acción no se puede deshacer."
+    );
+    if (!confirmed) return false;
+    try {
+      await rolesService.deleteRol(id);
+      success("Éxito", "Rol eliminado correctamente");
+      await fetchRoles();
+      return true;
+    } catch (err) {
+      notifError("Error", err.message || "Error al eliminar el rol");
+      return false;
+    }
+  };
+
   return {
     roles,
     filteredRoles,
@@ -93,6 +110,7 @@ export function useRoles() {
     createRol,
     updateRol,
     updatePermisos,
-    toggleEstadoRol
+    toggleEstadoRol,
+    deleteRol
   };
 }

@@ -1,10 +1,10 @@
-import { Shield, Users, Check, Edit, ToggleLeft, ToggleRight } from "lucide-react";
+import { Shield, Users, Edit, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 
 const getRolAccent = (nombre) => {
   switch (nombre) {
     case "Administrador":
       return {
-        bg: "from-purple-500 to-purple-700",
+        bg: "from-purple-600 to-purple-800",
         icon: "bg-purple-100 dark:bg-purple-900/30",
         iconText: "text-purple-600 dark:text-purple-400",
         badge: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
@@ -21,112 +21,133 @@ const getRolAccent = (nombre) => {
         bg: "from-[#F05454] to-[#c0392b]",
         icon: "bg-[#F05454]/10",
         iconText: "text-[#F05454]",
-        badge: "bg-[#F05454]/10 text-[#F05454]"
+        badge: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
       };
     default:
       return {
-        bg: "from-blue-500 to-blue-700",
-        icon: "bg-blue-100 dark:bg-blue-900/30",
-        iconText: "text-blue-600 dark:text-blue-400",
-        badge: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+        bg: "from-gray-400 to-gray-600",
+        icon: "bg-gray-100 dark:bg-gray-700",
+        iconText: "text-gray-500",
+        badge: "bg-gray-100 dark:bg-gray-700 text-gray-600"
       };
   }
 };
 
-export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado }) {
+export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {roles.map((rol) => {
         const accent = getRolAccent(rol.nombre);
-        const isActivo = rol.estado === "Activo";
+        const permisosCount = rol.permisos?.length || 0;
 
         return (
-          <div
-            key={rol.id}
-            className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
-          >
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl ${accent.icon} flex items-center justify-center shrink-0`}>
-                    <Shield className={`w-6 h-6 ${accent.iconText}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{rol.nombre}</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          isActivo
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                        }`}
-                      >
-                        {rol.estado}
-                      </span>
-                    </div>
-                  </div>
+          <div key={rol.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden hover:shadow-md transition-shadow">
+            {/* Card hero strip */}
+            <div className={`bg-gradient-to-r ${accent.bg} px-5 py-4 flex items-center justify-between`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-white" />
                 </div>
+                <div>
+                  <h3 className="font-bold text-white">{rol.nombre}</h3>
+                  <p className="text-white/70 text-xs">{permisosCount} permisos</p>
+                </div>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${rol.estado === "Activo" ? "bg-white/20 text-white" : "bg-black/20 text-white/80"}`}>
+                {rol.estado}
+              </span>
+            </div>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onEdit(rol)}
-                    title="Editar Nombre/Descripción"
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onToggleEstado(rol.id)}
-                    title={isActivo ? "Desactivar Rol" : "Activar Rol"}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 transition-colors"
-                  >
-                    {isActivo ? (
-                      <ToggleRight className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <ToggleLeft className="w-5 h-5 text-gray-400" />
-                    )}
-                  </button>
+            {/* Card body */}
+            <div className="p-4 sm:p-5">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{rol.descripcion}</p>
+
+              {/* Stats row */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Usuarios</p>
+                  <p className="font-bold text-gray-900 dark:text-gray-100 mt-0.5">{rol.usuarios || 0}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Permisos</p>
+                  <p className="font-bold text-gray-900 dark:text-gray-100 mt-0.5">{permisosCount}</p>
                 </div>
               </div>
 
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px]">
-                {rol.descripcion || "Sin descripción asignada"}
-              </p>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-gray-500 dark:text-gray-400">
-                  <span>Permisos asignados:</span>
-                  <span className="text-gray-900 dark:text-gray-100">{rol.permisos?.length || 0}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                  {(rol.permisos || []).slice(0, 5).map((p) => (
-                    <span
-                      key={p}
-                      className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium"
-                    >
-                      {p}
+              {/* Permission tags */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Permisos Asignados</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(rol.permisos || []).slice(0, 3).map((permiso, i) => (
+                    <span key={i} className={`px-3 py-1 rounded-full text-xs font-medium ${accent.badge}`}>
+                      {permiso}
                     </span>
                   ))}
-                  {(rol.permisos?.length || 0) > 5 && (
-                    <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-xs font-medium">
-                      +{(rol.permisos?.length || 0) - 5} más
+                  {permisosCount > 3 && (
+                    <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs font-medium">
+                      +{permisosCount - 3} más
                     </span>
+                  )}
+                  {permisosCount === 0 && (
+                    <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-400 rounded-full text-xs">Sin permisos</span>
                   )}
                 </div>
               </div>
-            </div>
 
-            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                <Users className="w-4 h-4 text-gray-400" />
-                <span>{rol.usuarios || 0} Usuarios</span>
+              {/* Actions */}
+              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 flex items-center justify-center gap-1.5 text-[10px] lg:text-[11px] font-medium whitespace-nowrap">
+                <button
+                  onClick={() => onOpenPermisos(rol)}
+                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
+                  title="Permisos del rol"
+                >
+                  <Shield className="w-3 h-3 stroke-[2]" />
+                  <span>Permisos</span>
+                </button>
+
+                <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+
+                <button
+                  onClick={() => onEdit(rol)}
+                  className="flex items-center gap-1 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
+                  title="Editar rol"
+                >
+                  <Edit className="w-3 h-3 stroke-[2]" />
+                  <span>Editar</span>
+                </button>
+
+                <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+
+                <button
+                  onClick={() => onToggleEstado(rol.id)}
+                  className={`flex items-center gap-1 transition-colors shrink-0 ${
+                    rol.estado === "Activo"
+                      ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                      : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                  }`}
+                  title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
+                >
+                  {rol.estado === "Activo" ? (
+                    <ToggleRight className="w-3 h-3 stroke-[2] text-amber-500" />
+                  ) : (
+                    <ToggleLeft className="w-3 h-3 stroke-[2] text-emerald-500" />
+                  )}
+                  <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
+                </button>
+
+                {onDelete && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+                    <button
+                      onClick={() => onDelete(rol.id, rol.nombre)}
+                      className="flex items-center justify-center text-red-500 hover:text-red-600 transition-colors shrink-0 p-0.5"
+                      title="Eliminar rol"
+                    >
+                      <Trash2 className="w-3 h-3 stroke-[2]" />
+                    </button>
+                  </>
+                )}
               </div>
-              <button
-                onClick={() => onOpenPermisos(rol)}
-                className="text-xs font-bold text-[#F05454] hover:text-[#d84343] transition-colors"
-              >
-                Gestionar Permisos →
-              </button>
             </div>
           </div>
         );

@@ -20,7 +20,7 @@ export function useGestionCompras() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchCompras();

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Package } from "lucide-react";
+import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/components/FichaTecnicaInsumo";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -15,6 +16,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
     stockMinimo: 5,
     estado: "Activo"
   });
+  const [fichaTecnica, setFichaTecnica] = useState(null);
 
   useEffect(() => {
     if (insumo) {
@@ -27,6 +29,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         stockMinimo: insumo.stockMinimo || 5,
         estado: insumo.estado || "Activo"
       });
+      setFichaTecnica(insumo.fichaTecnica || null);
     } else {
       setForm({
         codigo: "",
@@ -37,6 +40,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         stockMinimo: 5,
         estado: "Activo"
       });
+      setFichaTecnica(null);
     }
   }, [insumo, isOpen, categorias]);
 
@@ -45,13 +49,14 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.nombre.trim()) return;
-    onSave(form);
+    onSave({ ...form, fichaTecnica });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-2">
             <Package className="w-5 h-5 text-[#F05454]" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -66,7 +71,8 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Código Insumo</label>
@@ -157,7 +163,15 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          {/* Section: Ficha Técnica */}
+          <FichaTecnicaInsumo
+            insumoName={form.nombre}
+            initialData={fichaTecnica}
+            onSave={(data) => setFichaTecnica(data)}
+          />
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
             <button
               type="button"
               onClick={onClose}

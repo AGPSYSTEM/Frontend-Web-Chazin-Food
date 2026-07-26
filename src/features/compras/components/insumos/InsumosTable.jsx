@@ -1,89 +1,97 @@
-import { Edit, Trash2, Package, Tag, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Edit, Trash2, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function InsumosTable({ insumos = [], onEdit, onDelete }) {
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalRecords = insumos.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedInsumos = insumos.slice(startIndex, startIndex + pageSize);
+
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Código / Insumo</th>
-              <th className="px-6 py-4">Categoría</th>
-              <th className="px-6 py-4">Unidad Medida</th>
-              <th className="px-6 py-4">Stock Actual</th>
-              <th className="px-6 py-4">Stock Mínimo</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+            <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-bold text-[#1e293b] dark:text-gray-200 tracking-wider uppercase">
+              <th className="px-6 py-4 w-16">ID</th>
+              <th className="px-6 py-4">NOMBRE</th>
+              <th className="px-6 py-4">CATEGORÍA</th>
+              <th className="px-6 py-4">CANTIDAD</th>
+              <th className="px-6 py-4">PRECIO UNIT.</th>
+              <th className="px-6 py-4">PROVEEDOR</th>
+              <th className="px-6 py-4">STOCK</th>
+              <th className="px-6 py-4 text-center">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-            {insumos.length === 0 ? (
+            {totalRecords === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron insumos
                 </td>
               </tr>
             ) : (
-              insumos.map((i) => {
-                const isBajo = (i.stock || 0) <= (i.stockMinimo || 0);
+              paginatedInsumos.map((i, index) => {
+                const isBajo = (i.stock || 0) <= (i.stockMinimo || 0) && (i.stock || 0) > 0;
+                const isAgotado = (i.stock || 0) === 0;
+
+                const stockLabel = isAgotado ? "Agotado" : isBajo ? "Bajo" : "Normal";
+                const stockBadgeClass = isAgotado
+                  ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                  : isBajo
+                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                  : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300";
 
                 return (
-                  <tr key={i.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                  <tr key={i.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">
+                      {i.id || startIndex + index + 1}
+                    </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/30 text-[#F05454] flex items-center justify-center shrink-0">
-                          <Package className="w-5 h-5" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
+                          <Package className="w-4 h-4" />
                         </div>
-                        <div>
-                          <div className="font-semibold text-gray-900 dark:text-gray-100">{i.nombre}</div>
-                          <div className="text-xs text-gray-400 font-mono">{i.codigo || `INS-${i.id}`}</div>
-                        </div>
+                        <span className="font-bold text-[#1e293b] dark:text-gray-100">
+                          {i.nombre}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                        <Tag className="w-3 h-3" />
-                        {i.categoria || "Sin categoría"}
-                      </span>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                      {i.categoria || "Sin categoría"}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300 font-medium">
-                      {i.unidadMedida || "Kg"}
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
+                      {i.stock ?? 0} {i.unidadMedida || "und"}
                     </td>
-                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                      <div className="flex items-center gap-1.5">
-                        <span>{i.stock ?? 0}</span>
-                        {isBajo && <AlertTriangle className="w-4 h-4 text-yellow-500" title="Stock Bajo" />}
-                      </div>
+                    <td className="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
+                      ${i.precioUnitario || i.costo || 0}
                     </td>
-                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                      {i.stockMinimo ?? 5}
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                      {i.proveedor || "Sin Proveedor"}
                     </td>
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          i.estado === "Activo"
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                            : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                        }`}
-                      >
-                        {i.estado || "Activo"}
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${stockBadgeClass}`}>
+                        {stockLabel}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-3">
                         <button
                           onClick={() => onEdit(i)}
                           title="Editar insumo"
-                          className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4 stroke-[2]" />
                         </button>
                         <button
                           onClick={() => onDelete(i.id, i.nombre)}
                           title="Eliminar insumo"
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
                         </button>
                       </div>
                     </td>
@@ -93,6 +101,65 @@ export function InsumosTable({ insumos = [], onEdit, onDelete }) {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Footer */}
+      <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2">
+          <span>Mostrar:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <span>registros</span>
+        </div>
+
+        <div>
+          Mostrando {totalRecords === 0 ? 0 : startIndex + 1} a {Math.min(startIndex + pageSize, totalRecords)} de {totalRecords} registros
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronsLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="w-8 h-8 rounded-full bg-[#F05454] text-white flex items-center justify-center font-bold text-xs mx-1">
+            {currentPage}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronsRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

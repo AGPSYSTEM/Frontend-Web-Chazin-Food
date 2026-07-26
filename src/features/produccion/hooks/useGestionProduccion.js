@@ -20,7 +20,7 @@ export function useGestionProduccion() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchOrdenes();

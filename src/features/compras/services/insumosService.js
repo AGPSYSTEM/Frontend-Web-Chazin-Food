@@ -9,6 +9,14 @@ export const insumosService = {
     return await apiClient.get("/categorias-insumo");
   },
 
+  getPapeleraInsumos: async () => {
+    return await apiClient.get("/insumos/papelera");
+  },
+
+  getPapeleraPreparados: async () => {
+    return await apiClient.get("/insumos-preparados/papelera");
+  },
+
   createInsumo: async (data) => {
     return await apiClient.post("/insumos", data);
   },
@@ -19,5 +27,13 @@ export const insumosService = {
 
   deleteInsumo: async (id) => {
     return await apiClient.delete(`/insumos/${id}`);
+  },
+
+  restoreInsumo: async (id) => {
+    return await apiClient.put(`/insumos/${id}/restaurar`);
+  },
+
+  hardDeleteInsumo: async (id) => {
+    return await apiClient.delete(`/insumos/${id}/fisico`);
   }
 };

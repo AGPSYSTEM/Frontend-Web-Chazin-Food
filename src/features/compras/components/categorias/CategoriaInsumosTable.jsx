@@ -1,4 +1,4 @@
-import { Edit, Trash2, Tag } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 
 export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
   return (
@@ -6,12 +6,12 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Categoría</th>
-              <th className="px-6 py-4">Descripción</th>
-              <th className="px-6 py-4">Insumos Asociados</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+            <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
+              <th className="px-6 py-4 w-20">ID</th>
+              <th className="px-6 py-4">Nombre</th>
+              <th className="px-6 py-4 text-center">Insumos</th>
+              <th className="px-6 py-4 text-center">Estado</th>
+              <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -22,44 +22,45 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                 </td>
               </tr>
             ) : (
-              categorias.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-[#F05454]" />
+              categorias.map((c, index) => (
+                <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">
+                    {c.id || index + 1}
+                  </td>
+                  <td className="px-6 py-4 font-bold text-[#1e293b] dark:text-gray-100">
                     {c.nombre}
                   </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                    {c.descripcion || "Sin descripción"}
+                  <td className="px-6 py-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2.5 rounded-full bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium text-sm">
+                      {c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0)}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
-                    {c.cantidad || c.insumosCount || 0} insumos
-                  </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-center">
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                         c.estado === "Activo"
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                          ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                       }`}
                     >
                       {c.estado}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex items-center justify-center gap-3">
                       <button
                         onClick={() => onEdit(c)}
                         title="Editar categoría"
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-4 h-4 stroke-[2]" />
                       </button>
                       <button
                         onClick={() => onDelete(c.id, c.nombre)}
                         title="Eliminar categoría"
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                        className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 stroke-[2]" />
                       </button>
                     </div>
                   </td>

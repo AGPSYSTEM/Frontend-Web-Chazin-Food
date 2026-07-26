@@ -19,7 +19,7 @@ export function useCategoriaProductos() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchCategorias();

@@ -20,7 +20,7 @@ export function useGestionVentas() {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
     fetchVentas();

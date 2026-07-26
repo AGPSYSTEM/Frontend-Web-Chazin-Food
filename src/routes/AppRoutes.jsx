@@ -13,6 +13,8 @@ import { GestionVentas } from "@/features/ventas/pages/GestionVentas";
 import { Roles } from "@/features/configuracion/pages/Roles";
 import { Usuarios } from "@/features/configuracion/pages/Usuarios";
 import { Login } from "@/features/auth/pages/Login";
+import { ForgotPassword } from "@/features/auth/pages/ForgotPassword";
+import { ResetPassword } from "@/features/auth/pages/ResetPassword";
 import { ClienteLanding } from "@/features/cliente/pages/ClienteLanding";
 import { CocineroDashboard } from "@/features/cocinero/pages/CocineroDashboard";
 import { FichasTecnicas } from "@/features/fichas-tecnicas/pages/FichasTecnicas";
@@ -46,6 +48,8 @@ export function AppRoutes() {
       <Routes>
         <Route path="/" element={<ClienteLanding />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
