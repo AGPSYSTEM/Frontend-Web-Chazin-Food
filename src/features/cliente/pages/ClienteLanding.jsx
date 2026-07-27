@@ -6,6 +6,8 @@ import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import { ClientePerfilModal } from "../components/ClientePerfilModal";
+
 
 const categorias = [
   { id: 1, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -334,11 +336,12 @@ export function ClienteLanding() {
                 <>
                   <button
                     onClick={() => setShowPerfil(true)}
-                    className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-sm font-medium"
                   >
-                    <User className="w-5 h-5" />
-                    <span>Mi Perfil</span>
+                    <User className="w-5 h-5 text-[#f05454]" />
+                    <span className="hidden sm:inline">Mi Perfil</span>
                   </button>
+
 
                   <button
                     onClick={() => setShowPedidos(!showPedidos)}
@@ -468,6 +471,15 @@ export function ClienteLanding() {
           ))}
         </div>
       </div>
+
+      {/* Modal Mi Perfil */}
+      <ClientePerfilModal
+        isOpen={showPerfil}
+        onClose={() => setShowPerfil(false)}
+        user={user}
+        pedidos={pedidos}
+      />
     </div>
   );
 }
+
