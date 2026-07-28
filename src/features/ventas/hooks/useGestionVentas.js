@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ventasService } from "../services/ventasService";
+import { ventasService } from "../servicios/ventasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useGestionVentas() {

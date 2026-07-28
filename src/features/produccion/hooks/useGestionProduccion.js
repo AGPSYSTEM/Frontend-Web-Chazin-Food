@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { produccionService } from "../services/produccionService";
+import { produccionService } from "../servicios/produccionService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useGestionProduccion() {

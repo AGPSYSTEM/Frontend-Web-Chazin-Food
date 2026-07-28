@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { proveedoresService } from "../services/proveedoresService";
+import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useProveedores() {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fichasTecnicasService } from "../services/fichasTecnicasService";
+import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useFichasTecnicas() {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { usuariosService } from "../services/usuariosService";
+import { usuariosService } from "../servicios/usuariosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 function getIniciales(nombre = "") {

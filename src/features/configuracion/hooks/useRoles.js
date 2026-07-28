@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { rolesService } from "../services/rolesService";
+import { rolesService } from "../servicios/rolesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useRoles() {

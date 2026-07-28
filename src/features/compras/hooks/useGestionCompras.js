@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { comprasService } from "../services/comprasService";
+import { comprasService } from "../servicios/comprasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useGestionCompras() {

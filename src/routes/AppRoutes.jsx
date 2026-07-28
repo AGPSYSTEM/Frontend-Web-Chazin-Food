@@ -1,24 +1,24 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "@/shared/context/AuthContext";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { Layout } from "@/shared/components/layout/Layout";
-import { Dashboard } from "@/features/dashboard/pages/Dashboard";
-import { CategoriaInsumos } from "@/features/compras/pages/CategoriaInsumos";
-import { Insumos } from "@/features/compras/pages/Insumos";
-import { Proveedores } from "@/features/compras/pages/Proveedores";
-import { GestionCompras } from "@/features/compras/pages/GestionCompras";
-import { CategoriaProductos } from "@/features/ventas/pages/CategoriaProductos";
-import { Productos } from "@/features/ventas/pages/Productos";
-import { Clientes } from "@/features/ventas/pages/Clientes";
-import { GestionVentas } from "@/features/ventas/pages/GestionVentas";
-import { Roles } from "@/features/configuracion/pages/Roles";
-import { Usuarios } from "@/features/configuracion/pages/Usuarios";
-import { Login } from "@/features/auth/pages/Login";
-import { ForgotPassword } from "@/features/auth/pages/ForgotPassword";
-import { ResetPassword } from "@/features/auth/pages/ResetPassword";
-import { ClienteLanding } from "@/features/cliente/pages/ClienteLanding";
-import { CocineroDashboard } from "@/features/cocinero/pages/CocineroDashboard";
-import { FichasTecnicas } from "@/features/fichas-tecnicas/pages/FichasTecnicas";
-import { GestionProduccion } from "@/features/produccion/pages/GestionProduccion";
+import { Dashboard } from "@/features/panel-principal/paginas/Dashboard";
+import { CategoriaInsumos } from "@/features/compras/paginas/CategoriaInsumos";
+import { Insumos } from "@/features/compras/paginas/Insumos";
+import { Proveedores } from "@/features/compras/paginas/Proveedores";
+import { GestionCompras } from "@/features/compras/paginas/GestionCompras";
+import { CategoriaProductos } from "@/features/ventas/paginas/CategoriaProductos";
+import { Productos } from "@/features/ventas/paginas/Productos";
+import { Clientes } from "@/features/ventas/paginas/Clientes";
+import { GestionVentas } from "@/features/ventas/paginas/GestionVentas";
+import { Roles } from "@/features/configuracion/paginas/Roles";
+import { Usuarios } from "@/features/configuracion/paginas/Usuarios";
+import { Login } from "@/features/autenticacion/paginas/Login";
+import { ForgotPassword } from "@/features/autenticacion/paginas/ForgotPassword";
+import { ResetPassword } from "@/features/autenticacion/paginas/ResetPassword";
+import { ClienteLanding } from "@/features/cliente/paginas/ClienteLanding";
+import { CocineroDashboard } from "@/features/cocinero/paginas/CocineroDashboard";
+import { FichasTecnicas } from "@/features/fichas-tecnicas/paginas/FichasTecnicas";
+import { GestionProduccion } from "@/features/produccion/paginas/GestionProduccion";
 
 /**
  * Maps permission names (as stored in the DB) to route paths.

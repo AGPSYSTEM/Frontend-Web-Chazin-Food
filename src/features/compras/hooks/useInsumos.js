@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { insumosService } from "../services/insumosService";
+import { insumosService } from "../servicios/insumosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const INITIAL_EVENTOS = [

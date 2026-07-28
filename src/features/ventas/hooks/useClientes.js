@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { clientesService } from "../services/clientesService";
+import { clientesService } from "../servicios/clientesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useClientes() {

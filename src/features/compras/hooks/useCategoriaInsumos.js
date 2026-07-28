@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { categoriaInsumosService } from "../services/categoriaInsumosService";
+import { categoriaInsumosService } from "../servicios/categoriaInsumosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useCategoriaInsumos() {
