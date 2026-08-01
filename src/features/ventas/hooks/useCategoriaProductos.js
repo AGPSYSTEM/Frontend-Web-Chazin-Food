@@ -68,7 +68,7 @@ export function useCategoriaProductos() {
       await fetchCategorias();
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "No se pudo eliminar la categoría");
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar la categoría");
       return false;
     }
   };
