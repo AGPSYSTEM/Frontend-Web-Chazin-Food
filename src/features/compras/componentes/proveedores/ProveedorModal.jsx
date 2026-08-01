@@ -20,9 +20,9 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
     if (proveedor) {
       setForm({
         nombre: proveedor.nombre || "",
-        nit: proveedor.nit || "",
-        contacto: proveedor.contacto || "",
-        email: proveedor.email || "",
+        nit: proveedor.nit || proveedor.numeroDocumento || "",
+        contacto: proveedor.contacto || proveedor.nombreContacto || "",
+        email: proveedor.email || proveedor.correo || "",
         telefono: proveedor.telefono || "",
         direccion: proveedor.direccion || "",
         estado: proveedor.estado || "Activo"
@@ -45,7 +45,12 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.nombre.trim()) return;
-    onSave(form);
+    onSave({
+      ...form,
+      numeroDocumento: form.nit,
+      nombreContacto: form.contacto,
+      correo: form.email
+    });
   };
 
   return (
