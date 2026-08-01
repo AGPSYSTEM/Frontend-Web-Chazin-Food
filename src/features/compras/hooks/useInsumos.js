@@ -193,9 +193,19 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      const newItem = { ...data, id: Date.now() };
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || 1,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        descripcion: data.descripcion || ""
+      };
 
-      setInsumos((prev) => [newItem, ...prev]);
+      await insumosService.createInsumo(payload);
+      await fetchInsumos();
 
       addTraceabilityEvent(
         "Creado",
@@ -218,11 +228,21 @@ export function useInsumos() {
 
   const updateInsumo = async (id, data) => {
     try {
-      setInsumos((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, ...data } : i))
-      );
-
       const isPrep = data.tipo === "Preparado";
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo,
+        stock: Number(data.stock),
+        stockMinimo: Number(data.stockMinimo),
+        unidadMedida: data.unidadMedida,
+        precioUnitario: Number(data.precioUnitario),
+        idProveedor: data.idProveedor,
+        descripcion: data.descripcion
+      };
+
+      await insumosService.updateInsumo(id, payload);
+      await fetchInsumos();
+
       addTraceabilityEvent(
         "Editado",
         data.nombre,
@@ -247,25 +267,13 @@ export function useInsumos() {
     if (!confirmed) return false;
 
     try {
-      const target = insumos.find((i) => i.id === id);
-      if (!target) return false;
-
-      // Remove from active insumos
-      setInsumos((prev) => prev.filter((i) => i.id !== id));
-
-      // Move to appropriate trash list
-      if (target.tipo === "Preparado") {
-        setPapeleraPreparados((prev) => [target, ...prev]);
-      } else {
-        setPapeleraInsumos((prev) => [target, ...prev]);
-      }
+      await insumosService.deleteInsumo(id);
+      await fetchInsumos();
 
       addTraceabilityEvent(
         "Eliminado",
         nombre,
-        target.tipo === "Preparado"
-          ? `Se movió a la papelera el insumo preparado: ${nombre}`
-          : `Se eliminó del inventario el insumo: ${nombre}`
+        `Se movió a la papelera el insumo: ${nombre}`
       );
 
       notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
