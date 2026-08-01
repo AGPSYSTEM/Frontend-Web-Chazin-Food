@@ -73,7 +73,20 @@ export function useProveedores() {
       await fetchProveedores();
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "No se pudo eliminar el proveedor");
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar el proveedor");
+      return false;
+    }
+  };
+
+  const toggleEstadoProveedor = async (id, currentEstado) => {
+    const nuevoEstado = currentEstado === "Activo" ? "Inactivo" : "Activo";
+    try {
+      await proveedoresService.toggleEstadoProveedor(id, nuevoEstado);
+      notify.success("Estado actualizado", `El proveedor ahora está ${nuevoEstado.toLowerCase()}`);
+      await fetchProveedores();
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del proveedor");
       return false;
     }
   };
@@ -89,6 +102,7 @@ export function useProveedores() {
     refetch: fetchProveedores,
     createProveedor,
     updateProveedor,
-    deleteProveedor
+    deleteProveedor,
+    toggleEstadoProveedor
   };
 }

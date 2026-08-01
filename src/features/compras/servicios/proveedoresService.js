@@ -15,5 +15,9 @@ export const proveedoresService = {
 
   deleteProveedor: async (id) => {
     return await apiClient.delete(`/proveedores/${id}`);
+  },
+
+  toggleEstadoProveedor: async (id, estado) => {
+    return await apiClient.put(`/proveedores/${id}/estado`, { estado });
   }
 };
