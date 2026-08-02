@@ -8,6 +8,7 @@ export function useProveedores() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [filterTipo, setFilterTipo] = useState("Todos");
 
   const fetchProveedores = useCallback(async () => {
     try {
@@ -31,10 +32,12 @@ export function useProveedores() {
       searchTerm === "" ||
       p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.nit?.includes(searchTerm) ||
-      p.contacto?.toLowerCase().includes(searchTerm.toLowerCase());
+      p.contacto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
-    return matchSearch && matchEstado;
+    const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo;
+    return matchSearch && matchEstado && matchTipo;
   });
 
   const createProveedor = async (data) => {
@@ -99,6 +102,8 @@ export function useProveedores() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
+    filterTipo,
+    setFilterTipo,
     refetch: fetchProveedores,
     createProveedor,
     updateProveedor,
