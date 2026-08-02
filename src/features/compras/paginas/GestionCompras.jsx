@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, FileText, CheckCircle2, Clock, XOctagon } from "lucide-react";
+import { Plus, Search, FileText } from "lucide-react";
 import { useGestionCompras } from "../hooks/useGestionCompras";
 import { ComprasTable } from "../componentes/gestion/ComprasTable";
 
@@ -63,7 +63,7 @@ export function GestionCompras() {
         {/* Completadas */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6 text-green-500" />
+            <FileText className="w-6 h-6 text-green-500" />
           </div>
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Completadas</p>
@@ -75,7 +75,7 @@ export function GestionCompras() {
         {/* Pendientes */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center">
-            <Clock className="w-6 h-6 text-yellow-500" />
+            <FileText className="w-6 h-6 text-yellow-500" />
           </div>
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Pendientes</p>
@@ -87,7 +87,7 @@ export function GestionCompras() {
         {/* Anuladas */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-            <XOctagon className="w-6 h-6 text-red-400" />
+            <FileText className="w-6 h-6 text-red-400" />
           </div>
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Anuladas</p>
