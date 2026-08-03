@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
 import { useProductos } from "../hooks/useProductos";
 import { ProductosTable } from "../componentes/productos/ProductosTable";
 import { ProductoModal } from "../componentes/productos/ProductoModal";
 import { EventosModal } from "../componentes/productos/EventosModal";
+import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
+import { eventosService } from "../servicios/eventosService";
 
 export function Productos() {
   const {
@@ -25,19 +27,38 @@ export function Productos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
+  const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
+  const [productoParaEvento, setProductoParaEvento] = useState(null);
+  const [eventos, setEventos] = useState([]);
+
+  const fetchEventos = useCallback(async () => {
+    try {
+      const data = await eventosService.getEventos();
+      setEventos(data || []);
+    } catch (err) {
+      console.error("Error al cargar eventos:", err);
+      setEventos([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEventos();
+  }, [fetchEventos]);
 
   // Stats calculation
   const stats = useMemo(() => {
     const total = productos.length;
-    // Find top selling or default to Papas Fritas Medianas
-    const masVendido = productos.find((p) => p.masVendido) || { nombre: "Papas Fritas Medianas", ventas: 312 };
-    const totalVendidos = productos.reduce((acc, p) => acc + (p.ventas || 0), 1153);
-    const bajoStock = productos.filter((p) => p.stock !== undefined && p.stock <= (p.stockMinimo || 5)).length || 1;
+    const sorted = [...productos].sort((a, b) => (b.ventas || 0) - (a.ventas || 0));
+    const masVendido = sorted[0] || { nombre: "—", ventas: 0 };
+    const totalVendidos = productos.reduce((acc, p) => acc + (p.ventas || 0), 0);
+    const bajoStock = productos.filter(
+      (p) => p.stock !== undefined && p.stock !== null && p.stock <= (p.stockMinimo || 5)
+    ).length;
 
     return {
       total,
-      masVendidoNombre: masVendido.nombre || "Papas Fritas Medianas",
-      masVendidoVentas: masVendido.ventas || 312,
+      masVendidoNombre: masVendido.nombre || "—",
+      masVendidoVentas: masVendido.ventas || 0,
       totalVendidos,
       bajoStock
     };
@@ -64,6 +85,15 @@ export function Productos() {
       setModalOpen(false);
       setEditingProducto(null);
     }
+  };
+
+  const handleCreateEvento = (producto) => {
+    setProductoParaEvento(producto);
+    setCrearEventoModalOpen(true);
+  };
+
+  const handleEventoCreated = () => {
+    fetchEventos();
   };
 
   return (
@@ -189,6 +219,11 @@ export function Productos() {
           productos={filteredProductos}
           onEdit={handleOpenEdit}
           onDelete={deleteProducto}
+          onView={(p) => {
+            setEditingProducto(p);
+            setModalOpen(true);
+          }}
+          onCreateEvento={handleCreateEvento}
         />
       )}
 
@@ -201,11 +236,19 @@ export function Productos() {
         categorias={categorias}
       />
 
-      {/* Eventos Modal */}
+      {/* Eventos Modal (Versionamiento de Fichas Técnicas) */}
       <EventosModal
         isOpen={eventosModalOpen}
         onClose={() => setEventosModalOpen(false)}
-        eventos={[]}
+        eventos={eventos}
+      />
+
+      {/* Crear Evento Modal */}
+      <CrearEventoModal
+        isOpen={crearEventoModalOpen}
+        onClose={() => setCrearEventoModalOpen(false)}
+        producto={productoParaEvento}
+        onCreated={handleEventoCreated}
       />
     </div>
   );

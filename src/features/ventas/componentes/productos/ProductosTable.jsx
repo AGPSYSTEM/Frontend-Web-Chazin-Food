@@ -1,6 +1,6 @@
-import { Edit, Trash2, Utensils, Tag } from "lucide-react";
+import { Edit, Trash2, Utensils, Tag, Eye, Zap } from "lucide-react";
 
-export function ProductosTable({ productos = [], onEdit, onDelete }) {
+export function ProductosTable({ productos = [], onEdit, onDelete, onView, onCreateEvento }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -11,7 +11,7 @@ export function ProductosTable({ productos = [], onEdit, onDelete }) {
               <th className="px-6 py-4">Categoría</th>
               <th className="px-6 py-4">Precio Venta</th>
               <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+              <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -63,22 +63,44 @@ export function ProductosTable({ productos = [], onEdit, onDelete }) {
                       {p.estado || "Activo"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col items-center gap-2">
+                      {/* Crear Evento button */}
                       <button
-                        onClick={() => onEdit(p)}
-                        title="Editar producto"
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+                        onClick={() => onCreateEvento && onCreateEvento(p)}
+                        title="Crear Evento"
+                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-xs font-semibold transition-colors"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Zap className="w-3.5 h-3.5" />
+                        Crear Evento
                       </button>
-                      <button
-                        onClick={() => onDelete(p.id, p.nombre)}
-                        title="Eliminar producto"
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {/* Ver, Editar, Eliminar row */}
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => onView && onView(p)}
+                          title="Ver producto"
+                          className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Ver
+                        </button>
+                        <button
+                          onClick={() => onEdit(p)}
+                          title="Editar producto"
+                          className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 transition-colors"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => onDelete(p.id, p.nombre)}
+                          title="Eliminar producto"
+                          className="flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Eliminar
+                        </button>
+                      </div>
                     </div>
                   </td>
                 </tr>
