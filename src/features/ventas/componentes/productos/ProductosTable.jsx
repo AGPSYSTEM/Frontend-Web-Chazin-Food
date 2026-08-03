@@ -74,31 +74,28 @@ export function ProductosTable({ productos = [], onEdit, onDelete, onView, onCre
                         <Zap className="w-3.5 h-3.5" />
                         Crear Evento
                       </button>
-                      {/* Ver, Editar, Eliminar row */}
-                      <div className="flex items-center justify-center gap-3">
+                      {/* Icon-only action buttons */}
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => onView && onView(p)}
                           title="Ver producto"
-                          className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
                         >
-                          <Eye className="w-3.5 h-3.5" />
-                          Ver
+                          <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onEdit(p)}
                           title="Editar producto"
-                          className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
                         >
-                          <Edit className="w-3.5 h-3.5" />
-                          Editar
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onDelete(p.id, p.nombre)}
                           title="Eliminar producto"
-                          className="flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Eliminar
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
