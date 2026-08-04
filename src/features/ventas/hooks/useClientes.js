@@ -34,7 +34,14 @@ export function useClientes() {
       c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.documento?.includes(searchTerm);
 
-    const matchEstado = filterEstado === "Todos" || c.estado === filterEstado;
+    const matchEstado =
+      filterEstado === "Todos" ||
+      c.estado === filterEstado ||
+      c.tipo === filterEstado ||
+      (filterEstado === "VIP" && (c.tipo === "VIP" || c.esVip)) ||
+      (filterEstado === "Frecuentes" && (c.tipo === "Frecuente" || c.estado === "Activo")) ||
+      (filterEstado === "Nuevos" && (c.tipo === "Nuevo" || c.isNuevo));
+
     return matchSearch && matchEstado;
   });
 
