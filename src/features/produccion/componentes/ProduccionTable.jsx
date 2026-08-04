@@ -1,16 +1,33 @@
-import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight } from "lucide-react";
+import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails }) {
   const getNextStatusConfig = (currentStatus) => {
     switch (currentStatus) {
       case "En Cola":
-        return { next: "En Preparación", label: "En Preparación", color: "bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200" };
+        return {
+          next: "En Preparación",
+          label: "En Preparación",
+          color: "bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        };
       case "En Preparación":
-        return { next: "Listo", label: "Listo", color: "bg-green-50 text-green-600 hover:bg-green-100 border-green-200" };
+        return {
+          next: "Listo",
+          label: "Listo",
+          color: "bg-green-50 hover:bg-green-100 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-800"
+        };
       case "Listo":
-        return { next: "Despachado", label: "Despachado", color: "bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200" };
+      case "Listos":
+        return {
+          next: "Despachado",
+          label: "Despachado",
+          color: "bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+        };
       case "Despachado":
-        return { next: "Entregado", label: "Entregado", color: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-emerald-200" };
+        return {
+          next: "Entregado",
+          label: "Entregado",
+          color: "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+        };
       default:
         return null;
     }
@@ -22,19 +39,20 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Orden / Código</th>
-              <th className="px-6 py-4">Cantidad</th>
-              <th className="px-6 py-4">Responsable</th>
-              <th className="px-6 py-4">Tiempo / Fecha</th>
-              <th className="px-6 py-4">Prioridad</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-center">Acciones</th>
+              <th className="px-6 py-4 whitespace-nowrap">Orden / Código</th>
+              <th className="px-6 py-4 text-center whitespace-nowrap">Cantidad</th>
+              <th className="px-6 py-4 whitespace-nowrap">Responsable</th>
+              <th className="px-6 py-4 whitespace-nowrap">Tiempo / Fecha</th>
+              <th className="px-6 py-4 text-center whitespace-nowrap">Prioridad</th>
+              <th className="px-6 py-4 text-center whitespace-nowrap">Estado</th>
+              <th className="px-6 py-4 text-center whitespace-nowrap">Avanza a</th>
+              <th className="px-6 py-4 text-center whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {ordenes.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron órdenes de producción
                 </td>
               </tr>
@@ -44,7 +62,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                 return (
                   <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     {/* Orden / Código */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className="text-2xl select-none shrink-0">{o.imagen || "🍔"}</div>
                         <div>
@@ -60,12 +78,12 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     </td>
 
                     {/* Cantidad */}
-                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
+                    <td className="px-6 py-4 text-center font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                       x{o.cantidad || 1}
                     </td>
 
                     {/* Responsable */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
                         <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span>{o.responsable || o.cocinero || "María G."}</span>
@@ -73,22 +91,22 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     </td>
 
                     {/* Tiempo / Fecha */}
-                    <td className="px-6 py-4">
-                      <div className="text-xs text-gray-600 dark:text-gray-300 space-y-0.5">
-                        <div className="flex items-center gap-1 font-semibold">
-                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col text-xs space-y-0.5">
+                        <div className="flex items-center gap-1 font-semibold text-gray-800 dark:text-gray-200">
+                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           <span>{o.tiempo || "15 min"}</span>
                         </div>
-                        <div className="text-gray-400 font-mono text-[11px]">
+                        <div className="text-gray-400 font-mono text-[11px] pl-4">
                           {o.fecha || "2026-06-23"}
                         </div>
                       </div>
                     </td>
 
                     {/* Prioridad */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                           o.prioridad === "Alta"
                             ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                             : o.prioridad === "Media"
@@ -101,12 +119,12 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     </td>
 
                     {/* Estado */}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
                           o.estado === "En Preparación"
                             ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                            : o.estado === "Listo"
+                            : o.estado === "Listo" || o.estado === "Listos"
                             ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                             : o.estado === "Despachado"
                             ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
@@ -119,22 +137,29 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                       </span>
                     </td>
 
-                    {/* Acciones */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        {/* Status advance button */}
-                        {nextConfig && (
-                          <button
-                            type="button"
-                            onClick={() => onUpdateEstado && onUpdateEstado(o.id, nextConfig.next)}
-                            title={`Avanzar estado a: ${nextConfig.next}`}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all ${nextConfig.color}`}
-                          >
-                            <span>{nextConfig.label}</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                    {/* Avanza a */}
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      {nextConfig ? (
+                        <button
+                          type="button"
+                          onClick={() => onUpdateEstado && onUpdateEstado(o.id, nextConfig.next)}
+                          title={`Avanzar estado a: ${nextConfig.next}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${nextConfig.color}`}
+                        >
+                          <span>{nextConfig.label}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Completado</span>
+                        </span>
+                      )}
+                    </td>
 
+                    {/* Acciones (Eye & Trash icons perfectly aligned) */}
+                    <td className="px-6 py-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
                         {/* View details (Eye) */}
                         <button
                           type="button"
