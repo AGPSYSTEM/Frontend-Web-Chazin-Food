@@ -8,6 +8,7 @@ export function useGestionProduccion() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [filterPrioridad, setFilterPrioridad] = useState("Todas");
 
   const fetchOrdenes = useCallback(async () => {
     try {
@@ -27,13 +28,18 @@ export function useGestionProduccion() {
   }, [fetchOrdenes]);
 
   const filteredOrdenes = ordenes.filter((o) => {
+    const term = searchTerm.trim().toLowerCase();
     const matchSearch =
-      searchTerm === "" ||
-      o.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.platilloNombre?.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      o.codigo?.toLowerCase().includes(term) ||
+      o.platilloNombre?.toLowerCase().includes(term) ||
+      o.responsable?.toLowerCase().includes(term) ||
+      o.cocinero?.toLowerCase().includes(term);
 
     const matchEstado = filterEstado === "Todos" || o.estado === filterEstado;
-    return matchSearch && matchEstado;
+    const matchPrioridad = filterPrioridad === "Todas" || o.prioridad === filterPrioridad;
+
+    return matchSearch && matchEstado && matchPrioridad;
   });
 
   const createOrden = async (data) => {
@@ -51,11 +57,23 @@ export function useGestionProduccion() {
   const updateEstado = async (id, nuevoEstado) => {
     try {
       await produccionService.updateEstadoOrden(id, nuevoEstado);
-      notify.success("Estado Actualizado", `La orden pasó a estado ${nuevoEstado}`);
+      notify.success("Estado Actualizado", `La orden pasó a estado "${nuevoEstado}"`);
       await fetchOrdenes();
       return true;
     } catch (err) {
       notify.error("Error", err.message || "Error al actualizar estado");
+      return false;
+    }
+  };
+
+  const deleteOrden = async (id) => {
+    try {
+      await produccionService.deleteOrden(id);
+      notify.success("Orden Eliminada", "La orden fue eliminada de producción");
+      await fetchOrdenes();
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "Error al eliminar orden");
       return false;
     }
   };
@@ -68,8 +86,11 @@ export function useGestionProduccion() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
+    filterPrioridad,
+    setFilterPrioridad,
     refetch: fetchOrdenes,
     createOrden,
-    updateEstado
+    updateEstado,
+    deleteOrden
   };
 }
