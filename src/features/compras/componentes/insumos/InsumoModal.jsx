@@ -5,15 +5,22 @@ import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/Ficha
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
-export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias = [] }) {
+export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias = [], proveedores = [] }) {
   const isEditing = !!insumo;
   const [form, setForm] = useState({
     codigo: "",
     nombre: "",
+    idCategoriaInsumo: "",
     categoria: "",
     unidadMedida: "Kg",
+    precioUnitario: 0,
+    idProveedor: "",
+    proveedor: "",
     stock: 0,
     stockMinimo: 5,
+    fechaExpedicion: "",
+    fechaVencimiento: "",
+    descripcion: "",
     estado: "Activo"
   });
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -23,26 +30,40 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
       setForm({
         codigo: insumo.codigo || "",
         nombre: insumo.nombre || "",
-        categoria: insumo.categoria || (categorias[0]?.nombre || ""),
+        idCategoriaInsumo: insumo.idCategoriaInsumo || "",
+        categoria: insumo.categoria || insumo.categoriaNombre || (categorias[0]?.nombre || ""),
         unidadMedida: insumo.unidadMedida || "Kg",
+        precioUnitario: insumo.precioUnitario || insumo.costo || 0,
+        idProveedor: insumo.idProveedor || "",
+        proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: insumo.stock || 0,
         stockMinimo: insumo.stockMinimo || 5,
-        estado: insumo.estado || "Activo"
+        fechaExpedicion: insumo.fechaExpedicion || "",
+        fechaVencimiento: insumo.fechaVencimiento || "",
+        descripcion: insumo.descripcion || "",
+        estado: insumo.estado === 1 || insumo.estado === "Activo" ? "Activo" : "Inactivo"
       });
       setFichaTecnica(insumo.fichaTecnica || null);
     } else {
       setForm({
         codigo: "",
         nombre: "",
+        idCategoriaInsumo: categorias[0]?.id || categorias[0]?.idCategoriaInsumo || "",
         categoria: categorias[0]?.nombre || "",
         unidadMedida: "Kg",
+        precioUnitario: 0,
+        idProveedor: proveedores[0]?.id || proveedores[0]?.idProveedor || "",
+        proveedor: proveedores[0]?.nombre || "",
         stock: 0,
         stockMinimo: 5,
+        fechaExpedicion: "",
+        fechaVencimiento: "",
+        descripcion: "",
         estado: "Activo"
       });
       setFichaTecnica(null);
     }
-  }, [insumo, isOpen, categorias]);
+  }, [insumo, isOpen, categorias, proveedores]);
 
   if (!isOpen) return null;
 
@@ -86,7 +107,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
             </div>
 
             <div>
-              <label className={labelCls}>Nombre del Insumo</label>
+              <label className={labelCls}>Nombre del Insumo *</label>
               <input
                 type="text"
                 required
@@ -100,13 +121,44 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
             <div>
               <label className={labelCls}>Categoría</label>
               <select
-                value={form.categoria}
-                onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                value={form.idCategoriaInsumo || form.categoria}
+                onChange={(e) => {
+                  const selectedCat = categorias.find(c => String(c.id || c.idCategoriaInsumo) === e.target.value || c.nombre === e.target.value);
+                  setForm({
+                    ...form,
+                    idCategoriaInsumo: selectedCat?.id || selectedCat?.idCategoriaInsumo || e.target.value,
+                    categoria: selectedCat?.nombre || e.target.value
+                  });
+                }}
                 className={inputCls}
               >
+                <option value="">Seleccionar categoría</option>
                 {categorias.map((c) => (
-                  <option key={c.id || c.nombre} value={c.nombre}>
+                  <option key={c.id || c.idCategoriaInsumo || c.nombre} value={c.id || c.idCategoriaInsumo || c.nombre}>
                     {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls}>Proveedor</label>
+              <select
+                value={form.idProveedor || form.proveedor}
+                onChange={(e) => {
+                  const selectedProv = proveedores.find(p => String(p.id || p.idProveedor) === e.target.value || p.nombre === e.target.value);
+                  setForm({
+                    ...form,
+                    idProveedor: selectedProv?.id || selectedProv?.idProveedor || e.target.value,
+                    proveedor: selectedProv?.nombre || e.target.value
+                  });
+                }}
+                className={inputCls}
+              >
+                <option value="">Sin Proveedor / Ninguno</option>
+                {proveedores.map((p) => (
+                  <option key={p.id || p.idProveedor || p.nombre} value={p.id || p.idProveedor || p.nombre}>
+                    {p.nombre}
                   </option>
                 ))}
               </select>
@@ -125,7 +177,21 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 <option value="Ml">Mililitros (Ml)</option>
                 <option value="Unidad">Unidad (Ud)</option>
                 <option value="Paquete">Paquete</option>
+                <option value="Porción">Porción</option>
               </select>
+            </div>
+
+            <div>
+              <label className={labelCls}>Precio Unitario ($)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.precioUnitario}
+                onChange={(e) => setForm({ ...form, precioUnitario: Number(e.target.value) })}
+                className={inputCls}
+                placeholder="0.00"
+              />
             </div>
 
             <div>
@@ -133,6 +199,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
               <input
                 type="number"
                 min="0"
+                step="0.01"
                 value={form.stock}
                 onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
                 className={inputCls}
@@ -143,9 +210,30 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
               <label className={labelCls}>Stock Mínimo Alerta</label>
               <input
                 type="number"
-                min="1"
+                min="0"
+                step="0.01"
                 value={form.stockMinimo}
                 onChange={(e) => setForm({ ...form, stockMinimo: Number(e.target.value) })}
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Fecha de Expedición / Producción</label>
+              <input
+                type="date"
+                value={form.fechaExpedicion}
+                onChange={(e) => setForm({ ...form, fechaExpedicion: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>Fecha de Vencimiento / Expiración</label>
+              <input
+                type="date"
+                value={form.fechaVencimiento}
+                onChange={(e) => setForm({ ...form, fechaVencimiento: e.target.value })}
                 className={inputCls}
               />
             </div>
@@ -160,6 +248,17 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 <option value="Activo">Activo</option>
                 <option value="Inactivo">Inactivo</option>
               </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Descripción</label>
+              <textarea
+                rows={2}
+                value={form.descripcion}
+                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                className={inputCls}
+                placeholder="Descripción adicional u observaciones sobre el insumo..."
+              />
             </div>
           </div>
 
