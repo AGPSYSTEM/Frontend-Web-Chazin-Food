@@ -1,20 +1,72 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ChefHat, Plus } from "lucide-react";
+import { productosService } from "../../ventas/servicios/productosService";
 
-const EMOJI_OPTIONS = ["🍔", "🍗", "🍟", "🍱", "🍕", "🌭", "🥤", "🌮", "🥪"];
+const EMOJI_MAP = {
+  Hamburguesa: "🍔",
+  Perro: "🌭",
+  Gaseosa: "🥤",
+  Bebida: "🥤",
+  Pizza: "🍕",
+  Combo: "🍱",
+  Pollo: "🍗",
+  Papas: "🍟"
+};
+
+const getEmojiForProduct = (nombre = "") => {
+  const lower = nombre.toLowerCase();
+  if (lower.includes("hamburguesa")) return "🍔";
+  if (lower.includes("perro")) return "🌭";
+  if (lower.includes("gaseosa") || lower.includes("bebida") || lower.includes("jugo")) return "🥤";
+  if (lower.includes("pizza")) return "🍕";
+  if (lower.includes("combo")) return "🍱";
+  if (lower.includes("pollo")) return "🍗";
+  if (lower.includes("salchipapa") || lower.includes("papas")) return "🍟";
+  return "🍔";
+};
 
 export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
+  const [productos, setProductos] = useState([]);
+  const [selectedProductoId, setSelectedProductoId] = useState("");
   const [platilloNombre, setPlatilloNombre] = useState("");
   const [cantidad, setCantidad] = useState("1");
   const [responsable, setResponsable] = useState("Carlos R.");
-  const [tiempo, setTiempo] = useState("15min");
+  const [tiempo, setTiempo] = useState("15 min");
   const [prioridad, setPrioridad] = useState("Normal");
   const [imagen, setImagen] = useState("🍔");
   const [alerta, setAlerta] = useState(false);
   const [observaciones, setObservaciones] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      productosService
+        .getProductos()
+        .then((data) => {
+          setProductos(data || []);
+          if (data && data.length > 0) {
+            const first = data[0];
+            setSelectedProductoId(String(first.id || first.idProducto || ""));
+            setPlatilloNombre(first.nombre);
+            setImagen(getEmojiForProduct(first.nombre));
+          }
+        })
+        .catch(() => setProductos([]));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleSelectProduct = (idStr) => {
+    setSelectedProductoId(idStr);
+    const found = productos.find(
+      (p) => String(p.id || p.idProducto) === idStr
+    );
+    if (found) {
+      setPlatilloNombre(found.nombre);
+      setImagen(getEmojiForProduct(found.nombre));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,6 +74,7 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
     setSaving(true);
 
     const ok = await onCreate({
+      idProducto: selectedProductoId ? Number(selectedProductoId) : null,
       platilloNombre: platilloNombre.trim(),
       cantidad: Number(cantidad) || 1,
       responsable,
@@ -35,8 +88,6 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
 
     setSaving(false);
     if (ok) {
-      setPlatilloNombre("");
-      setObservaciones("");
       onClose();
     }
   };
@@ -50,7 +101,9 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
             <ChefHat className="w-7 h-7" />
             <div>
               <h3 className="text-lg font-bold">Nueva Orden de Producción</h3>
-              <p className="text-xs text-red-100">Registra una nueva orden para cocina</p>
+              <p className="text-xs text-red-100">
+                Selecciona un producto registrado en el sistema
+              </p>
             </div>
           </div>
           <button
@@ -64,29 +117,43 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          {/* Platillo & Emoji */}
+          {/* Seleccionar Producto Registrado */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Platillo / Receta <span className="text-red-500">*</span>
+              Producto Registrado en Base de Datos <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedProductoId}
+              onChange={(e) => handleSelectProduct(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-[#F05454]"
+            >
+              {productos.length === 0 ? (
+                <option value="">Cargando productos...</option>
+              ) : (
+                productos.map((p) => (
+                  <option key={p.id || p.idProducto} value={p.id || p.idProducto}>
+                    {p.nombre} — ${Number(p.precio || 0).toLocaleString("es-CO")}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Nombre / Personalización */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+              Nombre del Platillo / Variación
             </label>
             <div className="flex gap-2">
-              <select
-                value={imagen}
-                onChange={(e) => setImagen(e.target.value)}
-                className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xl"
-              >
-                {EMOJI_OPTIONS.map((e) => (
-                  <option key={e} value={e}>
-                    {e}
-                  </option>
-                ))}
-              </select>
+              <span className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xl flex items-center justify-center">
+                {imagen}
+              </span>
               <input
                 type="text"
                 required
                 value={platilloNombre}
                 onChange={(e) => setPlatilloNombre(e.target.value)}
-                placeholder="Ej: Hamburguesa Especial"
+                placeholder="Nombre del platillo..."
                 className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454]"
               />
             </div>
@@ -114,7 +181,7 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
                 type="text"
                 value={tiempo}
                 onChange={(e) => setTiempo(e.target.value)}
-                placeholder="Ej: 15min"
+                placeholder="Ej: 15 min"
                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454]"
               />
             </div>
