@@ -264,6 +264,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
 
           {/* Section: Ficha Técnica */}
           <FichaTecnicaInsumo
+            insumoId={insumo?.id || insumo?.idInsumo}
             insumoName={form.nombre}
             initialData={fichaTecnica}
             onSave={(data) => setFichaTecnica(data)}
