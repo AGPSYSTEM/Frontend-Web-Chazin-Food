@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Sub-repositories
+backend/
+
 # Production build
 dist/
 build/
