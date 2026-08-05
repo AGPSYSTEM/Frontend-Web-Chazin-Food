@@ -51,7 +51,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
   const [form, setForm] = useState({
     idProveedor: "",
     fechaCompra: new Date().toISOString().split("T")[0],
-    estado: "RECIBIDA"
+    estado: "PENDIENTE"
   });
   const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
 
@@ -116,7 +116,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
         setForm({
           idProveedor: "",
           fechaCompra: new Date().toISOString().split("T")[0],
-          estado: "RECIBIDA"
+          estado: "PENDIENTE"
         });
         setItems([{ ...DEFAULT_ITEM }]);
       }
