@@ -48,6 +48,18 @@ export function useGestionCompras() {
     }
   };
 
+  const updateCompra = async (id, data) => {
+    try {
+      await comprasService.updateCompra(id, data);
+      notify.success("Compra actualizada", "La orden de compra se editó correctamente");
+      await fetchCompras();
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo actualizar la compra");
+      return false;
+    }
+  };
+
   const updateEstado = async (id, nuevoEstado) => {
     try {
       await comprasService.updateEstadoCompra(id, nuevoEstado);
@@ -88,6 +100,7 @@ export function useGestionCompras() {
     setFilterEstado,
     refetch: fetchCompras,
     createCompra,
+    updateCompra,
     updateEstado,
     cancelarCompra
   };

@@ -1,4 +1,4 @@
-import { Eye, FileText, ShoppingCart, Calendar } from "lucide-react";
+import { Eye, FileText, ShoppingCart, Calendar, Pencil } from "lucide-react";
 
 const estadoConfig = {
   RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300", label: "Recibida" },
@@ -10,7 +10,12 @@ const estadoConfig = {
   Anulada:   { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Anulada" },
 };
 
-export function ComprasTable({ compras = [], onViewDetail, onUpdateEstado }) {
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
+export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -76,13 +81,24 @@ export function ComprasTable({ compras = [], onViewDetail, onUpdateEstado }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => onViewDetail(c)}
-                        title="Ver Detalle"
-                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        {esEstadoPendiente(c.estado) && onEdit && (
+                          <button
+                            onClick={() => onEdit(c)}
+                            title="Editar Compra"
+                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onViewDetail(c)}
+                          title="Ver Detalle"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

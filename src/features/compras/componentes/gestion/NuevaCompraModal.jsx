@@ -9,7 +9,8 @@ import {
   User,
   CalendarDays,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Pencil
 } from "lucide-react";
 import { comprasService } from "../../servicios/comprasService";
 import { apiClient } from "@/shared/api/apiClient";
@@ -21,7 +22,26 @@ const labelCls =
 
 const DEFAULT_ITEM = { idInsumo: "", cantidad: "", precioUnitario: "", subtotal: 0 };
 
-export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
+function parseFecha(dateValue) {
+  if (!dateValue) return new Date().toISOString().split("T")[0];
+  try {
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+    return d.toISOString().split("T")[0];
+  } catch {
+    return new Date().toISOString().split("T")[0];
+  }
+}
+
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
+export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra }) {
+  const esEdicion = Boolean(editCompra && editCompra.id);
+  const idCompraEdit = esEdicion ? editCompra.id : null;
+
   const [proveedores, setProveedores] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +55,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
   });
   const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
 
-  // Load proveedores & insumos
   const loadCatalogos = useCallback(async () => {
     try {
       setLoading(true);
@@ -52,22 +71,60 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
     }
   }, []);
 
+  const poblarDatosEdicion = useCallback(async () => {
+    if (!idCompraEdit) return;
+    try {
+      setLoading(true);
+      const detalle = await comprasService.getCompraById(idCompraEdit);
+      if (!esEstadoPendiente(detalle.estado)) {
+        onClose?.();
+        return;
+      }
+      setForm({
+        idProveedor: detalle.idProveedor ? String(detalle.idProveedor) : "",
+        fechaCompra: parseFecha(detalle.fechaCompra),
+        estado: detalle.estado || "PENDIENTE"
+      });
+      const det = detalle.detalles || [];
+      setItems(det.length === 0
+        ? [{ ...DEFAULT_ITEM }]
+        : det.map((d) => ({
+            idInsumo: String(d.idInsumo),
+            cantidad: String(parseFloat(d.cantidad) || 0),
+            precioUnitario: String(parseFloat(d.precioUnitario) || 0),
+            subtotal: parseFloat(d.subtotal || (parseFloat(d.cantidad) * parseFloat(d.precioUnitario))) || 0
+          }))
+      );
+    } catch (err) {
+      console.error("Error cargando compra para edición:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [idCompraEdit, onClose]);
+
   useEffect(() => {
     if (isOpen) {
       loadCatalogos();
-      setForm({
-        idProveedor: "",
-        fechaCompra: new Date().toISOString().split("T")[0],
-        estado: "RECIBIDA"
-      });
-      setItems([{ ...DEFAULT_ITEM }]);
       setSubmitted(false);
+      if (esEdicion) {
+        if (editCompra && !esEstadoPendiente(editCompra.estado)) {
+          onClose?.();
+          return;
+        }
+        poblarDatosEdicion();
+      } else {
+        setForm({
+          idProveedor: "",
+          fechaCompra: new Date().toISOString().split("T")[0],
+          estado: "RECIBIDA"
+        });
+        setItems([{ ...DEFAULT_ITEM }]);
+      }
     }
-  }, [isOpen, loadCatalogos]);
+  }, [isOpen, esEdicion, editCompra, loadCatalogos, poblarDatosEdicion, onClose]);
 
   if (!isOpen) return null;
 
-  // Item handlers
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
     let newPrice = updated[index].precioUnitario;
@@ -87,7 +144,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
       precioUnitario: field === "idInsumo" ? newPrice : field === "precioUnitario" ? value : updated[index].precioUnitario
     };
 
-    // Recalculate subtotal
     const cant = parseFloat(updated[index].cantidad) || 0;
     const precio = parseFloat(updated[index].precioUnitario) || 0;
     updated[index].subtotal = cant * precio;
@@ -115,6 +171,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
     e.preventDefault();
     if (submitted || saving) return;
     if (!isValid()) return;
+    if (esEdicion && editCompra && !esEstadoPendiente(editCompra.estado)) return;
     setSubmitted(true);
     setSaving(true);
     try {
@@ -130,18 +187,22 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
           subtotal: it.subtotal
         }))
       };
-      await comprasService.createCompra(payload);
-      onCreated?.();
+      if (esEdicion) {
+        await comprasService.updateCompra(idCompraEdit, payload);
+        onUpdated?.();
+      } else {
+        await comprasService.createCompra(payload);
+        onCreated?.();
+      }
       onClose();
     } catch (err) {
-      console.error("Error al crear compra:", err);
+      console.error("Error al guardar compra:", err);
       setSubmitted(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // Filter & group insumos based on selected provider
   const selectedProveedorId = form.idProveedor ? String(form.idProveedor) : null;
   const insumosAsociados = selectedProveedorId
     ? insumos.filter((i) => String(i.idProveedor) === selectedProveedorId)
@@ -156,18 +217,21 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
         className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800"
         style={{ animation: "fadeInScale 0.2s ease-out" }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F05454]/10 flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-[#F05454]" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${esEdicion ? "bg-blue-50 dark:bg-blue-900/20" : "bg-[#F05454]/10"}`}>
+              {esEdicion
+                ? <Pencil className="w-5 h-5 text-blue-500" />
+                : <ShoppingCart className="w-5 h-5 text-[#F05454]" />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                Nueva Compra
+                {esEdicion ? "Editar Compra" : "Nueva Compra"}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Registrar orden de compra de insumos
+                {esEdicion
+                  ? `Modificando orden de compra #${idCompraEdit}`
+                  : "Registrar orden de compra de insumos"}
               </p>
             </div>
           </div>
@@ -179,7 +243,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
           </button>
         </div>
 
-        {/* Body */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
@@ -191,9 +254,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
               </div>
             ) : (
               <>
-                {/* Proveedor + Fecha + Estado */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Proveedor */}
                   <div>
                     <label className={labelCls}>
                       <User className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
@@ -222,7 +283,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                     </div>
                   </div>
 
-                  {/* Fecha de compra */}
                   <div>
                     <label className={labelCls}>
                       <CalendarDays className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
@@ -239,7 +299,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                     />
                   </div>
 
-                  {/* Estado */}
                   <div className="sm:col-span-2">
                     <label className={labelCls}>Estado</label>
                     <div className="relative">
@@ -258,7 +317,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                   </div>
                 </div>
 
-                {/* Banner de insumos asociados si hay proveedor seleccionado */}
                 {selectedProveedorId && (
                   <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
                     <Sparkles className="w-4 h-4 shrink-0 text-blue-500" />
@@ -270,7 +328,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                   </div>
                 )}
 
-                {/* Separador */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
@@ -292,7 +349,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                         key={index}
                         className="grid grid-cols-12 gap-2 items-end bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700"
                       >
-                        {/* Insumo */}
                         <div className="col-span-12 sm:col-span-5">
                           <label className={labelCls}>
                             <Package className="inline w-3 h-3 mr-1" />
@@ -308,8 +364,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                               className={inputCls + " appearance-none pr-8 text-xs font-medium"}
                             >
                               <option value="">Selecciona insumo</option>
-
-                              {/* Insumos Asociados al Proveedor */}
                               {selectedProveedorId && insumosAsociados.length > 0 && (
                                 <optgroup label="⭐ Insumos de este Proveedor">
                                   {insumosAsociados.map((ins) => (
@@ -322,8 +376,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                                   ))}
                                 </optgroup>
                               )}
-
-                              {/* Otros Insumos */}
                               <optgroup label={selectedProveedorId && insumosAsociados.length > 0 ? "Otros Insumos Disponibles" : "Todos los Insumos"}>
                                 {insumosOtros.map((ins) => (
                                   <option
@@ -339,7 +391,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           </div>
                         </div>
 
-                        {/* Cantidad */}
                         <div className="col-span-4 sm:col-span-2">
                           <label className={labelCls}>Cantidad *</label>
                           <input
@@ -356,7 +407,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           />
                         </div>
 
-                        {/* Precio Unitario */}
                         <div className="col-span-5 sm:col-span-3">
                           <label className={labelCls}>
                             <DollarSign className="inline w-3 h-3 mr-0.5" />
@@ -376,15 +426,13 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           />
                         </div>
 
-                        {/* Subtotal */}
                         <div className="col-span-10 sm:col-span-2">
                           <label className={labelCls}>Subtotal</label>
                           <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200">
-                            ${item.subtotal.toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                            ${Number(item.subtotal || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
                           </div>
                         </div>
 
-                        {/* Delete */}
                         <div className="col-span-2 sm:col-span-1 flex justify-end">
                           <button
                             type="button"
@@ -401,7 +449,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                   </div>
                 </div>
 
-                {/* Total general */}
                 <div className="flex justify-end">
                   <div className="bg-[#F05454]/10 rounded-xl px-5 py-3 flex items-center gap-3">
                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -416,7 +463,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
             )}
           </div>
 
-          {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex justify-end gap-3 shrink-0">
             <button
               type="button"
@@ -428,10 +474,14 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
             <button
               type="submit"
               disabled={saving || !isValid()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-md transition-colors"
+              className={`flex items-center gap-2 px-5 py-2.5 ${esEdicion ? "bg-blue-500 hover:bg-blue-600" : "bg-[#F05454] hover:bg-[#d84343]"} disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-md transition-colors`}
             >
-              <ShoppingCart className="w-4 h-4" />
-              {saving ? "Registrando..." : "Registrar Compra"}
+              {esEdicion
+                ? <Pencil className="w-4 h-4" />
+                : <ShoppingCart className="w-4 h-4" />}
+              {saving
+                ? "Guardando..."
+                : esEdicion ? "Guardar Cambios" : "Registrar Compra"}
             </button>
           </div>
         </form>
