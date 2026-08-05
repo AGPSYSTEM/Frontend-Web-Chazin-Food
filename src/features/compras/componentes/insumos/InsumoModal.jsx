@@ -8,7 +8,6 @@ const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 m
 export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias = [], proveedores = [] }) {
   const isEditing = !!insumo;
   const [form, setForm] = useState({
-    codigo: "",
     nombre: "",
     idCategoriaInsumo: "",
     categoria: "",
@@ -28,7 +27,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
   useEffect(() => {
     if (insumo) {
       setForm({
-        codigo: insumo.codigo || "",
         nombre: insumo.nombre || "",
         idCategoriaInsumo: insumo.idCategoriaInsumo || "",
         categoria: insumo.categoria || insumo.categoriaNombre || (categorias[0]?.nombre || ""),
@@ -46,7 +44,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
       setFichaTecnica(insumo.fichaTecnica || null);
     } else {
       setForm({
-        codigo: "",
         nombre: "",
         idCategoriaInsumo: categorias[0]?.id || categorias[0]?.idCategoriaInsumo || "",
         categoria: categorias[0]?.nombre || "",
@@ -95,18 +92,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Código Insumo</label>
-              <input
-                type="text"
-                value={form.codigo}
-                onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                className={inputCls}
-                placeholder="Ej. INS-001"
-              />
-            </div>
-
-            <div>
+            <div className="sm:col-span-2">
               <label className={labelCls}>Nombre del Insumo *</label>
               <input
                 type="text"
@@ -121,46 +107,54 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
             <div>
               <label className={labelCls}>Categoría</label>
               <select
-                value={form.idCategoriaInsumo || form.categoria}
+                value={String(form.idCategoriaInsumo || "")}
                 onChange={(e) => {
-                  const selectedCat = categorias.find(c => String(c.id || c.idCategoriaInsumo) === e.target.value || c.nombre === e.target.value);
+                  const val = e.target.value;
+                  const selectedCat = categorias.find(c => String(c.id || c.idCategoriaInsumo) === String(val) || c.nombre === val);
                   setForm({
                     ...form,
-                    idCategoriaInsumo: selectedCat?.id || selectedCat?.idCategoriaInsumo || e.target.value,
-                    categoria: selectedCat?.nombre || e.target.value
+                    idCategoriaInsumo: selectedCat ? (selectedCat.id || selectedCat.idCategoriaInsumo) : (val ? Number(val) : ""),
+                    categoria: selectedCat ? selectedCat.nombre : val
                   });
                 }}
                 className={inputCls}
               >
                 <option value="">Seleccionar categoría</option>
-                {categorias.map((c) => (
-                  <option key={c.id || c.idCategoriaInsumo || c.nombre} value={c.id || c.idCategoriaInsumo || c.nombre}>
-                    {c.nombre}
-                  </option>
-                ))}
+                {categorias.map((c) => {
+                  const catId = c.id || c.idCategoriaInsumo;
+                  return (
+                    <option key={catId || c.nombre} value={String(catId)}>
+                      {c.nombre}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             <div>
               <label className={labelCls}>Proveedor</label>
               <select
-                value={form.idProveedor || form.proveedor}
+                value={String(form.idProveedor || "")}
                 onChange={(e) => {
-                  const selectedProv = proveedores.find(p => String(p.id || p.idProveedor) === e.target.value || p.nombre === e.target.value);
+                  const val = e.target.value;
+                  const selectedProv = proveedores.find(p => String(p.id || p.idProveedor) === String(val) || p.nombre === val);
                   setForm({
                     ...form,
-                    idProveedor: selectedProv?.id || selectedProv?.idProveedor || e.target.value,
-                    proveedor: selectedProv?.nombre || e.target.value
+                    idProveedor: selectedProv ? (selectedProv.id || selectedProv.idProveedor) : (val ? Number(val) : ""),
+                    proveedor: selectedProv ? selectedProv.nombre : val
                   });
                 }}
                 className={inputCls}
               >
                 <option value="">Sin Proveedor / Ninguno</option>
-                {proveedores.map((p) => (
-                  <option key={p.id || p.idProveedor || p.nombre} value={p.id || p.idProveedor || p.nombre}>
-                    {p.nombre}
-                  </option>
-                ))}
+                {proveedores.map((p) => {
+                  const provId = p.id || p.idProveedor;
+                  return (
+                    <option key={provId || p.nombre} value={String(provId)}>
+                      {p.nombre}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

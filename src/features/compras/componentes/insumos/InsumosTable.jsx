@@ -61,16 +61,16 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {i.categoria || "Sin categoría"}
+                      {typeof i.categoria === "string" ? i.categoria : (i.categoriaNombre || i.categoria?.nombre || "Sin categoría")}
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
                       {i.stock ?? 0} {i.unidadMedida || "und"}
                     </td>
                     <td className="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
-                      ${i.precioUnitario || i.costo || 0}
+                      ${Number(i.precioUnitario || i.costo || 0).toLocaleString("es-CO")}
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {i.proveedor || "Sin Proveedor"}
+                      {typeof i.proveedor === "string" ? i.proveedor : (i.proveedorNombre || i.proveedor?.nombre || "Sin Proveedor")}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${stockBadgeClass}`}>

@@ -1,9 +1,13 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, Search, FileText, DollarSign } from "lucide-react";
 import { useGestionCompras } from "../hooks/useGestionCompras";
 import { ComprasTable } from "../componentes/gestion/ComprasTable";
+import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
+import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function GestionCompras() {
+  const notify = useNotifications();
   const {
     compras,
     filteredCompras,
@@ -13,22 +17,35 @@ export function GestionCompras() {
     filterEstado,
     setFilterEstado,
     updateEstado,
-    cancelarCompra
+    cancelarCompra,
+    refetch
   } = useGestionCompras();
 
   const [selectedCompra, setSelectedCompra] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Stats
   const stats = useMemo(() => {
     const total = compras.length;
-    const completadas = compras.filter((c) => c.estado === "Completada").length;
-    const pendientes = compras.filter((c) => c.estado === "Pendiente").length;
-    const anuladas = compras.filter((c) => c.estado === "Anulada").length;
-    return { total, completadas, pendientes, anuladas };
+    const completadas = compras.filter(
+      (c) => c.estado === "Completada" || c.estado === "RECIBIDA"
+    ).length;
+    const anuladas = compras.filter(
+      (c) => c.estado === "Anulada" || c.estado === "CANCELADA"
+    ).length;
+    const montoTotal = compras
+      .filter((c) => c.estado !== "CANCELADA" && c.estado !== "Anulada")
+      .reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+    return { total, completadas, anuladas, montoTotal };
   }, [compras]);
 
   const handleViewDetail = (c) => {
     setSelectedCompra(c);
+  };
+
+  const handleCompraCreated = async () => {
+    await refetch();
+    notify.success("Compra registrada", "La orden de compra se creó y el stock del insumo fue actualizado.");
   };
 
   return (
@@ -48,39 +65,41 @@ export function GestionCompras() {
 
       {/* Stat cards - 2x2 grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Total Compras */}
+        {/* Total Compras (Órdenes) */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Total Compras</p>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Órdenes de Compra</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500">registradas</p>
           </div>
         </div>
 
-        {/* Completadas */}
+        {/* Completadas / Recibidas */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-green-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Completadas</p>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Recibidas</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.completadas}</p>
-            <p className="text-xs text-green-500">finalizadas</p>
+            <p className="text-xs text-green-500">recibidas / completadas</p>
           </div>
         </div>
 
-        {/* Pendientes */}
+        {/* Monto Total en Compras */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-yellow-500" />
+          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+            <DollarSign className="w-6 h-6 text-emerald-500" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Pendientes</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.pendientes}</p>
-            <p className="text-xs text-yellow-500">por procesar</p>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Total en Compras</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              ${stats.montoTotal.toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+            </p>
+            <p className="text-xs text-emerald-500">monto total acumulado</p>
           </div>
         </div>
 
@@ -119,14 +138,14 @@ export function GestionCompras() {
             className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors shrink-0 cursor-pointer"
           >
             <option value="Todos">Todos los estados</option>
-            <option value="Pendiente">Pendiente</option>
-            <option value="Recibida">Recibida</option>
-            <option value="Completada">Completada</option>
-            <option value="Anulada">Anulada</option>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="RECIBIDA">Recibida</option>
+            <option value="CANCELADA">Cancelada</option>
           </select>
 
           {/* Nueva Compra button */}
           <button
+            onClick={() => setModalOpen(true)}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
           >
             <Plus className="w-5 h-5" />
@@ -145,6 +164,20 @@ export function GestionCompras() {
           onUpdateEstado={updateEstado}
         />
       )}
+
+      {/* Modal Nueva Compra */}
+      <NuevaCompraModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={handleCompraCreated}
+      />
+
+      {/* Modal Detalle Compra */}
+      <DetalleCompraModal
+        isOpen={!!selectedCompra}
+        onClose={() => setSelectedCompra(null)}
+        compra={selectedCompra}
+      />
     </div>
   );
 }
