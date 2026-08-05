@@ -1,4 +1,4 @@
-import { Eye, FileText, ShoppingCart, Calendar, Pencil } from "lucide-react";
+import { Eye, FileText, ShoppingCart, Calendar, Pencil, CheckCircle2, XCircle } from "lucide-react";
 
 const estadoConfig = {
   RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300", label: "Recibida" },
@@ -15,7 +15,17 @@ function esEstadoPendiente(estado) {
   return e === "PENDIENTE";
 }
 
-export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado }) {
+function esEstadoRecibida(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "RECIBIDA" || e === "COMPLETADA";
+}
+
+function esEstadoCancelada(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "CANCELADA" || e === "ANULADA";
+}
+
+export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado, onCancelar }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -44,6 +54,9 @@ export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstad
                   label: c.estado || "Desconocido"
                 };
                 const fecha = c.fechaCompra || c.fecha;
+                const estaPendiente = esEstadoPendiente(c.estado);
+                const estaRecibida = esEstadoRecibida(c.estado);
+                const estaCancelada = esEstadoCancelada(c.estado);
                 return (
                   <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-6 py-4">
@@ -82,7 +95,25 @@ export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstad
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        {esEstadoPendiente(c.estado) && onEdit && (
+                        {estaPendiente && onUpdateEstado && (
+                          <button
+                            onClick={() => onUpdateEstado(c.id, "RECIBIDA")}
+                            title="Marcar como Recibida (actualiza stock)"
+                            className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!estaCancelada && onCancelar && (
+                          <button
+                            onClick={() => onCancelar(c.id)}
+                            title={estaRecibida ? "Anular compra (revierte stock)" : "Anular compra"}
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 dark:text-red-400 transition-colors"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        {estaPendiente && onEdit && (
                           <button
                             onClick={() => onEdit(c)}
                             title="Editar Compra"

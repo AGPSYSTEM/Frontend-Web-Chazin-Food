@@ -310,23 +310,32 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Estado{esEdicion && <span className="ml-2 text-[10px] font-normal text-gray-400">(Para cambiar el estado usa la acción dedicada "Marcar como Recibida" desde la tabla o el detalle)</span>}</label>
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-1">
+                    <label className={labelCls}>
+                      Estado
+                      {esEdicion && (
+                        <span className="ml-2 text-[10px] font-normal text-gray-400">
+                          (Para cambiar el estado usa la acción dedicada "Marcar como Recibida" desde la tabla o el detalle)
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex items-start gap-3 flex-col sm:flex-row">
+                      <div className="relative flex-1 w-full">
                         <select
                           value={normalizarEstadoSelect(form.estado)}
                           onChange={(e) =>
                             setForm((f) => ({ ...f, estado: e.target.value }))
                           }
-                          disabled={esEdicion}
-                          className={inputCls + " appearance-none pr-10 " + (esEdicion ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : "")}
+                          disabled={true}
+                          className={inputCls + " appearance-none pr-10 opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700"}
                         >
-                          <option value="RECIBIDA">Recibida</option>
-                          <option value="PENDIENTE">Pendiente</option>
+                          {!esEdicion && <option value="PENDIENTE">Pendiente (por defecto)</option>}
+                          {esEdicion && normalizarEstadoSelect(form.estado) === "RECIBIDA" && <option value="RECIBIDA">Recibida</option>}
+                          {esEdicion && normalizarEstadoSelect(form.estado) === "CANCELADA" && <option value="CANCELADA">Cancelada</option>}
+                          {esEdicion && <option value="PENDIENTE">Pendiente</option>}
                         </select>
-                        <ChevronDown className={"w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none " + (esEdicion ? "opacity-50" : "")} />
+                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
                       </div>
-                      {esEdicion && (
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <span className={`shrink-0 inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold border ${
                           normalizarEstadoSelect(form.estado) === "RECIBIDA"
                             ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
@@ -340,8 +349,22 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                             ? "❌ Cancelada"
                             : "⏳ Pendiente"}
                         </span>
-                      )}
+                      </div>
                     </div>
+                    {!esEdicion && (
+                      <div className="mt-2 text-[11px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
+                        <strong>ℹ️ Importante:</strong> Todas las compras se crean en estado <strong>Pendiente</strong>. El stock de los insumos <strong>NO</strong> se actualizará hasta que manualmente marques la compra como <strong>Recibida</strong> desde la tabla o el detalle, cuando realmente lleguen los insumos.
+                      </div>
+                    )}
+                    {esEdicion && (
+                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg p-3">
+                        <strong>Nota:</strong> No puedes cambiar el estado desde aquí. Usa los botones de acción:
+                        <span className="inline-flex items-center mx-1 text-green-600 dark:text-green-400 font-semibold">✅ Marcar como Recibida</span>
+                        o
+                        <span className="inline-flex items-center mx-1 text-red-500 font-semibold">❌ Anular</span>
+                        disponibles en cada fila de la tabla o dentro del detalle de la compra.
+                      </div>
+                    )}
                   </div>
                 </div>
 

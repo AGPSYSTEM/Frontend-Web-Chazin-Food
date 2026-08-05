@@ -10,7 +10,22 @@ const estadoBadges = {
   Anulada:   { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Anulada" }
 };
 
-export function DetalleCompraModal({ isOpen, onClose, compra }) {
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
+function esEstadoRecibida(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "RECIBIDA" || e === "COMPLETADA";
+}
+
+function esEstadoCancelada(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "CANCELADA" || e === "ANULADA";
+}
+
+export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, onCancelar }) {
   if (!isOpen || !compra) return null;
 
   const estadoInfo = estadoBadges[compra.estado] || {
@@ -30,6 +45,9 @@ export function DetalleCompraModal({ isOpen, onClose, compra }) {
     : "Sin fecha";
 
   const detalles = compra.detalles || [];
+  const estaPendiente = esEstadoPendiente(compra.estado);
+  const estaRecibida = esEstadoRecibida(compra.estado);
+  const estaCancelada = esEstadoCancelada(compra.estado);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -68,6 +86,58 @@ export function DetalleCompraModal({ isOpen, onClose, compra }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {/* Estado destacado y acciones */}
+          <div className={`rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+            estaPendiente
+              ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50"
+              : estaRecibida
+              ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50"
+              : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50"
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                estaPendiente
+                  ? "bg-yellow-100 dark:bg-yellow-800/40 text-yellow-600 dark:text-yellow-300"
+                  : estaRecibida
+                  ? "bg-green-100 dark:bg-green-800/40 text-green-600 dark:text-green-300"
+                  : "bg-red-100 dark:bg-red-800/40 text-red-600 dark:text-red-300"
+              }`}>
+                {estaPendiente && <Clock className="w-5 h-5" />}
+                {estaRecibida && <CheckCircle2 className="w-5 h-5" />}
+                {estaCancelada && <XCircle className="w-5 h-5" />}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Estado actual</p>
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{estadoInfo.label}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  {estaPendiente && "⚠️ El stock NO ha sido actualizado aún. Marca como Recibida cuando lleguen los insumos."}
+                  {estaRecibida && "✅ El stock de los insumos fue actualizado cuando se marcó como Recibida."}
+                  {estaCancelada && "❌ Esta compra fue anulada. Si tenía stock asociado, fue revertido."}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {estaPendiente && onUpdateEstado && (
+                <button
+                  onClick={() => onUpdateEstado(compra.id, "RECIBIDA")}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Marcar como Recibida
+                </button>
+              )}
+              {!estaCancelada && onCancelar && (
+                <button
+                  onClick={() => onCancelar(compra.id)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Anular Compra
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Metadata Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <div>
