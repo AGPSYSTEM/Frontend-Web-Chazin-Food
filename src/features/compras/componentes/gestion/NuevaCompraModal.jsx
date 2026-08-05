@@ -26,6 +26,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const [form, setForm] = useState({
     idProveedor: "",
@@ -60,6 +61,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
         estado: "RECIBIDA"
       });
       setItems([{ ...DEFAULT_ITEM }]);
+      setSubmitted(false);
     }
   }, [isOpen, loadCatalogos]);
 
@@ -108,14 +110,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
     }
     return true;
   };
-
-  const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSubmitted(false);
-    }
-  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
