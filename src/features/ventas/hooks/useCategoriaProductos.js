@@ -25,12 +25,14 @@ export function useCategoriaProductos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const filteredCategorias = categorias.filter(
-    (c) =>
-      searchTerm.trim() === "" ||
-      c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCategorias = categorias.filter((c) => {
+    if (!searchTerm || searchTerm.trim() === "") return true;
+    const term = searchTerm.trim().toLowerCase();
+    const matchNombre = c.nombre?.toLowerCase().includes(term);
+    const matchDesc = c.descripcion?.toLowerCase().includes(term);
+    const matchId = String(c.id || c.idCategoriaProducto || "").includes(term);
+    return matchNombre || matchDesc || matchId;
+  });
 
   const createCategoria = async (form) => {
     try {
@@ -68,7 +70,7 @@ export function useCategoriaProductos() {
       await fetchCategorias();
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "No se pudo eliminar la categoría");
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar la categoría");
       return false;
     }
   };

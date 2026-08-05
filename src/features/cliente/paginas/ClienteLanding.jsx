@@ -7,6 +7,7 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
+import { ventasService } from "@/features/ventas/servicios/ventasService";
 
 
 const categorias = [
@@ -255,6 +256,27 @@ export function ClienteLanding() {
       "Sí, confirmar"
     );
     if (confirmed) {
+      try {
+        const ventaPayload = {
+          idCliente: user?.idCliente || user?.idUsuario || 1,
+          idUsuario: user?.idUsuario || user?.id || 1,
+          subtotal: clientSubtotal,
+          total: totalCheckout,
+          estadoEntrega: "PENDIENTE",
+          observaciones: checkoutEspecificaciones || (checkoutTipoEntrega === "domicilio" ? `Dirección: ${checkoutDireccion}` : "Para llevar"),
+          detalles: cart.map(item => ({
+            idVariante: item.id || 1,
+            cantidad: item.cantidad,
+            precioUnitario: item.precio,
+            subtotal: item.precio * item.cantidad,
+            observaciones: item.nombre
+          }))
+        };
+        await ventasService.createVenta(ventaPayload);
+      } catch (err) {
+        console.log("Creando pedido local de respaldo:", err);
+      }
+
       const newClientOrderId = pedidos.length + 1;
       const newClientOrder = {
         id: newClientOrderId,

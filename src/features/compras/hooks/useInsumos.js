@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { insumosService } from "../servicios/insumosService";
+import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const INITIAL_EVENTOS = [
@@ -30,6 +31,7 @@ export function useInsumos() {
   const notify = useNotifications();
   const [insumos, setInsumos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState("Todas");
@@ -100,9 +102,10 @@ export function useInsumos() {
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
-      const [insumosData, categoriasData] = await Promise.all([
+      const [insumosData, categoriasData, proveedoresData] = await Promise.all([
         insumosService.getInsumos(),
-        insumosService.getCategorias()
+        insumosService.getCategorias(),
+        proveedoresService.getProveedores().catch(() => [])
       ]);
 
       // Ensure mock sample data contains at least one prepared insumo if empty
@@ -145,6 +148,7 @@ export function useInsumos() {
 
       setInsumos(finalInsumos);
       setCategorias(categoriasData || []);
+      setProveedores(proveedoresData || []);
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al obtener insumos o categorías");
@@ -184,7 +188,7 @@ export function useInsumos() {
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria;
+    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
 
     return matchSearch && matchCategoria && matchEstado;
@@ -193,9 +197,24 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      const newItem = { ...data, id: Date.now() };
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
 
-      setInsumos((prev) => [newItem, ...prev]);
+      await insumosService.createInsumo(payload);
+      await fetchInsumos();
 
       addTraceabilityEvent(
         "Creado",
@@ -218,11 +237,26 @@ export function useInsumos() {
 
   const updateInsumo = async (id, data) => {
     try {
-      setInsumos((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, ...data } : i))
-      );
-
       const isPrep = data.tipo === "Preparado";
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
+
+      await insumosService.updateInsumo(id, payload);
+      await fetchInsumos();
+
       addTraceabilityEvent(
         "Editado",
         data.nombre,
@@ -247,25 +281,13 @@ export function useInsumos() {
     if (!confirmed) return false;
 
     try {
-      const target = insumos.find((i) => i.id === id);
-      if (!target) return false;
-
-      // Remove from active insumos
-      setInsumos((prev) => prev.filter((i) => i.id !== id));
-
-      // Move to appropriate trash list
-      if (target.tipo === "Preparado") {
-        setPapeleraPreparados((prev) => [target, ...prev]);
-      } else {
-        setPapeleraInsumos((prev) => [target, ...prev]);
-      }
+      await insumosService.deleteInsumo(id);
+      await fetchInsumos();
 
       addTraceabilityEvent(
         "Eliminado",
         nombre,
-        target.tipo === "Preparado"
-          ? `Se movió a la papelera el insumo preparado: ${nombre}`
-          : `Se eliminó del inventario el insumo: ${nombre}`
+        `Se movió a la papelera el insumo: ${nombre}`
       );
 
       notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
@@ -327,6 +349,7 @@ export function useInsumos() {
     insumos,
     filteredInsumos,
     categorias,
+    proveedores,
     loading,
     searchTerm,
     setSearchTerm,

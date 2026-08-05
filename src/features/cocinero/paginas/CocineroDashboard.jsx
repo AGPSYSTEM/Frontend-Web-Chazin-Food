@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { LogOut, ChefHat, Clock, CheckCircle, AlertCircle, Package, User, Sun, Moon, BookOpen, X, ChevronDown, FileText, Search } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import { ventasService } from "@/features/ventas/servicios/ventasService";
 
 export function CocineroDashboard() {
   const { user, logout } = useAuth();
@@ -39,62 +40,12 @@ export function CocineroDashboard() {
             ],
             tiempoPreparacion: "12 min"
           }
-        },
-        {
-          nombre: "Papas Fritas",
-          cantidad: 1,
-          receta: {
-            ingredientes: [
-              { nombre: "Papas", cantidad: "200g" },
-              { nombre: "Aceite vegetal", cantidad: "Para freír" },
-              { nombre: "Sal", cantidad: "Al gusto" }
-            ],
-            pasos: [
-              "Pelar y cortar las papas en tiras",
-              "Remojar en agua fría por 10 minutos",
-              "Secar bien las papas",
-              "Freír a 180°C hasta dorar",
-              "Escurrir y salar inmediatamente"
-            ],
-            tiempoPreparacion: "8 min"
-          }
         }
       ],
       estado: "Pendiente",
       hora: "12:30 PM",
       mesa: "Mesa 4",
       tipo: "Para mesa"
-    },
-    {
-      id: 102,
-      cliente: "Juan Pérez",
-      productos: [
-        {
-          nombre: "Perro Caliente Especial",
-          cantidad: 1,
-          observaciones: "Extra salsa queso",
-          receta: {
-            ingredientes: [
-              { nombre: "Pan de perro", cantidad: "1 unidad" },
-              { nombre: "Salchicha americana", cantidad: "1 unidad" },
-              { nombre: "Queso fundido", cantidad: "50ml" },
-              { nombre: "Tocineta picada", cantidad: "20g" },
-              { nombre: "Papas fosforito", cantidad: "15g" }
-            ],
-            pasos: [
-              "Cocinar la salchicha a la plancha",
-              "Dorar la tocineta hasta que esté crujiente",
-              "Calentar el pan al vapor 1 minuto",
-              "Colocar la salchicha en el pan",
-              "Bañar con queso fundido, tocineta y papas fosforito"
-            ],
-            tiempoPreparacion: "7 min"
-          }
-        }
-      ],
-      estado: "En Preparación",
-      hora: "12:35 PM",
-      tipo: "Para llevar"
     }
   ]);
 
@@ -102,12 +53,53 @@ export function CocineroDashboard() {
   const [pedidoReceta, setPedidoReceta] = useState(null);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
 
+  const fetchVentas = useCallback(async () => {
+    try {
+      const apiVentas = await ventasService.getVentas();
+      if (apiVentas && apiVentas.length > 0) {
+        const mapped = apiVentas.map(v => {
+          let estadoFormatted = "Pendiente";
+          if (v.estadoEntrega === "PREPARANDO") estadoFormatted = "En Preparación";
+          else if (v.estadoEntrega === "LISTO" || v.estadoEntrega === "ENTREGADO") estadoFormatted = "Listo";
+
+          return {
+            id: v.idVenta || v.id,
+            cliente: v.cliente ? `${v.cliente.nombre || ''}`.trim() : "Cliente Mostrador",
+            productos: (v.detalles || []).map(d => ({
+              nombre: d.observaciones || `Producto #${d.idVariante}`,
+              cantidad: d.cantidad || 1,
+              observaciones: ""
+            })),
+            estado: estadoFormatted,
+            hora: v.fechaVenta ? new Date(v.fechaVenta).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Reciente",
+            tipo: v.observaciones || "En Local"
+          };
+        });
+        setPedidos(mapped);
+      }
+    } catch (err) {
+      console.log("CocineroDashboard usando pedidos locales por defecto.");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVentas();
+  }, [fetchVentas]);
+
   const cambiarEstado = async (id, nuevoEstado) => {
     const confirmed = await confirmAction(
       "¿Cambiar estado?",
       `¿Deseas marcar el pedido #${id} como "${nuevoEstado}"?`
     );
     if (confirmed) {
+      try {
+        let backendState = "PENDIENTE";
+        if (nuevoEstado === "En Preparación") backendState = "PREPARANDO";
+        else if (nuevoEstado === "Listo") backendState = "LISTO";
+        await ventasService.updateEstadoVenta(id, backendState);
+      } catch (err) {
+        console.log("Error al actualizar estado en el servidor:", err);
+      }
       setPedidos((prev) => prev.map((p) => (p.id === id ? { ...p, estado: nuevoEstado } : p)));
       success("Estado actualizado", `Pedido #${id} marcado como ${nuevoEstado}`);
     }

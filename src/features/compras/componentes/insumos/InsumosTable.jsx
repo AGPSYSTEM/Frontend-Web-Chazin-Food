@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Edit, Trash2, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, Edit, Trash2, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function InsumosTable({ insumos = [], onEdit, onDelete }) {
+export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -79,15 +79,24 @@ export function InsumosTable({ insumos = [], onEdit, onDelete }) {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-3">
+                        {onView && (
+                          <button
+                            onClick={() => onView(i)}
+                            title="Ver detalles del insumo"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
+                          >
+                            <Eye className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onEdit(i)}
                           title="Editar insumo"
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
+                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1"
                         >
                           <Edit className="w-4 h-4 stroke-[2]" />
                         </button>
                         <button
-                          onClick={() => onDelete(i.id, i.nombre)}
+                          onClick={() => onDelete(i.id || i.idInsumo, i.nombre)}
                           title="Eliminar insumo"
                           className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
                         >
