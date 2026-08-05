@@ -6,6 +6,11 @@ import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
 import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
 export function GestionCompras() {
   const notify = useNotifications();
   const {
@@ -23,8 +28,8 @@ export function GestionCompras() {
 
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editCompra, setEditCompra] = useState(null);
 
-  // Stats
   const stats = useMemo(() => {
     const total = compras.length;
     const completadas = compras.filter(
@@ -43,14 +48,23 @@ export function GestionCompras() {
     setSelectedCompra(c);
   };
 
+  const handleEdit = (c) => {
+    if (!c || !esEstadoPendiente(c.estado)) return;
+    setEditCompra(c);
+  };
+
   const handleCompraCreated = async () => {
     await refetch();
     notify.success("Compra registrada", "La orden de compra se creó y el stock del insumo fue actualizado.");
   };
 
+  const handleCompraUpdated = async () => {
+    await refetch();
+    notify.success("Compra actualizada", "Los datos de la compra fueron modificados exitosamente.");
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Gestión de Compras
@@ -60,12 +74,9 @@ export function GestionCompras() {
         </p>
       </div>
 
-      {/* Separator */}
       <hr className="border-gray-200 dark:border-gray-700" />
 
-      {/* Stat cards - 2x2 grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Total Compras (Órdenes) */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
@@ -77,7 +88,6 @@ export function GestionCompras() {
           </div>
         </div>
 
-        {/* Completadas / Recibidas */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-green-500" />
@@ -89,7 +99,6 @@ export function GestionCompras() {
           </div>
         </div>
 
-        {/* Monto Total en Compras */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
             <DollarSign className="w-6 h-6 text-emerald-500" />
@@ -103,7 +112,6 @@ export function GestionCompras() {
           </div>
         </div>
 
-        {/* Anuladas */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-red-400" />
@@ -116,10 +124,8 @@ export function GestionCompras() {
         </div>
       </div>
 
-      {/* Search + filter card */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Search bar */}
           <div className="relative flex-1">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -131,7 +137,6 @@ export function GestionCompras() {
             />
           </div>
 
-          {/* Estado select */}
           <select
             value={filterEstado}
             onChange={(e) => setFilterEstado(e.target.value)}
@@ -143,9 +148,11 @@ export function GestionCompras() {
             <option value="CANCELADA">Cancelada</option>
           </select>
 
-          {/* Nueva Compra button */}
           <button
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              setEditCompra(null);
+              setModalOpen(true);
+            }}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
           >
             <Plus className="w-5 h-5" />
@@ -154,27 +161,30 @@ export function GestionCompras() {
         </div>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
       ) : (
         <ComprasTable
           compras={filteredCompras}
           onViewDetail={handleViewDetail}
+          onEdit={handleEdit}
           onUpdateEstado={updateEstado}
         />
       )}
 
-      {/* Modal Nueva Compra */}
       <NuevaCompraModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={modalOpen || !!editCompra}
+        onClose={() => {
+          setModalOpen(false);
+          setEditCompra(null);
+        }}
         onCreated={handleCompraCreated}
+        onUpdated={handleCompraUpdated}
+        editCompra={editCompra}
       />
 
-      {/* Modal Detalle Compra */}
       <DetalleCompraModal
-        isOpen={!!selectedCompra}
+        isOpen={!!selectedCompra && !editCompra && !modalOpen}
         onClose={() => setSelectedCompra(null)}
         compra={selectedCompra}
       />
