@@ -60,12 +60,62 @@ export function GestionCompras() {
 
   const handleCompraCreated = async () => {
     await refetch();
-    notify.success("Compra registrada", "La orden de compra se creó y el stock del insumo fue actualizado.");
+    notify.success(
+      "Compra registrada",
+      "La orden de compra se creó exitosamente en estado Pendiente. El stock NO se actualizará hasta que marques la compra como Recibida."
+    );
   };
 
   const handleCompraUpdated = async () => {
     await refetch();
-    notify.success("Compra actualizada", "Los datos de la compra fueron modificados exitosamente.");
+    notify.success(
+      "Compra actualizada",
+      "Los datos de la compra fueron modificados exitosamente. El stock solo se ve afectado cuando la compra está en estado Recibida."
+    );
+  };
+
+  const handleMarcarRecibida = async (idCompra) => {
+    const confirmed = await notify.confirmAction(
+      "¿Marcar como Recibida?",
+      "Al confirmar, el stock de los insumos incluidos en esta compra se actualizará automáticamente (se sumarán las cantidades compradas). Esta acción sí afecta el inventario.",
+      "Sí, marcar como Recibida"
+    );
+    if (!confirmed) return false;
+    const ok = await updateEstado(idCompra, "RECIBIDA");
+    if (ok) {
+      notify.success(
+        "✅ Compra Recibida",
+        "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
+      );
+      if (selectedCompra && selectedCompra.id === idCompra) {
+        setSelectedCompra(null);
+      }
+      await refetch();
+    }
+    return ok;
+  };
+
+  const handleUpdateEstado = async (idCompra, nuevoEstado) => {
+    const e = String(nuevoEstado || "").toUpperCase();
+    if (e === "RECIBIDA") {
+      return await handleMarcarRecibida(idCompra);
+    }
+    return await updateEstado(idCompra, nuevoEstado);
+  };
+
+  const handleCancelar = async (idCompra) => {
+    const ok = await cancelarCompra(idCompra);
+    if (ok) {
+      notify.success(
+        "Compra Anulada",
+        "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
+      );
+      if (selectedCompra && selectedCompra.id === idCompra) {
+        setSelectedCompra(null);
+      }
+      await refetch();
+    }
+    return ok;
   };
 
   return (
@@ -166,6 +216,24 @@ export function GestionCompras() {
         </div>
       </div>
 
+      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 flex items-start gap-3">
+        <div className="text-blue-500 shrink-0 mt-0.5">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+        <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+          <p className="font-semibold text-sm">¿Cómo funciona el flujo de compra?</p>
+          <ol className="list-decimal list-inside space-y-0.5 pl-1">
+            <li><strong>Registrar compra:</strong> Crea una orden (quedará en <em>Pendiente</em>). El stock <strong>NO</strong> se modifica.</li>
+            <li><strong>Cuando lleguen los insumos:</strong> Haz clic en ✅ <strong>Marcar como Recibida</strong>. Allí sí se suman los insumos al stock.</li>
+            <li><strong>Si te equivocas:</strong> Puedes ❌ <strong>Anular</strong> la compra. Si ya estaba Recibida, el stock se revertirá automáticamente.</li>
+          </ol>
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
       ) : (
@@ -173,7 +241,8 @@ export function GestionCompras() {
           compras={filteredCompras}
           onViewDetail={handleViewDetail}
           onEdit={handleEdit}
-          onUpdateEstado={updateEstado}
+          onUpdateEstado={handleUpdateEstado}
+          onCancelar={handleCancelar}
         />
       )}
 
@@ -192,6 +261,8 @@ export function GestionCompras() {
         isOpen={!!selectedCompra && !editCompra && !modalOpen}
         onClose={() => setSelectedCompra(null)}
         compra={selectedCompra}
+        onUpdateEstado={handleUpdateEstado}
+        onCancelar={handleCancelar}
       />
     </div>
   );
