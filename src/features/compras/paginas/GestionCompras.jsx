@@ -32,14 +32,19 @@ export function GestionCompras() {
 
   const stats = useMemo(() => {
     const total = compras.length;
-    const completadas = compras.filter(
-      (c) => c.estado === "Completada" || c.estado === "RECIBIDA"
-    ).length;
-    const anuladas = compras.filter(
-      (c) => c.estado === "Anulada" || c.estado === "CANCELADA"
-    ).length;
+    const completadas = compras.filter((c) => {
+      const e = String(c.estado || "").toUpperCase();
+      return e === "COMPLETADA" || e === "RECIBIDA";
+    }).length;
+    const anuladas = compras.filter((c) => {
+      const e = String(c.estado || "").toUpperCase();
+      return e === "ANULADA" || e === "CANCELADA";
+    }).length;
     const montoTotal = compras
-      .filter((c) => c.estado !== "CANCELADA" && c.estado !== "Anulada")
+      .filter((c) => {
+        const e = String(c.estado || "").toUpperCase();
+        return e !== "CANCELADA" && e !== "ANULADA";
+      })
       .reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
     return { total, completadas, anuladas, montoTotal };
   }, [compras]);
