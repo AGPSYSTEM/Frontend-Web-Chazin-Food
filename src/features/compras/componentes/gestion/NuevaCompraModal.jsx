@@ -38,6 +38,14 @@ function esEstadoPendiente(estado) {
   return e === "PENDIENTE";
 }
 
+function normalizarEstadoSelect(estado) {
+  const e = String(estado || "").trim().toUpperCase();
+  if (e === "RECIBIDA" || e === "COMPLETADA") return "RECIBIDA";
+  if (e === "PENDIENTE") return "PENDIENTE";
+  if (e === "CANCELADA" || e === "ANULADA") return "CANCELADA";
+  return "PENDIENTE";
+}
+
 export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra }) {
   const esEdicion = Boolean(editCompra && editCompra.id);
   const idCompraEdit = esEdicion ? editCompra.id : null;
@@ -80,10 +88,11 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
         onClose?.();
         return;
       }
+      const estadoNormalizado = normalizarEstadoSelect(detalle.estado);
       setForm({
         idProveedor: detalle.idProveedor ? String(detalle.idProveedor) : "",
         fechaCompra: parseFecha(detalle.fechaCompra),
-        estado: detalle.estado || "PENDIENTE"
+        estado: estadoNormalizado
       });
       const det = detalle.detalles || [];
       setItems(det.length === 0
@@ -175,10 +184,11 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
     setSubmitted(true);
     setSaving(true);
     try {
+      const estadoNormalizadoPayload = normalizarEstadoSelect(form.estado);
       const payload = {
         idProveedor: parseInt(form.idProveedor),
         fechaCompra: form.fechaCompra,
-        estado: form.estado,
+        estado: estadoNormalizadoPayload,
         total: totalGeneral,
         detalles: items.map((it) => ({
           idInsumo: parseInt(it.idInsumo),
@@ -300,20 +310,37 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Estado{esEdicion && <span className="ml-2 text-[10px] font-normal text-gray-400">(Para cambiar el estado usa la acción "Marcar como Recibida" desde la tabla o el detalle)</span>}</label>
-                    <div className="relative">
-                      <select
-                        value={form.estado}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, estado: e.target.value }))
-                        }
-                        disabled={esEdicion}
-                        className={inputCls + " appearance-none pr-10 " + (esEdicion ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : "")}
-                      >
-                        <option value="RECIBIDA">Recibida</option>
-                        <option value="PENDIENTE">Pendiente</option>
-                      </select>
-                      <ChevronDown className={"w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none " + (esEdicion ? "opacity-50" : "")} />
+                    <label className={labelCls}>Estado{esEdicion && <span className="ml-2 text-[10px] font-normal text-gray-400">(Para cambiar el estado usa la acción dedicada "Marcar como Recibida" desde la tabla o el detalle)</span>}</label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <select
+                          value={normalizarEstadoSelect(form.estado)}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, estado: e.target.value }))
+                          }
+                          disabled={esEdicion}
+                          className={inputCls + " appearance-none pr-10 " + (esEdicion ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : "")}
+                        >
+                          <option value="RECIBIDA">Recibida</option>
+                          <option value="PENDIENTE">Pendiente</option>
+                        </select>
+                        <ChevronDown className={"w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none " + (esEdicion ? "opacity-50" : "")} />
+                      </div>
+                      {esEdicion && (
+                        <span className={`shrink-0 inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold border ${
+                          normalizarEstadoSelect(form.estado) === "RECIBIDA"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                            : normalizarEstadoSelect(form.estado) === "CANCELADA"
+                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                            : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+                        }`}>
+                          {normalizarEstadoSelect(form.estado) === "RECIBIDA"
+                            ? "✅ Recibida"
+                            : normalizarEstadoSelect(form.estado) === "CANCELADA"
+                            ? "❌ Cancelada"
+                            : "⏳ Pendiente"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
