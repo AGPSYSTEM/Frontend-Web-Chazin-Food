@@ -7,7 +7,8 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Proveedor / NIT</th>
+              <th className="px-6 py-4">Proveedor / Documento</th>
+              <th className="px-6 py-4">Tipo</th>
               <th className="px-6 py-4">Contacto</th>
               <th className="px-6 py-4">Correo / Teléfono</th>
               <th className="px-6 py-4">Dirección</th>
@@ -18,7 +19,7 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete }) {
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {proveedores.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron proveedores
                 </td>
               </tr>
@@ -32,8 +33,21 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete }) {
                       </div>
                       <div>
                         <div className="font-semibold text-gray-900 dark:text-gray-100">{p.nombre}</div>
-                        <div className="text-xs text-gray-400 font-mono">NIT: {p.nit || "N/A"}</div>
+                        <div className="text-xs text-gray-400 font-mono">
+                          {p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 ? "NIT: " : "Doc: "}
+                          {p.nit || p.numeroDocumento || "N/A"}
+                        </div>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        {p.tipoProveedor || p.tipoProveedorNombre || "Mayorista"}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                        {p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 ? "Jurídica" : "Natural"}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 font-medium text-gray-800 dark:text-gray-200">
