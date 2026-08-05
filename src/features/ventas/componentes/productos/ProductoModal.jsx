@@ -162,6 +162,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
           {/* Section: Ficha Técnica */}
           <FichaTecnicaProducto
+            productId={producto?.id || producto?.idProducto}
+            productName={form.nombre}
             initialData={fichaTecnica}
             onSave={(data) => setFichaTecnica(data)}
           />

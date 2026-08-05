@@ -9,6 +9,22 @@ export const fichasTecnicasService = {
     return await apiClient.get(`/fichas-tecnicas/${id}`);
   },
 
+  getFichaByProducto: async (idProducto) => {
+    return await apiClient.get(`/fichas-tecnicas/producto/${idProducto}`);
+  },
+
+  getFichaByInsumo: async (idInsumo) => {
+    return await apiClient.get(`/fichas-tecnicas/insumo/${idInsumo}`);
+  },
+
+  saveFichaProducto: async (idProducto, data) => {
+    return await apiClient.put(`/fichas-tecnicas/producto/${idProducto}`, data);
+  },
+
+  saveFichaInsumo: async (idInsumo, data) => {
+    return await apiClient.put(`/fichas-tecnicas/insumo/${idInsumo}`, data);
+  },
+
   createFicha: async (data) => {
     return await apiClient.post("/fichas-tecnicas", data);
   },
