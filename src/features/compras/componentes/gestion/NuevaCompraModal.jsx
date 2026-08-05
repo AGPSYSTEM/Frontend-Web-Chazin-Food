@@ -300,19 +300,20 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Estado</label>
+                    <label className={labelCls}>Estado{esEdicion && <span className="ml-2 text-[10px] font-normal text-gray-400">(Para cambiar el estado usa la acción "Marcar como Recibida" desde la tabla o el detalle)</span>}</label>
                     <div className="relative">
                       <select
                         value={form.estado}
                         onChange={(e) =>
                           setForm((f) => ({ ...f, estado: e.target.value }))
                         }
-                        className={inputCls + " appearance-none pr-10"}
+                        disabled={esEdicion}
+                        className={inputCls + " appearance-none pr-10 " + (esEdicion ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700" : "")}
                       >
                         <option value="RECIBIDA">Recibida</option>
                         <option value="PENDIENTE">Pendiente</option>
                       </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className={"w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none " + (esEdicion ? "opacity-50" : "")} />
                     </div>
                   </div>
                 </div>
