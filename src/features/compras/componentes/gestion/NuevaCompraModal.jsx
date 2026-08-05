@@ -109,9 +109,19 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
     return true;
   };
 
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSubmitted(false);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitted || saving) return;
     if (!isValid()) return;
+    setSubmitted(true);
     setSaving(true);
     try {
       const payload = {
@@ -131,6 +141,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
       onClose();
     } catch (err) {
       console.error("Error al crear compra:", err);
+      setSubmitted(false);
     } finally {
       setSaving(false);
     }
