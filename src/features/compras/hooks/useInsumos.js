@@ -1,35 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { insumosService } from "../servicios/insumosService";
+import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { apiClient } from "@/shared/api/apiClient";
 
-const INITIAL_EVENTOS = [
-  {
-    id: 1,
-    tipo: "Creado",
-    nombre: "Carnes",
-    descripcion: "Se creó una nueva categoría en el inventario: Carnes",
-    fecha: "23/07/2026 06:35"
-  },
-  {
-    id: 2,
-    tipo: "Editado",
-    nombre: "Cereales",
-    descripcion: "Se actualizaron los datos de la categoría: Cereales",
-    fecha: "23/07/2026 06:35"
-  },
-  {
-    id: 3,
-    tipo: "Eliminado",
-    nombre: "Carnes",
-    descripcion: "Se eliminó del inventario la categoría: Carnes",
-    fecha: "23/07/2026 06:32"
-  }
-];
+const INITIAL_EVENTOS = [];
 
 export function useInsumos() {
   const notify = useNotifications();
   const [insumos, setInsumos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState("Todas");
@@ -48,9 +29,9 @@ export function useInsumos() {
   const [unreadCount, setUnreadCount] = useState(() => {
     try {
       const saved = localStorage.getItem("insumos_trazabilidad_unread");
-      return saved ? JSON.parse(saved) : 1;
+      return saved ? JSON.parse(saved) : 0;
     } catch {
-      return 1;
+      return 0;
     }
   });
 
@@ -105,7 +86,104 @@ export function useInsumos() {
       }));
 
       setInsumos([...baseMapped, ...prepMapped]);
+      const [insumosData, categoriasData, proveedoresData, trazabilidadData] = await Promise.all([
+        insumosService.getInsumos(),
+        insumosService.getCategorias(),
+        proveedoresService.getProveedores().catch(() => []),
+        apiClient.get("/trazabilidad").catch(() => [])
+      ]);
+
+      let finalInsumos = insumosData || [];
+      if (finalInsumos.length > 0 && !finalInsumos.some((i) => i.tipo === "Preparado")) {
+        finalInsumos = [
+          ...finalInsumos,
+          {
+            id: "prep-1",
+            nombre: "salsa de la casa",
+            tipo: "Preparado",
+            descripcion: "salsa de la casa 100% artesanal",
+            precio: 2000,
+            unidadMedida: "porción",
+            estado: "Activo",
+            ingredientes: [{ id: 1, nombre: "Tomate", cantidad: 1, unidadMedida: "paq" }]
+          },
+          {
+            id: "prep-2",
+            nombre: "Salsa Especial de la Casa",
+            tipo: "Preparado",
+            descripcion: "Receta casera",
+            precio: 7500,
+            unidadMedida: "und",
+            estado: "Activo",
+            ingredientes: [{ id: 2, nombre: "Mayonesa", cantidad: 1, unidadMedida: "und" }]
+          },
+          {
+            id: "prep-3",
+            nombre: "Receta Especial Jalapeños",
+            tipo: "Preparado",
+            descripcion: "Con queso chedart",
+            precio: 10000,
+            unidadMedida: "und",
+            estado: "Activo",
+            ingredientes: [{ id: 3, nombre: "Jalapeño", cantidad: 2, unidadMedida: "und" }]
+          }
+        ];
+      }
+
+      setInsumos(finalInsumos);
       setCategorias(categoriasData || []);
+      setProveedores(proveedoresData || []);
+
+      // Map backend trazabilidad events
+      if (Array.isArray(trazabilidadData)) {
+        const mappedBackendEvents = trazabilidadData.map((r) => {
+          let tipoLabel = "Creado";
+          if (
+            r.tipo === "compra" ||
+            r.tipoMovimiento === "Entrada" ||
+            (r.tipo && r.tipo.toLowerCase().includes("reabastec"))
+          ) {
+            tipoLabel = "Reabastecimiento";
+          } else if (r.tipo === "editar" || r.tipo === "Editado") {
+            tipoLabel = "Editado";
+          } else if (r.tipo === "eliminar" || r.tipo === "Eliminado") {
+            tipoLabel = "Eliminado";
+          } else if (r.tipo === "restaurar" || r.tipo === "Restaurado") {
+            tipoLabel = "Restaurado";
+          }
+
+          const fechaObj = r.fecha ? new Date(r.fecha) : new Date();
+          const fechaStr = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(
+            fechaObj.getMonth() + 1
+          ).padStart(2, "0")}/${fechaObj.getFullYear()} ${String(
+            fechaObj.getHours()
+          ).padStart(2, "0")}:${String(fechaObj.getMinutes()).padStart(2, "0")}`;
+
+          return {
+            id: `tz-${r.idTrazabilidad || r.id}`,
+            tipo: tipoLabel,
+            nombre: r.entidadNombre || (r.idInsumo ? `Insumo #${r.idInsumo}` : "Insumo"),
+            descripcion: r.detalle || r.motivo || "Movimiento de trazabilidad registrado",
+            fecha: fechaStr,
+            cantidad: r.cantidad,
+            tipoMovimiento: r.tipoMovimiento
+          };
+        });
+
+        setEventos((prev) => {
+          const combined = [...mappedBackendEvents, ...(prev || [])];
+          const unique = [];
+          const seen = new Set();
+          for (const item of combined) {
+            const key = `${item.tipo}-${item.nombre}-${item.fecha}-${item.descripcion}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(item);
+            }
+          }
+          return unique;
+        });
+      }
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al obtener insumos o categorías");
@@ -177,8 +255,7 @@ export function useInsumos() {
   const filteredInsumos = insumos.filter((item) => {
     const matchSearch =
       searchTerm === "" ||
-      item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.nombre.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
@@ -216,6 +293,23 @@ export function useInsumos() {
         await insumosService.createInsumo(payload);
       }
 
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
+
+      await insumosService.createInsumo(payload);
       await fetchInsumos();
 
       addTraceabilityEvent(
@@ -267,6 +361,23 @@ export function useInsumos() {
         await insumosService.updateInsumo(id, payload);
       }
 
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
+
+      await insumosService.updateInsumo(id, payload);
       await fetchInsumos();
 
       addTraceabilityEvent(
@@ -409,6 +520,7 @@ export function useInsumos() {
     insumos,
     filteredInsumos,
     categorias,
+    proveedores,
     loading,
     searchTerm,
     setSearchTerm,

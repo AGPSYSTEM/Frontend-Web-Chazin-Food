@@ -1,6 +1,6 @@
-import { Edit, Trash2, Utensils, Tag } from "lucide-react";
+import { Edit, Trash2, Utensils, Tag, Eye, Zap } from "lucide-react";
 
-export function ProductosTable({ productos = [], onEdit, onDelete }) {
+export function ProductosTable({ productos = [], onEdit, onDelete, onView, onCreateEvento }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -11,7 +11,7 @@ export function ProductosTable({ productos = [], onEdit, onDelete }) {
               <th className="px-6 py-4">Categoría</th>
               <th className="px-6 py-4">Precio Venta</th>
               <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+              <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -63,15 +63,33 @@ export function ProductosTable({ productos = [], onEdit, onDelete }) {
                       {p.estado || "Activo"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {/* Crear Evento */}
+                      <button
+                        onClick={() => onCreateEvento && onCreateEvento(p)}
+                        title="Crear Evento"
+                        className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors"
+                      >
+                        <Zap className="w-4 h-4" />
+                      </button>
+                      {/* Ver */}
+                      <button
+                        onClick={() => onView && onView(p)}
+                        title="Ver producto"
+                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {/* Editar */}
                       <button
                         onClick={() => onEdit(p)}
                         title="Editar producto"
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
+                      {/* Eliminar */}
                       <button
                         onClick={() => onDelete(p.id, p.nombre)}
                         title="Eliminar producto"

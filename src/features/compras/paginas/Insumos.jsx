@@ -8,12 +8,14 @@ import { InsumoModal } from "../componentes/insumos/InsumoModal";
 import { InsumoPreparadoModal } from "../componentes/insumos/InsumoPreparadoModal";
 import { TrazabilidadModal } from "../componentes/insumos/TrazabilidadModal";
 import { PapeleraReciclajeView } from "../componentes/insumos/PapeleraReciclajeView";
+import { VerInsumoModal } from "../componentes/insumos/VerInsumoModal";
 
 export function Insumos() {
   const {
     insumos,
     filteredInsumos,
     categorias,
+    proveedores,
     loading,
     searchTerm,
     setSearchTerm,
@@ -39,6 +41,7 @@ export function Insumos() {
   const [modalBaseOpen, setModalBaseOpen] = useState(false);
   const [modalPreparadoOpen, setModalPreparadoOpen] = useState(false);
   const [editingInsumo, setEditingInsumo] = useState(null);
+  const [viewingInsumo, setViewingInsumo] = useState(null);
 
   // Separate base insumos and prepared insumos
   const insumosBase = filteredInsumos.filter((i) => i.tipo !== "Preparado");
@@ -280,6 +283,7 @@ export function Insumos() {
                   insumos={insumosBase}
                   onEdit={handleOpenEdit}
                   onDelete={deleteInsumo}
+                  onView={(item) => setViewingInsumo(item)}
                 />
               )}
             </>
@@ -297,6 +301,7 @@ export function Insumos() {
         onSave={handleSaveBase}
         insumo={editingInsumo}
         categorias={categorias}
+        proveedores={proveedores}
       />
 
       {/* Prepared Insumo Modal */}
@@ -309,6 +314,13 @@ export function Insumos() {
         onSave={handleSavePreparado}
         insumoPreparado={editingInsumo}
         insumosDisponibles={insumos.filter((i) => i.tipo !== "Preparado")}
+      />
+
+      {/* Detail View Modal */}
+      <VerInsumoModal
+        isOpen={!!viewingInsumo}
+        onClose={() => setViewingInsumo(null)}
+        insumo={viewingInsumo}
       />
 
       {/* Trazabilidad Modal */}

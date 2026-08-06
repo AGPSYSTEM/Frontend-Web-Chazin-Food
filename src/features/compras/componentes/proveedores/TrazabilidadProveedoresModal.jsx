@@ -8,11 +8,10 @@ import {
   Edit,
   Clock,
   RotateCcw,
-  CheckCircle2,
-  ShoppingCart
+  CheckCircle2
 } from "lucide-react";
 
-export function TrazabilidadModal({
+export function TrazabilidadProveedoresModal({
   isOpen,
   onClose,
   eventos = [],
@@ -23,21 +22,16 @@ export function TrazabilidadModal({
 
   if (!isOpen) return null;
 
-  const reabastecimientosCount = eventos.filter(
-    (e) => e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada"
-  ).length;
   const creadosCount = eventos.filter((e) => e.tipo === "Creado").length;
   const editadosCount = eventos.filter((e) => e.tipo === "Editado").length;
-  const eliminadosCount = eventos.filter((e) => e.tipo === "Eliminado").length;
+  const eliminadosCount = eventos.filter((e) => e.tipo === "Eliminado" || e.tipo === "Inactivado").length;
   const restauradosCount = eventos.filter((e) => e.tipo === "Restaurado").length;
 
   const filteredEventos = eventos.filter((e) => {
     if (filterType === "Todos") return true;
-    if (filterType === "Reabastecimientos")
-      return e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada";
     if (filterType === "Creados") return e.tipo === "Creado";
     if (filterType === "Editados") return e.tipo === "Editado";
-    if (filterType === "Eliminados") return e.tipo === "Eliminado";
+    if (filterType === "Eliminados") return e.tipo === "Eliminado" || e.tipo === "Inactivado";
     if (filterType === "Restaurados") return e.tipo === "Restaurado";
     return true;
   });
@@ -53,7 +47,7 @@ export function TrazabilidadModal({
             </div>
             <div>
               <h2 className="text-xl font-bold text-[#1e293b] dark:text-gray-100">
-                Trazabilidad de Insumos
+                Trazabilidad de Proveedores
               </h2>
               <p className="text-xs text-gray-400">
                 {eventos.length} {eventos.length === 1 ? "evento registrado" : "eventos registrados"}
@@ -100,18 +94,7 @@ export function TrazabilidadModal({
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
-            Todos ({eventos.length})
-          </button>
-
-          <button
-            onClick={() => setFilterType("Reabastecimientos")}
-            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
-              filterType === "Reabastecimientos"
-                ? "bg-emerald-600 text-white"
-                : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
-            }`}
-          >
-            🛒 Reabastecimientos ({reabastecimientosCount})
+            Todos
           </button>
 
           <button
@@ -170,48 +153,38 @@ export function TrazabilidadModal({
                 Sin eventos registrados
               </h3>
               <p className="text-xs text-gray-400">
-                Los reabastecimientos por compras y cambios a los insumos aparecerán aquí
+                Los cambios en proveedores aparecerán aquí
               </p>
             </div>
           ) : (
             filteredEventos.map((ev) => {
-              const isReabastecimiento =
-                ev.tipo === "Reabastecimiento" ||
-                ev.tipo === "compra" ||
-                ev.tipoMovimiento === "Entrada";
               const isCreado = ev.tipo === "Creado";
               const isEditado = ev.tipo === "Editado";
-              const isEliminado = ev.tipo === "Eliminado";
+              const isEliminado = ev.tipo === "Eliminado" || ev.tipo === "Inactivado";
 
-              const badgeBg = isReabastecimiento
+              const badgeBg = isCreado
                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                : isCreado
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                 : isEditado
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                 : isEliminado
                 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                 : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300";
 
-              const iconCircle = isReabastecimiento ? (
+              const iconCircle = isCreado ? (
                 <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                  <ShoppingCart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              ) : isCreado ? (
-                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                  <PlusCircle className="w-5 h-5 text-blue-600" />
+                  <PlusCircle className="w-5 h-5" />
                 </div>
               ) : isEditado ? (
-                <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-                  <Edit className="w-4 h-4 text-amber-600" />
+                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <Edit className="w-4 h-4" />
                 </div>
               ) : isEliminado ? (
                 <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 flex items-center justify-center shrink-0">
-                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <Trash2 className="w-4 h-4" />
                 </div>
               ) : (
                 <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-                  <RotateCcw className="w-4 h-4 text-purple-600" />
+                  <RotateCcw className="w-4 h-4" />
                 </div>
               );
 
@@ -225,16 +198,11 @@ export function TrazabilidadModal({
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeBg}`}>
-                          • {isReabastecimiento ? "Reabastecimiento por Compra" : ev.tipo}
+                          • {ev.tipo}
                         </span>
                         <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
                           {ev.nombre}
                         </span>
-                        {ev.cantidad && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
-                            +{ev.cantidad}
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-400">
                         <Clock className="w-3.5 h-3.5" />

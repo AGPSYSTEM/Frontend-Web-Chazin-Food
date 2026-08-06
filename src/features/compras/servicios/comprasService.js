@@ -13,6 +13,10 @@ export const comprasService = {
     return await apiClient.post("/compras", data);
   },
 
+  updateCompra: async (id, data) => {
+    return await apiClient.put(`/compras/${id}`, data);
+  },
+
   updateEstadoCompra: async (id, estado) => {
     return await apiClient.put(`/compras/${id}/estado`, { estado });
   },
