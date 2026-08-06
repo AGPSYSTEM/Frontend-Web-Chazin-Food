@@ -11,6 +11,7 @@ import {
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
+import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 
 export function GestionVentas() {
   const {
@@ -56,14 +57,14 @@ export function GestionVentas() {
       {/* Top 4 Stats Cards */}
       <VentasStatsCards ventas={ventas} />
 
-      {/* Main Content Box */}
+      {/* Main Navigation Tabs */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-6">
         {/* Tabs Header */}
         <div className="border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-8 -mb-px">
             <button
               onClick={() => setActiveTab("pedidos_pagados")}
-              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative ${
+              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative cursor-pointer ${
                 activeTab === "pedidos_pagados"
                   ? "text-[#F05454] border-b-2 border-[#F05454]"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -79,25 +80,33 @@ export function GestionVentas() {
 
             <button
               onClick={() => setActiveTab("historial")}
-              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative ${
+              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative cursor-pointer ${
                 activeTab === "historial"
                   ? "text-[#F05454] border-b-2 border-[#F05454]"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <Clock className="w-4 h-4 text-gray-400" />
+              <Clock
+                className={`w-4 h-4 ${
+                  activeTab === "historial" ? "text-[#F05454]" : "text-gray-400"
+                }`}
+              />
               <span>Historial</span>
             </button>
 
             <button
               onClick={() => setActiveTab("reportes")}
-              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative ${
+              className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative cursor-pointer ${
                 activeTab === "reportes"
                   ? "text-[#F05454] border-b-2 border-[#F05454]"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <BarChart2 className="w-4 h-4 text-gray-400" />
+              <BarChart2
+                className={`w-4 h-4 ${
+                  activeTab === "reportes" ? "text-[#F05454]" : "text-gray-400"
+                }`}
+              />
               <span>Reportes</span>
             </button>
           </div>
@@ -115,7 +124,7 @@ export function GestionVentas() {
                 <button
                   key={p.id}
                   onClick={() => setSelectedPeriod(p.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs transition-colors ${
+                  className={`px-4 py-1.5 rounded-full text-xs transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[#1e293b] text-white font-semibold shadow-xs"
                       : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 font-medium"
@@ -128,86 +137,94 @@ export function GestionVentas() {
           </div>
         </div>
 
-        {/* Search Bar & Filter Dropdown */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por cliente o ID..."
-              className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:ring-2 focus:ring-[#F05454]/50 focus:border-transparent transition-colors placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
-            />
-          </div>
-
-          <div className="relative w-full sm:w-auto shrink-0">
-            <button
-              onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between gap-3 shadow-xs transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <span>Filtros {filterEstado !== "Todos" ? `(${filterEstado})` : ""}</span>
+        {/* TAB CONTENT: REPORTES vs TABLAS */}
+        {activeTab === "reportes" ? (
+          <VentasReportesView ventas={ventas} selectedPeriod={selectedPeriod} />
+        ) : (
+          /* TABLAS: Pedidos Pagados / Historial */
+          <div className="space-y-6 pt-2">
+            {/* Search Bar & Filter Dropdown */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por cliente o ID..."
+                  className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:ring-2 focus:ring-[#F05454]/50 focus:border-transparent transition-colors placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
+                />
               </div>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </button>
 
-            {/* Filter Dropdown Menu */}
-            {filterDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-20 py-2">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Filtrar por Estado
+              <div className="relative w-full sm:w-auto shrink-0">
+                <button
+                  onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between gap-3 shadow-xs transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Filter className="w-4 h-4 text-gray-500" />
+                    <span>Filtros {filterEstado !== "Todos" ? `(${filterEstado})` : ""}</span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                </button>
+
+                {/* Filter Dropdown Menu */}
+                {filterDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-20 py-2">
+                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Filtrar por Estado
+                    </div>
+                    {["Todos", "Pendiente", "En Preparación", "Completada", "Anulada"].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => {
+                          setFilterEstado(st);
+                          setFilterDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between cursor-pointer ${
+                          filterEstado === st
+                            ? "bg-rose-50 dark:bg-rose-950/40 text-[#F05454] font-semibold"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        <span>{st}</span>
+                        {filterEstado === st && <CheckCircle2 className="w-4 h-4 text-[#F05454]" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Counter */}
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {filteredVentas.length} pedido(s) encontrado(s)
+              </p>
+            </div>
+
+            {/* Content View: Table or Empty State */}
+            {loading ? (
+              <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
+                Cargando gestión de ventas...
+              </div>
+            ) : filteredVentas.length === 0 ? (
+              <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">
+                  <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
                 </div>
-                {["Todos", "Pendiente", "En Preparación", "Completada", "Anulada"].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => {
-                      setFilterEstado(st);
-                      setFilterDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${
-                      filterEstado === st
-                        ? "bg-rose-50 dark:bg-rose-950/40 text-[#F05454] font-semibold"
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    <span>{st}</span>
-                    {filterEstado === st && <CheckCircle2 className="w-4 h-4 text-[#F05454]" />}
-                  </button>
-                ))}
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  No se encontraron pedidos con los filtros aplicados
+                </p>
               </div>
+            ) : (
+              <VentasTable
+                ventas={filteredVentas}
+                onViewDetail={handleViewDetail}
+                onUpdateEstado={updateEstado}
+              />
             )}
           </div>
-        </div>
-
-        {/* Counter */}
-        <div>
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-            {filteredVentas.length} pedido(s) encontrado(s)
-          </p>
-        </div>
-
-        {/* Content View: Table or Empty State */}
-        {loading ? (
-          <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
-            Cargando gestión de ventas...
-          </div>
-        ) : filteredVentas.length === 0 ? (
-          <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">
-              <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
-            </div>
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-              No se encontraron pedidos con los filtros aplicados
-            </p>
-          </div>
-        ) : (
-          <VentasTable
-            ventas={filteredVentas}
-            onViewDetail={handleViewDetail}
-            onUpdateEstado={updateEstado}
-          />
         )}
       </div>
 
@@ -217,7 +234,7 @@ export function GestionVentas() {
           <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 relative border border-gray-100 dark:border-gray-800">
             <button
               onClick={() => setSelectedVentaDetail(null)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600"
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -263,7 +280,7 @@ export function GestionVentas() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setSelectedVentaDetail(null)}
-                className="px-5 py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white text-sm font-semibold rounded-2xl transition-colors"
+                className="px-5 py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white text-sm font-semibold rounded-2xl transition-colors cursor-pointer"
               >
                 Cerrar
               </button>
