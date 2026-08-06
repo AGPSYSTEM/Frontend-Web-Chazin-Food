@@ -35,7 +35,7 @@ export function useInsumos() {
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
 
-  // Traceability & Trash Bin State with localStorage persistence
+  // Traceability State with localStorage persistence
   const [eventos, setEventos] = useState(() => {
     try {
       const saved = localStorage.getItem("insumos_trazabilidad_eventos");
@@ -54,25 +54,11 @@ export function useInsumos() {
     }
   });
 
-  const [papeleraInsumos, setPapeleraInsumos] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_base");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Papelera state — now fetched from the backend API
+  const [papeleraInsumos, setPapeleraInsumos] = useState([]);
+  const [papeleraPreparados, setPapeleraPreparados] = useState([]);
 
-  const [papeleraPreparados, setPapeleraPreparados] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_preparados");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync to localStorage
+  // Sync traceability to localStorage
   useEffect(() => {
     try {
       localStorage.setItem("insumos_trazabilidad_eventos", JSON.stringify(eventos));
@@ -84,18 +70,6 @@ export function useInsumos() {
       localStorage.setItem("insumos_trazabilidad_unread", JSON.stringify(unreadCount));
     } catch {}
   }, [unreadCount]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_base", JSON.stringify(papeleraInsumos));
-    } catch {}
-  }, [papeleraInsumos]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_preparados", JSON.stringify(papeleraPreparados));
-    } catch {}
-  }, [papeleraPreparados]);
 
   const fetchInsumos = useCallback(async () => {
     try {
@@ -153,9 +127,24 @@ export function useInsumos() {
     }
   }, []);
 
+  // Fetch papelera data from backend API
+  const fetchPapelera = useCallback(async () => {
+    try {
+      const [insumosTrash, preparadosTrash] = await Promise.all([
+        insumosService.getPapeleraInsumos(),
+        insumosService.getPapeleraPreparados()
+      ]);
+      setPapeleraInsumos(insumosTrash || []);
+      setPapeleraPreparados(preparadosTrash || []);
+    } catch (err) {
+      console.error("Error al cargar papelera:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInsumos();
-  }, [fetchInsumos]);
+    fetchPapelera();
+  }, [fetchInsumos, fetchPapelera]);
 
   const addTraceabilityEvent = (tipo, nombre, descripcion) => {
     const now = new Date();
@@ -259,6 +248,7 @@ export function useInsumos() {
     }
   };
 
+  // Soft delete — moves to papelera (sets estado = 0 in backend)
   const deleteInsumo = async (id, nombre) => {
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
@@ -269,6 +259,7 @@ export function useInsumos() {
     try {
       await insumosService.deleteInsumo(id);
       await fetchInsumos();
+      await fetchPapelera();
 
       addTraceabilityEvent(
         "Eliminado",
@@ -284,28 +275,62 @@ export function useInsumos() {
     }
   };
 
-  const restoreInsumo = (item) => {
-    // Remove from trash list
-    if (item.tipo === "Preparado") {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== item.id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== item.id));
-    }
-
-    // Add back to active insumos
-    setInsumos((prev) => [item, ...prev]);
-
-    addTraceabilityEvent(
-      "Restaurado",
-      item.nombre,
-      item.tipo === "Preparado"
-        ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
-        : `Se restauró el insumo en el inventario: ${item.nombre}`
+  // Soft delete for insumos preparados
+  const deletePreparado = async (id, nombre) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Mover a la papelera?",
+      `¿Deseas mover el preparado "${nombre}" a la papelera de reciclaje?`
     );
+    if (!confirmed) return false;
 
-    notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    try {
+      await insumosService.deletePreparado(id);
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado",
+        nombre,
+        `Se movió a la papelera el insumo preparado: ${nombre}`
+      );
+
+      notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar el preparado");
+      return false;
+    }
   };
 
+  // Restore from papelera — calls backend API to set estado = 1
+  const restoreInsumo = async (item) => {
+    try {
+      const isPreparado = item.tipo === "Preparado" || item.componentes || item.insumos;
+
+      if (isPreparado) {
+        await insumosService.restorePreparado(item.id);
+      } else {
+        await insumosService.restoreInsumo(item.id || item.idInsumo);
+      }
+
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Restaurado",
+        item.nombre,
+        isPreparado
+          ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
+          : `Se restauró el insumo en el inventario: ${item.nombre}`
+      );
+
+      notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo restaurar");
+    }
+  };
+
+  // Hard delete — permanent elimination from database
   const deleteDefinitivoInsumo = async (id, nombre, isPreparado) => {
     const confirmed = await notify.confirmDelete(
       "¿Eliminar definitivamente?",
@@ -313,13 +338,25 @@ export function useInsumos() {
     );
     if (!confirmed) return;
 
-    if (isPreparado) {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== id));
-    }
+    try {
+      if (isPreparado) {
+        await insumosService.hardDeletePreparado(id);
+      } else {
+        await insumosService.hardDeleteInsumo(id);
+      }
 
-    notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado permanente",
+        nombre,
+        `Se eliminó permanentemente ${isPreparado ? "el preparado" : "el insumo"}: ${nombre}`
+      );
+
+      notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar permanentemente");
+    }
   };
 
   const clearEventos = () => {
@@ -347,9 +384,11 @@ export function useInsumos() {
     papeleraInsumos,
     papeleraPreparados,
     refetch: fetchInsumos,
+    refetchPapelera: fetchPapelera,
     createInsumo,
     updateInsumo,
     deleteInsumo,
+    deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
     clearEventos,

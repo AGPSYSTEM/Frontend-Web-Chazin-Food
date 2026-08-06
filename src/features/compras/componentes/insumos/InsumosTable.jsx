@@ -61,7 +61,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {i.categoria || "Sin categoría"}
+                      {i.categoriaNombre || i.categoria || "Sin categoría"}
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
                       {i.stock ?? 0} {i.unidadMedida || "und"}
@@ -70,7 +70,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete }) {
                       ${i.precioUnitario || i.costo || 0}
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {i.proveedor || "Sin Proveedor"}
+                      {i.proveedorNombre || i.proveedor || "Sin Proveedor"}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${stockBadgeClass}`}>

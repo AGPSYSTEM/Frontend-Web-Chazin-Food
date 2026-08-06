@@ -26,6 +26,7 @@ export function Insumos() {
     createInsumo,
     updateInsumo,
     deleteInsumo,
+    deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
     clearEventos,
@@ -265,7 +266,7 @@ export function Insumos() {
             <InsumosPreparadosAccordion
               insumosPreparados={insumosPreparados}
               onEdit={handleOpenEdit}
-              onDelete={deleteInsumo}
+              onDelete={deletePreparado}
             />
           )}
 

@@ -56,7 +56,7 @@ export function PapeleraReciclajeView({
                         {item.nombre}
                       </h4>
                       <p className="text-xs text-gray-400">
-                        {item.categoria || "Sin categoría"} — {item.stock ?? 0} {item.unidadMedida || "und"}
+                        {item.categoriaNombre || item.categoria || "Sin categoría"} — {item.stock ?? 0} {item.unidadMedida || "und"}
                       </p>
                     </div>
                   </div>
