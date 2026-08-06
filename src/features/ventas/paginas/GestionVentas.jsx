@@ -28,7 +28,33 @@ export function GestionVentas() {
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
   const [selectedPeriod, setSelectedPeriod] = useState("7_dias");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [filterFecha, setFilterFecha] = useState("");
+  const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
+
+  // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
+  const displayedVentas = filteredVentas.filter((v) => {
+    // Filter by fecha
+    if (filterFecha) {
+      const ventaDate = v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "";
+      if (ventaDate !== filterFecha) return false;
+    }
+    // Filter by método de pago
+    if (filterMetodoPago !== "Todos") {
+      const metodoPago = v.metodoPago || v.metodo_pago || v.medioPago || "";
+      if (metodoPago.toLowerCase() !== filterMetodoPago.toLowerCase()) return false;
+    }
+    return true;
+  });
+
+  const handleClearFilters = () => {
+    setFilterFecha("");
+    setFilterMetodoPago("Todos");
+    setSearchTerm("");
+    setFilterEstado("Todos");
+  };
+
+  const hasActiveFilters = filterFecha !== "" || filterMetodoPago !== "Todos";
 
   const handleViewDetail = (v) => {
     setSelectedVentaDetail(v);
@@ -143,8 +169,8 @@ export function GestionVentas() {
         ) : (
           /* TABLAS: Pedidos Pagados / Historial */
           <div className="space-y-6 pt-2">
-            {/* Search Bar & Filter Dropdown */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Search Bar & Filter Toggle */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative flex-1 w-full">
                 <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
@@ -156,50 +182,76 @@ export function GestionVentas() {
                 />
               </div>
 
-              <div className="relative w-full sm:w-auto shrink-0">
-                <button
-                  onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between gap-3 shadow-xs transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-gray-500" />
-                    <span>Filtros {filterEstado !== "Todos" ? `(${filterEstado})` : ""}</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </button>
-
-                {/* Filter Dropdown Menu */}
-                {filterDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-20 py-2">
-                    <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Filtrar por Estado
-                    </div>
-                    {["Todos", "Pendiente", "En Preparación", "Completada", "Anulada"].map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => {
-                          setFilterEstado(st);
-                          setFilterDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between cursor-pointer ${
-                          filterEstado === st
-                            ? "bg-rose-50 dark:bg-rose-950/40 text-[#F05454] font-semibold"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        <span>{st}</span>
-                        {filterEstado === st && <CheckCircle2 className="w-4 h-4 text-[#F05454]" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+                className={`w-full sm:w-auto px-4 py-2.5 border rounded-2xl text-sm font-medium flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer ${
+                  filterDropdownOpen
+                    ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <Filter className="w-4 h-4 text-gray-500" />
+                <span>Filtros</span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
             </div>
+
+            {/* Inline Filter Panel */}
+            {filterDropdownOpen && (
+              <div className="bg-gray-50/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4">
+                <div className="flex flex-col sm:flex-row items-end gap-4">
+                  {/* Fecha */}
+                  <div className="flex-1 w-full sm:w-auto">
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                      Fecha
+                    </label>
+                    <input
+                      type="date"
+                      value={filterFecha}
+                      onChange={(e) => setFilterFecha(e.target.value)}
+                      placeholder="dd/mm/aaaa"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors placeholder:text-gray-400"
+                    />
+                  </div>
+
+                  {/* Método de pago */}
+                  <div className="flex-1 w-full sm:w-auto">
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                      Método de pago
+                    </label>
+                    <select
+                      value={filterMetodoPago}
+                      onChange={(e) => setFilterMetodoPago(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
+                    >
+                      <option value="Todos">Todos</option>
+                      <option value="Efectivo">Efectivo</option>
+                      <option value="Tarjeta">Tarjeta</option>
+                      <option value="Transferencia">Transferencia</option>
+                    </select>
+                  </div>
+
+                  {/* Limpiar */}
+                  <div className="shrink-0 pb-0.5">
+                    <button
+                      onClick={handleClearFilters}
+                      className={`text-sm font-semibold transition-colors cursor-pointer ${
+                        hasActiveFilters
+                          ? "text-[#F05454] hover:text-red-600"
+                          : "text-[#F05454]/60"
+                      }`}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Counter */}
             <div>
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {filteredVentas.length} pedido(s) encontrado(s)
+                {displayedVentas.length} pedido(s) encontrado(s)
               </p>
             </div>
 
@@ -208,7 +260,7 @@ export function GestionVentas() {
               <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
                 Cargando gestión de ventas...
               </div>
-            ) : filteredVentas.length === 0 ? (
+            ) : displayedVentas.length === 0 ? (
               <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">
                   <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
@@ -219,7 +271,7 @@ export function GestionVentas() {
               </div>
             ) : (
               <VentasTable
-                ventas={filteredVentas}
+                ventas={displayedVentas}
                 onViewDetail={handleViewDetail}
                 onUpdateEstado={updateEstado}
               />
