@@ -16,7 +16,7 @@ export function useInsumos() {
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
 
-  // Traceability & Trash Bin State with localStorage persistence
+  // Traceability State with localStorage persistence
   const [eventos, setEventos] = useState(() => {
     try {
       const saved = localStorage.getItem("insumos_trazabilidad_eventos");
@@ -35,25 +35,11 @@ export function useInsumos() {
     }
   });
 
-  const [papeleraInsumos, setPapeleraInsumos] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_base");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Papelera state — fetched from the backend API
+  const [papeleraInsumos, setPapeleraInsumos] = useState([]);
+  const [papeleraPreparados, setPapeleraPreparados] = useState([]);
 
-  const [papeleraPreparados, setPapeleraPreparados] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_preparados");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync to localStorage
+  // Sync traceability to localStorage
   useEffect(() => {
     try {
       localStorage.setItem("insumos_trazabilidad_eventos", JSON.stringify(eventos));
@@ -66,21 +52,40 @@ export function useInsumos() {
     } catch {}
   }, [unreadCount]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_base", JSON.stringify(papeleraInsumos));
-    } catch {}
-  }, [papeleraInsumos]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_preparados", JSON.stringify(papeleraPreparados));
-    } catch {}
-  }, [papeleraPreparados]);
-
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
+      const [insumosData, categoriasData, preparadosData] = await Promise.all([
+        insumosService.getInsumos(),
+        insumosService.getCategorias(),
+        insumosService.getInsumosPreparados()
+      ]);
+
+      const baseMapped = (insumosData || []).map(i => ({
+        ...i,
+        tipo: "Base"
+      }));
+
+      const prepMapped = (preparadosData || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
+      setInsumos([...baseMapped, ...prepMapped]);
       const [insumosData, categoriasData, proveedoresData, trazabilidadData] = await Promise.all([
         insumosService.getInsumos(),
         insumosService.getCategorias(),
@@ -187,9 +192,44 @@ export function useInsumos() {
     }
   }, []);
 
+  // Fetch papelera data from backend API
+  const fetchPapelera = useCallback(async () => {
+    try {
+      const [insumosTrash, preparadosTrash] = await Promise.all([
+        insumosService.getPapeleraInsumos(),
+        insumosService.getPapeleraPreparados()
+      ]);
+
+      const prepTrashMapped = (preparadosTrash || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
+      setPapeleraInsumos(insumosTrash || []);
+      setPapeleraPreparados(prepTrashMapped);
+    } catch (err) {
+      console.error("Error al cargar papelera:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInsumos();
-  }, [fetchInsumos]);
+    fetchPapelera();
+  }, [fetchInsumos, fetchPapelera]);
 
   const addTraceabilityEvent = (tipo, nombre, descripcion) => {
     const now = new Date();
@@ -226,6 +266,33 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.createPreparado(payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo || 1,
+          stock: Number(data.stock) || 0,
+          stockMinimo: Number(data.stockMinimo) || 0,
+          unidadMedida: data.unidadMedida || "und",
+          precioUnitario: Number(data.precioUnitario) || 0,
+          idProveedor: data.idProveedor || null,
+          descripcion: data.descripcion || ""
+        };
+        await insumosService.createInsumo(payload);
+      }
+
       const payload = {
         nombre: data.nombre,
         idCategoriaInsumo: data.idCategoriaInsumo || null,
@@ -267,6 +334,33 @@ export function useInsumos() {
   const updateInsumo = async (id, data) => {
     try {
       const isPrep = data.tipo === "Preparado";
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.updatePreparado(id, payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo,
+          stock: Number(data.stock),
+          stockMinimo: Number(data.stockMinimo),
+          unidadMedida: data.unidadMedida,
+          precioUnitario: Number(data.precioUnitario),
+          idProveedor: data.idProveedor,
+          descripcion: data.descripcion
+        };
+        await insumosService.updateInsumo(id, payload);
+      }
+
       const payload = {
         nombre: data.nombre,
         idCategoriaInsumo: data.idCategoriaInsumo || null,
@@ -302,6 +396,7 @@ export function useInsumos() {
     }
   };
 
+  // Soft delete — moves base insumo to papelera (sets estado = 0 in backend)
   const deleteInsumo = async (id, nombre) => {
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
@@ -312,6 +407,7 @@ export function useInsumos() {
     try {
       await insumosService.deleteInsumo(id);
       await fetchInsumos();
+      await fetchPapelera();
 
       addTraceabilityEvent(
         "Eliminado",
@@ -327,28 +423,62 @@ export function useInsumos() {
     }
   };
 
-  const restoreInsumo = (item) => {
-    // Remove from trash list
-    if (item.tipo === "Preparado") {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== item.id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== item.id));
-    }
-
-    // Add back to active insumos
-    setInsumos((prev) => [item, ...prev]);
-
-    addTraceabilityEvent(
-      "Restaurado",
-      item.nombre,
-      item.tipo === "Preparado"
-        ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
-        : `Se restauró el insumo en el inventario: ${item.nombre}`
+  // Soft delete for insumos preparados — moves prepared insumo to papelera
+  const deletePreparado = async (id, nombre) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Mover a la papelera?",
+      `¿Deseas mover el preparado "${nombre}" a la papelera de reciclaje?`
     );
+    if (!confirmed) return false;
 
-    notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    try {
+      await insumosService.deletePreparado(id);
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado",
+        nombre,
+        `Se movió a la papelera el insumo preparado: ${nombre}`
+      );
+
+      notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar el preparado");
+      return false;
+    }
   };
 
+  // Restore from papelera — calls backend API to set estado = 1
+  const restoreInsumo = async (item) => {
+    try {
+      const isPreparado = item.tipo === "Preparado" || item.componentes || item.ingredientes;
+
+      if (isPreparado) {
+        await insumosService.restorePreparado(item.id || item.idInsumo);
+      } else {
+        await insumosService.restoreInsumo(item.id || item.idInsumo);
+      }
+
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Restaurado",
+        item.nombre,
+        isPreparado
+          ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
+          : `Se restauró el insumo en el inventario: ${item.nombre}`
+      );
+
+      notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo restaurar");
+    }
+  };
+
+  // Hard delete — permanent elimination from database
   const deleteDefinitivoInsumo = async (id, nombre, isPreparado) => {
     const confirmed = await notify.confirmDelete(
       "¿Eliminar definitivamente?",
@@ -356,13 +486,25 @@ export function useInsumos() {
     );
     if (!confirmed) return;
 
-    if (isPreparado) {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== id));
-    }
+    try {
+      if (isPreparado) {
+        await insumosService.hardDeletePreparado(id);
+      } else {
+        await insumosService.hardDeleteInsumo(id);
+      }
 
-    notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado permanente",
+        nombre,
+        `Se eliminó permanentemente ${isPreparado ? "el preparado" : "el insumo"}: ${nombre}`
+      );
+
+      notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar permanentemente");
+    }
   };
 
   const clearEventos = () => {
@@ -391,9 +533,11 @@ export function useInsumos() {
     papeleraInsumos,
     papeleraPreparados,
     refetch: fetchInsumos,
+    refetchPapelera: fetchPapelera,
     createInsumo,
     updateInsumo,
     deleteInsumo,
+    deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
     clearEventos,

@@ -35,5 +35,30 @@ export const insumosService = {
 
   hardDeleteInsumo: async (id) => {
     return await apiClient.delete(`/insumos/${id}/fisico`);
+  },
+
+  // --- Insumos Preparados ---
+  getInsumosPreparados: async () => {
+    return await apiClient.get("/insumos-preparados");
+  },
+
+  createPreparado: async (data) => {
+    return await apiClient.post("/insumos-preparados", data);
+  },
+
+  updatePreparado: async (id, data) => {
+    return await apiClient.put(`/insumos-preparados/${id}`, data);
+  },
+
+  deletePreparado: async (id) => {
+    return await apiClient.delete(`/insumos-preparados/${id}`);
+  },
+
+  restorePreparado: async (id) => {
+    return await apiClient.put(`/insumos-preparados/${id}/restaurar`);
+  },
+
+  hardDeletePreparado: async (id) => {
+    return await apiClient.delete(`/insumos-preparados/${id}/fisico`);
   }
 };
