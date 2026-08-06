@@ -55,10 +55,12 @@ export function useInsumos() {
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
-      const [insumosData, categoriasData, preparadosData] = await Promise.all([
+      const [insumosData, categoriasData, preparadosData, proveedoresData, trazabilidadData] = await Promise.all([
         insumosService.getInsumos(),
         insumosService.getCategorias(),
-        insumosService.getInsumosPreparados()
+        insumosService.getInsumosPreparados(),
+        proveedoresService.getProveedores().catch(() => []),
+        apiClient.get("/trazabilidad").catch(() => [])
       ]);
 
       const baseMapped = (insumosData || []).map(i => ({
@@ -86,51 +88,6 @@ export function useInsumos() {
       }));
 
       setInsumos([...baseMapped, ...prepMapped]);
-      const [insumosData, categoriasData, proveedoresData, trazabilidadData] = await Promise.all([
-        insumosService.getInsumos(),
-        insumosService.getCategorias(),
-        proveedoresService.getProveedores().catch(() => []),
-        apiClient.get("/trazabilidad").catch(() => [])
-      ]);
-
-      let finalInsumos = insumosData || [];
-      if (finalInsumos.length > 0 && !finalInsumos.some((i) => i.tipo === "Preparado")) {
-        finalInsumos = [
-          ...finalInsumos,
-          {
-            id: "prep-1",
-            nombre: "salsa de la casa",
-            tipo: "Preparado",
-            descripcion: "salsa de la casa 100% artesanal",
-            precio: 2000,
-            unidadMedida: "porción",
-            estado: "Activo",
-            ingredientes: [{ id: 1, nombre: "Tomate", cantidad: 1, unidadMedida: "paq" }]
-          },
-          {
-            id: "prep-2",
-            nombre: "Salsa Especial de la Casa",
-            tipo: "Preparado",
-            descripcion: "Receta casera",
-            precio: 7500,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 2, nombre: "Mayonesa", cantidad: 1, unidadMedida: "und" }]
-          },
-          {
-            id: "prep-3",
-            nombre: "Receta Especial Jalapeños",
-            tipo: "Preparado",
-            descripcion: "Con queso chedart",
-            precio: 10000,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 3, nombre: "Jalapeño", cantidad: 2, unidadMedida: "und" }]
-          }
-        ];
-      }
-
-      setInsumos(finalInsumos);
       setCategorias(categoriasData || []);
       setProveedores(proveedoresData || []);
 
