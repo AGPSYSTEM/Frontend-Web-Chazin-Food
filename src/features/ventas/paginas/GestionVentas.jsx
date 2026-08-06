@@ -12,6 +12,7 @@ import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
+import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
 
 export function GestionVentas() {
   const {
@@ -281,65 +282,11 @@ export function GestionVentas() {
       </div>
 
       {/* Detail Modal */}
-      {selectedVentaDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-6 relative border border-gray-100 dark:border-gray-800">
-            <button
-              onClick={() => setSelectedVentaDetail(null)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                Detalle de Venta #{selectedVentaDetail.numeroVenta || selectedVentaDetail.id}
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Información del cliente y productos facturados
-              </p>
-            </div>
-
-            <div className="space-y-4 text-sm">
-              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Cliente:</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">
-                  {selectedVentaDetail.clienteNombre || selectedVentaDetail.cliente || "Cliente General"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {selectedVentaDetail.fecha
-                    ? new Date(selectedVentaDetail.fecha).toLocaleString("es-CO")
-                    : "Fecha actual"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Estado:</span>
-                <span className="font-semibold text-[#F05454]">
-                  {selectedVentaDetail.estado || "Completada"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Total:</span>
-                <span className="font-extrabold text-lg text-gray-900 dark:text-gray-100">
-                  ${Number(selectedVentaDetail.total || 0).toLocaleString("es-CO")}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setSelectedVentaDetail(null)}
-                className="px-5 py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white text-sm font-semibold rounded-2xl transition-colors cursor-pointer"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <VentaDetalleModal
+        isOpen={!!selectedVentaDetail}
+        onClose={() => setSelectedVentaDetail(null)}
+        venta={selectedVentaDetail}
+      />
     </div>
   );
 }
