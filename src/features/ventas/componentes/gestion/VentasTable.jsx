@@ -59,20 +59,20 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">N° Factura / Pedido</th>
-              <th className="px-6 py-4">Cliente</th>
-              <th className="px-6 py-4">Fecha & Horario</th>
-              <th className="px-6 py-4">Entrega</th>
-              <th className="px-6 py-4">Método de Pago</th>
-              <th className="px-6 py-4">Monto Total</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Pedido</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Cliente</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Fecha & Horario</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Entrega</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Método de Pago</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Monto Total</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Estado</th>
+              <th className="px-5 py-3.5 whitespace-nowrap text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {paginatedVentas.map((v) => (
               <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                <td className="px-6 py-4">
+                <td className="px-5 py-4 whitespace-nowrap align-middle">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                       <TrendingUp className="w-5 h-5" />
@@ -86,33 +86,33 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                   </div>
                 </td>
 
-                <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
+                <td className="px-5 py-4 whitespace-nowrap align-middle font-bold text-gray-900 dark:text-gray-100">
                   {v.clienteNombre || v.cliente || "Cliente General"}
                 </td>
 
-                <td className="px-6 py-4 text-gray-600 dark:text-gray-300 text-xs">
-                  <div className="flex items-center gap-1.5">
+                <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
+                  <div className="flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-200">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
                     <span>
                       {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5">{v.horario || "12:30 – 12:48"}</div>
+                  <div className="text-xs text-gray-400 mt-0.5 font-mono">{v.horario || "12:30 – 12:48"}</div>
                 </td>
 
-                <td className="px-6 py-4">{getEntregaBadge(v.tipoEntrega)}</td>
+                <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
 
-                <td className="px-6 py-4">{getMetodoIcon(v.metodoPago)}</td>
+                <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
 
-                <td className="px-6 py-4 font-extrabold text-gray-900 dark:text-gray-100">
+                <td className="px-5 py-4 whitespace-nowrap align-middle font-extrabold text-gray-900 dark:text-gray-100">
                   ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
                 </td>
 
-                <td className="px-6 py-4">
+                <td className="px-5 py-4 whitespace-nowrap align-middle">
                   <select
                     value={v.estado || "Completada"}
                     onChange={(e) => onUpdateEstado && onUpdateEstado(v.id, e.target.value)}
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none text-center ${
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none text-center ${
                       v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Listo"
                         ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                         : v.estado === "En Preparación" || v.estado === "Pendiente"
@@ -128,7 +128,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                   </select>
                 </td>
 
-                <td className="px-6 py-4 text-right">
+                <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
                   <button
                     onClick={() => onViewDetail && onViewDetail(v)}
                     title="Ver Detalle del Pedido"
