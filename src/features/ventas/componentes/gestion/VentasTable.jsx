@@ -105,15 +105,15 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                 <td className="px-6 py-4">{getMetodoIcon(v.metodoPago)}</td>
 
                 <td className="px-6 py-4 font-extrabold text-gray-900 dark:text-gray-100">
-                  ${Number(v.subtotal || v.total || 0).toLocaleString("es-CO")}
+                  ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
                 </td>
 
                 <td className="px-6 py-4">
                   <select
                     value={v.estado || "Completada"}
                     onChange={(e) => onUpdateEstado && onUpdateEstado(v.id, e.target.value)}
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border-0 cursor-pointer focus:ring-2 focus:ring-[#F05454]/40 ${
-                      v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Pagado" || v.estado === "Listo"
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none text-center ${
+                      v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Listo"
                         ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
                         : v.estado === "En Preparación" || v.estado === "Pendiente"
                         ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
