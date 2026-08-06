@@ -54,7 +54,7 @@ export function useInsumos() {
     }
   });
 
-  // Papelera state — now fetched from the backend API
+  // Papelera state — fetched from the backend API
   const [papeleraInsumos, setPapeleraInsumos] = useState([]);
   const [papeleraPreparados, setPapeleraPreparados] = useState([]);
 
@@ -74,50 +74,37 @@ export function useInsumos() {
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
-      const [insumosData, categoriasData] = await Promise.all([
+      const [insumosData, categoriasData, preparadosData] = await Promise.all([
         insumosService.getInsumos(),
-        insumosService.getCategorias()
+        insumosService.getCategorias(),
+        insumosService.getInsumosPreparados()
       ]);
 
-      // Ensure mock sample data contains at least one prepared insumo if empty
-      let finalInsumos = insumosData || [];
-      if (finalInsumos.length > 0 && !finalInsumos.some((i) => i.tipo === "Preparado")) {
-        finalInsumos = [
-          ...finalInsumos,
-          {
-            id: "prep-1",
-            nombre: "salsa de la casa",
-            tipo: "Preparado",
-            descripcion: "salsa de la casa 100% artesanal",
-            precio: 2000,
-            unidadMedida: "porción",
-            estado: "Activo",
-            ingredientes: [{ id: 1, nombre: "Tomate", cantidad: 1, unidadMedida: "paq" }]
-          },
-          {
-            id: "prep-2",
-            nombre: "Salsa Especial de la Casa",
-            tipo: "Preparado",
-            descripcion: "Receta casera",
-            precio: 7500,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 2, nombre: "Mayonesa", cantidad: 1, unidadMedida: "und" }]
-          },
-          {
-            id: "prep-3",
-            nombre: "Receta Especial Jalapeños",
-            tipo: "Preparado",
-            descripcion: "Con queso chedart",
-            precio: 10000,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 3, nombre: "Jalapeño", cantidad: 2, unidadMedida: "und" }]
-          }
-        ];
-      }
+      const baseMapped = (insumosData || []).map(i => ({
+        ...i,
+        tipo: "Base"
+      }));
 
-      setInsumos(finalInsumos);
+      const prepMapped = (preparadosData || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
+      setInsumos([...baseMapped, ...prepMapped]);
       setCategorias(categoriasData || []);
     } catch (err) {
       console.error(err);
@@ -134,8 +121,28 @@ export function useInsumos() {
         insumosService.getPapeleraInsumos(),
         insumosService.getPapeleraPreparados()
       ]);
+
+      const prepTrashMapped = (preparadosTrash || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
       setPapeleraInsumos(insumosTrash || []);
-      setPapeleraPreparados(preparadosTrash || []);
+      setPapeleraPreparados(prepTrashMapped);
     } catch (err) {
       console.error("Error al cargar papelera:", err);
     }
@@ -173,7 +180,7 @@ export function useInsumos() {
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria;
+    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
 
     return matchSearch && matchCategoria && matchEstado;
@@ -182,18 +189,33 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      const payload = {
-        nombre: data.nombre,
-        idCategoriaInsumo: data.idCategoriaInsumo || 1,
-        stock: Number(data.stock) || 0,
-        stockMinimo: Number(data.stockMinimo) || 0,
-        unidadMedida: data.unidadMedida || "und",
-        precioUnitario: Number(data.precioUnitario) || 0,
-        idProveedor: data.idProveedor || null,
-        descripcion: data.descripcion || ""
-      };
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.createPreparado(payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo || 1,
+          stock: Number(data.stock) || 0,
+          stockMinimo: Number(data.stockMinimo) || 0,
+          unidadMedida: data.unidadMedida || "und",
+          precioUnitario: Number(data.precioUnitario) || 0,
+          idProveedor: data.idProveedor || null,
+          descripcion: data.descripcion || ""
+        };
+        await insumosService.createInsumo(payload);
+      }
 
-      await insumosService.createInsumo(payload);
       await fetchInsumos();
 
       addTraceabilityEvent(
@@ -218,18 +240,33 @@ export function useInsumos() {
   const updateInsumo = async (id, data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      const payload = {
-        nombre: data.nombre,
-        idCategoriaInsumo: data.idCategoriaInsumo,
-        stock: Number(data.stock),
-        stockMinimo: Number(data.stockMinimo),
-        unidadMedida: data.unidadMedida,
-        precioUnitario: Number(data.precioUnitario),
-        idProveedor: data.idProveedor,
-        descripcion: data.descripcion
-      };
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.updatePreparado(id, payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo,
+          stock: Number(data.stock),
+          stockMinimo: Number(data.stockMinimo),
+          unidadMedida: data.unidadMedida,
+          precioUnitario: Number(data.precioUnitario),
+          idProveedor: data.idProveedor,
+          descripcion: data.descripcion
+        };
+        await insumosService.updateInsumo(id, payload);
+      }
 
-      await insumosService.updateInsumo(id, payload);
       await fetchInsumos();
 
       addTraceabilityEvent(
@@ -248,7 +285,7 @@ export function useInsumos() {
     }
   };
 
-  // Soft delete — moves to papelera (sets estado = 0 in backend)
+  // Soft delete — moves base insumo to papelera (sets estado = 0 in backend)
   const deleteInsumo = async (id, nombre) => {
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
@@ -275,7 +312,7 @@ export function useInsumos() {
     }
   };
 
-  // Soft delete for insumos preparados
+  // Soft delete for insumos preparados — moves prepared insumo to papelera
   const deletePreparado = async (id, nombre) => {
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
@@ -305,10 +342,10 @@ export function useInsumos() {
   // Restore from papelera — calls backend API to set estado = 1
   const restoreInsumo = async (item) => {
     try {
-      const isPreparado = item.tipo === "Preparado" || item.componentes || item.insumos;
+      const isPreparado = item.tipo === "Preparado" || item.componentes || item.ingredientes;
 
       if (isPreparado) {
-        await insumosService.restorePreparado(item.id);
+        await insumosService.restorePreparado(item.id || item.idInsumo);
       } else {
         await insumosService.restoreInsumo(item.id || item.idInsumo);
       }
