@@ -216,24 +216,6 @@ export function GestionCompras() {
         </div>
       </div>
 
-      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 flex items-start gap-3">
-        <div className="text-blue-500 shrink-0 mt-0.5">
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-        </div>
-        <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-          <p className="font-semibold text-sm">¿Cómo funciona el flujo de compra?</p>
-          <ol className="list-decimal list-inside space-y-0.5 pl-1">
-            <li><strong>Registrar compra:</strong> Crea una orden (quedará en <em>Pendiente</em>). El stock <strong>NO</strong> se modifica.</li>
-            <li><strong>Cuando lleguen los insumos:</strong> Haz clic en ✅ <strong>Marcar como Recibida</strong>. Allí sí se suman los insumos al stock.</li>
-            <li><strong>Si te equivocas:</strong> Puedes ❌ <strong>Anular</strong> la compra. Si ya estaba Recibida, el stock se revertirá automáticamente.</li>
-          </ol>
-        </div>
-      </div>
-
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
       ) : (
