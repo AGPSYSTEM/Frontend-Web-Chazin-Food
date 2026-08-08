@@ -103,8 +103,26 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                 <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
 
-                <td className="px-5 py-4 whitespace-nowrap align-middle font-extrabold text-gray-900 dark:text-gray-100">
-                  ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                <td className="px-5 py-4 whitespace-nowrap align-middle">
+                  {v.precioOriginal || v.descuentoPorcentaje || v.descuento ? (
+                    <div>
+                      <div className="text-xs text-gray-400 line-through font-mono">
+                        ${Number(v.precioOriginal || (v.total ? Math.round(v.total * 1.176) : 54000)).toLocaleString("es-CO")}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-gray-900 dark:text-gray-100">
+                          ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                        </span>
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          -{v.descuentoPorcentaje || 15}% desc.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-extrabold text-gray-900 dark:text-gray-100">
+                      ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                    </span>
+                  )}
                 </td>
 
                 <td className="px-5 py-4 whitespace-nowrap align-middle">
