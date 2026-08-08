@@ -13,7 +13,7 @@ import {
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
-import { VentasHistorialCardsView } from "../componentes/gestion/VentasHistorialCardsView";
+import { VentasHistorialTableView } from "../componentes/gestion/VentasHistorialTableView";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
 
@@ -418,9 +418,10 @@ export function GestionVentas() {
                 </p>
               </div>
             ) : activeTab === "historial" ? (
-              <VentasHistorialCardsView
+              <VentasHistorialTableView
                 ventas={displayedVentas}
                 onViewDetail={handleViewDetail}
+                onUpdateEstado={updateEstado}
               />
             ) : (
               <VentasTable
