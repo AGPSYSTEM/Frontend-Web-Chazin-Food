@@ -15,6 +15,22 @@ import {
   Tooltip
 } from "recharts";
 
+const CustomChartTooltip = ({ active, payload, label, unit = "Ingresos", isCurrency = true }) => {
+  if (active && payload && payload.length) {
+    const val = payload[0].value;
+    const formatted = isCurrency ? `$${Number(val).toLocaleString("es-CO")}` : val;
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 rounded-xl shadow-xl text-xs">
+        <p className="font-semibold text-gray-400 dark:text-gray-400 mb-1">{label}</p>
+        <p className="font-bold text-[#10B981] text-sm">
+          {unit} : {formatted}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
@@ -119,10 +135,13 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </p>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={reportData.ingresosDiarios} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
-            <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(val) => [`$${val.toLocaleString("es-CO")}`, "Ingresos"]} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.2} />
+            <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "#9CA3AF" }} />
+            <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+            <Tooltip
+              content={<CustomChartTooltip unit="Ingresos" isCurrency={true} />}
+              cursor={{ fill: "rgba(156, 163, 175, 0.15)" }}
+            />
             <Bar dataKey="ventas" fill="#10B981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -135,10 +154,13 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </p>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={reportData.ingresosDiarios} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip formatter={(val) => [val, "Pedidos"]} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.2} />
+            <XAxis dataKey="dia" tick={{ fontSize: 12, fill: "#9CA3AF" }} />
+            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+            <Tooltip
+              content={<CustomChartTooltip unit="Pedidos" isCurrency={false} />}
+              cursor={{ stroke: "rgba(59, 130, 246, 0.4)", strokeWidth: 1.5 }}
+            />
             <Line type="monotone" dataKey="pedidos" stroke="#3B82F6" strokeWidth={2} dot={{ r: 4, fill: "#3B82F6" }} />
           </LineChart>
         </ResponsiveContainer>
@@ -153,10 +175,13 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart layout="vertical" data={reportData.productosMasVendidos} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11 }} width={100} />
-              <Tooltip formatter={(val) => [val, "Unidades"]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.2} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
+              <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11, fill: "#9CA3AF" }} width={100} />
+              <Tooltip
+                content={<CustomChartTooltip unit="Unidades" isCurrency={false} />}
+                cursor={{ fill: "rgba(156, 163, 175, 0.15)" }}
+              />
               <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
                 {reportData.productosMasVendidos.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={productColors[index % productColors.length]} />
