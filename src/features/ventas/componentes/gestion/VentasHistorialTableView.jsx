@@ -5,7 +5,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Sample data with realistic discount data matching user's exact reference screenshot (María López / María García, Pedro Vargas, Sofia Gómez)
+  // Sample data with realistic discount data matching user's exact reference screenshot (María García, Ana Martínez, Alexis Gómez, Sandra Gómez)
   const itemsToDisplay = ventas.length > 0 ? ventas : [
     {
       id: 1,
@@ -13,17 +13,12 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
       codigoPedido: "PED-001",
       fecha: "2026-08-06",
       horario: "12:30 – 12:48",
-      precioOriginal: 37000,
+      precioOriginal: 36985,
       total: 33320,
       descuentoPorcentaje: 10,
-      tipoEntrega: "En Mesa",
+      tipoEntrega: "Domicilio",
       metodoPago: "Efectivo",
-      estado: "Completada",
-      productos: [
-        { cantidad: 1, nombre: "Hamburguesa Especial" },
-        { cantidad: 1, nombre: "Coca Cola" },
-        { cantidad: 2, nombre: "Papas Fritas" }
-      ]
+      estado: "Completada"
     },
     {
       id: 2,
@@ -34,13 +29,9 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
       precioOriginal: 45000,
       total: 40500,
       descuentoPorcentaje: 10,
-      tipoEntrega: "Domicilio",
+      tipoEntrega: "En Mesa",
       metodoPago: "Tarjeta",
-      estado: "Completada",
-      productos: [
-        { cantidad: 1, nombre: "Combo Familiar" },
-        { cantidad: 1, nombre: "Gaseosa Coca Cola 500ml" }
-      ]
+      estado: "Completada"
     },
     {
       id: 3,
@@ -51,11 +42,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
       total: 21000,
       tipoEntrega: "Recoger",
       metodoPago: "Efectivo",
-      estado: "Completada",
-      productos: [
-        { cantidad: 1, nombre: "Perro Caliente Especial" },
-        { cantidad: 1, nombre: "Papas Fritas" }
-      ]
+      estado: "Completada"
     },
     {
       id: 4,
@@ -68,11 +55,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
       descuentoPorcentaje: 15,
       tipoEntrega: "Domicilio",
       metodoPago: "Tarjeta",
-      estado: "Completada",
-      productos: [
-        { cantidad: 1, nombre: "Combo Familiar" },
-        { cantidad: 1, nombre: "Arepa con Queso" }
-      ]
+      estado: "Completada"
     }
   ];
 
@@ -127,39 +110,34 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
 
   return (
     <div className="space-y-4">
-      {/* Clean Historial CRUD Table with exact reference design */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
+      {/* Distinct Historial CRUD Table with slate tint container matching Mobile Historial aesthetic */}
+      <div className="overflow-x-auto rounded-2xl border border-gray-200/80 dark:border-gray-800 bg-[#f8fafc] dark:bg-gray-900/60 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <tr className="bg-slate-100/80 dark:bg-gray-800/80 border-b border-gray-200/80 dark:border-gray-800 text-xs font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wider">
               <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Pedido</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Cliente</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Fecha & Horario</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Productos</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Monto Total & Descuento</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Entrega</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Método de Pago</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">Monto Total & Descuento</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Estado</th>
               <th className="px-5 py-3.5 whitespace-nowrap text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+          <tbody className="divide-y divide-gray-200/60 dark:divide-gray-800 text-sm bg-white dark:bg-gray-900">
             {paginatedVentas.map((v) => {
               const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
               const inicialCliente = clienteNombre.charAt(0).toUpperCase();
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
 
-              const productosList = Array.isArray(v.productos) && v.productos.length > 0
-                ? v.productos
-                : [{ cantidad: 1, nombre: "Combo Familiar" }];
-
               const hasDiscount = Boolean(v.descuentoPorcentaje || v.precioOriginal || v.descuento || v.id === 1 || v.id === 2 || v.id === 4);
-              const totalVal = Number(v.total || v.subtotal || 40500);
-              const originalPriceVal = Number(v.precioOriginal || (v.total ? Math.round(v.total * 1.11) : 45000));
+              const totalVal = Number(v.total || v.subtotal || 33320);
+              const originalPriceVal = Number(v.precioOriginal || (v.total ? Math.round(v.total * 1.11) : 36985));
               const discountPctVal = v.descuentoPorcentaje || (v.id === 4 ? 15 : 10);
 
               return (
-                <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                <tr key={v.id} className="hover:bg-slate-50/70 dark:hover:bg-gray-800/50 transition-colors">
                   {/* N° Factura / Pedido */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     <div className="flex items-center gap-3">
@@ -175,7 +153,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
                     </div>
                   </td>
 
-                  {/* Cliente with Red/Coral Circular Avatar */}
+                  {/* Cliente with Red/Coral Circular Avatar & Order Code (Mobile Historial Style) */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-[#F05454] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
@@ -206,21 +184,13 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
                     </div>
                   </td>
 
-                  {/* Productos Item Pills */}
-                  <td className="px-5 py-4 align-middle">
-                    <div className="flex flex-wrap items-center gap-1.5 max-w-xs">
-                      {productosList.map((p, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200/80 dark:border-gray-700 whitespace-nowrap"
-                        >
-                          {p.cantidad || 1}x {p.nombre || p.nombreProducto}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
+                  {/* Entrega */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
 
-                  {/* Monto Total & Strikethrough Original Price + Green Discount Badge */}
+                  {/* Método de Pago */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
+
+                  {/* Monto Total & Strikethrough Original Price + Green Discount Badge (Mobile Historial Style) */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     {hasDiscount ? (
                       <div>
@@ -243,12 +213,6 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
                     )}
                   </td>
 
-                  {/* Entrega */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
-
-                  {/* Método de Pago */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
-
                   {/* Estado Select Badge */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     <select
@@ -270,7 +234,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
                     </select>
                   </td>
 
-                  {/* Acciones */}
+                  {/* Acciones: Detalle button in coral red #F05454 */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
                     <button
                       onClick={() => onViewDetail && onViewDetail(v)}
@@ -278,7 +242,7 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
                       className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
                     >
                       <Eye className="w-4 h-4 text-[#F05454]" />
-                      <span>Detalle</span>
+                      <span>Ver detalle</span>
                     </button>
                   </td>
                 </tr>
