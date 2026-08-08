@@ -1,9 +1,10 @@
-import { X, Mail, Phone, MapPin, TrendingUp, Clock, Calendar, Star } from "lucide-react";
+import { X, Mail, Phone, MapPin, TrendingUp, Clock, Calendar, Star, AlertCircle } from "lucide-react";
 
 export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   if (!isOpen || !cliente) return null;
 
   const tipoCliente = cliente.tipo || (cliente.esVip ? "VIP" : "Regular");
+  const tieneCuenta = cliente.tieneCuenta !== false && !!cliente.idUsuario;
   
   // Color scheme helpers for Avatar & Badges
   const getAvatarBg = (nombre = "") => {
@@ -44,27 +45,34 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
     }
   };
 
-  // Mock transactions if not present on client object
-  const transacciones = cliente.transacciones || [
-    { idTrans: `T-${cliente.id || 1}-1000`, fecha: "26/5/2026", producto: "Salchipapa Grande", total: "$13.611" },
-    { idTrans: `T-${cliente.id || 1}-1001`, fecha: "19/5/2026", producto: "Perro Caliente Especial", total: "$15.111" },
-    { idTrans: `T-${cliente.id || 1}-1002`, fecha: "12/5/2026", producto: "Pollo Broaster", total: "$16.611" },
-    { idTrans: `T-${cliente.id || 1}-1003`, fecha: "5/5/2026", producto: "Combo Familiar", total: "$18.111" },
-    { idTrans: `T-${cliente.id || 1}-1004`, fecha: "28/4/2026", producto: "Papas Fritas Medianas", total: "$12.111" }
-  ];
+  // Real transactions from database (or empty if client has 0 orders)
+  const transacciones = Array.isArray(cliente.transacciones) ? cliente.transacciones : [];
 
   const totalComprasCount = cliente.compras || transacciones.length;
-  const totalGastadoStr = cliente.totalGastado || `$${(totalComprasCount * 15000).toLocaleString("es-CO")}`;
-  const ticketPromedioStr = cliente.ticketPromedio || "$15K";
-  const comprasMes = cliente.comprasMes || (tipoCliente === "VIP" ? "3.8" : tipoCliente === "Frecuente" ? "2.7" : tipoCliente === "Regular" ? "1.5" : "0.7");
-  const frecuenciaTipo = cliente.frecuenciaTipo || (tipoCliente === "VIP" ? "Frecuente" : tipoCliente === "Frecuente" ? "Frecuente" : tipoCliente === "Regular" ? "Mensual" : "Esporádico");
-  const ultimaCompraFecha = cliente.ultimaCompra || "26/5/2026";
+  const totalGastadoStr = cliente.totalGastado || "$0";
+  const ticketPromedioStr = cliente.ticketPromedio || "$0";
+  const comprasMes = cliente.comprasMes || (totalComprasCount > 0 ? (totalComprasCount / 3).toFixed(1) : "0.0");
+  const frecuenciaTipo = cliente.frecuenciaTipo || (totalComprasCount > 10 ? "Frecuente" : totalComprasCount > 2 ? "Mensual" : "Esporádico");
+  const ultimaCompraFecha = cliente.ultimaCompra || (transacciones.length > 0 ? transacciones[0].fecha : "Sin compras");
   const descuentoTag = getDescuentoTexto(tipoCliente);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
       <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-6 relative border border-gray-100 dark:border-gray-800 max-h-[92vh] overflow-y-auto">
         
+        {/* Banner: Client without user account */}
+        {!tieneCuenta && (
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+            <div className="text-xs text-rose-900 dark:text-rose-200">
+              <p className="font-bold">Cliente sin cuenta de usuario asociada</p>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
+                Este cliente no tiene una cuenta de usuario ni credenciales de acceso. Permanece inactivo y no puede iniciar sesión ni realizar pedidos.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header: Avatar, Name, Type Badge & Close Button */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3.5">
@@ -103,7 +111,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold text-gray-400">Email</p>
                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
-                  {cliente.email || "sin.email@ejemplo.com"}
+                  {cliente.email || "Sin email registrado"}
                 </p>
               </div>
             </div>
@@ -113,7 +121,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold text-gray-400">Teléfono</p>
                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                  {cliente.telefono || "300 000 0000"}
+                  {cliente.telefono || "Sin teléfono"}
                 </p>
               </div>
             </div>
@@ -175,36 +183,44 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
           </div>
         </div>
 
-        {/* 4. HISTORIAL DE TRANSACCIONES */}
+        {/* 4. HISTORIAL DE TRANSACCIONES REALES */}
         <div className="space-y-2">
           <h3 className="text-xs font-extrabold tracking-wider text-gray-700 dark:text-gray-300 uppercase">
             Historial de Transacciones
           </h3>
-          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  <th className="px-4 py-2.5">N° TRANS.</th>
-                  <th className="px-4 py-2.5">FECHA</th>
-                  <th className="px-4 py-2.5">PRODUCTO</th>
-                  <th className="px-4 py-2.5 text-right">TOTAL</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-700 dark:text-gray-300">
-                {transacciones.slice(0, 5).map((t, idx) => (
-                  <tr key={idx} className="hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-4 py-2 text-gray-400 font-mono text-[11px]">{t.idTrans}</td>
-                    <td className="px-4 py-2">{t.fecha}</td>
-                    <td className="px-4 py-2 font-bold text-gray-800 dark:text-gray-200">{t.producto}</td>
-                    <td className="px-4 py-2 text-right font-extrabold text-gray-900 dark:text-gray-100">{t.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-[11px] text-gray-400 text-center font-medium pt-0.5">
-            Mostrando las últimas 5 de {totalComprasCount} transacciones.
-          </p>
+          {transacciones.length === 0 ? (
+            <div className="p-6 bg-gray-50/60 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 text-center text-xs text-gray-400">
+              Este cliente no registra transacciones aún.
+            </div>
+          ) : (
+            <>
+              <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-2.5">N° TRANS.</th>
+                      <th className="px-4 py-2.5">FECHA</th>
+                      <th className="px-4 py-2.5">PRODUCTO</th>
+                      <th className="px-4 py-2.5 text-right">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-700 dark:text-gray-300">
+                    {transacciones.slice(0, 5).map((t, idx) => (
+                      <tr key={idx} className="hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                        <td className="px-4 py-2 text-gray-400 font-mono text-[11px]">{t.idTrans}</td>
+                        <td className="px-4 py-2">{t.fecha}</td>
+                        <td className="px-4 py-2 font-bold text-gray-800 dark:text-gray-200">{t.producto}</td>
+                        <td className="px-4 py-2 text-right font-extrabold text-gray-900 dark:text-gray-100">{t.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-gray-400 text-center font-medium pt-0.5">
+                Mostrando las últimas {Math.min(5, transacciones.length)} de {transacciones.length} transacciones.
+              </p>
+            </>
+          )}
         </div>
 
         {/* 5. BENEFICIOS ACTIVOS */}
@@ -228,7 +244,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
                 Cliente {tipoCliente}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Última compra: {ultimaCompraFecha}
+                {transacciones.length > 0 ? `Última compra: ${ultimaCompraFecha}` : "Sin compras registradas aún"}
               </p>
             </div>
           </div>

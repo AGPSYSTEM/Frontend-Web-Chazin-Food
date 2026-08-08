@@ -5,8 +5,10 @@ import { ClientesStatsCards } from "../componentes/clientes/ClientesStatsCards";
 import { ClientesTable } from "../componentes/clientes/ClientesTable";
 import { ClienteModal } from "../componentes/clientes/ClienteModal";
 import { ClienteDetalleModal } from "../componentes/clientes/ClienteDetalleModal";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function Clientes() {
+  const { info } = useNotifications();
   const {
     clientes,
     filteredClientes,
@@ -47,6 +49,12 @@ export function Clientes() {
       ok = await updateCliente(editingCliente.id || editingCliente.idCliente, form);
     } else {
       ok = await createCliente(form);
+      if (ok && form.sinCuenta) {
+        info(
+          "Cliente inactivo registrado",
+          "Cliente creado correctamente, pero quedó inactivo porque no tiene una cuenta de usuario ni credenciales de acceso."
+        );
+      }
     }
     if (ok) {
       setModalOpen(false);

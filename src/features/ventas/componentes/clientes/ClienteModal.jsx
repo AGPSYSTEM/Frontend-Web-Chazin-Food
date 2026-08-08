@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 
 export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
   const isEditing = !!cliente;
@@ -8,8 +8,9 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
     email: "",
     telefono: "",
     direccion: "",
-    tipo: "VIP",
-    descuentoPorcentaje: 15
+    tipo: "Nuevo",
+    descuentoPorcentaje: 0,
+    sinCuenta: false
   });
 
   useEffect(() => {
@@ -18,12 +19,13 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
       const currentTipo = cliente.tipo || (cliente.esVip ? "VIP" : "Regular");
       const defaultDesc = currentTipo === "VIP" ? 15 : currentTipo === "Frecuente" ? 10 : currentTipo === "Regular" ? 5 : 0;
       setForm({
-        nombre: fullNombre || "Juan Carlos Pérez",
-        email: cliente.email || "juan.perez@email.com",
-        telefono: cliente.telefono || "319 123 4567",
-        direccion: cliente.direccion || "Calle 50 #45-30, Belén, Medellín",
+        nombre: fullNombre || "",
+        email: cliente.email || "",
+        telefono: cliente.telefono || "",
+        direccion: cliente.direccion || "",
         tipo: currentTipo,
-        descuentoPorcentaje: cliente.descuentoPorcentaje || defaultDesc
+        descuentoPorcentaje: cliente.descuentoPorcentaje !== undefined ? cliente.descuentoPorcentaje : defaultDesc,
+        sinCuenta: !cliente.idUsuario || cliente.tieneCuenta === false
       });
     } else {
       setForm({
@@ -32,7 +34,8 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
         telefono: "",
         direccion: "",
         tipo: "Nuevo",
-        descuentoPorcentaje: 0
+        descuentoPorcentaje: 0,
+        sinCuenta: true // Default to true when admin manually creates a client
       });
     }
   }, [cliente, isOpen]);
@@ -53,7 +56,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
     setForm({ ...form, tipo: newTipo, descuentoPorcentaje: desc });
   };
 
-  const firstChar = form.nombre ? form.nombre.charAt(0).toUpperCase() : "J";
+  const firstChar = form.nombre ? form.nombre.charAt(0).toUpperCase() : "C";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -78,10 +81,34 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Option: Client without account */}
+          {!isEditing && (
+            <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded-2xl space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-amber-900 dark:text-amber-300 text-xs">
+                <input
+                  type="checkbox"
+                  checked={form.sinCuenta}
+                  onChange={(e) => setForm({ ...form, sinCuenta: e.target.checked })}
+                  className="w-4 h-4 text-red-500 rounded border-amber-300 focus:ring-red-400"
+                />
+                Crear cliente sin cuenta de acceso de usuario
+              </label>
+
+              {form.sinCuenta && (
+                <div className="flex items-start gap-2 text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <p>
+                    Se está creando un cliente sin cuenta de usuario. Este cliente quedará <strong>INACTIVO</strong> y no podrá acceder al sistema ni realizar pedidos hasta que se cree y active su usuario. Actualmente no posee credenciales de acceso.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Nombre Completo */}
           <div>
             <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Nombre Completo
+              Nombre Completo: *
             </label>
             <input
               type="text"
@@ -89,7 +116,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               value={form.nombre}
               onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
-              placeholder="Juan Carlos Pérez"
+              placeholder="Ej: Juan Carlos Pérez"
             />
           </div>
 
@@ -179,7 +206,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               type="submit"
               className="px-6 py-2.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-md"
             >
-              Guardar Cambios
+              {isEditing ? "Guardar Cambios" : "Crear Cliente"}
             </button>
           </div>
         </form>
