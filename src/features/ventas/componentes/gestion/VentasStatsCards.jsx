@@ -4,22 +4,14 @@ export function VentasStatsCards({ ventas = [] }) {
   const totalVentasSum = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalVentasStr = `$${totalVentasSum.toLocaleString("es-CO")}`;
 
-  const totalPedidos = ventas.length > 0 ? ventas.length : 10;
-
-  const ticketPromedioVal = totalPedidos > 0 && totalVentasSum > 0
-    ? Math.round(totalVentasSum / totalPedidos)
-    : 29640;
-  const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
-
   const pedidosCount = ventas.length;
-  
+
   const ticketPromedioVal = totalVentasSum > 0 && pedidosCount > 0 
     ? Math.round(totalVentasSum / pedidosCount) 
     : 0;
   const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
 
   const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.descuentoAplicado || 0), 0);
-  const descOtorgadosStr = `$${descOtorgadosSum.toLocaleString("es-CO")}`;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -52,8 +44,6 @@ export function VentasStatsCards({ ventas = [] }) {
           </span>
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 block">
             Ticket Promedio
-          <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block">
-            {pedidosCount}
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium block mt-0.5">
             valor medio por pedido
@@ -68,7 +58,7 @@ export function VentasStatsCards({ ventas = [] }) {
         </div>
         <div>
           <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight">
-            1.0 ped/cli
+            {pedidosCount > 0 ? `${(pedidosCount / Math.max(1, new Set(ventas.map(v => v.idCliente || v.clienteNombre)).size)).toFixed(1)} ped/cli` : "1.0 ped/cli"}
           </span>
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 block">
             Frecuencia de Compra
@@ -86,13 +76,13 @@ export function VentasStatsCards({ ventas = [] }) {
         </div>
         <div>
           <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight">
-            4.4%
+            {totalVentasSum > 0 ? `${((descOtorgadosSum / totalVentasSum) * 100).toFixed(1)}%` : "0%"}
           </span>
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 block">
             Tasa de Descuento
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium block mt-0.5">
-            $13.600 en desc.
+            ${descOtorgadosSum.toLocaleString("es-CO")} en desc.
           </span>
         </div>
       </div>
