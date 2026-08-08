@@ -13,6 +13,7 @@ import {
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
+import { VentasHistorialCardsView } from "../componentes/gestion/VentasHistorialCardsView";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
 
@@ -416,6 +417,11 @@ export function GestionVentas() {
                   No se encontraron pedidos con los filtros aplicados
                 </p>
               </div>
+            ) : activeTab === "historial" ? (
+              <VentasHistorialCardsView
+                ventas={displayedVentas}
+                onViewDetail={handleViewDetail}
+              />
             ) : (
               <VentasTable
                 ventas={displayedVentas}
