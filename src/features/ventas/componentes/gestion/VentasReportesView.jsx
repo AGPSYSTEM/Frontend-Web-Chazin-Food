@@ -12,7 +12,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip
+  Tooltip,
+  Label
 } from "recharts";
 
 export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
@@ -49,16 +50,16 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
     ];
 
     const defaultProductosMasVendidos = [
-      { nombre: "Hamburguesa Esp.", cantidad: 38 },
-      { nombre: "Combo Familiar", cantidad: 24 },
-      { nombre: "Pollo Broaster", cantidad: 21 },
-      { nombre: "Salchipapa", cantidad: 19 },
-      { nombre: "Perro Caliente", cantidad: 15 }
+      { nombre: "Hamburguesa\nEsp.", cantidad: 38, fill: "#10B981" },
+      { nombre: "Combo Familiar", cantidad: 24, fill: "#34D399" },
+      { nombre: "Pollo\nBroaster", cantidad: 21, fill: "#6EE7B7" },
+      { nombre: "Salchipapa", cantidad: 19, fill: "#A7F3D0" },
+      { nombre: "Perro\nCaliente", cantidad: 15, fill: "#D1FAE5" }
     ];
 
     const defaultMetodosPago = [
-      { nombre: "Efectivo", porcentaje: 62, valor: 62, color: "#334155" },
-      { nombre: "Tarjeta", porcentaje: 38, valor: 38, color: "#F05454" }
+      { nombre: "Efectivo", porcentaje: 65, valor: 65, color: "#10B981" },
+      { nombre: "Tarjeta", porcentaje: 35, valor: 35, color: "#3B82F6" }
     ];
 
     // If there are real sales, calculate dynamic metrics where possible
@@ -108,6 +109,34 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
     return `$${Math.round(val / 1000)}k`;
   };
 
+  // Custom center label for donut chart
+  const renderCenterLabel = () => (
+    <text
+      x="50%"
+      y="50%"
+      textAnchor="middle"
+      dominantBaseline="central"
+      style={{ fontWeight: 700 }}
+    >
+      <tspan
+        x="50%"
+        dy="-10"
+        fill="#94A3B8"
+        style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.05em" }}
+      >
+        TODOS
+      </tspan>
+      <tspan
+        x="50%"
+        dy="24"
+        fill="#1E293B"
+        style={{ fontSize: "22px", fontWeight: 800 }}
+      >
+        100%
+      </tspan>
+    </text>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header Row: Title & Export Button */}
@@ -124,14 +153,14 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </button>
       </div>
 
-      {/* CHART 1: Ingresos diarios (COP) */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+      {/* CHART 1: Ingresos diarios (COP) — Green bars */}
+      <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
           Ingresos diarios (COP)
         </h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="12%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="dia" axisLine={true} tickLine={true} tick={{ fill: "#64748B", fontSize: 12 }} />
               <YAxis
@@ -146,14 +175,14 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
                 formatter={(val) => [`$${val.toLocaleString("es-CO")}`, "Ingresos"]}
                 contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
               />
-              <Bar dataKey="ingresos" fill="#F05454" radius={[6, 6, 0, 0]} maxBarSize={55} />
+              <Bar dataKey="ingresos" fill="#10B981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* CHART 2: Número de pedidos por día */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+      {/* CHART 2: Número de pedidos por día — Blue line */}
+      <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
           Número de pedidos por día
         </h3>
@@ -176,83 +205,92 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
               <Line
                 type="monotone"
                 dataKey="pedidos"
-                stroke="#2c3e50"
+                stroke="#3B82F6"
                 strokeWidth={2.5}
-                dot={{ r: 5, fill: "#2c3e50", stroke: "#2c3e50", strokeWidth: 0 }}
-                activeDot={{ r: 7, fill: "#F05454" }}
+                dot={{ r: 5, fill: "#3B82F6", stroke: "#3B82F6", strokeWidth: 0 }}
+                activeDot={{ r: 7, fill: "#2563EB" }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* CHART 3: Productos más vendidos */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
-          Productos más vendidos
-        </h3>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              layout="vertical"
-              data={reportData.productosMasVendidos}
-              margin={{ top: 10, right: 20, left: 30, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-              <XAxis type="number" domain={[0, 40]} ticks={[0, 10, 20, 30, 40]} tick={{ fill: "#64748B", fontSize: 12 }} />
-              <YAxis type="category" dataKey="nombre" width={110} tick={{ fill: "#64748B", fontSize: 11 }} />
-              <Tooltip
-                formatter={(val) => [`${val} und.`, "Vendidos"]}
-                contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
-              />
-              <Bar dataKey="cantidad" fill="#334155" radius={[0, 6, 6, 0]} barSize={22} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* CHART 4: Métodos de pago */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
-          Métodos de pago
-        </h3>
-        <div className="h-64 w-full flex flex-col items-center justify-center">
-          <ResponsiveContainer width="100%" height="80%">
-            <PieChart>
-              <Pie
-                data={reportData.metodosPago}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={2}
-                dataKey="valor"
+      {/* CHART 3 & 4: Side by side — Productos más vendidos + Métodos de pago */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Productos más vendidos — Gradient green horizontal bars */}
+        <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
+            Productos más vendidos
+          </h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={reportData.productosMasVendidos}
+                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
               >
-                {reportData.metodosPago.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(val, name) => [`${val}%`, name]}
-                contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex items-center justify-center gap-6 text-sm font-semibold pt-2">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-xs bg-[#334155] inline-block" />
-              <span>Efectivo</span>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                <XAxis type="number" domain={[0, 40]} ticks={[0, 10, 20, 30, 40]} tick={{ fill: "#64748B", fontSize: 12 }} />
+                <YAxis type="category" dataKey="nombre" width={100} tick={{ fill: "#64748B", fontSize: 11 }} />
+                <Tooltip
+                  formatter={(val) => [`${val} und.`, "Vendidos"]}
+                  contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
+                />
+                <Bar dataKey="cantidad" radius={[0, 6, 6, 0]} barSize={22}>
+                  {reportData.productosMasVendidos.map((entry, index) => (
+                    <Cell key={`bar-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Métodos de pago — Green/Blue donut with center label */}
+        <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
+          <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
+            Métodos de pago
+          </h3>
+          <div className="h-64 w-full flex items-center justify-center">
+            <div className="w-48 h-48 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={reportData.metodosPago}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="valor"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {reportData.metodosPago.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <Label content={renderCenterLabel} position="center" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-            <div className="flex items-center gap-2 text-[#F05454]">
-              <span className="w-3 h-3 rounded-xs bg-[#F05454] inline-block" />
-              <span>Tarjeta 38%</span>
+            <div className="flex flex-col gap-3 ml-6">
+              {reportData.metodosPago.map((m, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <span
+                    className="w-3.5 h-3.5 rounded-full inline-block shrink-0"
+                    style={{ backgroundColor: m.color }}
+                  />
+                  <span>{m.nombre} ({m.porcentaje}%)</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
       {/* SUMMARY TABLE: Resumen ejecutivo del período */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
         <div className="bg-[#f8fafc] dark:bg-gray-800/60 px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base">
             Resumen ejecutivo del período
