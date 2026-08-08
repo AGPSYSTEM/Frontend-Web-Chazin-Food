@@ -25,15 +25,15 @@ const TODOS_PERMISOS = [
 const getHeaderStyle = (nombre = "") => {
   const n = nombre.toLowerCase();
   if (n.includes("admin")) {
-    return "bg-gradient-to-r from-[#9333ea] to-[#7e22ce] dark:from-purple-800 dark:to-purple-950";
+    return "bg-[#8b24ef] dark:bg-[#7c3aed]";
   }
   if (n.includes("cocinero") || n.includes("cocina")) {
-    return "bg-gradient-to-r from-[#10b981] to-[#059669] dark:from-emerald-700 dark:to-emerald-900";
+    return "bg-[#00c853] dark:bg-[#059669]";
   }
   if (n.includes("cliente")) {
-    return "bg-gradient-to-r from-[#F05454] to-[#ef4444] dark:from-rose-700 dark:to-rose-900";
+    return "bg-[#ea4335] dark:bg-[#dc2626]";
   }
-  return "bg-gradient-to-r from-blue-600 to-indigo-700";
+  return "bg-[#3b82f6] dark:bg-[#2563eb]";
 };
 
 export function PermisosModal({ isOpen, onClose, onSave, rol }) {
@@ -73,13 +73,13 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
             </div>
             <div>
               <h2 className="text-xl font-bold text-white leading-tight">{rol.nombre}</h2>
-              <p className="text-xs text-white/80 mt-0.5 font-medium">Editar permisos del rol</p>
+              <p className="text-xs text-white/90 mt-0.5 font-normal">Editar permisos del rol</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+            className="text-white/90 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5 stroke-[2.5]" />
@@ -113,7 +113,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
                       {perm}
                     </span>
                     {checked ? (
-                      <div className="w-7 h-7 rounded-full bg-[#10b981] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <div className="w-7 h-7 rounded-full bg-[#00c853] text-white flex items-center justify-center shrink-0 shadow-2xs">
                         <Check className="w-4 h-4 stroke-[3]" />
                       </div>
                     ) : (
@@ -138,7 +138,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#F05454] hover:bg-[#d94444] text-white text-sm font-semibold transition-colors shadow-md flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-[#F05454] hover:bg-[#d94444] text-white text-sm font-semibold transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Guardar Permisos</span>
