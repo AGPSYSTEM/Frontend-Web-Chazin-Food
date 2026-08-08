@@ -160,7 +160,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="18%">
+            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="10%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="dia" axisLine={true} tickLine={true} tick={{ fill: "#64748B", fontSize: 12 }} />
               <YAxis
@@ -175,7 +175,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
                 formatter={(val) => [`$${val.toLocaleString("es-CO")}`, "Ingresos"]}
                 contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
               />
-              <Bar dataKey="ingresos" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="ingresos" fill="#10B981" radius={[6, 6, 0, 0]} barSize={70} />
             </BarChart>
           </ResponsiveContainer>
         </div>
