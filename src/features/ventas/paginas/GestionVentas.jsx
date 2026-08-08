@@ -38,6 +38,17 @@ export function GestionVentas() {
   const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
 
+function formatDateSafe(dateVal, fallback = "") {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return String(dateVal).slice(0, 10) || fallback;
+  }
+}
+
   const periodLabelMap = {
     hoy: "Hoy",
     "7_dias": "Últimos 7 días",
@@ -50,7 +61,7 @@ export function GestionVentas() {
   // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
   const displayedVentas = filteredVentas.filter((v) => {
     if (filterFecha) {
-      const ventaDate = v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "";
+      const ventaDate = formatDateSafe(v.fecha || v.fechaVenta, "");
       if (ventaDate !== filterFecha) return false;
     }
     if (filterMetodoPago !== "Todos") {

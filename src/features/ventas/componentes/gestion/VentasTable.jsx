@@ -1,6 +1,17 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
+function formatDateSafe(dateVal, fallback = "2026-06-09") {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return String(dateVal).slice(0, 10) || fallback;
+  }
+}
+
 export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -100,7 +111,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                   {/* Fecha */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
-                    {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-06-09"}
+                    {formatDateSafe(v.fecha || v.fechaVenta, "2026-06-09")}
                   </td>
 
                   {/* Hora */}

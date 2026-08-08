@@ -5,7 +5,15 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
 
   const codigo = venta.numeroVenta || venta.codigoPedido || `PED-${String(venta.id).padStart(3, "0")}`;
   const cliente = venta.clienteNombre || (typeof venta.cliente === "string" ? venta.cliente : "Cliente General");
-  const fecha = venta.fecha ? new Date(venta.fecha).toISOString().split("T")[0] : "2026-08-06";
+  let fecha = "2026-06-09";
+  if (venta.fecha || venta.fechaVenta) {
+    try {
+      const d = new Date(venta.fecha || venta.fechaVenta);
+      fecha = !isNaN(d.getTime()) ? d.toISOString().split("T")[0] : String(venta.fecha || venta.fechaVenta).slice(0, 10);
+    } catch (e) {
+      fecha = String(venta.fecha || venta.fechaVenta).slice(0, 10);
+    }
+  }
   const horario = venta.horario || "12:30 – 12:48";
   const metodoPago = venta.metodoPago || "Efectivo";
   const tipoEntrega = venta.tipoEntrega || "Domicilio";
