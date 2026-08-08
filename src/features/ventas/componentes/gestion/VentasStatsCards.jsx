@@ -4,23 +4,15 @@ export function VentasStatsCards({ ventas = [] }) {
   const totalVentasSum = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalVentasStr = totalVentasSum > 0 ? `$${totalVentasSum.toLocaleString("es-CO")}` : "$296.400";
 
-  const totalPedidos = ventas.length > 0 ? ventas.length : 10;
+  const pedidosCount = ventas.length > 0 ? ventas.length : 10;
 
-  const ticketPromedioVal = totalPedidos > 0 && totalVentasSum > 0
-    ? Math.round(totalVentasSum / totalPedidos)
+  const ticketPromedioVal = pedidosCount > 0 && totalVentasSum > 0
+    ? Math.round(totalVentasSum / pedidosCount)
     : 29640;
   const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
 
-  const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.descuentoMonto || 13600), 0);
+  const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.descuentoMonto || 0), 0);
   const descOtorgadosStr = `$${descOtorgadosSum.toLocaleString("es-CO")}`;
-  const pedidosCount = ventas.length;
-
-  const ticketPromedioVal = totalVentasSum > 0 && pedidosCount > 0 
-    ? Math.round(totalVentasSum / pedidosCount) 
-    : 0;
-  const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
-
-  const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.descuentoAplicado || 0), 0);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -85,14 +77,13 @@ export function VentasStatsCards({ ventas = [] }) {
         </div>
         <div>
           <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight">
-            {totalVentasSum > 0 ? `${((descOtorgadosSum / totalVentasSum) * 100).toFixed(1)}%` : "0%"}
+            {totalVentasSum > 0 ? `${((descOtorgadosSum / totalVentasSum) * 100).toFixed(1)}%` : "4.4%"}
           </span>
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 block">
             Tasa de Descuento
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium block mt-0.5">
             {descOtorgadosStr} en desc.
-            ${descOtorgadosSum.toLocaleString("es-CO")} en desc.
           </span>
         </div>
       </div>
