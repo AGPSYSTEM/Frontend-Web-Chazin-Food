@@ -154,13 +154,13 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
       </div>
 
       {/* CHART 1: Ingresos diarios (COP) — Green bars */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+      <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
           Ingresos diarios (COP)
         </h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="2%">
+            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="18%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="dia" axisLine={true} tickLine={true} tick={{ fill: "#64748B", fontSize: 12 }} />
               <YAxis
@@ -175,14 +175,14 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
                 formatter={(val) => [`$${val.toLocaleString("es-CO")}`, "Ingresos"]}
                 contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
               />
-              <Bar dataKey="ingresos" fill="#10B981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ingresos" fill="#10B981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* CHART 2: Número de pedidos por día — Blue line */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+      <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
         <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
           Número de pedidos por día
         </h3>
@@ -218,7 +218,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
       {/* CHART 3 & 4: Side by side — Productos más vendidos + Métodos de pago */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Productos más vendidos — Gradient green horizontal bars */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+        <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
           <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
             Productos más vendidos
           </h3>
@@ -247,7 +247,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </div>
 
         {/* Métodos de pago — Green/Blue donut with center label */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4">
+        <div className="bg-[#f8fafc] dark:bg-gray-900/50 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xs space-y-4">
           <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">
             Métodos de pago
           </h3>
