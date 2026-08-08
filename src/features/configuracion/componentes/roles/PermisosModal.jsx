@@ -25,15 +25,15 @@ const TODOS_PERMISOS = [
 const getHeaderStyle = (nombre = "") => {
   const n = nombre.toLowerCase();
   if (n.includes("admin")) {
-    return "bg-[#8b24ef] dark:bg-[#7c3aed]";
+    return "bg-gradient-to-r from-[#9b27ea] via-[#8b3dff] to-[#741bd8] dark:from-purple-800 dark:to-purple-950";
   }
   if (n.includes("cocinero") || n.includes("cocina")) {
-    return "bg-[#00c853] dark:bg-[#059669]";
+    return "bg-gradient-to-r from-[#00c853] via-[#10b981] to-[#059669] dark:from-emerald-700 dark:to-emerald-900";
   }
   if (n.includes("cliente")) {
-    return "bg-[#ea4335] dark:bg-[#dc2626]";
+    return "bg-gradient-to-r from-[#F05454] via-[#ef4444] to-[#dc2626] dark:from-rose-700 dark:to-rose-900";
   }
-  return "bg-[#3b82f6] dark:bg-[#2563eb]";
+  return "bg-gradient-to-r from-[#3b82f6] via-[#2563eb] to-[#1d4ed8]";
 };
 
 export function PermisosModal({ isOpen, onClose, onSave, rol }) {
@@ -65,7 +65,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-gray-800">
-        {/* Header matching exact role color */}
+        {/* Header matching exact role color gradient & glow from screenshots 2, 3, 4 */}
         <div className={`${headerStyle} p-5 sm:p-6 flex items-center justify-between text-white shrink-0`}>
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white shrink-0 border border-white/20">
@@ -132,7 +132,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors cursor-pointer"
+              className="px-6 py-2.5 rounded-full border border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors cursor-pointer"
             >
               Cancelar
             </button>

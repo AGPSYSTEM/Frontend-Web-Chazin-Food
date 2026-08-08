@@ -27,7 +27,7 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 dark:border-gray-800">
-        {/* Header matching exact screenshot aesthetic */}
+        {/* Header matching reference screenshot 1 */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-[#F05454] flex items-center justify-center border border-rose-100/80 dark:border-rose-900/40 shrink-0">
@@ -59,7 +59,7 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors font-medium"
-              placeholder="Ej. Administrador"
+              placeholder="Ej. Cliente"
             />
           </div>
 
@@ -72,16 +72,16 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
               className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors font-medium min-h-[100px] resize-none"
-              placeholder="Acceso total"
+              placeholder="Acceso básico para realizar pedidos"
             />
           </div>
 
-          {/* Footer Buttons matching exact screenshot */}
+          {/* Footer Buttons matching reference screenshot 1 exact alignment */}
           <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-center gap-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors cursor-pointer"
+              className="px-6 py-2.5 rounded-full border border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors cursor-pointer"
             >
               Cancelar
             </button>
