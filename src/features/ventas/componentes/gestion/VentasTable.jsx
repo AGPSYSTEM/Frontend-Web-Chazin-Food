@@ -60,56 +60,52 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
       <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Pedido</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Cliente</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Fecha & Horario</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Entrega</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Método de Pago</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Monto Total</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Estado</th>
-              <th className="px-5 py-3.5 whitespace-nowrap text-right">Acciones</th>
+            <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-5 py-3.5 whitespace-nowrap">ID</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">CLIENTE</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">FECHA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">HORA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">ENTREGA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">MÉTODO</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">TOTAL</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">ESTADO</th>
+              <th className="px-5 py-3.5 whitespace-nowrap text-right">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {paginatedVentas.map((v) => {
               const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
+              const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
+              const hasDiscount = (v.descuentoPorcentaje && v.descuentoPorcentaje > 0) || (v.montoDescuento && v.montoDescuento > 0);
 
               return (
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   {/* N° Factura / Pedido */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <TrendingUp className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-gray-100">
-                          {codigoPedido}
-                        </div>
-                        <div className="text-xs text-gray-400 font-mono">ID: #{v.id}</div>
-                      </div>
+                    <div className="font-bold text-gray-900 dark:text-gray-100">
+                      {codigoPedido}
                     </div>
                   </td>
 
-                  {/* Cliente */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle font-bold text-gray-900 dark:text-gray-100">
-                    {clienteNombre}
+                  {/* Cliente con Avatar */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                        {initial}
+                      </div>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
+                    </div>
                   </td>
 
-                  {/* Fecha & Horario */}
+                  {/* Fecha */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
-                    <div className="flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-200">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <span>
-                        {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5 font-mono">
-                      <Clock className="w-3 h-3 text-gray-400" />
-                      <span>{v.horario || "12:30 – 12:48"}</span>
-                    </div>
+                    {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-06-09"}
+                  </td>
+
+                  {/* Hora */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
+                    {v.horario || "12:30 – 12:48"}
                   </td>
 
                   {/* Entrega */}
@@ -118,30 +114,33 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                   {/* Método de Pago */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
 
-                  {/* Monto Total */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle font-extrabold text-gray-900 dark:text-gray-100 text-base">
-                    ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                  {/* Monto Total con Descuento Trazado */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    {hasDiscount ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="line-through text-gray-400 font-normal">
+                          ${Number(v.precioOriginal || (v.total + (v.montoDescuento || 0))).toLocaleString("es-CO")}
+                        </span>
+                        <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                          ${Number(v.total).toLocaleString("es-CO")}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                          -{v.descuentoPorcentaje || 10}% desc.
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                        ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                      </span>
+                    )}
                   </td>
 
-                  {/* Estado Select Badge */}
+                  {/* Estado Badge (Verde Pagado) */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <select
-                      value={v.estado || "Completada"}
-                      onChange={(e) => onUpdateEstado && onUpdateEstado(v.id, e.target.value)}
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none text-center ${
-                        v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Listo"
-                          ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
-                          : v.estado === "En Preparación" || v.estado === "Pendiente"
-                          ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
-                          : "bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
-                      }`}
-                    >
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En Preparación">En Preparación</option>
-                      <option value="Listo">Listo</option>
-                      <option value="Completada">Completada</option>
-                      <option value="Anulada">Anulada</option>
-                    </select>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Pagado
+                    </span>
                   </td>
 
                   {/* Acciones */}

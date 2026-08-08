@@ -318,120 +318,124 @@ export function GestionVentas() {
               </div>
             )}
 
-            {/* Search Bar & Filter Toggle */}
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative flex-1 w-full">
-                <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por cliente o ID..."
-                  className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:ring-2 focus:ring-[#F05454]/50 focus:border-transparent transition-colors placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
+            {/* TAB CONTENT: REPORTES vs HISTORIAL vs PEDIDOS PAGADOS */}
+            {activeTab === "historial" ? (
+              <div className="space-y-6">
+                <VentasHistorialCardsView
+                  ventas={ventas}
+                  onViewDetail={handleViewDetail}
                 />
               </div>
-
-              <button
-                onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
-                className={`w-full sm:w-auto px-4 py-2.5 border rounded-2xl text-sm font-medium flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer ${
-                  filterDropdownOpen
-                    ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
-                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                }`}
-              >
-                <Filter className="w-4 h-4 text-gray-500" />
-                <span>Filtros</span>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
-              </button>
-            </div>
-
-            {/* Inline Filter Panel */}
-            {filterDropdownOpen && (
-              <div className="bg-gray-50/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4">
-                <div className="flex flex-col sm:flex-row items-end gap-4">
-                  {/* Fecha */}
-                  <div className="flex-1 w-full sm:w-auto">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                      Fecha
-                    </label>
+            ) : (
+              <div className="space-y-6 pt-2">
+                {/* Search Bar & Filter Toggle (Only in Pedidos Pagados) */}
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative flex-1 w-full">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
                     <input
-                      type="date"
-                      value={filterFecha}
-                      onChange={(e) => setFilterFecha(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors placeholder:text-gray-400"
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Buscar por cliente o ID..."
+                      className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:ring-2 focus:ring-[#F05454]/50 focus:border-transparent transition-colors placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
                     />
                   </div>
 
-                  {/* Método de pago */}
-                  <div className="flex-1 w-full sm:w-auto">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                      Método de pago
-                    </label>
-                    <select
-                      value={filterMetodoPago}
-                      onChange={(e) => setFilterMetodoPago(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
-                    >
-                      <option value="Todos">Todos</option>
-                      <option value="Efectivo">Efectivo</option>
-                      <option value="Tarjeta">Tarjeta</option>
-                      <option value="Transferencia">Transferencia</option>
-                    </select>
-                  </div>
-
-                  {/* Limpiar */}
-                  <div className="shrink-0 pb-0.5">
-                    <button
-                      onClick={handleClearFilters}
-                      className={`text-sm font-semibold transition-colors cursor-pointer ${
-                        hasActiveFilters
-                          ? "text-[#F05454] hover:text-red-600"
-                          : "text-[#F05454]/60"
-                      }`}
-                    >
-                      Limpiar
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setFilterDropdownOpen(!filterDropdownOpen)}
+                    className={`w-full sm:w-auto px-4 py-2.5 border rounded-2xl text-sm font-medium flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer ${
+                      filterDropdownOpen
+                        ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <Filter className="w-4 h-4 text-gray-500" />
+                    <span>Filtros</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${filterDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </div>
+
+                {/* Inline Filter Panel (Captura 2) */}
+                {filterDropdownOpen && (
+                  <div className="bg-gray-50/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4">
+                    <div className="flex flex-col sm:flex-row items-end gap-4">
+                      {/* Fecha */}
+                      <div className="flex-1 w-full sm:w-auto">
+                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                          Fecha
+                        </label>
+                        <input
+                          type="date"
+                          value={filterFecha}
+                          onChange={(e) => setFilterFecha(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors placeholder:text-gray-400"
+                        />
+                      </div>
+
+                      {/* Método de pago */}
+                      <div className="flex-1 w-full sm:w-auto">
+                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                          Método de pago
+                        </label>
+                        <select
+                          value={filterMetodoPago}
+                          onChange={(e) => setFilterMetodoPago(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
+                        >
+                          <option value="Todos">Todos</option>
+                          <option value="Efectivo">Efectivo</option>
+                          <option value="Tarjeta">Tarjeta</option>
+                          <option value="Transferencia">Transferencia</option>
+                        </select>
+                      </div>
+
+                      {/* Limpiar */}
+                      <div className="shrink-0 pb-0.5">
+                        <button
+                          onClick={handleClearFilters}
+                          className={`text-sm font-semibold transition-colors cursor-pointer ${
+                            hasActiveFilters
+                              ? "text-[#F05454] hover:text-red-600"
+                              : "text-[#F05454]/60"
+                          }`}
+                        >
+                          Limpiar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Counter */}
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {displayedVentas.length} pedido(s) encontrado(s)
+                  </p>
+                </div>
+
+                {/* Content View: Table or Empty State */}
+                {loading ? (
+                  <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
+                    Cargando gestión de ventas...
+                  </div>
+                ) : displayedVentas.length === 0 ? (
+                  <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
+                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">
+                      <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
+                    </div>
+                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                      No se encontraron pedidos con los filtros aplicados
+                    </p>
+                  </div>
+                ) : (
+                  <VentasTable
+                    ventas={displayedVentas}
+                    onViewDetail={handleViewDetail}
+                    onUpdateEstado={updateEstado}
+                  />
+                )}
               </div>
             )}
-
-            {/* Counter */}
-            <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {displayedVentas.length} pedido(s) encontrado(s)
-              </p>
-            </div>
-
-            {/* Content View: Table or Empty State */}
-            {loading ? (
-              <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
-                Cargando gestión de ventas...
-              </div>
-            ) : displayedVentas.length === 0 ? (
-              <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">
-                  <CheckCircle2 className="w-10 h-10 stroke-[1.5]" />
-                </div>
-                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                  No se encontraron pedidos con los filtros aplicados
-                </p>
-              </div>
-            ) : activeTab === "historial" ? (
-              <VentasHistorialTableView
-                ventas={displayedVentas}
-                onViewDetail={handleViewDetail}
-                onUpdateEstado={updateEstado}
-              />
-            ) : (
-              <VentasTable
-                ventas={displayedVentas}
-                onViewDetail={handleViewDetail}
-                onUpdateEstado={updateEstado}
-              />
-            )}
-          </div>
-        )}
       </div>
 
       {/* Detail Modal */}
