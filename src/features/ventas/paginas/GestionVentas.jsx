@@ -5,7 +5,10 @@ import {
   ChevronDown,
   CheckCircle2,
   Clock,
-  BarChart2
+  BarChart2,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
@@ -29,9 +32,19 @@ export function GestionVentas() {
 
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [filterFecha, setFilterFecha] = useState("");
   const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
+
+  const periodLabelMap = {
+    hoy: "Hoy",
+    "7_dias": "Últimos 7 días",
+    este_mes: "Este mes",
+    este_ano: "Este año",
+    personalizado: "Todos los registros"
+  };
+  const periodText = periodLabelMap[selectedPeriod] || "Últimos 7 días";
 
   // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
   const displayedVentas = filteredVentas.filter((v) => {
@@ -57,6 +70,98 @@ export function GestionVentas() {
 
   const handleViewDetail = (v) => {
     setSelectedVentaDetail(v);
+  };
+
+  // Export to Excel (CSV with UTF-8 BOM)
+  const handleExportExcel = () => {
+    const headers = ["N° Factura / Pedido", "Cliente", "Fecha", "Horario", "Entrega", "Método de Pago", "Subtotal", "Descuento", "Total (COP)", "Estado"];
+    const rows = displayedVentas.map(v => [
+      `"${v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`}"`,
+      `"${v.clienteNombre || v.cliente || "Cliente General"}"`,
+      `"${v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"}"`,
+      `"${v.horario || "13:45 - 14:00"}"`,
+      `"${v.tipoEntrega || "En Mesa"}"`,
+      `"${v.metodoPago || "Efectivo"}"`,
+      `"$${Number(v.subtotal || v.total || 0).toLocaleString("es-CO")}"`,
+      `"${v.descuentoPorcentaje ? `-${v.descuentoPorcentaje}%` : "N/A"}"`,
+      `"$${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}"`,
+      `"${v.estado || "Completada"}"`
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Historial_Pedidos_${selectedPeriod}_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export to Printable PDF Window
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Historial de Pedidos - Chazin Food</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #1e293b; }
+            h1 { color: #F05454; font-size: 24px; margin-bottom: 4px; }
+            h2 { color: #64748b; font-size: 14px; font-weight: normal; margin-top: 0; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+            th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+            th { background-color: #f8fafc; color: #475569; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; background: #d1fae5; color: #065f46; }
+            .total { font-weight: bold; text-align: right; }
+            .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <h1>Chazin Food — Historial de Pedidos</h1>
+          <h2>Período: ${periodText} | Generado el: ${new Date().toLocaleDateString("es-CO")} ${new Date().toLocaleTimeString("es-CO")}</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>N° Pedido</th>
+                <th>Cliente</th>
+                <th>Fecha & Horario</th>
+                <th>Entrega</th>
+                <th>Método de Pago</th>
+                <th>Monto Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayedVentas.map(v => `
+                <tr>
+                  <td><strong>${v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`}</strong></td>
+                  <td>${v.clienteNombre || v.cliente || "Cliente General"}</td>
+                  <td>${v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"} (${v.horario || "13:45"})</td>
+                  <td>${v.tipoEntrega || "En Mesa"}</td>
+                  <td>${v.metodoPago || "Efectivo"}</td>
+                  <td><strong>$${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}</strong></td>
+                  <td><span class="badge">${v.estado || "Completada"}</span></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="footer">Chazin Food — Sistema de Gestión Comercial y Pedidos</div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const periods = [
@@ -168,6 +273,50 @@ export function GestionVentas() {
         ) : (
           /* TABLAS: Pedidos Pagados / Historial */
           <div className="space-y-6 pt-2">
+            {/* Historial Header with Exportar Button & Dropdown */}
+            {activeTab === "historial" && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  Historial — {periodText}
+                </h2>
+                <div className="relative shrink-0 self-start sm:self-auto">
+                  <button
+                    onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                    className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    <span>Exportar</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {exportMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-30 py-1.5 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          handleExportExcel();
+                          setExportMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                        <span>Exportar a Excel (.csv)</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleExportPDF();
+                          setExportMenuOpen(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 flex items-center gap-2.5 transition-colors cursor-pointer border-t border-gray-100 dark:border-gray-700/60"
+                      >
+                        <FileText className="w-4 h-4 text-rose-600" />
+                        <span>Exportar a PDF</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Search Bar & Filter Toggle */}
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative flex-1 w-full">
@@ -210,24 +359,6 @@ export function GestionVentas() {
                       onChange={(e) => setFilterFecha(e.target.value)}
                       className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors placeholder:text-gray-400"
                     />
-                  </div>
-
-                  {/* Estado */}
-                  <div className="flex-1 w-full sm:w-auto">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
-                      Estado
-                    </label>
-                    <select
-                      value={filterEstado}
-                      onChange={(e) => setFilterEstado(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
-                    >
-                      <option value="Todos">Todos</option>
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En Preparación">En Preparación</option>
-                      <option value="Completada">Completada</option>
-                      <option value="Anulada">Anulada</option>
-                    </select>
                   </div>
 
                   {/* Método de pago */}
