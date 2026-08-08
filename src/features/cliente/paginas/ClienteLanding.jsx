@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, Award, TrendingUp, Sun, Moon, Menu, MapPin, CreditCard, Banknote, Smartphone, FileText, ChevronRight, ChevronUp, ChevronDown, CheckCircle, Truck, Store, Flame, Gift } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -8,7 +8,6 @@ import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
-
 
 const categorias = [
   { id: 1, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -37,8 +36,7 @@ const adicionesDisponibles = [
   { idAdicion: 5, nombre: "Tocineta", precio: 3000, stockActual: 25, tipo: "Ingrediente", imagen: "🥓" },
   { idAdicion: 6, nombre: "Papas Fritas", precio: 5000, stockActual: 35, tipo: "Acompañamiento", imagen: "🍟" },
   { idAdicion: 7, nombre: "Coca Cola", precio: 3000, stockActual: 60, tipo: "Bebida", imagen: "🥤" },
-  { idAdicion: 8, nombre: "Sprite", precio: 3000, stockActual: 55, tipo: "Bebida", imagen: "🥤" },
-  { idAdicion: 9, nombre: "Jugo de Naranja", precio: 4000, stockActual: 20, tipo: "Bebida", imagen: "🧃" }
+  { idAdicion: 8, nombre: "Sprite", precio: 3000, stockActual: 55, tipo: "Bebida", imagen: "🥤" }
 ];
 
 const fichasTecnicas = {
@@ -52,8 +50,9 @@ const fichasTecnicas = {
 
 function FichaTecnicaProductoCliente({ ficha }) {
   const [open, setOpen] = useState(false);
+  if (!ficha) return null;
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mt-3">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -103,41 +102,66 @@ export function ClienteLanding() {
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
   const { success, error, confirmAction, confirmLogout } = useNotifications();
+
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showEmptyCartLoginModal, setShowEmptyCartLoginModal] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+
   const [checkoutNombre, setCheckoutNombre] = useState("");
   const [checkoutDireccion, setCheckoutDireccion] = useState("");
   const [checkoutMetodoPago, setCheckoutMetodoPago] = useState("efectivo");
-  const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
-  const [checkoutTarjetaMonto, setCheckoutTarjetaMonto] = useState("");
   const [checkoutEspecificaciones, setCheckoutEspecificaciones] = useState("");
   const [checkoutTipoEntrega, setCheckoutTipoEntrega] = useState("domicilio");
   const [checkoutEfectivoPaga, setCheckoutEfectivoPaga] = useState("");
   const [checkoutTransferReferencia, setCheckoutTransferReferencia] = useState("");
   const [checkoutTransferBanco, setCheckoutTransferBanco] = useState("Bancolombia");
+
   const [showPedidos, setShowPedidos] = useState(false);
   const [showPerfil, setShowPerfil] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-  const [pedidos, setPedidos] = useState(() => {
-    const saved = localStorage.getItem("chazin_client_pedidos");
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 1,
-        fecha: "2026-06-02 14:30",
-        items: [
-          { nombre: "Hamburguesa Especial", cantidad: 2, precio: 15000 },
-          { nombre: "Coca Cola", cantidad: 2, precio: 3000 }
-        ],
-        total: 36000,
-        estado: "En preparación"
+
+  const [pedidos, setPedidos] = useState([]);
+  const [loadingPedidos, setLoadingPedidos] = useState(false);
+
+  // Fetch client orders from backend
+  const fetchMyOrders = async () => {
+    if (!isAuthenticated) return;
+    try {
+      setLoadingPedidos(true);
+      const data = await ventasService.getVentas();
+      if (data && Array.isArray(data)) {
+        // Filter orders for current user
+        const userId = user?.idUsuario || user?.id || user?._id;
+        const myOrders = data.filter(v => 
+          v.idUsuario === userId || 
+          v.idCliente === user?.idCliente ||
+          v.clienteNombre === `${user?.nombre || ''} ${user?.apellidos || ''}`.trim()
+        );
+        
+        setPedidos(myOrders.map(o => ({
+          id: o.idVenta || o.id,
+          numeroVenta: o.numeroVenta || `VEN-${String(o.idVenta || o.id).padStart(4, '0')}`,
+          fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString('es-CO') : o.fecha || 'Hoy',
+          items: o.detalles && o.detalles.length > 0 
+            ? o.detalles.map(d => ({ nombre: d.observaciones || `Producto #${d.idVariante}`, cantidad: d.cantidad, precio: d.precioUnitario }))
+            : [{ nombre: 'Pedido de comida', cantidad: 1, precio: o.total }],
+          total: o.total,
+          estado: o.estado || o.estadoEntrega || 'Pendiente'
+        })));
       }
-    ];
-  });
+    } catch (err) {
+      console.log("Error cargando pedidos:", err);
+    } finally {
+      setLoadingPedidos(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyOrders();
+  }, [isAuthenticated, user]);
 
   const productosFiltrados = productos.filter((p) => {
     const matchCategoria = !selectedCategoria || p.categoria === selectedCategoria;
@@ -147,7 +171,7 @@ export function ClienteLanding() {
 
   const handleProductClick = (producto) => {
     if (!isAuthenticated) {
-      navigate("/login");
+      setShowEmptyCartLoginModal(true);
       return;
     }
     setProductoSeleccionado({
@@ -215,24 +239,19 @@ export function ClienteLanding() {
       return;
     }
     if (cart.length === 0) return;
-    setCheckoutNombre(user?.nombre || "");
-    setCheckoutDireccion("");
+    setCheckoutNombre(user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "");
+    setCheckoutDireccion(user?.direccion || "");
     setCheckoutEspecificaciones("");
     setCheckoutMetodoPago("efectivo");
     setCheckoutTipoEntrega("domicilio");
     setCheckoutEfectivoPaga("");
     setCheckoutTransferReferencia("");
     setCheckoutTransferBanco("Bancolombia");
-    setCheckoutTarjetaNumero("");
-    setCheckoutTarjetaMonto("");
     setShowCheckout(true);
   };
 
-  const CLIENT_IVA_RATE = 0;
   const clientSubtotal = getSubtotal();
-  const clientIVA = Math.round(clientSubtotal * CLIENT_IVA_RATE);
-  const clientTotal = clientSubtotal + clientIVA;
-  const totalCheckout = clientTotal;
+  const totalCheckout = clientSubtotal;
   const vueltoEfectivo = Math.max(0, Number(checkoutEfectivoPaga || 0) - totalCheckout);
 
   const handleConfirmarPedido = async () => {
@@ -250,49 +269,42 @@ export function ClienteLanding() {
       error("Referencia requerida", "Ingresa el número de referencia de la transferencia");
       return;
     }
+
     const confirmed = await confirmAction(
       "Confirmar Pedido",
-      "¿Deseas confirmar tu pedido?",
+      `Total a pagar: $${totalCheckout.toLocaleString('es-CO')}. ¿Deseas confirmar tu pedido?`,
       "Sí, confirmar"
     );
+
     if (confirmed) {
       try {
         const ventaPayload = {
-          idCliente: user?.idCliente || user?.idUsuario || 1,
-          idUsuario: user?.idUsuario || user?.id || 1,
+          idCliente: user?.idCliente || null,
+          idUsuario: user?.idUsuario || user?.id || user?._id,
           subtotal: clientSubtotal,
           total: totalCheckout,
           estadoEntrega: "PENDIENTE",
-          observaciones: checkoutEspecificaciones || (checkoutTipoEntrega === "domicilio" ? `Dirección: ${checkoutDireccion}` : "Para llevar"),
+          observaciones: `${checkoutTipoEntrega === "domicilio" ? `Entrega Domicilio (${checkoutDireccion})` : "Para llevar"}. Método: ${checkoutMetodoPago}. ${checkoutEspecificaciones ? `Notas: ${checkoutEspecificaciones}` : ''}`,
           detalles: cart.map(item => ({
             idVariante: item.id || 1,
             cantidad: item.cantidad,
             precioUnitario: item.precio,
             subtotal: item.precio * item.cantidad,
-            observaciones: item.nombre
+            observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
           }))
         };
+
         await ventasService.createVenta(ventaPayload);
+        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado y ha sido enviado a cocina.");
+        clearCart();
+        setShowCheckout(false);
+        setShowCart(false);
+        await fetchMyOrders();
+        setShowPedidos(true);
       } catch (err) {
-        console.log("Creando pedido local de respaldo:", err);
+        console.error("Error confirmando pedido:", err);
+        error("Error al procesar pedido", err.message || "No se pudo conectar con el servidor");
       }
-
-      const newClientOrderId = pedidos.length + 1;
-      const newClientOrder = {
-        id: newClientOrderId,
-        fecha: new Date().toISOString().slice(0, 16).replace("T", " "),
-        items: cart.map(item => ({ nombre: item.nombre, cantidad: item.cantidad, precio: item.precio })),
-        total: totalCheckout,
-        estado: "En preparación"
-      };
-      const updatedClientPedidos = [newClientOrder, ...pedidos];
-      setPedidos(updatedClientPedidos);
-      localStorage.setItem("chazin_client_pedidos", JSON.stringify(updatedClientPedidos));
-
-      success("¡Pedido realizado!", "Tu pedido ha sido enviado a cocina. Recibirás una notificación cuando esté listo.");
-      clearCart();
-      setShowCheckout(false);
-      setShowCart(false);
     }
   };
 
@@ -312,25 +324,31 @@ export function ClienteLanding() {
 
   const getEstadoColor = (estado) => {
     switch (estado) {
+      case "En Preparación":
+      case "PREPARANDO":
       case "En preparación":
-        return "bg-yellow-100 text-yellow-700";
-      case "Listo":
-        return "bg-blue-100 text-blue-700";
+        return "bg-amber-100 text-amber-800 border-amber-300";
+      case "Completada":
+      case "LISTO":
+      case "ENTREGADO":
       case "Entregado":
-        return "bg-green-100 text-green-700";
+        return "bg-emerald-100 text-emerald-800 border-emerald-300";
+      case "Anulada":
+      case "CANCELADO":
+        return "bg-rose-100 text-rose-800 border-rose-300";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "bg-blue-100 text-blue-800 border-blue-300";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 dark:border-b dark:border-gray-800 shadow-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
-              <div className="shrink-0 w-14 h-14 rounded-full overflow-hidden bg-white">
+              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
                 <img
                   src={logoImg}
                   alt="Chazin Food"
@@ -339,17 +357,18 @@ export function ClienteLanding() {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {isAuthenticated ? `¡Bienvenido, ${user?.nombre}!` : "Bienvenido a Chazin Food"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 md:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
-                className="hidden md:inline-flex p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                title="Cambiar Modo"
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
@@ -358,27 +377,29 @@ export function ClienteLanding() {
                 <>
                   <button
                     onClick={() => setShowPerfil(true)}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium"
                   >
                     <User className="w-5 h-5 text-[#f05454]" />
                     <span className="hidden sm:inline">Mi Perfil</span>
                   </button>
 
-
                   <button
-                    onClick={() => setShowPedidos(!showPedidos)}
-                    className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    onClick={() => {
+                      fetchMyOrders();
+                      setShowPedidos(true);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium"
                   >
-                    <Package className="w-5 h-5" />
-                    <span>Mis Pedidos</span>
+                    <Package className="w-5 h-5 text-red-500" />
+                    <span className="hidden sm:inline">Mis Pedidos</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => navigate("/login")}
-                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors font-medium text-sm"
                 >
-                  <User className="w-5 h-5" />
+                  <LogIn className="w-4 h-4" />
                   <span>Iniciar Sesión</span>
                 </button>
               )}
@@ -389,13 +410,13 @@ export function ClienteLanding() {
                     setShowEmptyCartLoginModal(true);
                     return;
                   }
-                  setShowCart(!showCart);
+                  setShowCart(true);
                 }}
-                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm"
               >
                 <ShoppingCart className="w-5 h-5" />
                 {getTotalItems() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-white text-red-600 font-bold text-xs w-6 h-6 rounded-full flex items-center justify-center shadow">
+                  <span className="absolute -top-2 -right-2 bg-white text-red-600 font-extrabold text-xs w-6 h-6 rounded-full flex items-center justify-center shadow-md">
                     {getTotalItems()}
                   </span>
                 )}
@@ -405,10 +426,10 @@ export function ClienteLanding() {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
-                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 rounded-xl transition-colors"
+                  title="Cerrar Sesión"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span>Salir</span>
                 </button>
               )}
             </div>
@@ -417,24 +438,24 @@ export function ClienteLanding() {
       </header>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-red-500 to-red-600 text-white py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4">¡Las mejores hamburguesas de la ciudad!</h2>
-          <p className="text-base sm:text-lg md:text-xl text-red-100">Ordena ahora y recibe en la puerta de tu casa</p>
+      <div className="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 text-white py-10 md:py-14 shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2">
+          <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">¡El sabor auténtico de Chazin Food!</h2>
+          <p className="text-sm sm:text-lg text-red-100 font-medium">Haz tu pedido online y recíbelo fresco en tu puerta</p>
         </div>
       </div>
 
       {/* Search Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-3 border border-gray-100 dark:border-gray-800">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Buscar productos..."
+              placeholder="Buscar por nombre de producto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full pl-12 pr-4 py-3 border-0 bg-gray-50 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-red-500 focus:bg-white dark:focus:bg-gray-800 transition-all text-sm outline-none"
             />
           </div>
         </div>
@@ -442,57 +463,477 @@ export function ClienteLanding() {
 
       {/* Categorías */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">Categorías</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">Categorías</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
           <button
             onClick={() => setSelectedCategoria(null)}
-            className={`p-4 rounded-xl transition-all ${selectedCategoria === null ? "bg-red-500 text-white shadow-lg" : "bg-white dark:bg-gray-900 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+            className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === null ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
           >
-            <div className="text-4xl mb-2">🍽️</div>
-            <p className="font-medium text-sm">Todos</p>
+            <div className="text-3xl">🍽️</div>
+            <p className="text-xs font-semibold">Todos</p>
           </button>
           {categorias.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategoria(cat.id)}
-              className={`p-4 rounded-xl transition-all ${selectedCategoria === cat.id ? "bg-red-500 text-white shadow-lg" : "bg-white dark:bg-gray-900 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+              className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === cat.id ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
             >
-              <div className="text-4xl mb-2">{cat.icon}</div>
-              <p className="font-medium text-sm">{cat.nombre}</p>
+              <div className="text-3xl">{cat.icon}</div>
+              <p className="text-xs font-semibold leading-tight">{cat.nombre}</p>
             </button>
           ))}
         </div>
       </div>
 
       {/* Productos */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          {selectedCategoria ? categorias.find((c) => c.id === selectedCategoria)?.nombre : "Todos los productos"}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
+          {selectedCategoria ? categorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (
-            <div key={producto.id} className="bg-white dark:bg-gray-900 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden">
-              <div className="bg-gradient-to-br from-red-400 to-red-600 h-48 flex items-center justify-center">
-                <div className="text-8xl">{producto.imagen}</div>
+            <div key={producto.id} className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between">
+              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative">
+                <div className="text-7xl">{producto.imagen}</div>
               </div>
-              <div className="p-6">
-                <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 mb-2">{producto.nombre}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{producto.descripcion}</p>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">{producto.nombre}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion}</p>
                 </div>
-                <button
-                  onClick={() => handleProductClick(producto)}
-                  className="w-full py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-bold flex items-center justify-center gap-2"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  Agregar al carrito
-                </button>
+                <div className="space-y-3 pt-2">
+                  <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                  <button
+                    onClick={() => handleProductClick(producto)}
+                    className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Agregar al carrito
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* MODAL DETALLE DE PRODUCTO */}
+      {showProductModal && productoSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowProductModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center pt-2">
+              <div className="text-6xl mb-2">{productoSeleccionado.producto.imagen}</div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion}</p>
+              <p className="text-xl font-extrabold text-red-600 dark:text-red-400 mt-2">${productoSeleccionado.producto.precio.toLocaleString()}</p>
+            </div>
+
+            {/* Cantidad */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad:</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: Math.max(1, productoSeleccionado.cantidad - 1) })}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="font-bold text-gray-900 dark:text-gray-100 w-6 text-center">{productoSeleccionado.cantidad}</span>
+                <button
+                  type="button"
+                  onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: productoSeleccionado.cantidad + 1 })}
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Adiciones */}
+            <div>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Adiciones disponibles:</p>
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {adicionesDisponibles.map((ad) => {
+                  const selected = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === ad.idAdicion);
+                  return (
+                    <div
+                      key={ad.idAdicion}
+                      onClick={() => handleAdicionToggle(ad)}
+                      className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${selected ? "border-red-500 bg-red-50/50 dark:bg-red-950/30 font-semibold" : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{ad.imagen}</span>
+                        <span className="text-gray-800 dark:text-gray-200">{ad.nombre}</span>
+                      </div>
+                      <span className="text-red-600 font-bold">+${ad.precio.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Ficha técnica collapse */}
+            <FichaTecnicaProductoCliente ficha={fichasTecnicas[productoSeleccionado.producto.id]} />
+
+            <button
+              onClick={handleAddToCart}
+              className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Agregar al carrito • ${(
+                (productoSeleccionado.producto.precio +
+                  productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + a.precio * a.cantidad, 0)) *
+                productoSeleccionado.cantidad
+              ).toLocaleString()}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CARRITO */}
+      {showCart && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md h-full p-6 shadow-2xl flex flex-col justify-between border-l border-gray-100 dark:border-gray-800 animate-in slide-in-from-right duration-300">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-6 h-6 text-red-500" />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tu Carrito de Compras</h3>
+                </div>
+                <button
+                  onClick={() => setShowCart(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {cart.length === 0 ? (
+                <div className="text-center py-16 space-y-3">
+                  <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto text-red-500">
+                    <ShoppingCart className="w-8 h-8" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Tu carrito está vacío</p>
+                  <p className="text-xs text-gray-400">Agrega deliciosos productos de nuestro menú</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                  {cart.map((item, index) => (
+                    <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                      <div className="text-3xl">{item.imagen}</div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">{item.nombre}</h4>
+                        {item.adiciones && item.adiciones.length > 0 && (
+                          <p className="text-xs text-gray-400">
+                            Adiciones: {item.adiciones.map(a => a.nombre).join(', ')}
+                          </p>
+                        )}
+                        <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-0.5">${item.precio.toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold"
+                        >
+                          +
+                        </button>
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="p-1 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-4">
+                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100">
+                  <span>Total Pedido:</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl">${clientSubtotal.toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={clearCart}
+                    className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-2xl text-xs hover:bg-gray-200"
+                  >
+                    Vaciar Carrito
+                  </button>
+                  <button
+                    onClick={handleAbrirCheckout}
+                    className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl text-xs shadow-md"
+                  >
+                    Proceder al Pago
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHECKOUT */}
+      {showCheckout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowCheckout(false)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Finalizar Pedido</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ingresa los datos para la entrega de tu pedido</p>
+            </div>
+
+            {/* Tipo de Entrega */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setCheckoutTipoEntrega("domicilio")}
+                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "domicilio" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
+              >
+                Domicilio 🛵
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckoutTipoEntrega("llevar")}
+                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "llevar" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
+              >
+                Para Llevar 🛍️
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Nombre Completo:</label>
+                <input
+                  type="text"
+                  value={checkoutNombre}
+                  onChange={(e) => setCheckoutNombre(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
+                  placeholder="Tu nombre"
+                />
+              </div>
+
+              {checkoutTipoEntrega === "domicilio" && (
+                <div>
+                  <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Dirección de Entrega: *</label>
+                  <input
+                    type="text"
+                    value={checkoutDireccion}
+                    onChange={(e) => setCheckoutDireccion(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
+                    placeholder="Ej: Calle 15 # 24-30 Apt 302"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Método de Pago:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutMetodoPago("efectivo")}
+                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "efectivo" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                  >
+                    <Banknote className="w-4 h-4" />
+                    Efectivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutMetodoPago("transferencia")}
+                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "transferencia" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Nequi/Davi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutMetodoPago("tarjeta")}
+                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "tarjeta" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    Tarjeta
+                  </button>
+                </div>
+              </div>
+
+              {checkoutMetodoPago === "efectivo" && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
+                  <label className="block font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto efectivo pagas?</label>
+                  <input
+                    type="number"
+                    value={checkoutEfectivoPaga}
+                    onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
+                    placeholder={`Ej: ${totalCheckout}`}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-amber-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
+                  />
+                  {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      Vueltos a entregar: ${vueltoEfectivo.toLocaleString('es-CO')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {checkoutMetodoPago === "transferencia" && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
+                  <p className="text-blue-800 dark:text-blue-300 font-semibold">Nequi/Bancolombia: 3190000001</p>
+                  <input
+                    type="text"
+                    value={checkoutTransferReferencia}
+                    onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
+                    placeholder="Número de Comprobante / Referencia *"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Notas especiales o instrucciones:</label>
+                <textarea
+                  rows={2}
+                  value={checkoutEspecificaciones}
+                  onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
+                  placeholder="Ej: Sin cebolla, llamar al llegar..."
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Resumen */}
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex justify-between items-center">
+              <span className="font-extrabold text-sm text-gray-900 dark:text-gray-100">Total a Pagar:</span>
+              <span className="font-black text-xl text-red-600 dark:text-red-400">${totalCheckout.toLocaleString('es-CO')}</span>
+            </div>
+
+            <button
+              onClick={handleConfirmarPedido}
+              className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-5 h-5" />
+              Confirmar Pedido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MIS PEDIDOS */}
+      {showPedidos && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-6 h-6 text-red-500" />
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Mis Pedidos Realizados</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchMyOrders}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+                  title="Actualizar Pedidos"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingPedidos ? "animate-spin" : ""}`} />
+                </button>
+                <button
+                  onClick={() => setShowPedidos(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {pedidos.length === 0 ? (
+              <div className="text-center py-12 space-y-3">
+                <Package className="w-12 h-12 text-gray-300 mx-auto" />
+                <p className="text-sm font-semibold text-gray-500">Aún no has realizado pedidos</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pedidos.map((p) => (
+                  <div key={p.id} className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-gray-200/50 dark:border-gray-700 pb-2 text-xs">
+                      <div>
+                        <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">#{p.numeroVenta || p.id}</span>
+                        <p className="text-gray-400">{p.fecha}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full font-bold border text-xs ${getEstadoColor(p.estado)}`}>
+                        {p.estado}
+                      </span>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      {p.items && p.items.map((it, idx) => (
+                        <div key={idx} className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>{it.cantidad}x {it.nombre}</span>
+                          <span className="font-semibold">${Number(it.precio || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-200/50 dark:border-gray-700 pt-2 flex justify-between items-center text-xs font-bold">
+                      <span className="text-gray-500">Total:</span>
+                      <span className="text-red-600 dark:text-red-400 text-sm">${Number(p.total || 0).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ALERTA INICIAR SESIÓN */}
+      {showEmptyCartLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 border border-gray-100 dark:border-gray-800">
+            <div className="w-14 h-14 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <LogIn className="w-7 h-7" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inicia sesión para ordenar</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Para agregar productos a tu carrito y realizar pedidos necesitas una cuenta de cliente.</p>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => setShowEmptyCartLoginModal(false)}
+                className="py-2.5 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-xl text-xs hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowEmptyCartLoginModal(false);
+                  navigate("/login");
+                }}
+                className="py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs shadow-md"
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Mi Perfil */}
       <ClientePerfilModal
@@ -504,4 +945,3 @@ export function ClienteLanding() {
     </div>
   );
 }
-

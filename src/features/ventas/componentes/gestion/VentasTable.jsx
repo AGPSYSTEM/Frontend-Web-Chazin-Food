@@ -85,9 +85,8 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     </div>
                   </div>
                 </td>
-
                 <td className="px-5 py-4 whitespace-nowrap align-middle font-bold text-gray-900 dark:text-gray-100">
-                  {v.clienteNombre || v.cliente || "Cliente General"}
+                  {typeof v.cliente === 'string' ? v.cliente : (v.clienteNombre || "Cliente General")}
                 </td>
 
                 <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
@@ -110,7 +109,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                 <td className="px-5 py-4 whitespace-nowrap align-middle">
                   <select
-                    value={v.estado || "Completada"}
+                    value={v.estado || "Pendiente"}
                     onChange={(e) => onUpdateEstado && onUpdateEstado(v.id, e.target.value)}
                     className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500/50 appearance-none text-center ${
                       v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Listo"

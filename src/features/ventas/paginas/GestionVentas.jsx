@@ -5,8 +5,7 @@ import {
   ChevronDown,
   CheckCircle2,
   Clock,
-  BarChart2,
-  X
+  BarChart2
 } from "lucide-react";
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
@@ -23,11 +22,12 @@ export function GestionVentas() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
+    selectedPeriod,
+    setSelectedPeriod,
     updateEstado
   } = useGestionVentas();
 
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
-  const [selectedPeriod, setSelectedPeriod] = useState("7_dias");
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [filterFecha, setFilterFecha] = useState("");
   const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
@@ -35,12 +35,10 @@ export function GestionVentas() {
 
   // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
   const displayedVentas = filteredVentas.filter((v) => {
-    // Filter by fecha
     if (filterFecha) {
       const ventaDate = v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "";
       if (ventaDate !== filterFecha) return false;
     }
-    // Filter by método de pago
     if (filterMetodoPago !== "Todos") {
       const metodoPago = v.metodoPago || v.metodo_pago || v.medioPago || "";
       if (metodoPago.toLowerCase() !== filterMetodoPago.toLowerCase()) return false;
@@ -55,7 +53,7 @@ export function GestionVentas() {
     setFilterEstado("Todos");
   };
 
-  const hasActiveFilters = filterFecha !== "" || filterMetodoPago !== "Todos";
+  const hasActiveFilters = filterFecha !== "" || filterMetodoPago !== "Todos" || filterEstado !== "Todos" || searchTerm !== "";
 
   const handleViewDetail = (v) => {
     setSelectedVentaDetail(v);
@@ -66,7 +64,7 @@ export function GestionVentas() {
     { id: "7_dias", label: "7 días" },
     { id: "este_mes", label: "Este mes" },
     { id: "este_ano", label: "Este año" },
-    { id: "personalizado", label: "Personalizado" }
+    { id: "personalizado", label: "Todos" }
   ];
 
   return (
@@ -77,7 +75,7 @@ export function GestionVentas() {
           Gestión de Ventas
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Monitoreo de pedidos pagados y análisis comercial
+          Monitoreo de pedidos pagados, historial completo y análisis comercial
         </p>
       </div>
 
@@ -210,9 +208,26 @@ export function GestionVentas() {
                       type="date"
                       value={filterFecha}
                       onChange={(e) => setFilterFecha(e.target.value)}
-                      placeholder="dd/mm/aaaa"
                       className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors placeholder:text-gray-400"
                     />
+                  </div>
+
+                  {/* Estado */}
+                  <div className="flex-1 w-full sm:w-auto">
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                      Estado
+                    </label>
+                    <select
+                      value={filterEstado}
+                      onChange={(e) => setFilterEstado(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
+                    >
+                      <option value="Todos">Todos</option>
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="En Preparación">En Preparación</option>
+                      <option value="Completada">Completada</option>
+                      <option value="Anulada">Anulada</option>
+                    </select>
                   </div>
 
                   {/* Método de pago */}

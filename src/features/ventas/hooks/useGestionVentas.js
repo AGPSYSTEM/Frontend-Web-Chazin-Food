@@ -8,6 +8,7 @@ export function useGestionVentas() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [selectedPeriod, setSelectedPeriod] = useState("7_dias");
 
   const fetchVentas = useCallback(async () => {
     try {
@@ -27,13 +28,42 @@ export function useGestionVentas() {
   }, [fetchVentas]);
 
   const filteredVentas = ventas.filter((v) => {
+    const clientName = typeof v.cliente === 'string' ? v.cliente : (v.clienteNombre || "");
+    const numVenta = v.numeroVenta || `VEN-${String(v.id || '').padStart(4, "0")}`;
     const matchSearch =
       searchTerm === "" ||
-      v.numeroVenta?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.clienteNombre?.toLowerCase().includes(searchTerm.toLowerCase());
+      numVenta.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(v.id).includes(searchTerm) ||
+      clientName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchEstado = filterEstado === "Todos" || v.estado === filterEstado;
-    return matchSearch && matchEstado;
+    const matchEstado =
+      filterEstado === "Todos" ||
+      v.estado === filterEstado ||
+      v.estadoEntrega === filterEstado ||
+      (filterEstado === "Pendiente" && (v.estado === "Pendiente" || v.estadoEntrega === "PENDIENTE")) ||
+      (filterEstado === "En Preparación" && (v.estado === "En Preparación" || v.estadoEntrega === "PREPARANDO")) ||
+      (filterEstado === "Completada" && (v.estado === "Completada" || v.estadoEntrega === "ENTREGADO" || v.estadoEntrega === "LISTO")) ||
+      (filterEstado === "Anulada" && (v.estado === "Anulada" || v.estadoEntrega === "CANCELADO"));
+
+    let matchPeriod = true;
+    if (v.fecha || v.fechaVenta) {
+      const vDate = new Date(v.fecha || v.fechaVenta);
+      const now = new Date();
+      if (!isNaN(vDate.getTime())) {
+        if (selectedPeriod === "hoy") {
+          matchPeriod = vDate.toDateString() === now.toDateString();
+        } else if (selectedPeriod === "7_dias") {
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchPeriod = vDate >= sevenDaysAgo;
+        } else if (selectedPeriod === "este_mes") {
+          matchPeriod = vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
+        } else if (selectedPeriod === "este_ano") {
+          matchPeriod = vDate.getFullYear() === now.getFullYear();
+        }
+      }
+    }
+
+    return matchSearch && matchEstado && matchPeriod;
   });
 
   const createVenta = async (data) => {
@@ -86,6 +116,8 @@ export function useGestionVentas() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
+    selectedPeriod,
+    setSelectedPeriod,
     refetch: fetchVentas,
     createVenta,
     updateEstado,
