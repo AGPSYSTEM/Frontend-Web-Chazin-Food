@@ -73,6 +73,7 @@ export function useUsuarios() {
         telefono: form.telefono,
         direccion: form.direccion,
         password: form.password,
+        contrasena: form.password,
         idRol: parseInt(form.idRolStr, 10),
         estado: form.estado.toUpperCase()
       };
