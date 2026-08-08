@@ -240,7 +240,12 @@ export function ClienteLanding() {
     }
     if (cart.length === 0) return;
     setCheckoutNombre(user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "");
-    setCheckoutDireccion(user?.direccion || "");
+    const rawDir = user?.direccion || "";
+    let cleanDir = rawDir;
+    if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
+      try { const p = JSON.parse(rawDir); cleanDir = p.direccion || rawDir; } catch (e) { /* keep raw */ }
+    }
+    setCheckoutDireccion(cleanDir);
     setCheckoutEspecificaciones("");
     setCheckoutMetodoPago("efectivo");
     setCheckoutTipoEntrega("domicilio");
