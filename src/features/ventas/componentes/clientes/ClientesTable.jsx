@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Eye, Edit, Copy, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { useNotifications } from "@/shared/hooks/useNotifications";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
-  const { success } = useNotifications();
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -34,12 +32,6 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
       default:
         return "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
     }
-  };
-
-  const handleCopyInfo = (c) => {
-    const text = `Cliente #${c.id || 1} - ${c.nombre} ${c.apellidos || ''} | Tel: ${c.telefono || ''} | Email: ${c.email || ''}`;
-    navigator.clipboard.writeText(text);
-    success("Información copiada", "Datos del cliente copiados al portapapeles");
   };
 
   return (
@@ -137,14 +129,6 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                           className="p-1 text-gray-400 hover:text-emerald-500 transition-colors"
                         >
                           <Edit className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleCopyInfo(c)}
-                          title="Copiar información"
-                          className="p-1 text-gray-400 hover:text-amber-500 transition-colors"
-                        >
-                          <Copy className="w-4 h-4" />
                         </button>
 
                         <button

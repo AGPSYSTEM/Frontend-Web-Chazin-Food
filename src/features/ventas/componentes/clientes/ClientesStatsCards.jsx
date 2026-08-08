@@ -1,11 +1,10 @@
 import { Users, Star, ShoppingBag } from "lucide-react";
 
 export function ClientesStatsCards({ clientes = [] }) {
-  // Compute dynamic metrics if clients exist, otherwise fallback to 6, 2, 2, 1 matching mockup
-  const totalCount = clientes.length > 0 ? clientes.length : 6;
-  const vipCount = clientes.length > 0 ? clientes.filter((c) => c.tipo === "VIP" || c.esVip || c.categoria === "VIP").length || 2 : 2;
-  const frecuentesCount = clientes.length > 0 ? clientes.filter((c) => c.tipo === "Frecuente" || c.estado === "Activo").length || 2 : 2;
-  const nuevosCount = clientes.length > 0 ? clientes.filter((c) => c.tipo === "Nuevo" || c.isNuevo).length || 1 : 1;
+  const totalCount = clientes.length;
+  const vipCount = clientes.filter((c) => (c.tipo || (c.esVip ? "VIP" : "")) === "VIP").length;
+  const frecuentesCount = clientes.filter((c) => (c.tipo || "") === "Frecuente").length;
+  const nuevosCount = clientes.filter((c) => (c.tipo || "") === "Nuevo").length;
 
   const stats = [
     {
