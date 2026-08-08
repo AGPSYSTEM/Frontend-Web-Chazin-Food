@@ -56,7 +56,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
   return (
     <div className="space-y-4">
-      {/* Clean CRUD Table matching system standards and exact reference aesthetic */}
+      {/* Clean CRUD Table matching system standards */}
       <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -64,7 +64,6 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Pedido</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Cliente</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Fecha & Horario</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">Productos</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Entrega</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Método de Pago</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Monto Total</th>
@@ -75,16 +74,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {paginatedVentas.map((v) => {
               const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
-              const inicialCliente = clienteNombre.charAt(0).toUpperCase();
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
-
-              // Determine dynamic product list or fallback pills from order data
-              const productosList = Array.isArray(v.productos) && v.productos.length > 0
-                ? v.productos
-                : [
-                    { cantidad: 1, nombre: "Combo Familiar" },
-                    { cantidad: 1, nombre: "Coca Cola" }
-                  ];
 
               return (
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
@@ -103,21 +93,9 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     </div>
                   </td>
 
-                  {/* Cliente with Red/Coral Circular Avatar & Code */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#F05454] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
-                        {inicialCliente}
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                          <span>{clienteNombre}</span>
-                          <span className="text-xs font-mono text-gray-400 font-normal">
-                            {codigoPedido}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Cliente */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle font-bold text-gray-900 dark:text-gray-100">
+                    {clienteNombre}
                   </td>
 
                   {/* Fecha & Horario */}
@@ -125,26 +103,12 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     <div className="flex items-center gap-1.5 font-medium text-gray-800 dark:text-gray-200">
                       <Calendar className="w-3.5 h-3.5 text-gray-400" />
                       <span>
-                        {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-09"}
+                        {v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5 font-mono">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      <span>{v.horario || "13:05 – 13:20"}</span>
-                    </div>
-                  </td>
-
-                  {/* Productos Item Pills */}
-                  <td className="px-5 py-4 align-middle">
-                    <div className="flex flex-wrap items-center gap-1.5 max-w-xs">
-                      {productosList.map((p, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200/80 dark:border-gray-700 whitespace-nowrap"
-                        >
-                          {p.cantidad || 1}x {p.nombre || p.nombreProducto}
-                        </span>
-                      ))}
+                      <span>{v.horario || "12:30 – 12:48"}</span>
                     </div>
                   </td>
 
@@ -154,27 +118,9 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                   {/* Método de Pago */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
 
-                  {/* Monto Total & Descuento Badge */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    {v.precioOriginal || v.descuentoPorcentaje || v.descuento ? (
-                      <div>
-                        <div className="text-xs text-gray-400 line-through font-mono">
-                          ${Number(v.precioOriginal || (v.total ? Math.round(v.total * 1.11) : 45000)).toLocaleString("es-CO")}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-gray-900 dark:text-gray-100 text-base">
-                            ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
-                          </span>
-                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            -{v.descuentoPorcentaje || 10}% desc.
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="font-extrabold text-gray-900 dark:text-gray-100 text-base">
-                        ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
-                      </span>
-                    )}
+                  {/* Monto Total */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle font-extrabold text-gray-900 dark:text-gray-100 text-base">
+                    ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
                   </td>
 
                   {/* Estado Select Badge */}
@@ -206,7 +152,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                       className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
                     >
                       <Eye className="w-4 h-4 text-[#F05454]" />
-                      <span>Detalle</span>
+                      <span>Ver detalle</span>
                     </button>
                   </td>
                 </tr>

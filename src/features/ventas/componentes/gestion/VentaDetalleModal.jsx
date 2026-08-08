@@ -4,16 +4,18 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
   if (!isOpen || !venta) return null;
 
   const codigo = venta.numeroVenta || venta.codigoPedido || `PED-${String(venta.id).padStart(3, "0")}`;
-  const cliente = venta.clienteNombre || venta.cliente || "Cliente General";
+  const cliente = venta.clienteNombre || (typeof venta.cliente === "string" ? venta.cliente : "Cliente General");
   const fecha = venta.fecha ? new Date(venta.fecha).toISOString().split("T")[0] : "2026-08-06";
   const horario = venta.horario || "12:30 – 12:48";
   const metodoPago = venta.metodoPago || "Efectivo";
   const tipoEntrega = venta.tipoEntrega || "Domicilio";
-  const subtotal = Number(venta.subtotal || 28000);
-  const total = Number(venta.total || 33320);
-  const iva = Number(venta.iva || Math.round(subtotal * 0.19));
+  const subtotal = Number(venta.precioOriginal || venta.subtotal || (venta.total ? Math.round(venta.total * 1.11) : 45000));
+  const total = Number(venta.total || 40500);
+  const descuentoPorcentaje = venta.descuentoPorcentaje || (subtotal > total ? Math.round(((subtotal - total) / subtotal) * 100) : 10);
+  const descuentoMonto = subtotal > total ? subtotal - total : 4500;
+  const iva = Number(venta.iva || Math.round(total * 0.19));
 
-  // Fallback products matching image 4 & 5
+  // Fallback products matching references
   const productos = venta.productos && venta.productos.length > 0
     ? venta.productos
     : [
@@ -44,20 +46,22 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
       ];
 
   const getEntregaIcon = (tipo) => {
-    if (tipo === "En Mesa") return "🍽️ En Mesa";
-    if (tipo === "Recoger") return "🏪 Recoger";
+    const t = (tipo || "").toLowerCase();
+    if (t.includes("mesa")) return "🍽️ En Mesa";
+    if (t.includes("recoger") || t.includes("llevar")) return "🏪 Recoger";
     return "🛵 Domicilio";
   };
 
   const getMetodoIcon = (metodo) => {
-    if (metodo === "Tarjeta") return "💳 Tarjeta";
+    const m = (metodo || "").toLowerCase();
+    if (m.includes("tarjeta")) return "💳 Tarjeta";
     return "💵 Efectivo";
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
       <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh] border border-gray-100 dark:border-gray-800">
-        {/* Dark Blue Header matching screenshot 4 & 5 */}
+        {/* Dark Header */}
         <div className="bg-[#334155] text-white p-6 relative shrink-0">
           <button
             onClick={onClose}
@@ -119,11 +123,11 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 className="bg-white dark:bg-gray-800/80 border border-slate-200/80 dark:border-gray-700 rounded-2xl p-4 space-y-1.5 shadow-2xs"
               >
                 <div className="flex items-center justify-between font-bold text-sm text-gray-900 dark:text-gray-100">
-                  <span>{p.nombre}</span>
-                  <span>${Number(p.total || p.precioUnitario * p.cantidad).toLocaleString("es-CO")}</span>
+                  <span>{p.nombre || p.nombreProducto}</span>
+                  <span>${Number(p.total || (p.precioUnitario || 15000) * (p.cantidad || 1)).toLocaleString("es-CO")}</span>
                 </div>
                 <div className="text-xs text-gray-400 font-medium">
-                  {p.cantidad} × ${Number(p.precioUnitario).toLocaleString("es-CO")}
+                  {p.cantidad || 1} × ${Number(p.precioUnitario || 15000).toLocaleString("es-CO")}
                 </div>
 
                 {/* Adiciones pills */}
@@ -143,7 +147,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
             ))}
           </div>
 
-          {/* Summary Box matching screenshot 5 */}
+          {/* Summary Box with Discount Line */}
           <div className="bg-slate-50/90 dark:bg-gray-800/70 border border-slate-100 dark:border-gray-700 rounded-2xl p-4 space-y-2.5 text-sm">
             <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
               <span>Subtotal</span>
@@ -151,6 +155,13 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 ${subtotal.toLocaleString("es-CO")}
               </span>
             </div>
+
+            {descuentoMonto > 0 && (
+              <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>Descuento (-{descuentoPorcentaje}%)</span>
+                <span>-${descuentoMonto.toLocaleString("es-CO")}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
               <span>IVA (19%)</span>
