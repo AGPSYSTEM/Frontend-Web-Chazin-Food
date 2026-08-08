@@ -50,15 +50,15 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
     ];
 
     const defaultProductosMasVendidos = [
-      { nombre: "Hamburguesa\nEsp.", cantidad: 38, fill: "#10B981" },
-      { nombre: "Combo Familiar", cantidad: 24, fill: "#34D399" },
-      { nombre: "Pollo\nBroaster", cantidad: 21, fill: "#5EEAD4" },
-      { nombre: "Salchipapa", cantidad: 19, fill: "#86EFAC" },
-      { nombre: "Perro\nCaliente", cantidad: 15, fill: "#BBF7D0" }
+      { nombre: "Hamburguesa\nEsp.", cantidad: 38, fill: "#2ECC71" },
+      { nombre: "Combo Familiar", cantidad: 24, fill: "#45D98A" },
+      { nombre: "Pollo\nBroaster", cantidad: 21, fill: "#6DE4A8" },
+      { nombre: "Salchipapa", cantidad: 19, fill: "#95EEC0" },
+      { nombre: "Perro\nCaliente", cantidad: 15, fill: "#BDF5D7" }
     ];
 
     const defaultMetodosPago = [
-      { nombre: "Efectivo", porcentaje: 65, valor: 65, color: "#10B981" },
+      { nombre: "Efectivo", porcentaje: 65, valor: 65, color: "#2ECC71" },
       { nombre: "Tarjeta", porcentaje: 35, valor: 35, color: "#3B82F6" }
     ];
 
@@ -160,7 +160,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
         </h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="20%">
+            <BarChart data={reportData.ingresosDiarios} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barCategoryGap="10%">
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
               <XAxis dataKey="dia" axisLine={true} tickLine={true} tick={{ fill: "#64748B", fontSize: 12 }} />
               <YAxis
@@ -175,7 +175,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
                 formatter={(val) => [`$${val.toLocaleString("es-CO")}`, "Ingresos"]}
                 contentStyle={{ backgroundColor: "#1e293b", borderRadius: "12px", border: "none", color: "#fff" }}
               />
-              <Bar dataKey="ingresos" fill="#34D399" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ingresos" fill="#2ECC71" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
