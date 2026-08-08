@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert } from "lucide-react";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
   const [pageSize, setPageSize] = useState(10);
@@ -61,6 +61,9 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
             ) : (
               paginatedClientes.map((c, index) => {
                 const tipoCliente = c.tipo || (c.esVip ? "VIP" : "Regular");
+                const tieneCuenta = c.tieneCuenta !== false && !!c.idUsuario;
+                const isActivo = tieneCuenta && (c.estado === "Activo" || c.estado === 1);
+
                 return (
                   <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-5 py-4 text-gray-500 dark:text-gray-400 font-medium text-xs">
@@ -73,9 +76,16 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                           {c.nombre ? c.nombre.charAt(0).toUpperCase() : "C"}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                            {c.nombre} {c.apellidos || ""}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                              {c.nombre} {c.apellidos || ""}
+                            </p>
+                            {!tieneCuenta && (
+                              <span title="Sin cuenta de usuario asociada" className="text-amber-500">
+                                <ShieldAlert className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-gray-400 mt-0.5 max-w-xs truncate">
                             {c.direccion || "Medellín, Colombia"}
                           </p>
@@ -84,21 +94,25 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                     </td>
 
                     <td className="px-5 py-4 text-gray-600 dark:text-gray-300 font-medium">
-                      {c.telefono || "300 000 0000"}
+                      {c.telefono || "Sin teléfono"}
                     </td>
 
                     <td className="px-5 py-4">
-                      <a href={`mailto:${c.email}`} className="text-blue-500 hover:underline font-medium">
-                        {c.email || "sin.email@ejemplo.com"}
-                      </a>
+                      {c.email ? (
+                        <a href={`mailto:${c.email}`} className="text-blue-500 hover:underline font-medium">
+                          {c.email}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 italic">Sin cuenta</span>
+                      )}
                     </td>
 
                     <td className="px-5 py-4 text-center font-bold text-gray-700 dark:text-gray-300">
-                      {c.compras || Math.floor(Math.random() * 30) + 5}
+                      {c.compras || 0}
                     </td>
 
                     <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100">
-                      {c.totalGastado || `$${((c.compras || 15) * 16000).toLocaleString("es-CO")}`}
+                      {c.totalGastado || "$0"}
                     </td>
 
                     <td className="px-5 py-4">
@@ -108,8 +122,12 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40">
-                        {c.estado === 1 || c.estado === "Activo" ? "Activo" : "Inactivo"}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        isActivo
+                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                          : "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50"
+                      }`}>
+                        {isActivo ? "Activo" : "Inactivo / Pendiente"}
                       </span>
                     </td>
 
