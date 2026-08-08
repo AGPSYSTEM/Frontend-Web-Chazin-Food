@@ -1,13 +1,24 @@
 import { Calendar, Clock, Eye } from "lucide-react";
 
+function formatDateSafe(dateVal, fallback = "2026-06-09") {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return String(dateVal).slice(0, 10) || fallback;
+  }
+}
+
 export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
-  // Sample data fallback if list is empty or for full demonstration matching reference images
-  const itemsToDisplay = ventas.length > 0 ? ventas : [
+  // Sample data fallback if list is empty
+  const itemsToDisplay = Array.isArray(ventas) && ventas.length > 0 ? ventas : [
     {
       id: 1,
       clienteNombre: "María López",
       codigoPedido: "PED-002",
-      fecha: "2026-08-09",
+      fecha: "2026-06-09",
       horario: "13:05 – 13:20",
       precioOriginal: 45000,
       total: 40500,
@@ -18,7 +29,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
       id: 2,
       clienteNombre: "Juan Garcia",
       codigoPedido: "PED-001",
-      fecha: "2026-08-09",
+      fecha: "2026-06-09",
       horario: "12:30 – 12:45",
       total: 28000,
       productos: [
@@ -31,7 +42,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
       id: 3,
       clienteNombre: "Luis Rodríguez",
       codigoPedido: "PED-005",
-      fecha: "2026-08-08",
+      fecha: "2026-06-08",
       horario: "14:15 – 14:30",
       total: 36000,
       productos: [
@@ -43,7 +54,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
       id: 4,
       clienteNombre: "Ana Martínez",
       codigoPedido: "PED-004",
-      fecha: "2026-08-08",
+      fecha: "2026-06-08",
       horario: "11:20 – 11:35",
       precioOriginal: 54000,
       total: 45900,
@@ -57,27 +68,29 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      {itemsToDisplay.map((v) => {
-        const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
-        const inicial = clienteNombre.charAt(0).toUpperCase();
-        const codigo = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
-        const fechaStr = v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-09";
-        const horarioStr = v.horario || "13:05 – 13:20";
-        const totalNum = Number(v.total || v.subtotal || 40500);
+      {itemsToDisplay.map((v, index) => {
+        const rawName = typeof v?.cliente === "string" ? v.cliente : (v?.clienteNombre || v?.cliente?.nombre || "Cliente General");
+        const clienteNombre = String(rawName || "Cliente General");
+        const inicial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
+        const codigo = v?.numeroVenta || v?.codigoPedido || `PED-${String(v?.id || index + 1).padStart(3, "0")}`;
+        const fechaStr = formatDateSafe(v?.fecha || v?.fechaVenta, "2026-06-09");
+        const horarioStr = v?.horario || "13:05 – 13:20";
+        const totalNum = Number(v?.total || v?.subtotal || 40500);
         
-        // Show discount if present or if order has precioOriginal / descuentoPorcentaje
-        const hasDiscount = Boolean(v.descuentoPorcentaje || v.precioOriginal || v.descuento);
-        const originalPriceNum = Number(v.precioOriginal || Math.round(totalNum * 1.11));
-        const discountPct = v.descuentoPorcentaje || 10;
+        const hasDiscount = Boolean(v?.descuentoPorcentaje || v?.precioOriginal || v?.descuentoAplicado);
+        const originalPriceNum = Number(v?.precioOriginal || Math.round(totalNum * 1.11));
+        const discountPct = v?.descuentoPorcentaje || 10;
 
-        const productosList = Array.isArray(v.productos) && v.productos.length > 0
+        const productosList = Array.isArray(v?.productos) && v.productos.length > 0
           ? v.productos
-          : [{ cantidad: 1, nombre: "Combo Familiar" }];
+          : (Array.isArray(v?.detalles) && v.detalles.length > 0 
+              ? v.detalles.map(d => ({ cantidad: d.cantidad || 1, nombre: d.observaciones || `Producto #${d.idVariante}` }))
+              : [{ cantidad: 1, nombre: "Combo Familiar" }]);
 
         return (
           <div
-            key={v.id}
-            className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4 hover:shadow-sm transition-all"
+            key={v?.id || index}
+            className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-4 hover:shadow-sm transition-all text-left"
           >
             {/* Header: Avatar, Name & Code, Date & Time */}
             <div className="flex items-start gap-3">
@@ -128,6 +141,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
 
               {/* Action Button: Detalle in coral red #F05454 */}
               <button
+                type="button"
                 onClick={() => onViewDetail && onViewDetail(v)}
                 className="flex items-center gap-1.5 text-xs font-bold text-[#F05454] hover:text-red-600 transition-colors cursor-pointer py-1 px-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40"
               >
@@ -143,7 +157,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
                   key={idx}
                   className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-gray-50 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200/80 dark:border-gray-700/80 whitespace-nowrap"
                 >
-                  {p.cantidad || 1}x {p.nombre || p.nombreProducto}
+                  {p.cantidad || 1}x {p.nombre || p.nombreProducto || "Producto"}
                 </span>
               ))}
             </div>
