@@ -4,7 +4,14 @@ import { apiClient } from "@/shared/api/apiClient";
 export const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chazin_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const login = async (correo, contraseña) => {
     try {

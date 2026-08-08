@@ -1,4 +1,4 @@
-import { Eye, FileText, ShoppingCart, Calendar } from "lucide-react";
+import { Eye, FileText, ShoppingCart, Calendar, Pencil, CheckCircle2, XCircle } from "lucide-react";
 
 const estadoConfig = {
   RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300", label: "Recibida" },
@@ -10,7 +10,22 @@ const estadoConfig = {
   Anulada:   { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Anulada" },
 };
 
-export function ComprasTable({ compras = [], onViewDetail, onUpdateEstado }) {
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
+function esEstadoRecibida(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "RECIBIDA" || e === "COMPLETADA";
+}
+
+function esEstadoCancelada(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "CANCELADA" || e === "ANULADA";
+}
+
+export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado, onCancelar }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -39,6 +54,9 @@ export function ComprasTable({ compras = [], onViewDetail, onUpdateEstado }) {
                   label: c.estado || "Desconocido"
                 };
                 const fecha = c.fechaCompra || c.fecha;
+                const estaPendiente = esEstadoPendiente(c.estado);
+                const estaRecibida = esEstadoRecibida(c.estado);
+                const estaCancelada = esEstadoCancelada(c.estado);
                 return (
                   <tr key={c.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-6 py-4">
@@ -76,13 +94,42 @@ export function ComprasTable({ compras = [], onViewDetail, onUpdateEstado }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => onViewDetail(c)}
-                        title="Ver Detalle"
-                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        {estaPendiente && onUpdateEstado && (
+                          <button
+                            onClick={() => onUpdateEstado(c.id, "RECIBIDA")}
+                            title="Marcar como Recibida (actualiza stock)"
+                            className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!estaCancelada && onCancelar && (
+                          <button
+                            onClick={() => onCancelar(c.id)}
+                            title={estaRecibida ? "Anular compra (revierte stock)" : "Anular compra"}
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 dark:text-red-400 transition-colors"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        {estaPendiente && onEdit && (
+                          <button
+                            onClick={() => onEdit(c)}
+                            title="Editar Compra"
+                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-500 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => onViewDetail(c)}
+                          title="Ver Detalle"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

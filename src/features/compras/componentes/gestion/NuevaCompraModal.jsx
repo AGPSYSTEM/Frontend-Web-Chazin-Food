@@ -9,7 +9,8 @@ import {
   User,
   CalendarDays,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Pencil
 } from "lucide-react";
 import { comprasService } from "../../servicios/comprasService";
 import { apiClient } from "@/shared/api/apiClient";
@@ -21,20 +22,47 @@ const labelCls =
 
 const DEFAULT_ITEM = { idInsumo: "", cantidad: "", precioUnitario: "", subtotal: 0 };
 
-export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
+function parseFecha(dateValue) {
+  if (!dateValue) return new Date().toISOString().split("T")[0];
+  try {
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+    return d.toISOString().split("T")[0];
+  } catch {
+    return new Date().toISOString().split("T")[0];
+  }
+}
+
+function esEstadoPendiente(estado) {
+  const e = String(estado || "").toUpperCase();
+  return e === "PENDIENTE";
+}
+
+function normalizarEstadoSelect(estado) {
+  const e = String(estado || "").trim().toUpperCase();
+  if (e === "RECIBIDA" || e === "COMPLETADA") return "RECIBIDA";
+  if (e === "PENDIENTE") return "PENDIENTE";
+  if (e === "CANCELADA" || e === "ANULADA") return "CANCELADA";
+  return "PENDIENTE";
+}
+
+export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra }) {
+  const esEdicion = Boolean(editCompra && editCompra.id);
+  const idCompraEdit = esEdicion ? editCompra.id : null;
+
   const [proveedores, setProveedores] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const [form, setForm] = useState({
     idProveedor: "",
     fechaCompra: new Date().toISOString().split("T")[0],
-    estado: "RECIBIDA"
+    estado: "PENDIENTE"
   });
   const [items, setItems] = useState([{ ...DEFAULT_ITEM }]);
 
-  // Load proveedores & insumos
   const loadCatalogos = useCallback(async () => {
     try {
       setLoading(true);
@@ -51,21 +79,61 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
     }
   }, []);
 
+  const poblarDatosEdicion = useCallback(async () => {
+    if (!idCompraEdit) return;
+    try {
+      setLoading(true);
+      const detalle = await comprasService.getCompraById(idCompraEdit);
+      if (!esEstadoPendiente(detalle.estado)) {
+        onClose?.();
+        return;
+      }
+      const estadoNormalizado = normalizarEstadoSelect(detalle.estado);
+      setForm({
+        idProveedor: detalle.idProveedor ? String(detalle.idProveedor) : "",
+        fechaCompra: parseFecha(detalle.fechaCompra),
+        estado: estadoNormalizado
+      });
+      const det = detalle.detalles || [];
+      setItems(det.length === 0
+        ? [{ ...DEFAULT_ITEM }]
+        : det.map((d) => ({
+            idInsumo: String(d.idInsumo),
+            cantidad: String(parseFloat(d.cantidad) || 0),
+            precioUnitario: String(parseFloat(d.precioUnitario) || 0),
+            subtotal: parseFloat(d.subtotal || (parseFloat(d.cantidad) * parseFloat(d.precioUnitario))) || 0
+          }))
+      );
+    } catch (err) {
+      console.error("Error cargando compra para edición:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [idCompraEdit, onClose]);
+
   useEffect(() => {
     if (isOpen) {
       loadCatalogos();
-      setForm({
-        idProveedor: "",
-        fechaCompra: new Date().toISOString().split("T")[0],
-        estado: "RECIBIDA"
-      });
-      setItems([{ ...DEFAULT_ITEM }]);
+      setSubmitted(false);
+      if (esEdicion) {
+        if (editCompra && !esEstadoPendiente(editCompra.estado)) {
+          onClose?.();
+          return;
+        }
+        poblarDatosEdicion();
+      } else {
+        setForm({
+          idProveedor: "",
+          fechaCompra: new Date().toISOString().split("T")[0],
+          estado: "PENDIENTE"
+        });
+        setItems([{ ...DEFAULT_ITEM }]);
+      }
     }
-  }, [isOpen, loadCatalogos]);
+  }, [isOpen, esEdicion, editCompra, loadCatalogos, poblarDatosEdicion, onClose]);
 
   if (!isOpen) return null;
 
-  // Item handlers
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
     let newPrice = updated[index].precioUnitario;
@@ -85,7 +153,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
       precioUnitario: field === "idInsumo" ? newPrice : field === "precioUnitario" ? value : updated[index].precioUnitario
     };
 
-    // Recalculate subtotal
     const cant = parseFloat(updated[index].cantidad) || 0;
     const precio = parseFloat(updated[index].precioUnitario) || 0;
     updated[index].subtotal = cant * precio;
@@ -111,13 +178,17 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitted || saving) return;
     if (!isValid()) return;
+    if (esEdicion && editCompra && !esEstadoPendiente(editCompra.estado)) return;
+    setSubmitted(true);
     setSaving(true);
     try {
+      const estadoNormalizadoPayload = normalizarEstadoSelect(form.estado);
       const payload = {
         idProveedor: parseInt(form.idProveedor),
         fechaCompra: form.fechaCompra,
-        estado: form.estado,
+        estado: estadoNormalizadoPayload,
         total: totalGeneral,
         detalles: items.map((it) => ({
           idInsumo: parseInt(it.idInsumo),
@@ -126,17 +197,22 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
           subtotal: it.subtotal
         }))
       };
-      await comprasService.createCompra(payload);
-      onCreated?.();
+      if (esEdicion) {
+        await comprasService.updateCompra(idCompraEdit, payload);
+        onUpdated?.();
+      } else {
+        await comprasService.createCompra(payload);
+        onCreated?.();
+      }
       onClose();
     } catch (err) {
-      console.error("Error al crear compra:", err);
+      console.error("Error al guardar compra:", err);
+      setSubmitted(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // Filter & group insumos based on selected provider
   const selectedProveedorId = form.idProveedor ? String(form.idProveedor) : null;
   const insumosAsociados = selectedProveedorId
     ? insumos.filter((i) => String(i.idProveedor) === selectedProveedorId)
@@ -151,18 +227,21 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
         className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800"
         style={{ animation: "fadeInScale 0.2s ease-out" }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F05454]/10 flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-[#F05454]" />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${esEdicion ? "bg-blue-50 dark:bg-blue-900/20" : "bg-[#F05454]/10"}`}>
+              {esEdicion
+                ? <Pencil className="w-5 h-5 text-blue-500" />
+                : <ShoppingCart className="w-5 h-5 text-[#F05454]" />}
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                Nueva Compra
+                {esEdicion ? "Editar Compra" : "Nueva Compra"}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Registrar orden de compra de insumos
+                {esEdicion
+                  ? `Modificando orden de compra #${idCompraEdit}`
+                  : "Registrar orden de compra de insumos"}
               </p>
             </div>
           </div>
@@ -174,7 +253,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
           </button>
         </div>
 
-        {/* Body */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
@@ -186,9 +264,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
               </div>
             ) : (
               <>
-                {/* Proveedor + Fecha + Estado */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Proveedor */}
                   <div>
                     <label className={labelCls}>
                       <User className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
@@ -217,7 +293,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                     </div>
                   </div>
 
-                  {/* Fecha de compra */}
                   <div>
                     <label className={labelCls}>
                       <CalendarDays className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
@@ -234,26 +309,65 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                     />
                   </div>
 
-                  {/* Estado */}
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Estado</label>
-                    <div className="relative">
-                      <select
-                        value={form.estado}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, estado: e.target.value }))
-                        }
-                        className={inputCls + " appearance-none pr-10"}
-                      >
-                        <option value="RECIBIDA">Recibida</option>
-                        <option value="PENDIENTE">Pendiente</option>
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <label className={labelCls}>
+                      Estado
+                      {esEdicion && (
+                        <span className="ml-2 text-[10px] font-normal text-gray-400">
+                          (Para cambiar el estado usa la acción dedicada "Marcar como Recibida" desde la tabla o el detalle)
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex items-start gap-3 flex-col sm:flex-row">
+                      <div className="relative flex-1 w-full">
+                        <select
+                          value={normalizarEstadoSelect(form.estado)}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, estado: e.target.value }))
+                          }
+                          disabled={true}
+                          className={inputCls + " appearance-none pr-10 opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-700"}
+                        >
+                          {!esEdicion && <option value="PENDIENTE">Pendiente (por defecto)</option>}
+                          {esEdicion && normalizarEstadoSelect(form.estado) === "RECIBIDA" && <option value="RECIBIDA">Recibida</option>}
+                          {esEdicion && normalizarEstadoSelect(form.estado) === "CANCELADA" && <option value="CANCELADA">Cancelada</option>}
+                          {esEdicion && <option value="PENDIENTE">Pendiente</option>}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <span className={`shrink-0 inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold border ${
+                          normalizarEstadoSelect(form.estado) === "RECIBIDA"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                            : normalizarEstadoSelect(form.estado) === "CANCELADA"
+                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                            : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+                        }`}>
+                          {normalizarEstadoSelect(form.estado) === "RECIBIDA"
+                            ? "✅ Recibida"
+                            : normalizarEstadoSelect(form.estado) === "CANCELADA"
+                            ? "❌ Cancelada"
+                            : "⏳ Pendiente"}
+                        </span>
+                      </div>
                     </div>
+                    {!esEdicion && (
+                      <div className="mt-2 text-[11px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
+                        <strong>ℹ️ Importante:</strong> Todas las compras se crean en estado <strong>Pendiente</strong>. El stock de los insumos <strong>NO</strong> se actualizará hasta que manualmente marques la compra como <strong>Recibida</strong> desde la tabla o el detalle, cuando realmente lleguen los insumos.
+                      </div>
+                    )}
+                    {esEdicion && (
+                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg p-3">
+                        <strong>Nota:</strong> No puedes cambiar el estado desde aquí. Usa los botones de acción:
+                        <span className="inline-flex items-center mx-1 text-green-600 dark:text-green-400 font-semibold">✅ Marcar como Recibida</span>
+                        o
+                        <span className="inline-flex items-center mx-1 text-red-500 font-semibold">❌ Anular</span>
+                        disponibles en cada fila de la tabla o dentro del detalle de la compra.
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Banner de insumos asociados si hay proveedor seleccionado */}
                 {selectedProveedorId && (
                   <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 flex items-center gap-2 text-xs text-blue-700 dark:text-blue-300">
                     <Sparkles className="w-4 h-4 shrink-0 text-blue-500" />
@@ -265,7 +379,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                   </div>
                 )}
 
-                {/* Separador */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
@@ -287,7 +400,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                         key={index}
                         className="grid grid-cols-12 gap-2 items-end bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-700"
                       >
-                        {/* Insumo */}
                         <div className="col-span-12 sm:col-span-5">
                           <label className={labelCls}>
                             <Package className="inline w-3 h-3 mr-1" />
@@ -303,8 +415,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                               className={inputCls + " appearance-none pr-8 text-xs font-medium"}
                             >
                               <option value="">Selecciona insumo</option>
-
-                              {/* Insumos Asociados al Proveedor */}
                               {selectedProveedorId && insumosAsociados.length > 0 && (
                                 <optgroup label="⭐ Insumos de este Proveedor">
                                   {insumosAsociados.map((ins) => (
@@ -317,8 +427,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                                   ))}
                                 </optgroup>
                               )}
-
-                              {/* Otros Insumos */}
                               <optgroup label={selectedProveedorId && insumosAsociados.length > 0 ? "Otros Insumos Disponibles" : "Todos los Insumos"}>
                                 {insumosOtros.map((ins) => (
                                   <option
@@ -334,7 +442,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           </div>
                         </div>
 
-                        {/* Cantidad */}
                         <div className="col-span-4 sm:col-span-2">
                           <label className={labelCls}>Cantidad *</label>
                           <input
@@ -351,7 +458,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           />
                         </div>
 
-                        {/* Precio Unitario */}
                         <div className="col-span-5 sm:col-span-3">
                           <label className={labelCls}>
                             <DollarSign className="inline w-3 h-3 mr-0.5" />
@@ -371,15 +477,13 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                           />
                         </div>
 
-                        {/* Subtotal */}
                         <div className="col-span-10 sm:col-span-2">
                           <label className={labelCls}>Subtotal</label>
                           <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200">
-                            ${item.subtotal.toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                            ${Number(item.subtotal || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
                           </div>
                         </div>
 
-                        {/* Delete */}
                         <div className="col-span-2 sm:col-span-1 flex justify-end">
                           <button
                             type="button"
@@ -396,7 +500,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
                   </div>
                 </div>
 
-                {/* Total general */}
                 <div className="flex justify-end">
                   <div className="bg-[#F05454]/10 rounded-xl px-5 py-3 flex items-center gap-3">
                     <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -411,7 +514,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
             )}
           </div>
 
-          {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex justify-end gap-3 shrink-0">
             <button
               type="button"
@@ -423,10 +525,14 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated }) {
             <button
               type="submit"
               disabled={saving || !isValid()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-md transition-colors"
+              className={`flex items-center gap-2 px-5 py-2.5 ${esEdicion ? "bg-blue-500 hover:bg-blue-600" : "bg-[#F05454] hover:bg-[#d84343]"} disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-md transition-colors`}
             >
-              <ShoppingCart className="w-4 h-4" />
-              {saving ? "Registrando..." : "Registrar Compra"}
+              {esEdicion
+                ? <Pencil className="w-4 h-4" />
+                : <ShoppingCart className="w-4 h-4" />}
+              {saving
+                ? "Guardando..."
+                : esEdicion ? "Guardar Cambios" : "Registrar Compra"}
             </button>
           </div>
         </form>

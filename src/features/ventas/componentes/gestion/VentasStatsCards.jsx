@@ -3,18 +3,17 @@ import { CheckCircle2, TrendingUp, ShoppingBag } from "lucide-react";
 export function VentasStatsCards({ ventas = [] }) {
   // Calculate real metrics if available, or fallback to sample values matching screenshot ($296.400, 10, $29.640, $13.600)
   const totalVentasSum = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
-  const totalVentasStr = totalVentasSum > 0 ? `$${totalVentasSum.toLocaleString("es-CO")}` : "$296.400";
+  const totalVentasStr = `$${totalVentasSum.toLocaleString("es-CO")}`;
 
-  const pedidosPagadosCount = ventas.length > 0
-    ? ventas.filter(v => v.estado === "Completada" || v.estado === "Entregado" || v.estado === "Pagado").length || ventas.length
-    : 10;
+  const pedidosCount = ventas.length;
   
-  const ticketPromedioVal = totalVentasSum > 0 && pedidosPagadosCount > 0 
-    ? Math.round(totalVentasSum / pedidosPagadosCount) 
-    : 29640;
+  const ticketPromedioVal = totalVentasSum > 0 && pedidosCount > 0 
+    ? Math.round(totalVentasSum / pedidosCount) 
+    : 0;
   const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
 
-  const descOtorgadosStr = "$13.600";
+  const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.descuentoAplicado || 0), 0);
+  const descOtorgadosStr = `$${descOtorgadosSum.toLocaleString("es-CO")}`;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -40,7 +39,7 @@ export function VentasStatsCards({ ventas = [] }) {
         </div>
         <div>
           <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block">
-            {pedidosPagadosCount}
+            {pedidosCount}
           </span>
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1 block">
             Pedidos Pagados
