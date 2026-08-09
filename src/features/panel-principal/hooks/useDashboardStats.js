@@ -1,24 +1,38 @@
 import { useState, useEffect, useCallback } from "react";
 import { dashboardService } from "../servicios/dashboardService";
-import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useDashboardStats() {
-  const notify = useNotifications();
   const [stats, setStats] = useState({
-    ventasTotal: 28400,
-    pedidosTotal: 876,
-    insumosBajoStock: 3,
-    clientesTotal: 412
+    ventasTotal: 0,
+    ventasVariacion: 12.5,
+    pedidosTotal: 0,
+    pedidosVariacion: 8.2,
+    clientesActivos: 0,
+    clientesVariacion: 15.3,
+    productosTotal: 0,
+    insumosBajoStock: 0
   });
-  const [loading, setLoading] = useState(false);
+  const [ventasChart, setVentasChart] = useState([]);
+  const [productosPopulares, setProductosPopulares] = useState([]);
+  const [alertasStock, setAlertasStock] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await dashboardService.getStats();
-      if (data) setStats(data);
+      const [statsRes, chartRes, popRes, alertasRes] = await Promise.all([
+        dashboardService.getStats().catch(() => null),
+        dashboardService.getVentasChart().catch(() => []),
+        dashboardService.getProductosPopulares().catch(() => []),
+        dashboardService.getAlertasStock().catch(() => [])
+      ]);
+
+      if (statsRes) setStats(statsRes);
+      if (Array.isArray(chartRes)) setVentasChart(chartRes);
+      if (Array.isArray(popRes)) setProductosPopulares(popRes);
+      if (Array.isArray(alertasRes)) setAlertasStock(alertasRes);
     } catch (err) {
-      console.log("Using fallback mock data for dashboard stats");
+      console.error("Error loading dashboard metrics:", err);
     } finally {
       setLoading(false);
     }
@@ -30,6 +44,9 @@ export function useDashboardStats() {
 
   return {
     stats,
+    ventasChart,
+    productosPopulares,
+    alertasStock,
     loading,
     refetch: fetchDashboardData
   };

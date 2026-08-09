@@ -44,49 +44,89 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
   const periodText = periodLabelMap[selectedPeriod] || "últimos 7 días";
 
   const reportData = useMemo(() => {
-    const defaultIngresosDiarios = [
-      { dia: "Lun", ventas: 180000, pedidos: 6 },
-      { dia: "Mar", ventas: 210000, pedidos: 7 },
-      { dia: "Mié", ventas: 160000, pedidos: 5 },
-      { dia: "Jue", ventas: 290000, pedidos: 9 },
-      { dia: "Vie", ventas: 340000, pedidos: 11 },
-      { dia: "Sáb", ventas: 420000, pedidos: 14 },
-      { dia: "Dom", ventas: 390000, pedidos: 12 }
-    ];
+    const daysMap = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" };
+    const diasOrder = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+    const dailyStats = { Lun: { ventas: 0, pedidos: 0 }, Mar: { ventas: 0, pedidos: 0 }, Mié: { ventas: 0, pedidos: 0 }, Jue: { ventas: 0, pedidos: 0 }, Vie: { ventas: 0, pedidos: 0 }, Sáb: { ventas: 0, pedidos: 0 }, Dom: { ventas: 0, pedidos: 0 } };
 
-    const defaultProductosMasVendidos = [
-      { nombre: "Hamburguesa Esp.", cantidad: 38 },
-      { nombre: "Combo Familiar", cantidad: 24 },
-      { nombre: "Pollo Broaster", cantidad: 21 },
-      { nombre: "Salchipapa", cantidad: 19 },
-      { nombre: "Perro Caliente", cantidad: 15 }
-    ];
+    const productCounts = {};
+    const paymentCounts = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
 
-    const defaultMetodosPago = [
-      { name: "Efectivo", value: 65 },
-      { name: "Tarjeta", value: 35 }
-    ];
+    ventas.forEach((v) => {
+      const vDate = v.fecha || v.fechaVenta ? new Date(v.fecha || v.fechaVenta) : null;
+      if (vDate && !isNaN(vDate.getTime())) {
+        const dayName = daysMap[vDate.getDay()];
+        if (dailyStats[dayName]) {
+          dailyStats[dayName].ventas += Number(v.total || 0);
+          dailyStats[dayName].pedidos += 1;
+        }
+      }
 
-    const totalIngresos = ventas.length > 0
-      ? ventas.reduce((acc, v) => acc + (parseFloat(v.total) || 0), 0)
-      : defaultIngresosDiarios.reduce((acc, d) => acc + d.ventas, 0);
+      const metodo = v.metodoPago || v.metodo_pago || "Efectivo";
+      if (metodo.toLowerCase().includes("tarjeta")) paymentCounts.Tarjeta += 1;
+      else if (metodo.toLowerCase().includes("transfer")) paymentCounts.Transferencia += 1;
+      else paymentCounts.Efectivo += 1;
 
-    const totalPedidos = ventas.length > 0
-      ? ventas.length
-      : defaultIngresosDiarios.reduce((acc, d) => acc + d.pedidos, 0);
+      const prods = Array.isArray(v.productos) && v.productos.length > 0 ? v.productos : (v.detalles || []);
+      prods.forEach((p) => {
+        const pName = p.nombre || p.nombreProducto || "Producto General";
+        productCounts[pName] = (productCounts[pName] || 0) + (Number(p.cantidad) || 1);
+      });
+    });
 
-    const ticketPromedio = totalPedidos > 0 ? Math.round(totalIngresos / totalPedidos) : 29640;
+    const hasRealSales = ventas.length > 0;
+
+    const ingresosDiarios = diasOrder.map((dia) => ({
+      dia,
+      ventas: dailyStats[dia].ventas,
+      pedidos: dailyStats[dia].pedidos
+    }));
+
+    const sortedProducts = Object.entries(productCounts)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 5);
+
+    const productosMasVendidos = sortedProducts.length > 0
+      ? sortedProducts
+      : [
+          { nombre: "Hamburguesa Esp.", cantidad: 38 },
+          { nombre: "Combo Familiar", cantidad: 24 },
+          { nombre: "Pollo Broaster", cantidad: 21 },
+          { nombre: "Salchipapa", cantidad: 19 },
+          { nombre: "Perro Caliente", cantidad: 15 }
+        ];
+
+    const totalMetodosCount = (paymentCounts.Efectivo + paymentCounts.Tarjeta + paymentCounts.Transferencia) || 1;
+    const metodosPago = hasRealSales
+      ? [
+          { name: "Efectivo", value: Math.round((paymentCounts.Efectivo / totalMetodosCount) * 100) },
+          { name: "Tarjeta", value: Math.round((paymentCounts.Tarjeta / totalMetodosCount) * 100) },
+          { name: "Transferencia", value: Math.round((paymentCounts.Transferencia / totalMetodosCount) * 100) }
+        ].filter(m => m.value > 0)
+      : [
+          { name: "Efectivo", value: 65 },
+          { name: "Tarjeta", value: 35 }
+        ];
+
+    const totalIngresos = ventas.reduce((acc, v) => acc + (parseFloat(v.total) || 0), 0);
+    const totalPedidos = ventas.length;
+    const ticketPromedio = totalPedidos > 0 ? Math.round(totalIngresos / totalPedidos) : 0;
+
+    const topDay = [...ingresosDiarios].sort((a, b) => b.ventas - a.ventas)[0];
+    const topDayStr = topDay && topDay.ventas > 0 ? `${topDay.dia} — $${topDay.ventas.toLocaleString("es-CO")}` : "Sábado — $420.000";
+    const topProdStr = sortedProducts.length > 0 ? `${sortedProducts[0].nombre} (${sortedProducts[0].cantidad} und.)` : "Hamburguesa Especial (38 und.)";
+    const prefMetodoStr = metodosPago.length > 0 ? `${metodosPago[0].name} (${metodosPago[0].value}%)` : "Efectivo (65%)";
 
     return {
-      ingresosDiarios: defaultIngresosDiarios,
-      productosMasVendidos: defaultProductosMasVendidos,
-      metodosPago: defaultMetodosPago,
+      ingresosDiarios,
+      productosMasVendidos,
+      metodosPago,
       resumen: [
         { label: "Ingresos totales del período", value: `$${totalIngresos.toLocaleString("es-CO")}` },
         { label: "Total de pedidos procesados", value: `${totalPedidos} pedidos` },
-        { label: "Día con mayor facturación", value: "Sábado — $420.000" },
-        { label: "Producto estrella", value: "Hamburguesa Especial (38 und.)" },
-        { label: "Método de pago preferido", value: "Efectivo (62%)" },
+        { label: "Día con mayor facturación", value: topDayStr },
+        { label: "Producto estrella", value: topProdStr },
+        { label: "Método de pago preferido", value: prefMetodoStr },
         { label: "Ticket promedio", value: `$${ticketPromedio.toLocaleString("es-CO")}` }
       ]
     };
