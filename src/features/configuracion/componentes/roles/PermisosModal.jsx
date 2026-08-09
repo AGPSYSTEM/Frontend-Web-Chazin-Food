@@ -25,13 +25,13 @@ const TODOS_PERMISOS = [
 const getHeaderStyle = (nombre = "") => {
   const n = nombre.toLowerCase();
   if (n.includes("admin")) {
-    return "bg-gradient-to-r from-[#a855f7] via-[#9333ea] to-[#7c3aed] dark:from-[#9333ea] dark:via-[#7c3aed] dark:to-[#6d28d9]";
+    return "bg-gradient-to-r from-[#c084fc] via-[#a855f7] to-[#7c3aed] dark:from-[#a855f7] dark:via-[#9333ea] dark:to-[#7c3aed]";
   }
   if (n.includes("cocinero") || n.includes("cocina")) {
     return "bg-gradient-to-r from-[#22c55e] via-[#16a34a] to-[#15803d] dark:from-[#16a34a] dark:via-[#15803d] dark:to-[#166534]";
   }
   if (n.includes("cliente")) {
-    return "bg-gradient-to-r from-[#f87171] via-[#ef4444] to-[#dc2626] dark:from-[#ef4444] dark:via-[#dc2626] dark:to-[#b91c1c]";
+    return "bg-gradient-to-r from-[#f09090] via-[#ef5350] to-[#e53935] dark:from-[#ef5350] dark:via-[#e53935] dark:to-[#c62828]";
   }
   return "bg-gradient-to-r from-[#60a5fa] via-[#3b82f6] to-[#2563eb]";
 };
@@ -109,7 +109,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
                         : "border-[#e5e7eb] dark:border-gray-700 bg-[#f9fafb] dark:bg-gray-800/40 hover:border-gray-300"
                     }`}
                   >
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    <span className={`text-sm ${checked ? "font-semibold text-gray-900 dark:text-gray-100" : "font-medium text-gray-500 dark:text-gray-400"}`}>
                       {perm}
                     </span>
                     {checked ? (
