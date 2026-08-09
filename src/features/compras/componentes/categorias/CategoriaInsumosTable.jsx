@@ -8,8 +8,8 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
               <th className="px-5 py-3.5 w-16 text-left">ID</th>
-              <th className="px-5 py-3.5 w-44 text-left">Nombre</th>
-              <th className="px-5 py-3.5 text-left">Descripción</th>
+              <th className="px-5 py-3.5 w-40 text-left">Nombre</th>
+              <th className="px-5 py-3.5 w-56 text-left">Descripción</th>
               <th className="px-5 py-3.5 w-28 text-center">Insumos</th>
               <th className="px-5 py-3.5 w-28 text-center">Estado</th>
               <th className="px-5 py-3.5 w-28 text-center">Acciones</th>
@@ -31,7 +31,7 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                   <td className="px-5 py-3.5 font-bold text-[#1e293b] dark:text-gray-100 whitespace-nowrap">
                     {c.nombre}
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-gray-300 font-normal">
+                  <td className="px-5 py-3.5 text-slate-600 dark:text-gray-300 font-normal max-w-[220px] truncate" title={c.descripcion || ""}>
                     {c.descripcion || "-"}
                   </td>
                   <td className="px-5 py-3.5 text-center">
