@@ -52,7 +52,8 @@ export function Usuarios() {
   const handleSaveUsuario = async (form) => {
     let ok = false;
     if (editingUsuario) {
-      ok = await updateUsuario(editingUsuario.id, form);
+      const userId = editingUsuario.idUsuario || editingUsuario.id;
+      ok = await updateUsuario(userId, form);
     } else {
       ok = await createUsuario(form);
     }
@@ -67,9 +68,10 @@ export function Usuarios() {
     setPasswordModalOpen(true);
   };
 
-  const handleSavePassword = async (password) => {
+  const handleSavePassword = async (data) => {
     if (passwordUsuario) {
-      const ok = await changePassword(passwordUsuario.id, password);
+      const userId = passwordUsuario.idUsuario || passwordUsuario.id;
+      const ok = await changePassword(userId, data);
       if (ok) {
         setPasswordModalOpen(false);
         setPasswordUsuario(null);
