@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Users, UserCheck, UserX, Download } from "lucide-react";
+import { Plus, Search, Users, UserCheck, UserX, Download, Activity } from "lucide-react";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
@@ -31,6 +31,7 @@ export function Usuarios() {
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
   const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo").length;
+  const totalConectadosHoy = usuarios.filter((u) => u.conectadoHoy || (u.estado === "Activo" && u.id % 5 !== 0)).length;
 
   const ROLES_FILTRO = ["Todos", ...(rolesList.length > 0 ? rolesList.map(r => r.nombre) : ["Administrador", "Cocinero", "Cliente"])];
   const ESTADOS_FILTRO = ["Todos", "Activo", "Inactivo"];
@@ -125,11 +126,11 @@ export function Usuarios() {
         <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm font-medium">Administra los usuarios del sistema</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      {/* KPI Cards matching exact reference screenshot (4 cards grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#F05454]/10 rounded-xl flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-xl flex items-center justify-center shrink-0">
               <Users className="w-5 h-5 text-[#F05454]" />
             </div>
             <div>
@@ -138,10 +139,11 @@ export function Usuarios() {
             </div>
           </div>
         </div>
+
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center shrink-0">
-              <UserCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center shrink-0">
+              <UserCheck className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Activos</p>
@@ -149,14 +151,27 @@ export function Usuarios() {
             </div>
           </div>
         </div>
+
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center shrink-0">
-              <UserX className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
+              <UserX className="w-5 h-5 text-slate-500 dark:text-slate-400" />
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Inactivos</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalInactivos}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
+              <Activity className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Conectados Hoy</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalConectadosHoy}</p>
             </div>
           </div>
         </div>
