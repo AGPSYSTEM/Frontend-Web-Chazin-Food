@@ -152,7 +152,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               type="text"
               required
               value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[0-9]/g, "") })}
               className={inputCls}
               placeholder={isEditing ? "Nombre Completo" : "Ej: Juan Pérez"}
             />
@@ -176,9 +176,10 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               <input
                 type="tel"
                 value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/[^0-9]/g, "") })}
                 className={inputCls}
                 placeholder="319 000 0000"
+                inputMode="numeric"
               />
             </div>
           </div>
