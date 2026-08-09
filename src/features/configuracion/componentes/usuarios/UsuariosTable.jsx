@@ -264,21 +264,17 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
 
                     {/* EMAIL */}
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300">
+                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300 whitespace-nowrap">
                         <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                        <span className="truncate max-w-[200px]">{usuario.email}</span>
+                        <span>{usuario.email}</span>
                       </div>
                     </td>
 
                     {/* TELÉFONO */}
                     <td className="px-6 py-4">
-                      <div className="flex items-start gap-1.5 text-xs text-slate-600 dark:text-gray-300">
-                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-                        <div className="flex flex-col font-medium leading-tight text-slate-600 dark:text-gray-300">
-                          {t1 && <span>{t1}</span>}
-                          {t2 && <span>{t2}</span>}
-                          {t3 && <span>{t3}</span>}
-                        </div>
+                      <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-gray-300 whitespace-nowrap">
+                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="font-medium">{usuario.telefono || "-"}</span>
                       </div>
                     </td>
 
@@ -295,12 +291,10 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     </td>
 
                     {/* ÚLTIMO ACCESO */}
-                    <td className="px-6 py-4">
-                      <div className="text-xs text-slate-600 dark:text-gray-300 font-medium leading-tight">
-                        <p>{uYear}</p>
-                        <p>{uMonthDay}</p>
-                        <p>{uTime}</p>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-slate-600 dark:text-gray-300 font-medium">
+                        {uYear}{uMonthDay} {uTime}
+                      </span>
                     </td>
 
                     {/* ESTADO */}
