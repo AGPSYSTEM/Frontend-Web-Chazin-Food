@@ -35,7 +35,7 @@ export function useClientes() {
       c.telefono?.includes(searchTerm) ||
       c.documento?.includes(searchTerm);
 
-    const clientTipo = c.tipo || (c.esVip ? "VIP" : "Regular");
+    const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
 
     const matchEstado =
       filterEstado === "Todos" ||

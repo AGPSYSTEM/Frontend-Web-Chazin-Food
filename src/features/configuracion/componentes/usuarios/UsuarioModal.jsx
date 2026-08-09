@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Upload } from "lucide-react";
+import { X, Upload, Eye, EyeOff, Lock } from "lucide-react";
 
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
@@ -19,6 +19,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
     notificarCambios: true,
     avatarFile: null
   });
+  const [showPasswords, setShowPasswords] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
@@ -249,27 +250,53 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Contraseña</label>
-                    <input
-                      type="password"
-                      required
-                      value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      className={inputCls}
-                      placeholder="••••••••"
-                    />
+                    <label className={labelCls}>Contraseña *</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPasswords ? "text" : "password"}
+                        required
+                        value={form.password}
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        className={`${inputCls} pl-10`}
+                        placeholder="••••••••"
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className={labelCls}>Confirmar Contraseña</label>
-                    <input
-                      type="password"
-                      required
-                      value={form.confirmPassword}
-                      onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                      className={inputCls}
-                      placeholder="••••••••"
-                    />
+                    <label className={labelCls}>Confirmar Contraseña *</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPasswords ? "text" : "password"}
+                        required
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                        className={`${inputCls} pl-10`}
+                        placeholder="Repite tu contraseña"
+                      />
+                    </div>
                   </div>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(!showPasswords)}
+                    className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer"
+                  >
+                    {showPasswords ? (
+                      <>
+                        <EyeOff className="w-4 h-4 text-gray-500" />
+                        <span>Ocultar contraseñas</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 text-gray-500" />
+                        <span>Mostrar contraseñas</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <p className="text-[11px] text-gray-400">
                   La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números

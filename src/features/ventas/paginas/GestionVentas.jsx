@@ -255,8 +255,8 @@ function formatDateSafe(dateVal, fallback = "") {
           </div>
         </div>
 
-        {/* Period Selector Row — hidden in Historial */}
-        {activeTab !== "historial" && (
+        {/* Period Selector Row — shown only on Pedidos Pagados */}
+        {activeTab === "pedidos_pagados" && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
             Período:
@@ -284,7 +284,7 @@ function formatDateSafe(dateVal, fallback = "") {
 
         {/* TAB CONTENT: REPORTES vs HISTORIAL vs PEDIDOS PAGADOS */}
         {activeTab === "reportes" ? (
-          <VentasReportesView ventas={ventas} selectedPeriod={selectedPeriod} />
+          <VentasReportesView ventas={ventas} />
         ) : activeTab === "historial" ? (
           <div className="space-y-6 pt-2">
             {/* Historial Header with Exportar Button & Dropdown */}

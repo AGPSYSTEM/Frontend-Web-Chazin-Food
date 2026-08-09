@@ -1,7 +1,17 @@
-import { X, CheckCircle2 } from "lucide-react";
+import { X, CheckCircle2, MapPin } from "lucide-react";
 
 export function VentaDetalleModal({ isOpen, onClose, venta }) {
   if (!isOpen || !venta) return null;
+
+  let obsMeta = {};
+  if (venta.observaciones) {
+    try {
+      obsMeta = typeof venta.observaciones === 'string' && venta.observaciones.startsWith('{')
+        ? JSON.parse(venta.observaciones)
+        : { nota: venta.observaciones };
+    } catch (e) {}
+  }
+  const direccionEntrega = obsMeta.direccion || venta.direccion || "";
 
   const codigo = venta.numeroVenta || venta.codigoPedido || `PED-${String(venta.id).padStart(3, "0")}`;
   const cliente = venta.clienteNombre || (typeof venta.cliente === "string" ? venta.cliente : "Cliente General");
@@ -15,12 +25,13 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
     }
   }
   const horario = venta.horario || "12:30 – 12:48";
-  const metodoPago = venta.metodoPago || "Efectivo";
-  const tipoEntrega = venta.tipoEntrega || "Domicilio";
-  const subtotal = Number(venta.precioOriginal || venta.subtotal || (venta.total ? Math.round(venta.total * 1.11) : 45000));
-  const total = Number(venta.total || 40500);
-  const descuentoPorcentaje = venta.descuentoPorcentaje || (subtotal > total ? Math.round(((subtotal - total) / subtotal) * 100) : 10);
-  const descuentoMonto = subtotal > total ? subtotal - total : 4500;
+  const metodoPago = obsMeta.metodoPago || venta.metodoPago || "Efectivo";
+  const tipoEntrega = obsMeta.tipoEntrega || venta.tipoEntrega || "Domicilio";
+  const total = Number(venta.total || 0);
+  const descPct = Number(venta.descuentoPorcentaje || obsMeta.descuentoPorcentaje || 0);
+  const subtotal = Number(venta.precioOriginal || (descPct > 0 && total ? Math.round(total / (1 - (descPct / 100))) : (venta.subtotal > total ? venta.subtotal : total)));
+  const descuentoMonto = Math.max(0, subtotal - total);
+  const descuentoPorcentaje = descPct || (subtotal > total ? Math.round(((subtotal - total) / subtotal) * 100) : 0);
   const iva = Number(venta.iva || Math.round(total * 0.19));
 
   // Fallback products matching references
@@ -63,6 +74,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
   const getMetodoIcon = (metodo) => {
     const m = (metodo || "").toLowerCase();
     if (m.includes("tarjeta")) return "💳 Tarjeta";
+    if (m.includes("transfer") || m.includes("nequi") || m.includes("davi")) return "📱 Transferencia";
     return "💵 Efectivo";
   };
 
@@ -108,6 +120,16 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 {getEntregaIcon(tipoEntrega)}
               </div>
             </div>
+
+            {direccionEntrega && (
+              <div className="bg-slate-50/80 dark:bg-gray-800/60 border border-slate-100 dark:border-gray-700/60 rounded-2xl p-3.5 space-y-1 col-span-2">
+                <div className="text-xs text-gray-400 font-medium">Dirección de Entrega</div>
+                <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-[#F05454] shrink-0" />
+                  <span className="truncate">{direccionEntrega}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Green Status Badge Box */}

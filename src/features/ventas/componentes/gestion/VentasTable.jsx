@@ -58,6 +58,13 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
         </span>
       );
     }
+    if (metodoNormalized.includes("transfer") || metodoNormalized.includes("nequi") || metodoNormalized.includes("davi")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <span>📱</span> Transferencia
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
         <span>💵</span> Efectivo
@@ -88,7 +95,9 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
               const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
-              const hasDiscount = (v.descuentoPorcentaje && v.descuentoPorcentaje > 0) || (v.montoDescuento && v.montoDescuento > 0);
+              const descPct = Number(v.descuentoPorcentaje || 0);
+              const origPrice = Number(v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
+              const hasDiscount = (descPct > 0) || (origPrice > Number(v.total || 0)) || (Number(v.montoDescuento || 0) > 0);
 
               return (
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
@@ -116,7 +125,33 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                   {/* Hora */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
-                    {v.horario || "12:30 – 12:48"}
+                    {(() => {
+                      let raw = v.horario;
+                      if (!raw || raw === "—") return "—";
+                      if (typeof raw === 'string') {
+                        if (raw.includes('AM') || raw.includes('PM')) return raw;
+                        if (raw.includes('–')) raw = raw.split('–')[0].trim();
+                        if (/^\d{1,2}:\d{2}$/.test(raw.trim())) {
+                          const parts = raw.trim().split(':');
+                          let h = parseInt(parts[0], 10);
+                          const m = parts[1];
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          h = h % 12;
+                          h = h ? h : 12;
+                          return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+                        }
+                      }
+                      const d = new Date(v.fecha || v.fechaVenta || raw);
+                      if (!isNaN(d.getTime())) {
+                        let h = d.getHours();
+                        const m = String(d.getMinutes()).padStart(2, '0');
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12;
+                        h = h ? h : 12;
+                        return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+                      }
+                      return String(raw);
+                    })()}
                   </td>
 
                   {/* Entrega */}
@@ -130,13 +165,13 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     {hasDiscount ? (
                       <div className="flex items-center gap-2 text-xs">
                         <span className="line-through text-gray-400 font-normal">
-                          ${Number(v.precioOriginal || (v.total + (v.montoDescuento || 0))).toLocaleString("es-CO")}
+                          ${origPrice.toLocaleString("es-CO")}
                         </span>
                         <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
                           ${Number(v.total).toLocaleString("es-CO")}
                         </span>
                         <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
-                          -{v.descuentoPorcentaje || 10}% desc.
+                          -{descPct || Math.round(((origPrice - v.total) / origPrice) * 100)}% desc.
                         </span>
                       </div>
                     ) : (

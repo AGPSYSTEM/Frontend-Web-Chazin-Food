@@ -60,7 +60,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
               </tr>
             ) : (
               paginatedClientes.map((c, index) => {
-                const tipoCliente = c.tipo || (c.esVip ? "VIP" : "Regular");
+                const tipoCliente = c.tipo || (c.esVip ? "VIP" : "Nuevo");
                 const tieneCuenta = c.tieneCuenta !== false && !!c.idUsuario;
                 const isActivo = tieneCuenta && (c.estado === "Activo" || c.estado === 1);
 

@@ -55,7 +55,7 @@ const quickAccess = [
 
 export function Dashboard() {
   const isDark = useDarkMode();
-  const { stats, ventasChart, productosPopulares, alertasStock } = useDashboardStats();
+  const { stats, ventasChart, productosPopulares, alertasStock, ventasRecientes } = useDashboardStats();
   const [reabastecerItem, setReabastecerItem] = useState(null);
   const axisColor = isDark ? "#e0ecf8" : "#374151";
   const axisColorMuted = isDark ? "#b8cde0" : "#6b7280";
@@ -287,26 +287,49 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-2">
-            {[
-              { id: "#0042", cliente: "Juan Pérez", total: 45000, estado: "Completado", hora: "10:30 AM" },
-              { id: "#0041", cliente: "María García", total: 32500, estado: "En proceso", hora: "10:15 AM" },
-              { id: "#0040", cliente: "Carlos López", total: 28000, estado: "Completado", hora: "09:45 AM" },
-              { id: "#0039", cliente: "Ana Martínez", total: 52000, estado: "Completado", hora: "09:30 AM" },
-              { id: "#0038", cliente: "Luis Rodríguez", total: 38500, estado: "Completado", hora: "09:00 AM" }
-            ].map((venta, index) => (
-              <div key={index} className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{venta.id}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${venta.estado === "Completado" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400"}`}>
-                      {venta.estado}
-                    </span>
+            {Array.isArray(ventasRecientes) && ventasRecientes.length > 0 ? (
+              ventasRecientes.map((venta, index) => {
+                const isCompletado = venta.estado === "Completada" || venta.estadoEntrega === "ENTREGADO" || venta.estadoEntrega === "LISTO";
+                const isAnulado = venta.estado === "Anulada" || venta.estadoEntrega === "CANCELADO";
+
+                const badgeStyle = isCompletado
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                  : isAnulado
+                  ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                  : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400";
+
+                const formatHora = (dateStr) => {
+                  if (!dateStr) return "Reciente";
+                  const d = new Date(dateStr);
+                  return isNaN(d.getTime()) ? dateStr : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+                };
+
+                return (
+                  <div key={venta.id || index} className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <p className="font-medium text-sm text-gray-800 dark:text-gray-100">
+                          {venta.codigoPedido || venta.numeroVenta || `#${String(venta.id).padStart(4, '0')}`}
+                        </p>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${badgeStyle}`}>
+                          {venta.estado || "Pendiente"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {venta.clienteNombre || venta.cliente || "Cliente General"} · {formatHora(venta.fechaVenta || venta.fecha)}
+                      </p>
+                    </div>
+                    <p className="font-bold text-sm text-gray-800 dark:text-gray-100 shrink-0">
+                      ${Number(venta.total || 0).toLocaleString('es-CO')}
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{venta.cliente} · {venta.hora}</p>
-                </div>
-                <p className="font-bold text-sm text-gray-800 dark:text-gray-100 shrink-0">${venta.total.toLocaleString()}</p>
+                );
+              })
+            ) : (
+              <div className="flex items-center justify-center py-8 text-gray-400 dark:text-gray-600 text-sm">
+                Sin ventas registradas aún
               </div>
-            ))}
+            )}
           </div>
         </div>
 

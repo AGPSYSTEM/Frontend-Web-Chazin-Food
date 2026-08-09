@@ -31,17 +31,8 @@ const CustomChartTooltip = ({ active, payload, label, unit = "Ingresos", isCurre
   return null;
 };
 
-export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
+export function VentasReportesView({ ventas = [] }) {
   const [activeIndex, setActiveIndex] = useState(null);
-
-  const periodLabelMap = {
-    hoy: "hoy",
-    "7_dias": "últimos 7 días",
-    este_mes: "este mes",
-    este_ano: "este año",
-    personalizado: "período personalizado"
-  };
-  const periodText = periodLabelMap[selectedPeriod] || "últimos 7 días";
 
   const reportData = useMemo(() => {
     const daysMap = { 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb", 0: "Dom" };
@@ -68,8 +59,26 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
 
       const prods = Array.isArray(v.productos) && v.productos.length > 0 ? v.productos : (v.detalles || []);
       prods.forEach((p) => {
-        const pName = p.nombre || p.nombreProducto || "Producto General";
-        productCounts[pName] = (productCounts[pName] || 0) + (Number(p.cantidad) || 1);
+        // Obtener nombre raw del producto
+        const rawName = p.nombre || p.nombreProducto || (typeof p.observaciones === 'string' ? p.observaciones : null);
+        // Excluir entradas sin nombre, ficticias o de sistema
+        if (
+          !rawName ||
+          rawName === "Pedido de Venta" ||
+          rawName === "Producto General" ||
+          rawName.startsWith("Producto #")
+        ) return;
+
+        // Limpiar adiciones entre paréntesis para consolidar variantes del mismo producto (ej: "Pollo Broaster (+Salsa...)" -> "Pollo Broaster")
+        const nombreLimpio = rawName.replace(/\s*\(.*?\)/g, "").trim();
+        if (!nombreLimpio || nombreLimpio === "Pedido de Venta" || nombreLimpio === "Producto General") return;
+
+        // Agrupar usando el nombre limpio en minúsculas como clave única
+        const groupKey = nombreLimpio.toLowerCase();
+        if (!productCounts[groupKey]) {
+          productCounts[groupKey] = { nombre: nombreLimpio, cantidad: 0 };
+        }
+        productCounts[groupKey].cantidad += (Number(p.cantidad) || 1);
       });
     });
 
@@ -81,8 +90,8 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
       pedidos: dailyStats[dia].pedidos
     }));
 
-    const sortedProducts = Object.entries(productCounts)
-      .map(([nombre, cantidad]) => ({
+    const sortedProducts = Object.values(productCounts)
+      .map(({ nombre, cantidad }) => ({
         nombre,
         nombreLimpio: nombre.replace(/\s*\(.*?\)/g, "").trim(),
         cantidad
@@ -115,7 +124,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
       productosMasVendidos,
       metodosPago,
       resumen: [
-        { label: "Ingresos totales del período", value: `$${totalIngresos.toLocaleString("es-CO")}` },
+        { label: "Ingresos totales acumulados", value: `$${totalIngresos.toLocaleString("es-CO")}` },
         { label: "Total de pedidos procesados", value: `${totalPedidos} pedidos` },
         { label: "Día con mayor facturación", value: topDayStr },
         { label: "Producto estrella", value: topProdStr },
@@ -128,7 +137,7 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
   const handleExport = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      `Reporte de Ventas - ${periodText}\n` +
+      `Reporte de Ventas General\n` +
       `Ingresos Totales,${reportData.resumen[0].value}\n` +
       `Total Pedidos,${reportData.resumen[1].value}\n` +
       `Ticket Promedio,${reportData.resumen[5].value}\n`;
@@ -136,21 +145,21 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `reporte_ventas_${selectedPeriod}.csv`);
+    link.setAttribute("download", `reporte_ventas_general.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const productColors = ["#10B981", "#34D399", "#6EE7B7", "#A7F3D0", "#D1FAE5"];
-  const paymentColors = ["#10B981", "#3B82F6"];
+  const paymentColors = ["#10B981", "#3B82F6", "#F59E0B"];
 
   return (
     <div className="space-y-6">
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Análisis de ventas — {periodText}
+          Análisis de ventas acumuladas
         </h2>
         <button
           onClick={handleExport}
@@ -220,7 +229,6 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
               />
               <Tooltip
                 content={<CustomChartTooltip unit="Unidades" isCurrency={false} />}
-                labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
                 cursor={{ fill: "rgba(156, 163, 175, 0.15)" }}
               />
               <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} barSize={18}>

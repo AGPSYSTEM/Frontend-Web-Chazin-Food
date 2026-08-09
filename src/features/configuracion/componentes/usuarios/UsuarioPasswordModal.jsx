@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Lock } from "lucide-react";
+import { X, Lock, Eye, EyeOff } from "lucide-react";
 
 const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
@@ -7,6 +7,7 @@ const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.
 export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
   const [notificarEmail, setNotificarEmail] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -72,28 +73,56 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
             </div>
           )}
 
-          <div>
-            <label className={labelCls}>Nueva Contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputCls}
-              placeholder="••••••••"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Nueva Contraseña *</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputCls} pl-10`}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Confirmar Nueva Contraseña *</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`${inputCls} pl-10`}
+                  placeholder="Repite tu contraseña"
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className={labelCls}>Confirmar Nueva Contraseña</label>
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className={inputCls}
-              placeholder="••••••••"
-            />
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowPasswords(!showPasswords)}
+              className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer"
+            >
+              {showPasswords ? (
+                <>
+                  <EyeOff className="w-4 h-4 text-gray-500" />
+                  <span>Ocultar contraseñas</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 text-gray-500" />
+                  <span>Mostrar contraseñas</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Explicatory text */}

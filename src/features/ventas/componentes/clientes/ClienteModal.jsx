@@ -16,7 +16,8 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
   useEffect(() => {
     if (cliente) {
       const fullNombre = `${cliente.nombre || ''} ${cliente.apellidos || ''}`.trim();
-      const currentTipo = cliente.tipo || (cliente.esVip ? "VIP" : "Regular");
+      const currentTipo = cliente.tipo || (cliente.esVip ? "VIP" : "Nuevo");
+      // El descuento se recalcula siempre desde el nivel de fidelidad, nunca del valor guardado
       const defaultDesc = currentTipo === "VIP" ? 15 : currentTipo === "Frecuente" ? 10 : currentTipo === "Regular" ? 5 : 0;
       setForm({
         nombre: fullNombre || "",
@@ -24,7 +25,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
         telefono: cliente.telefono || "",
         direccion: cliente.direccion || "",
         tipo: currentTipo,
-        descuentoPorcentaje: cliente.descuentoPorcentaje !== undefined ? cliente.descuentoPorcentaje : defaultDesc,
+        descuentoPorcentaje: defaultDesc,
         sinCuenta: !cliente.idUsuario || cliente.tieneCuenta === false
       });
     } else {
@@ -114,7 +115,13 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               type="text"
               required
               value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Permitir únicamente letras, acentos, espacios y guiones (bloquear números y símbolos)
+                if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
+                  setForm({ ...form, nombre: val });
+                }
+              }}
               className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
               placeholder="Ej: Juan Carlos Pérez"
             />
@@ -141,7 +148,13 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               <input
                 type="text"
                 value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // Permitir únicamente números, espacios y el signo + (bloquear letras)
+                  if (/^[0-9\s+]*$/.test(val)) {
+                    setForm({ ...form, telefono: val });
+                  }
+                }}
                 className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
                 placeholder="319 123 4567"
               />
@@ -173,10 +186,10 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
                 onChange={(e) => handleTipoChange(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer"
               >
-                <option value="VIP">VIP</option>
-                <option value="Frecuente">Frecuente</option>
-                <option value="Regular">Regular</option>
-                <option value="Nuevo">Nuevo</option>
+                <option value="VIP">VIP (15%)</option>
+                <option value="Frecuente">Frecuente (10%)</option>
+                <option value="Regular">Regular (5%)</option>
+                <option value="Nuevo">Nuevo (0%)</option>
               </select>
             </div>
 
@@ -186,9 +199,10 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               </label>
               <input
                 type="number"
+                readOnly
                 value={form.descuentoPorcentaje}
-                onChange={(e) => setForm({ ...form, descuentoPorcentaje: Number(e.target.value) })}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
+                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 font-semibold cursor-not-allowed outline-none select-none"
+                title="El porcentaje de descuento se asigna automáticamente según el Nivel de Fidelidad (VIP: 15%, Frecuente: 10%, Regular: 5%, Nuevo: 0%)"
               />
             </div>
           </div>

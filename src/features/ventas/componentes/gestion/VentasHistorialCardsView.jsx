@@ -77,9 +77,11 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
         const horarioStr = v?.horario || "13:05 – 13:20";
         const totalNum = Number(v?.total || v?.subtotal || 40500);
         
-        const hasDiscount = Boolean(v?.descuentoPorcentaje || v?.precioOriginal || v?.descuentoAplicado);
-        const originalPriceNum = Number(v?.precioOriginal || Math.round(totalNum * 1.11));
-        const discountPct = v?.descuentoPorcentaje || 10;
+        const descPct = Number(v?.descuentoPorcentaje || 0);
+        const descMonto = Number(v?.descuentoAplicado || v?.montoDescuento || 0);
+        const hasDiscount = descPct > 0 || descMonto > 0;
+        const originalPriceNum = Number(v?.precioOriginal && v.precioOriginal > totalNum ? v.precioOriginal : (descPct > 0 ? Math.round(totalNum / (1 - descPct / 100)) : totalNum));
+        const discountPct = descPct;
 
         const productosList = Array.isArray(v?.productos) && v.productos.length > 0
           ? v.productos

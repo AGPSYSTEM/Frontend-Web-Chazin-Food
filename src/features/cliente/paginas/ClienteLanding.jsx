@@ -117,6 +117,7 @@ export function ClienteLanding() {
   const [checkoutEfectivoPaga, setCheckoutEfectivoPaga] = useState("");
   const [checkoutTransferReferencia, setCheckoutTransferReferencia] = useState("");
   const [checkoutTransferBanco, setCheckoutTransferBanco] = useState("Bancolombia");
+  const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
 
   const [showPedidos, setShowPedidos] = useState(false);
   const [showPerfil, setShowPerfil] = useState(false);
@@ -252,6 +253,7 @@ export function ClienteLanding() {
     setCheckoutEfectivoPaga("");
     setCheckoutTransferReferencia("");
     setCheckoutTransferBanco("Bancolombia");
+    setCheckoutTarjetaNumero("");
     setShowCheckout(true);
   };
 
@@ -274,6 +276,10 @@ export function ClienteLanding() {
       error("Referencia requerida", "Ingresa el número de referencia de la transferencia");
       return;
     }
+    if (checkoutMetodoPago === "tarjeta" && !checkoutTarjetaNumero.trim()) {
+      error("Tarjeta requerida", "Ingresa el número de tarjeta");
+      return;
+    }
 
     const confirmed = await confirmAction(
       "Confirmar Pedido",
@@ -283,13 +289,39 @@ export function ClienteLanding() {
 
     if (confirmed) {
       try {
+        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
+        const metodoPagoNormalizado = checkoutMetodoPago === "tarjeta" ? "Tarjeta" : checkoutMetodoPago === "transferencia" ? "Transferencia" : "Efectivo";
+
         const ventaPayload = {
           idCliente: user?.idCliente || null,
           idUsuario: user?.idUsuario || user?.id || user?._id,
           subtotal: clientSubtotal,
           total: totalCheckout,
+          tipoEntrega: tipoEntregaNormalizado,
+          metodoPago: metodoPagoNormalizado,
+          direccion: checkoutDireccion,
           estadoEntrega: "PENDIENTE",
-          observaciones: `${checkoutTipoEntrega === "domicilio" ? `Entrega Domicilio (${checkoutDireccion})` : "Para llevar"}. Método: ${checkoutMetodoPago}. ${checkoutEspecificaciones ? `Notas: ${checkoutEspecificaciones}` : ''}`,
+          observaciones: JSON.stringify({
+            tipoEntrega: tipoEntregaNormalizado,
+            metodoPago: metodoPagoNormalizado,
+            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
+            especificaciones: checkoutEspecificaciones || "",
+            efectivoConCuanto: checkoutEfectivoPaga || "",
+            vueltoEfectivo: vueltoEfectivo || 0,
+            transferenciaReferencia: checkoutTransferReferencia || "",
+            transferenciaBanco: checkoutTransferBanco || "",
+            tarjetaNumero: checkoutTarjetaNumero ? `****${checkoutTarjetaNumero.replace(/\s/g, '').slice(-4)}` : "",
+            codigoPedido: `VEN-${String(Date.now()).slice(-4)}`,
+            clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}`.trim() : "Cliente General"),
+            productos: cart.map(item => ({
+              id: item.id,
+              nombre: item.nombre,
+              cantidad: item.cantidad,
+              precioUnitario: item.precio,
+              total: item.precio * item.cantidad,
+              adiciones: item.adiciones ? item.adiciones.map(a => a.nombre) : []
+            }))
+          }),
           detalles: cart.map(item => ({
             idVariante: item.id || 1,
             cantidad: item.cantidad,
@@ -696,152 +728,304 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* MODAL CHECKOUT */}
+      {/* MODAL CHECKOUT — Diseño Aprobado */}
       {showCheckout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowCheckout(false)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full shadow-2xl border border-gray-200 dark:border-gray-800 max-h-[92vh] overflow-hidden flex flex-col">
 
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Finalizar Pedido</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ingresa los datos para la entrega de tu pedido</p>
-            </div>
-
-            {/* Tipo de Entrega */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setCheckoutTipoEntrega("domicilio")}
-                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "domicilio" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
-              >
-                Domicilio 🛵
-              </button>
-              <button
-                type="button"
-                onClick={() => setCheckoutTipoEntrega("llevar")}
-                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "llevar" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
-              >
-                Para Llevar 🛍️
-              </button>
-            </div>
-
-            {/* Formulario */}
-            <div className="space-y-3 text-xs">
+            {/* ═══ HEADER ROJO ═══ */}
+            <div className="bg-[#E53935] px-5 py-4 flex items-center justify-between rounded-t-2xl shrink-0">
               <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Nombre Completo:</label>
-                <input
-                  type="text"
-                  value={checkoutNombre}
-                  onChange={(e) => setCheckoutNombre(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
-                  placeholder="Tu nombre"
-                />
+                <h3 className="text-lg font-extrabold text-white tracking-tight">Finalizar Pedido</h3>
+                <p className="text-[11px] text-white/70 mt-0.5">Completa los datos de entrega y pago</p>
+              </div>
+              <button onClick={() => setShowCheckout(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            {/* ═══ CUERPO SCROLLEABLE ═══ */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+
+              {/* ── Resumen del pedido ── */}
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-4 space-y-2 border border-gray-100 dark:border-gray-700">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🛒 Resumen</h4>
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
+                  <span>Subtotal ({getTotalItems()} prod.)</span>
+                  <span className="font-semibold">${clientSubtotal.toLocaleString('es-CO')}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-400 dark:text-gray-500">
+                  <span>IVA (0%)</span>
+                  <span>$0</span>
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between items-center">
+                  <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total</span>
+                  <span className="text-lg font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+                </div>
               </div>
 
-              {checkoutTipoEntrega === "domicilio" && (
+              {/* ── Tipo de Entrega ── */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🚚 Tipo de Entrega</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Card Domicilio */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutTipoEntrega("domicilio")}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                      checkoutTipoEntrega === "domicilio"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutTipoEntrega === "domicilio" && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3.5 h-3.5 text-white" />
+                      </span>
+                    )}
+                    <span className="text-2xl block mb-1">🛵</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Domicilio</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Llevamos tu pedido</span>
+                  </button>
+                  {/* Card Recoger */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutTipoEntrega("llevar")}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                      checkoutTipoEntrega === "llevar"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutTipoEntrega === "llevar" && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3.5 h-3.5 text-white" />
+                      </span>
+                    )}
+                    <span className="text-2xl block mb-1">🏪</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Recoger en Local</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Pasas a recogerlo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Datos de Entrega / Contacto ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  📍 {checkoutTipoEntrega === "domicilio" ? "Datos de Entrega" : "Datos de Contacto"}
+                </h4>
                 <div>
-                  <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Dirección de Entrega: *</label>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Nombre del destinatario</label>
                   <input
                     type="text"
-                    value={checkoutDireccion}
-                    onChange={(e) => setCheckoutDireccion(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
-                    placeholder="Ej: Calle 15 # 24-30 Apt 302"
+                    value={checkoutNombre}
+                    onChange={(e) => setCheckoutNombre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
+                    placeholder="Tu nombre completo"
                   />
                 </div>
-              )}
 
-              <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Método de Pago:</label>
+                {checkoutTipoEntrega === "domicilio" ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Dirección de entrega <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={checkoutDireccion}
+                      onChange={(e) => setCheckoutDireccion(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
+                      placeholder="Ej: Calle 45 #12-30, Apto 201"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67. Te notificaremos cuando esté listo.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Método de Pago ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">💳 Método de Pago</h4>
                 <div className="grid grid-cols-3 gap-2">
+                  {/* Efectivo */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("efectivo")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "efectivo" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "efectivo"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
                   >
-                    <Banknote className="w-4 h-4" />
-                    Efectivo
+                    {checkoutMetodoPago === "efectivo" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">💵</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Efectivo</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("transferencia")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "transferencia" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    Nequi/Davi
-                  </button>
+                  {/* Tarjeta */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("tarjeta")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "tarjeta" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "tarjeta"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
                   >
-                    <CreditCard className="w-4 h-4" />
-                    Tarjeta
+                    {checkoutMetodoPago === "tarjeta" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">💳</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Tarjeta</span>
+                  </button>
+                  {/* Transferencia */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutMetodoPago("transferencia")}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "transferencia"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutMetodoPago === "transferencia" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">📱</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Transferencia</span>
                   </button>
                 </div>
+
+                {/* Sub-sección Efectivo */}
+                {checkoutMetodoPago === "efectivo" && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
+                    <label className="block text-xs font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto vas a pagar? (opcional)</label>
+                    <input
+                      type="number"
+                      value={checkoutEfectivoPaga}
+                      onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
+                      placeholder="Ej: 50000"
+                      className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-amber-500 transition-colors"
+                    />
+                    {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        💰 Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Sub-sección Tarjeta */}
+                {checkoutMetodoPago === "tarjeta" && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de tarjeta <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400" />
+                        <input
+                          type="text"
+                          value={checkoutTarjetaNumero}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
+                            setCheckoutTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, '$1 '));
+                          }}
+                          placeholder="0000 0000 0000 0000"
+                          className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors tracking-widest"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Monto a cargar</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={`$ ${totalCheckout.toLocaleString('es-CO')}`}
+                        className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-gray-700 border border-blue-200 dark:border-blue-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-sección Transferencia */}
+                {checkoutMetodoPago === "transferencia" && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Entidad / Banco origen</label>
+                      <select
+                        value={checkoutTransferBanco}
+                        onChange={(e) => setCheckoutTransferBanco(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                      >
+                        <optgroup label="Billeteras digitales">
+                          <option value="Nequi">Nequi</option>
+                          <option value="Daviplata">Daviplata</option>
+                        </optgroup>
+                        <optgroup label="Bancos">
+                          <option value="Bancolombia">Bancolombia</option>
+                          <option value="Davivienda">Davivienda</option>
+                          <option value="BBVA">BBVA</option>
+                          <option value="Banco de Bogotá">Banco de Bogotá</option>
+                          <option value="Banco Caja Social">Banco Caja Social</option>
+                          <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
+                          <option value="Otro">Otro</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div className="bg-blue-100/60 dark:bg-blue-900/30 rounded-lg p-2.5">
+                      <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de referencia <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        value={checkoutTransferReferencia}
+                        onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
+                        placeholder="Ej: 987654321"
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {checkoutMetodoPago === "efectivo" && (
-                <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
-                  <label className="block font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto efectivo pagas?</label>
-                  <input
-                    type="number"
-                    value={checkoutEfectivoPaga}
-                    onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
-                    placeholder={`Ej: ${totalCheckout}`}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-amber-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
-                  />
-                  {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      Vueltos a entregar: ${vueltoEfectivo.toLocaleString('es-CO')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {checkoutMetodoPago === "transferencia" && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
-                  <p className="text-blue-800 dark:text-blue-300 font-semibold">Nequi/Bancolombia: 3190000001</p>
-                  <input
-                    type="text"
-                    value={checkoutTransferReferencia}
-                    onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
-                    placeholder="Número de Comprobante / Referencia *"
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Notas especiales o instrucciones:</label>
+              {/* ── Especificaciones ── */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">📝 Especificaciones (opcional)</h4>
                 <textarea
                   rows={2}
                   value={checkoutEspecificaciones}
                   onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
-                  placeholder="Ej: Sin cebolla, llamar al llegar..."
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
+                  placeholder="Ej: Sin cebolla, dejar en portería, tocar timbre..."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors resize-none"
                 />
               </div>
             </div>
 
-            {/* Resumen */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex justify-between items-center">
-              <span className="font-extrabold text-sm text-gray-900 dark:text-gray-100">Total a Pagar:</span>
-              <span className="font-black text-xl text-red-600 dark:text-red-400">${totalCheckout.toLocaleString('es-CO')}</span>
+            {/* ═══ FOOTER FIJO ═══ */}
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-3 rounded-b-2xl">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total a pagar:</span>
+                <span className="text-xl font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+              </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right -mt-1">🏷️ Precio sin IVA aplicado</p>
+              <button
+                onClick={handleConfirmarPedido}
+                className="w-full py-3.5 bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Confirmar Pedido
+              </button>
             </div>
-
-            <button
-              onClick={handleConfirmarPedido}
-              className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-5 h-5" />
-              Confirmar Pedido
-            </button>
           </div>
         </div>
       )}

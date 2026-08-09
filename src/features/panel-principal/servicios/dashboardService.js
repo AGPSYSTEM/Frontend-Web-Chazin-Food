@@ -15,5 +15,9 @@ export const dashboardService = {
 
   getAlertasStock: async () => {
     return await apiClient.get("/dashboard/alertas-stock");
+  },
+
+  getVentasRecientes: async () => {
+    return await apiClient.get("/dashboard/ventas-recientes");
   }
 };
