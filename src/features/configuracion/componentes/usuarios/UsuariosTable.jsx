@@ -1,5 +1,16 @@
 import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
 
+const parseDireccion = (raw) => {
+  if (!raw) return "-";
+  if (typeof raw === "string" && raw.trim().startsWith("{")) {
+    try {
+      const obj = JSON.parse(raw);
+      return obj.direccion || raw;
+    } catch { return raw; }
+  }
+  return raw;
+};
+
 const getRolColor = (rol) => {
   switch (rol) {
     case "Administrador":
@@ -70,7 +81,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
               {usuario.rolNombre === "Cliente" && usuario.direccion && (
                 <div className="flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
-                  <span className="truncate">{usuario.direccion}</span>
+                  <span className="truncate">{parseDireccion(usuario.direccion)}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -146,7 +157,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{usuario.telefono || "-"}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">{usuario.direccion || "-"}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">{parseDireccion(usuario.direccion)}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getRolColor(usuario.rolNombre)}`}>
                       <Shield className="w-3 h-3" />{usuario.rolNombre}
