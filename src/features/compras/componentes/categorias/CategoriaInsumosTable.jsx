@@ -7,12 +7,12 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
-              <th className="px-6 py-4 w-[12%] text-left">ID</th>
-              <th className="px-6 py-4 w-[22%] text-left">Nombre</th>
-              <th className="px-6 py-4 w-[26%] text-left">Descripción</th>
-              <th className="px-6 py-4 w-[15%] text-center">Insumos</th>
-              <th className="px-6 py-4 w-[13%] text-center">Estado</th>
-              <th className="px-6 py-4 w-[12%] text-center">Acciones</th>
+              <th className="px-6 py-4 w-[10%] text-left">ID</th>
+              <th className="px-6 py-4 w-[20%] text-left">Nombre</th>
+              <th className="px-6 py-4 w-[28%] text-left">Descripción</th>
+              <th className="px-6 py-4 w-[15%] text-left">Insumos</th>
+              <th className="px-6 py-4 w-[14%] text-left">Estado</th>
+              <th className="px-6 py-4 w-[13%] text-left">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -34,12 +34,12 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                   <td className="px-6 py-4 text-slate-600 dark:text-gray-300 font-normal">
                     {c.descripcion || "-"}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-4 text-left">
                     <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2.5 rounded-full bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium text-sm">
                       {c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-6 py-4 text-left">
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                         c.estado === "Activo"
@@ -50,8 +50,8 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                       {c.estado}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-3">
+                  <td className="px-6 py-4 text-left">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => onEdit(c)}
                         title="Editar categoría"
