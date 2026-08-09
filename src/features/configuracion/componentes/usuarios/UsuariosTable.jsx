@@ -10,6 +10,29 @@ const getRolStyle = (rol = "") => {
   }
   if (r.includes("cliente")) {
     return "bg-blue-100/80 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
+
+const parseDireccion = (raw) => {
+  if (!raw) return "-";
+  if (typeof raw === "string" && raw.trim().startsWith("{")) {
+    try {
+      const obj = JSON.parse(raw);
+      return obj.direccion || raw;
+    } catch { return raw; }
+  }
+  return raw;
+};
+
+const getRolColor = (rol) => {
+  switch (rol) {
+    case "Administrador":
+      return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300";
+    case "Cocinero":
+      return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300";
+    case "Cliente":
+      return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300";
+    default:
+      return "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300";
   }
   return "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
 };
@@ -129,6 +152,11 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                 </div>
                 <div className="text-[11px] text-gray-400 pt-1">
                   Último acceso: {uYear}{uMonthDay} {uTime}
+              )}
+              {usuario.rolNombre === "Cliente" && usuario.direccion && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                  <span className="truncate">{parseDireccion(usuario.direccion)}</span>
                 </div>
               </div>
 
@@ -297,6 +325,38 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                           title="Editar usuario"
                         >
                           <Edit className="w-4 h-4 stroke-[2]" />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <span className="truncate max-w-[150px]">{usuario.email}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{usuario.telefono || "-"}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px]">{parseDireccion(usuario.direccion)}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${getRolColor(usuario.rolNombre)}`}>
+                      <Shield className="w-3 h-3" />{usuario.rolNombre}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatFecha(usuario.createdAt || usuario.fechaRegistro)}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${usuario.estado === "Activo" ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"}`}>
+                      {usuario.estado}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => onEdit(usuario)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Editar">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => onChangePassword(usuario)} className="p-2 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors" title="Cambiar contraseña">
+                        <Lock className="w-4 h-4" />
+                      </button>
+                      {usuario.rolNombre !== "Administrador" && usuario.estado === "Activo" && (
+                        <button onClick={() => onDelete(usuario.id || usuario.idUsuario, usuario.nombre)} className="p-2 text-[#F05454] hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Inactivar / Eliminar">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onChangePassword(usuario)}
