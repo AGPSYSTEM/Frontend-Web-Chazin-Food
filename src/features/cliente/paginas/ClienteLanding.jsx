@@ -8,8 +8,31 @@ import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { categoriaProductosService } from "@/features/ventas/servicios/categoriaProductosService";
+import { productosService } from "@/features/ventas/servicios/productosService";
 
-const categorias = [
+const defaultCategoryIcons = {
+  "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
+  "salchipapas": { icon: "🍟", color: "from-yellow-500 to-amber-600" },
+  "perros calientes": { icon: "🌭", color: "from-orange-400 to-red-500" },
+  "perros": { icon: "🌭", color: "from-orange-400 to-red-500" },
+  "pollo": { icon: "🍗", color: "from-amber-500 to-orange-600" },
+  "bebidas": { icon: "🥤", color: "from-blue-400 to-blue-600" },
+  "refrescos": { icon: "🥤", color: "from-blue-400 to-blue-600" },
+  "acompañamientos": { icon: "🥗", color: "from-green-400 to-green-600" },
+  "combos": { icon: "🍱", color: "from-purple-400 to-purple-600" },
+  "postres": { icon: "🍰", color: "from-pink-400 to-rose-500" },
+  "helados": { icon: "🍦", color: "from-indigo-400 to-purple-500" },
+  "entradas": { icon: "🧆", color: "from-emerald-400 to-teal-500" },
+  "pizzas": { icon: "🍕", color: "from-red-500 to-amber-500" }
+};
+
+const getCategoryMeta = (nombre) => {
+  const key = String(nombre || "").toLowerCase().trim();
+  return defaultCategoryIcons[key] || { icon: "🍽️", color: "from-red-400 to-red-600" };
+};
+
+const categoriasDefault = [
   { id: 1, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
   { id: 2, nombre: "Salchipapas", icon: "🍟", color: "from-yellow-500 to-amber-600" },
   { id: 3, nombre: "Perros Calientes", icon: "🌭", color: "from-orange-400 to-red-500" },
@@ -19,7 +42,7 @@ const categorias = [
   { id: 8, nombre: "Combos", icon: "🍱", color: "from-purple-400 to-purple-600" }
 ];
 
-const productos = [
+const productosDefault = [
   { id: 1, nombre: "Hamburguesa Especial", precio: 15000, categoria: 1, imagen: "🍔", descripcion: "Doble carne, queso, lechuga, tomate y salsas", stock: 25 },
   { id: 2, nombre: "Salchipapa Grande", precio: 12000, categoria: 2, imagen: "🍟", descripcion: "Papas fritas con salchicha y salsas", stock: 30 },
   { id: 3, nombre: "Perro Caliente Especial", precio: 10000, categoria: 3, imagen: "🌭", descripcion: "Hot dog con salsas y papa chip", stock: 20 },
@@ -127,6 +150,65 @@ export function ClienteLanding() {
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
 
+  const [categoriasList, setCategoriasList] = useState([]);
+  const [productosList, setProductosList] = useState([]);
+
+  // Fetch catalog categories & products dynamically from API
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      try {
+        const [catsRes, prodsRes] = await Promise.allSettled([
+          categoriaProductosService.getCategorias(),
+          productosService.getProductos()
+        ]);
+
+        if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value) && catsRes.value.length > 0) {
+          const apiCats = catsRes.value
+            .filter(c => c.estado === 'Activo' || c.estado === 1 || c.estado === undefined)
+            .map(c => {
+              const meta = getCategoryMeta(c.nombre);
+              return {
+                id: c.id || c.idCategoriaProducto,
+                idCategoriaProducto: c.idCategoriaProducto || c.id,
+                nombre: c.nombre,
+                icon: c.icon || meta.icon,
+                color: meta.color
+              };
+            });
+          setCategoriasList(apiCats);
+        } else {
+          setCategoriasList(categoriasDefault);
+        }
+
+        if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value) && prodsRes.value.length > 0) {
+          const apiProds = prodsRes.value
+            .filter(p => p.estado === 'Activo' || p.estado === 1 || p.estado === undefined)
+            .map(p => ({
+              id: p.id || p.idProducto,
+              idProducto: p.idProducto || p.id,
+              nombre: p.nombre,
+              precio: parseFloat(p.precio || 0),
+              categoria: p.idCategoriaProducto || p.categoria,
+              categoriaNombre: p.categoria,
+              imagen: p.imagen || "🍔",
+              descripcion: p.descripcion || "",
+              stock: p.stock || 0,
+              adiciones: p.adiciones || []
+            }));
+          setProductosList(apiProds);
+        } else {
+          setProductosList(productosDefault);
+        }
+      } catch (e) {
+        console.warn("Error cargando catálogo dinámico en ClienteLanding:", e);
+        setCategoriasList(categoriasDefault);
+        setProductosList(productosDefault);
+      }
+    };
+
+    fetchCatalog();
+  }, []);
+
   // Fetch client orders from backend
   const fetchMyOrders = async () => {
     if (!isAuthenticated) return;
@@ -164,8 +246,15 @@ export function ClienteLanding() {
     fetchMyOrders();
   }, [isAuthenticated, user]);
 
-  const productosFiltrados = productos.filter((p) => {
-    const matchCategoria = !selectedCategoria || p.categoria === selectedCategoria;
+  const activeCategorias = categoriasList.length > 0 ? categoriasList : categoriasDefault;
+  const activeProductos = productosList.length > 0 ? productosList : productosDefault;
+
+  const productosFiltrados = activeProductos.filter((p) => {
+    const matchCategoria = !selectedCategoria || 
+      p.categoria === selectedCategoria || 
+      p.idCategoriaProducto === selectedCategoria ||
+      String(p.categoria) === String(selectedCategoria) ||
+      (typeof selectedCategoria === 'string' && String(p.categoriaNombre || '').toLowerCase() === selectedCategoria.toLowerCase());
     const matchSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     return matchCategoria && matchSearch;
   });
@@ -509,7 +598,7 @@ export function ClienteLanding() {
             <div className="text-3xl">🍽️</div>
             <p className="text-xs font-semibold">Todos</p>
           </button>
-          {categorias.map((cat) => (
+          {activeCategorias.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategoria(cat.id)}
@@ -525,7 +614,7 @@ export function ClienteLanding() {
       {/* Productos */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          {selectedCategoria ? categorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
+          {selectedCategoria ? activeCategorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (
