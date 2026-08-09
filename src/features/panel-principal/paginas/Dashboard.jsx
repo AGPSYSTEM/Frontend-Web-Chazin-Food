@@ -222,20 +222,31 @@ export function Dashboard() {
         {/* Productos más vendidos */}
         <div className="bg-white dark:bg-gray-900 p-4 lg:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
           <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Productos Más Vendidos</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart layout="vertical" data={finalPopulares} margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart layout="vertical" data={finalPopulares.map(p => ({
+              ...p,
+              nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
+            }))} margin={{ top: 0, right: 12, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 10, fill: axisColorMuted }} />
-              <YAxis type="category" dataKey="nombre" width={95} tick={{ fontSize: 10, fill: axisColor }} tickLine={false} />
+              <YAxis
+                type="category"
+                dataKey="nombreShort"
+                width={135}
+                tick={{ fontSize: 11, fill: axisColor }}
+                tickLine={false}
+                tickFormatter={(val) => (val && val.length > 18 ? `${val.substring(0, 16)}...` : val)}
+              />
               <Tooltip
                 formatter={(value) => [value, "Ventas"]}
+                labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
                 contentStyle={tooltipStyle}
                 labelStyle={tooltipLabelStyle}
                 itemStyle={tooltipItemStyle}
               />
-              <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={16}>
+              <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={18}>
                 {finalPopulares.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.1} />
+                  <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.12} />
                 ))}
               </Bar>
             </BarChart>
