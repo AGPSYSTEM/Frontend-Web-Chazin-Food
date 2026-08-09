@@ -7,12 +7,12 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
-              <th className="px-6 py-4 w-[10%] text-left">ID</th>
-              <th className="px-6 py-4 w-[18%] text-left">Nombre</th>
-              <th className="px-6 py-4 w-[25%] text-left">Descripción</th>
-              <th className="px-6 py-4 w-[17%] text-center">Insumos</th>
-              <th className="px-6 py-4 w-[15%] text-center">Estado</th>
-              <th className="px-6 py-4 w-[15%] text-center">Acciones</th>
+              <th className="px-6 py-4 w-[12%] text-left">ID</th>
+              <th className="px-6 py-4 w-[22%] text-left">Nombre</th>
+              <th className="px-6 py-4 w-[26%] text-left">Descripción</th>
+              <th className="px-6 py-4 w-[15%] text-center">Insumos</th>
+              <th className="px-6 py-4 w-[13%] text-center">Estado</th>
+              <th className="px-6 py-4 w-[12%] text-center">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
