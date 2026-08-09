@@ -13,6 +13,7 @@ import {
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
+import { VentasHistorialCardsView } from "../componentes/gestion/VentasHistorialCardsView";
 import { VentasHistorialTableView } from "../componentes/gestion/VentasHistorialTableView";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
@@ -254,7 +255,8 @@ function formatDateSafe(dateVal, fallback = "") {
           </div>
         </div>
 
-        {/* Period Selector Row */}
+        {/* Period Selector Row — hidden in Historial */}
+        {activeTab !== "historial" && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
             Período:
@@ -278,6 +280,7 @@ function formatDateSafe(dateVal, fallback = "") {
             })}
           </div>
         </div>
+        )}
 
         {/* TAB CONTENT: REPORTES vs HISTORIAL vs PEDIDOS PAGADOS */}
         {activeTab === "reportes" ? (
