@@ -1,4 +1,4 @@
-import { Package, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { Package, TrendingDown, AlertCircle } from "lucide-react";
 
 export function InsumosStatsCards({ insumos = [] }) {
   const total = insumos.length;
@@ -23,7 +23,7 @@ export function InsumosStatsCards({ insumos = [] }) {
       {/* Card 2: Stock Normal */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex items-start gap-4">
         <div className="w-11 h-11 rounded-2xl bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-5 h-5" />
+          <Package className="w-5 h-5" />
         </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Stock Normal</p>
@@ -35,7 +35,7 @@ export function InsumosStatsCards({ insumos = [] }) {
       {/* Card 3: Stock Bajo */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex items-start gap-4">
         <div className="w-11 h-11 rounded-2xl bg-amber-100/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-          <AlertTriangle className="w-5 h-5" />
+          <TrendingDown className="w-5 h-5" />
         </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Stock Bajo</p>
@@ -46,13 +46,13 @@ export function InsumosStatsCards({ insumos = [] }) {
 
       {/* Card 4: Agotados / Críticos */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex items-start gap-4">
-        <div className="w-11 h-11 rounded-2xl bg-red-100/70 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+        <div className="w-11 h-11 rounded-2xl bg-rose-100/70 dark:bg-rose-900/40 text-rose-500 dark:text-rose-400 flex items-center justify-center shrink-0">
           <AlertCircle className="w-5 h-5" />
         </div>
         <div className="space-y-1">
           <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Agotados / Críticos</p>
           <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agotados}</h3>
-          <p className="text-xs font-medium text-red-500 dark:text-red-400">reabastecer urgente</p>
+          <p className="text-xs font-medium text-rose-500 dark:text-rose-400">reabastecer urgente</p>
         </div>
       </div>
     </div>
