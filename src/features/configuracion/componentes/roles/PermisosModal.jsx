@@ -25,15 +25,15 @@ const TODOS_PERMISOS = [
 const getHeaderStyle = (nombre = "") => {
   const n = nombre.toLowerCase();
   if (n.includes("admin")) {
-    return "bg-gradient-to-r from-[#8b5cf6] via-[#7c3aed] to-[#6d28d9] dark:from-[#8b5cf6] dark:via-[#7c3aed] dark:to-[#6d28d9]";
+    return "bg-gradient-to-r from-[#a855f7] via-[#8b3dff] to-[#7924d6] dark:from-purple-800 dark:to-purple-950";
   }
   if (n.includes("cocinero") || n.includes("cocina")) {
-    return "bg-gradient-to-r from-[#22c55e] via-[#16a34a] to-[#15803d] dark:from-[#16a34a] dark:via-[#15803d] dark:to-[#166534]";
+    return "bg-gradient-to-r from-[#00c853] via-[#00a340] to-[#008030] dark:from-emerald-700 dark:to-emerald-900";
   }
   if (n.includes("cliente")) {
-    return "bg-gradient-to-r from-[#F05454] via-[#ef4444] to-[#dc2626] dark:from-[#F05454] dark:via-[#ef4444] dark:to-[#dc2626]";
+    return "bg-gradient-to-r from-[#F05454] via-[#ef4444] to-[#c62828] dark:from-rose-700 dark:to-rose-950";
   }
-  return "bg-gradient-to-r from-[#60a5fa] via-[#3b82f6] to-[#2563eb]";
+  return "bg-gradient-to-r from-[#3b82f6] via-[#2563eb] to-[#1d4ed8]";
 };
 
 export function PermisosModal({ isOpen, onClose, onSave, rol }) {
@@ -65,7 +65,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-gray-800">
-        {/* Header with exact role gradient colors from reference */}
+        {/* Header with exact role colors from target reference images */}
         <div className={`${headerStyle} p-5 sm:p-6 flex items-center justify-between text-white shrink-0`}>
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white shrink-0 border border-white/20">
@@ -73,13 +73,13 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
             </div>
             <div>
               <h2 className="text-xl font-bold text-white leading-tight">{rol.nombre}</h2>
-              <p className="text-xs text-white/80 mt-0.5 font-normal">Editar permisos del rol</p>
+              <p className="text-xs text-white/90 mt-0.5 font-normal">Editar permisos del rol</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/80 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+            className="text-white/90 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5 stroke-[2.5]" />
@@ -90,7 +90,7 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-3">
             <div className="pb-1">
-              <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 font-normal">
+              <span className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 font-medium">
                 {editingPermisos.length} de {TODOS_PERMISOS.length} permisos seleccionados
               </span>
             </div>
@@ -105,19 +105,19 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
                     onClick={() => togglePermiso(perm)}
                     className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none ${
                       checked
-                        ? "border-[#bbf7d0] dark:border-emerald-700/60 bg-[#f0fdf4] dark:bg-emerald-950/20"
-                        : "border-[#e5e7eb] dark:border-gray-700 bg-[#f9fafb] dark:bg-gray-800/40 hover:border-gray-300"
+                        ? "border-[#a7f3d0] dark:border-emerald-700/60 bg-[#ecfdf5] dark:bg-emerald-950/30"
+                        : "border-[#e2e8f0] dark:border-gray-800 bg-[#f8fafc] dark:bg-gray-800/40 hover:border-gray-300"
                     }`}
                   >
-                    <span className={`text-sm ${checked ? "font-semibold text-[#1f2937] dark:text-gray-100" : "font-medium text-[#4b5563] dark:text-gray-300"}`}>
+                    <span className={`text-sm ${checked ? "font-semibold text-[#047857] dark:text-emerald-300" : "font-medium text-[#475569] dark:text-gray-300"}`}>
                       {perm}
                     </span>
                     {checked ? (
-                      <div className="w-7 h-7 rounded-full bg-[#22c55e] text-white flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-[#00c853] text-white flex items-center justify-center shrink-0 shadow-2xs">
                         <Check className="w-4 h-4 stroke-[3]" />
                       </div>
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-[#e5e7eb] dark:bg-gray-700 text-[#9ca3af] dark:text-gray-500 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-[#e2e8f0] dark:bg-gray-700/80 text-[#94a3b8] dark:text-gray-400 flex items-center justify-center shrink-0">
                         <X className="w-3.5 h-3.5 stroke-[2.5]" />
                       </div>
                     )}
@@ -132,13 +132,13 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors cursor-pointer"
+              className="px-6 py-2.5 rounded-full border border-gray-200/90 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#F05454] hover:bg-[#d94444] text-white text-sm font-medium transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-[#F05454] hover:bg-[#d94444] text-white text-sm font-semibold transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>Guardar Permisos</span>
