@@ -82,19 +82,15 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
     }));
 
     const sortedProducts = Object.entries(productCounts)
-      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .map(([nombre, cantidad]) => ({
+        nombre,
+        nombreLimpio: nombre.replace(/\s*\(.*?\)/g, "").trim(),
+        cantidad
+      }))
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 5);
 
-    const productosMasVendidos = sortedProducts.length > 0
-      ? sortedProducts
-      : [
-          { nombre: "Hamburguesa Esp.", cantidad: 38 },
-          { nombre: "Combo Familiar", cantidad: 24 },
-          { nombre: "Pollo Broaster", cantidad: 21 },
-          { nombre: "Salchipapa", cantidad: 19 },
-          { nombre: "Perro Caliente", cantidad: 15 }
-        ];
+    const productosMasVendidos = sortedProducts;
 
     const totalMetodosCount = (paymentCounts.Efectivo + paymentCounts.Tarjeta + paymentCounts.Transferencia) || 1;
     const metodosPago = hasRealSales
@@ -103,19 +99,16 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
           { name: "Tarjeta", value: Math.round((paymentCounts.Tarjeta / totalMetodosCount) * 100) },
           { name: "Transferencia", value: Math.round((paymentCounts.Transferencia / totalMetodosCount) * 100) }
         ].filter(m => m.value > 0)
-      : [
-          { name: "Efectivo", value: 65 },
-          { name: "Tarjeta", value: 35 }
-        ];
+      : [];
 
     const totalIngresos = ventas.reduce((acc, v) => acc + (parseFloat(v.total) || 0), 0);
     const totalPedidos = ventas.length;
     const ticketPromedio = totalPedidos > 0 ? Math.round(totalIngresos / totalPedidos) : 0;
 
     const topDay = [...ingresosDiarios].sort((a, b) => b.ventas - a.ventas)[0];
-    const topDayStr = topDay && topDay.ventas > 0 ? `${topDay.dia} — $${topDay.ventas.toLocaleString("es-CO")}` : "Sábado — $420.000";
-    const topProdStr = sortedProducts.length > 0 ? `${sortedProducts[0].nombre} (${sortedProducts[0].cantidad} und.)` : "Hamburguesa Especial (38 und.)";
-    const prefMetodoStr = metodosPago.length > 0 ? `${metodosPago[0].name} (${metodosPago[0].value}%)` : "Efectivo (65%)";
+    const topDayStr = topDay && topDay.ventas > 0 ? `${topDay.dia} — $${topDay.ventas.toLocaleString("es-CO")}` : "N/A";
+    const topProdStr = sortedProducts.length > 0 ? `${sortedProducts[0].nombreLimpio} (${sortedProducts[0].cantidad} und.)` : "N/A";
+    const prefMetodoStr = metodosPago.length > 0 ? `${metodosPago[0].name} (${metodosPago[0].value}%)` : "N/A";
 
     return {
       ingresosDiarios,
@@ -213,16 +206,24 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "7_dias" }) {
           <p className="font-medium text-gray-700 dark:text-gray-300 mb-4 text-sm">
             Productos más vendidos
           </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart layout="vertical" data={reportData.productosMasVendidos} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.2} />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart layout="vertical" data={reportData.productosMasVendidos} margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.2} horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9CA3AF" }} />
-              <YAxis dataKey="nombre" type="category" tick={{ fontSize: 11, fill: "#9CA3AF" }} width={100} />
+              <YAxis
+                dataKey="nombreLimpio"
+                type="category"
+                tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                width={135}
+                tickLine={false}
+                tickFormatter={(val) => (val && val.length > 18 ? `${val.substring(0, 16)}...` : val)}
+              />
               <Tooltip
                 content={<CustomChartTooltip unit="Unidades" isCurrency={false} />}
+                labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
                 cursor={{ fill: "rgba(156, 163, 175, 0.15)" }}
               />
-              <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} barSize={18}>
                 {reportData.productosMasVendidos.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={productColors[index % productColors.length]} />
                 ))}
