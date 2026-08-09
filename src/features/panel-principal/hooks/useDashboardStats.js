@@ -4,11 +4,11 @@ import { dashboardService } from "../servicios/dashboardService";
 export function useDashboardStats() {
   const [stats, setStats] = useState({
     ventasTotal: 0,
-    ventasVariacion: 12.5,
+    ventasVariacion: 0,
     pedidosTotal: 0,
-    pedidosVariacion: 8.2,
+    pedidosVariacion: 0,
     clientesActivos: 0,
-    clientesVariacion: 15.3,
+    clientesVariacion: 0,
     productosTotal: 0,
     insumosBajoStock: 0
   });

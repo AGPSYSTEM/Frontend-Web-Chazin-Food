@@ -18,30 +18,9 @@ function useDarkMode() {
   return isDark;
 }
 
-const defaultVentasData = [
-  { mes: "Ene", ventas: 12500, compras: 8000 },
-  { mes: "Feb", ventas: 15200, compras: 9500 },
-  { mes: "Mar", ventas: 18800, compras: 11000 },
-  { mes: "Abr", ventas: 22100, compras: 13500 },
-  { mes: "May", ventas: 25600, compras: 15000 },
-  { mes: "Jun", ventas: 28400, compras: 16800 }
-];
-
-const defaultProductosPopulares = [
-  { nombre: "Hamburguesa Especial", ventas: 245, ingresos: 2450000 },
-  { nombre: "Salchipapa Grande", ventas: 198, ingresos: 1584000 },
-  { nombre: "Perro Caliente", ventas: 167, ingresos: 1336000 },
-  { nombre: "Pollo Broaster", ventas: 142, ingresos: 2130000 },
-  { nombre: "Papas Fritas", ventas: 124, ingresos: 620000 }
-];
-
-const defaultAlertasStock = [
-  { nombre: "Pan de Hamburguesa", stock: 15, minimo: 50 },
-  { nombre: "Salchicha Premium", stock: 8, minimo: 30 },
-  { nombre: "Papas Congeladas", stock: 12, minimo: 40 },
-  { nombre: "Queso Mozzarella", stock: 6, minimo: 20 },
-  { nombre: "Tomate", stock: 9, minimo: 25 }
-];
+const defaultVentasData = [];
+const defaultProductosPopulares = [];
+const defaultAlertasStock = [];
 
 const quickAccess = [
   {
@@ -98,7 +77,7 @@ export function Dashboard() {
 
   const ventasFormatted = stats.ventasTotal > 1000000
     ? `$${(stats.ventasTotal / 1000000).toFixed(1)}M`
-    : `$${Number(stats.ventasTotal || 28400000).toLocaleString("es-CO")}`;
+    : `$${Number(stats.ventasTotal || 0).toLocaleString("es-CO")}`;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full">
@@ -145,7 +124,7 @@ export function Dashboard() {
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-0.5">Ventas del Mes</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{ventasFormatted}</p>
             <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.ventasVariacion || 12.5}%
+              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.ventasVariacion || 0}%
             </p>
           </div>
         </div>
@@ -158,10 +137,10 @@ export function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-0.5">Total Pedidos</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              {Number(stats.pedidosTotal || 1248).toLocaleString("es-CO")}
+              {Number(stats.pedidosTotal || 0).toLocaleString("es-CO")}
             </p>
             <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.pedidosVariacion || 8.2}%
+              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.pedidosVariacion || 0}%
             </p>
           </div>
         </div>
@@ -174,10 +153,10 @@ export function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-0.5">Clientes Activos</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              {Number(stats.clientesActivos || stats.clientesTotal || 342).toLocaleString("es-CO")}
+              {Number(stats.clientesActivos || stats.clientesTotal || 0).toLocaleString("es-CO")}
             </p>
             <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.clientesVariacion || 15.3}%
+              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.clientesVariacion || 0}%
             </p>
           </div>
         </div>
@@ -190,10 +169,10 @@ export function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-0.5">Productos</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
-              {stats.productosTotal || 68}
+              {stats.productosTotal || 0}
             </p>
             <p className="text-red-600 dark:text-red-400 text-xs mt-1 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 shrink-0" /> {stats.insumosBajoStock || 5} bajo stock
+              <AlertCircle className="w-3 h-3 shrink-0" /> {stats.insumosBajoStock || 0} bajo stock
             </p>
           </div>
         </div>
@@ -206,51 +185,63 @@ export function Dashboard() {
         {/* Ventas y Compras */}
         <div className="bg-white dark:bg-gray-900 p-4 lg:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
           <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Ventas y Compras</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={finalVentasData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="mes" tick={{ fill: axisColorMuted, fontSize: 11 }} />
-              <YAxis tick={{ fill: axisColorMuted, fontSize: 11 }} width={40} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-              <Legend wrapperStyle={{ fontSize: "12px" }} />
-              <Area type="monotone" dataKey="ventas" name="Ingresos" stroke={ventasColor} strokeWidth={2} fill={ventasColor} fillOpacity={0.15} />
-              <Area type="monotone" dataKey="compras" name="Egresos" stroke={comprasColor} strokeWidth={2} fill={comprasColor} fillOpacity={0.15} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {finalVentasData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={finalVentasData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" tick={{ fill: axisColorMuted, fontSize: 11 }} />
+                <YAxis tick={{ fill: axisColorMuted, fontSize: 11 }} width={40} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+                <Legend wrapperStyle={{ fontSize: "12px" }} />
+                <Area type="monotone" dataKey="ventas" name="Ingresos" stroke={ventasColor} strokeWidth={2} fill={ventasColor} fillOpacity={0.15} />
+                <Area type="monotone" dataKey="compras" name="Egresos" stroke={comprasColor} strokeWidth={2} fill={comprasColor} fillOpacity={0.15} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[220px] text-gray-400 dark:text-gray-600 text-sm">
+              Sin datos de ventas aún
+            </div>
+          )}
         </div>
 
         {/* Productos más vendidos */}
         <div className="bg-white dark:bg-gray-900 p-4 lg:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60">
           <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-4">Productos Más Vendidos</h2>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart layout="vertical" data={finalPopulares.map(p => ({
-              ...p,
-              nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
-            }))} margin={{ top: 0, right: 12, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: axisColorMuted }} />
-              <YAxis
-                type="category"
-                dataKey="nombreShort"
-                width={135}
-                tick={{ fontSize: 11, fill: axisColor }}
-                tickLine={false}
-                tickFormatter={(val) => (val && val.length > 18 ? `${val.substring(0, 16)}...` : val)}
-              />
-              <Tooltip
-                formatter={(value) => [value, "Ventas"]}
-                labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
-                contentStyle={tooltipStyle}
-                labelStyle={tooltipLabelStyle}
-                itemStyle={tooltipItemStyle}
-              />
-              <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={18}>
-                {finalPopulares.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.12} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {finalPopulares.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart layout="vertical" data={finalPopulares.map(p => ({
+                ...p,
+                nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
+              }))} margin={{ top: 0, right: 12, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: axisColorMuted }} />
+                <YAxis
+                  type="category"
+                  dataKey="nombreShort"
+                  width={135}
+                  tick={{ fontSize: 11, fill: axisColor }}
+                  tickLine={false}
+                  tickFormatter={(val) => (val && val.length > 18 ? `${val.substring(0, 16)}...` : val)}
+                />
+                <Tooltip
+                  formatter={(value) => [value, "Ventas"]}
+                  labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
+                  contentStyle={tooltipStyle}
+                  labelStyle={tooltipLabelStyle}
+                  itemStyle={tooltipItemStyle}
+                />
+                <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={18}>
+                  {finalPopulares.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.12} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[260px] text-gray-400 dark:text-gray-600 text-sm">
+              Sin ventas registradas aún
+            </div>
+          )}
         </div>
       </div>
 
@@ -266,7 +257,7 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-2">
-            {finalAlertas.map((item, index) => (
+            {finalAlertas.length > 0 ? finalAlertas.map((item, index) => (
               <div key={index} className="flex items-center justify-between gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800/50">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
@@ -279,7 +270,11 @@ export function Dashboard() {
                   Reabastecer
                 </button>
               </div>
-            ))}
+            )) : (
+              <div className="flex items-center justify-center py-8 text-gray-400 dark:text-gray-600 text-sm">
+                ✅ Todos los insumos están abastecidos
+              </div>
+            )}
           </div>
         </div>
 
