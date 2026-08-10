@@ -246,7 +246,9 @@ export function useInsumos() {
           unidadMedida: data.unidadMedida || "und",
           precioUnitario: Number(data.precioUnitario) || 0,
           idProveedor: data.idProveedor || null,
-          descripcion: data.descripcion || ""
+          descripcion: data.descripcion || "",
+          fechaExpedicion: data.fechaExpedicion || null,
+          fechaVencimiento: data.fechaVencimiento || null
         };
         createdResult = await insumosService.createInsumo(payload);
       }
@@ -309,7 +311,9 @@ export function useInsumos() {
           unidadMedida: data.unidadMedida,
           precioUnitario: Number(data.precioUnitario),
           idProveedor: data.idProveedor,
-          descripcion: data.descripcion
+          descripcion: data.descripcion,
+          fechaExpedicion: data.fechaExpedicion || null,
+          fechaVencimiento: data.fechaVencimiento || null
         };
         await insumosService.updateInsumo(id, payload);
 
