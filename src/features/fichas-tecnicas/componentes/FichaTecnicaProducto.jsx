@@ -64,8 +64,8 @@ export function FichaTecnicaProducto({ initialData, onSave }) {
   const handleSave = () => {
     if (onSave) {
       onSave({ insumos, procedimiento, tiempoPreparacion, rendimiento, observaciones });
-      notify.success("Ficha Técnica Guardada", "La ficha técnica del producto se guardó correctamente");
     }
+    notify.success("Ficha Técnica Guardada", "La ficha técnica del producto se guardó correctamente.");
   };
 
   const hasFichaTecnica = initialData && (initialData.insumos.length > 0 || initialData.procedimiento);

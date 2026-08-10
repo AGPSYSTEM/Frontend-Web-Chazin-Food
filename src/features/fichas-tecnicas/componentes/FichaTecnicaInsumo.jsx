@@ -16,17 +16,20 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
   const [observaciones, setObservaciones] = useState(initialData?.observaciones || "");
 
   const handleSave = async () => {
+    const payload = {
+      especificaciones,
+      caracteristicas,
+      informacionNutricional,
+      condicionesAlmacenamiento,
+      vidaUtil,
+      observaciones
+    };
+
     if (onSave) {
-      onSave({
-        especificaciones,
-        caracteristicas,
-        informacionNutricional,
-        condicionesAlmacenamiento,
-        vidaUtil,
-        observaciones
-      });
-      notify.success("Ficha Técnica Guardada", "La ficha técnica del insumo se guardó correctamente");
+      onSave(payload);
     }
+
+    notify.success("Ficha Técnica Guardada", "La ficha técnica se adjuntó/guardó correctamente.");
   };
 
   const hasFichaTecnica = initialData && (initialData.especificaciones || initialData.caracteristicas || initialData.informacionNutricional || initialData.condicionesAlmacenamiento);
