@@ -246,6 +246,29 @@ export function ClienteLanding() {
     fetchMyOrders();
   }, [isAuthenticated, user]);
 
+  const handleCancelarPedido = async (pedidoId) => {
+    const isConfirmed = await confirmAction(
+      "¿Cancelar este pedido?",
+      "Esta acción cambiará el estado del pedido a Cancelado. ¿Deseas continuar?"
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await ventasService.cancelarVenta(pedidoId);
+      success("Pedido cancelado", "Tu pedido fue cancelado exitosamente.");
+      await fetchMyOrders();
+    } catch (err) {
+      console.warn("Error cancelando pedido:", err);
+      try {
+        await ventasService.updateEstadoVenta(pedidoId, "CANCELADO");
+        success("Pedido cancelado", "Tu pedido fue cancelado exitosamente.");
+        await fetchMyOrders();
+      } catch (err2) {
+        error("Error al cancelar pedido", err2.message || "No se pudo cancelar el pedido.");
+      }
+    }
+  };
+
   const activeCategorias = categoriasList.length > 0 ? categoriasList : categoriasDefault;
   const activeProductos = productosList.length > 0 ? productosList : productosDefault;
 
@@ -1175,6 +1198,18 @@ export function ClienteLanding() {
                       <span className="text-gray-500">Total:</span>
                       <span className="text-red-600 dark:text-red-400 text-sm">${Number(p.total || 0).toLocaleString()}</span>
                     </div>
+
+                    {(String(p.estado).toUpperCase() === 'PENDIENTE' || String(p.estado).toLowerCase() === 'en cola') && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={() => handleCancelarPedido(p.id)}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Cancelar Pedido
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
