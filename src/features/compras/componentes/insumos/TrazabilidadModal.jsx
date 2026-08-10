@@ -44,7 +44,7 @@ export function TrazabilidadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[820px] max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
