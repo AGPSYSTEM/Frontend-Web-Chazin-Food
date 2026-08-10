@@ -223,6 +223,7 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
+      let createdResult = null;
       if (isPrep) {
         const payload = {
           nombre: data.nombre,
@@ -235,7 +236,7 @@ export function useInsumos() {
             unidadMedida: i.unidadMedida || "und"
           }))
         };
-        await insumosService.createPreparado(payload);
+        createdResult = await insumosService.createPreparado(payload);
       } else {
         const payload = {
           nombre: data.nombre,
@@ -247,26 +248,21 @@ export function useInsumos() {
           idProveedor: data.idProveedor || null,
           descripcion: data.descripcion || ""
         };
-        await insumosService.createInsumo(payload);
+        createdResult = await insumosService.createInsumo(payload);
       }
 
-      const payload = {
-        nombre: data.nombre,
-        idCategoriaInsumo: data.idCategoriaInsumo || null,
-        categoria: data.categoria || null,
-        stock: Number(data.stock) || 0,
-        stockMinimo: Number(data.stockMinimo) || 0,
-        unidadMedida: data.unidadMedida || "und",
-        precioUnitario: Number(data.precioUnitario) || 0,
-        idProveedor: data.idProveedor || null,
-        proveedor: data.proveedor || null,
-        fechaExpedicion: data.fechaExpedicion || null,
-        fechaVencimiento: data.fechaVencimiento || null,
-        descripcion: data.descripcion || "",
-        estado: data.estado || "Activo"
-      };
+      if (createdResult && data.fichaTecnica && !isPrep) {
+        const insId = createdResult.id || createdResult.idInsumo;
+        if (insId) {
+          try {
+            const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
+            await fichasTecnicasService.saveFichaInsumo(insId, data.fichaTecnica);
+          } catch (ftErr) {
+            console.warn("Ficha técnica no se pudo adjuntar automáticamente:", ftErr);
+          }
+        }
+      }
 
-      await insumosService.createInsumo(payload);
       await fetchInsumos();
 
       addTraceabilityEvent(
@@ -316,25 +312,17 @@ export function useInsumos() {
           descripcion: data.descripcion
         };
         await insumosService.updateInsumo(id, payload);
+
+        if (data.fichaTecnica) {
+          try {
+            const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
+            await fichasTecnicasService.saveFichaInsumo(id, data.fichaTecnica);
+          } catch (ftErr) {
+            console.warn("Ficha técnica no se pudo actualizar automáticamente:", ftErr);
+          }
+        }
       }
 
-      const payload = {
-        nombre: data.nombre,
-        idCategoriaInsumo: data.idCategoriaInsumo || null,
-        categoria: data.categoria || null,
-        stock: Number(data.stock) || 0,
-        stockMinimo: Number(data.stockMinimo) || 0,
-        unidadMedida: data.unidadMedida || "und",
-        precioUnitario: Number(data.precioUnitario) || 0,
-        idProveedor: data.idProveedor || null,
-        proveedor: data.proveedor || null,
-        fechaExpedicion: data.fechaExpedicion || null,
-        fechaVencimiento: data.fechaVencimiento || null,
-        descripcion: data.descripcion || "",
-        estado: data.estado || "Activo"
-      };
-
-      await insumosService.updateInsumo(id, payload);
       await fetchInsumos();
 
       addTraceabilityEvent(

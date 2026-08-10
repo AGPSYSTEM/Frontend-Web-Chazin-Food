@@ -64,10 +64,25 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
 
   if (!isOpen) return null;
 
+  const handleNumberInput = (field, val) => {
+    if (val === "") {
+      setForm((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+    const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
+    setForm((prev) => ({ ...prev, [field]: sanitized }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.nombre.trim()) return;
-    onSave({ ...form, fichaTecnica });
+    onSave({
+      ...form,
+      precioUnitario: form.precioUnitario === "" ? 0 : Number(form.precioUnitario),
+      stock: form.stock === "" ? 0 : Number(form.stock),
+      stockMinimo: form.stockMinimo === "" ? 0 : Number(form.stockMinimo),
+      fichaTecnica
+    });
   };
 
   return (
@@ -182,7 +197,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 min="0"
                 step="0.01"
                 value={form.precioUnitario}
-                onChange={(e) => setForm({ ...form, precioUnitario: Number(e.target.value) })}
+                onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
                 className={inputCls}
                 placeholder="0.00"
               />
@@ -195,7 +210,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 min="0"
                 step="0.01"
                 value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
+                onChange={(e) => handleNumberInput("stock", e.target.value)}
                 className={inputCls}
               />
             </div>
@@ -207,7 +222,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 min="0"
                 step="0.01"
                 value={form.stockMinimo}
-                onChange={(e) => setForm({ ...form, stockMinimo: Number(e.target.value) })}
+                onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
                 className={inputCls}
               />
             </div>
