@@ -260,7 +260,7 @@ export function useInsumos() {
             const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
             await fichasTecnicasService.saveFichaInsumo(insId, data.fichaTecnica);
           } catch (ftErr) {
-            console.warn("Ficha técnica no se pudo adjuntar automáticamente:", ftErr);
+            throw new Error("El insumo fue creado, pero no se pudo guardar su ficha técnica. Inténtalo de nuevo desde Editar insumo.");
           }
         }
       }

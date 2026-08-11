@@ -52,7 +52,6 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
     setObservaciones(f.observaciones || "");
     setProcedimiento(f.procedimiento || "");
     setTiempoPreparacion(f.tiempoPreparacion ?? "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
     setRendimiento(f.rendimiento || "");
   };
 
