@@ -248,21 +248,10 @@ export function useInsumos() {
           idProveedor: data.idProveedor || null,
           descripcion: data.descripcion || "",
           fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaVencimiento: data.fechaVencimiento || null,
+          fichaTecnica: data.fichaTecnica || null
         };
         createdResult = await insumosService.createInsumo(payload);
-      }
-
-      if (createdResult && data.fichaTecnica && !isPrep) {
-        const insId = createdResult.id || createdResult.idInsumo;
-        if (insId) {
-          try {
-            const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
-            await fichasTecnicasService.saveFichaInsumo(insId, data.fichaTecnica);
-          } catch (ftErr) {
-            console.warn("Ficha técnica no se pudo adjuntar automáticamente:", ftErr);
-          }
-        }
       }
 
       await fetchInsumos();

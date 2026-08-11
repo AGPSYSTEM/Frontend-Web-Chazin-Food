@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, FileText, Check } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
@@ -21,44 +21,60 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
   const [rendimiento, setRendimiento] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [loadingFicha, setLoadingFicha] = useState(Boolean(insumoId));
+  const initialFichaRef = useRef(null);
 
   const loadFichaData = useCallback(async () => {
-    if (initialData) {
-      populateFields(initialData);
-      return;
-    }
-    if (insumoId) {
-      try {
+    setLoadingFicha(Boolean(insumoId));
+    try {
+      if (initialData) {
+        populateFields(initialData);
+        return;
+      }
+      if (insumoId) {
         const f = await fichasTecnicasService.getFichaByInsumo(insumoId);
         if (f && f.idFichaTecnica) {
           populateFields(f);
+          onSave?.(f);
         }
-      } catch (err) {
-        console.error("Error cargando ficha de insumo:", err);
       }
+    } catch (err) {
+      console.error("Error cargando ficha de insumo:", err);
+    } finally {
+      setLoadingFicha(false);
     }
-  }, [insumoId, initialData]);
+  }, [insumoId, initialData, onSave]);
 
   useEffect(() => {
     loadFichaData();
   }, [loadFichaData]);
 
   const populateFields = (f) => {
-    setEspecificaciones(f.especificaciones || "");
-    setCaracteristicas(f.caracteristicas || "");
-    setInformacionNutricional(f.informacionNutricional || "");
-    setCondicionesAlmacenamiento(f.condicionesAlmacenamiento || "");
-    setVidaUtil(f.vidaUtil || "");
-    setObservaciones(f.observaciones || "");
-    setProcedimiento(f.procedimiento || "");
-    setTiempoPreparacion(f.tiempoPreparacion ?? "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
-    setRendimiento(f.rendimiento || "");
+    const fields = {
+      especificaciones: f.especificaciones || "",
+      caracteristicas: f.caracteristicas || "",
+      informacionNutricional: f.informacionNutricional || "",
+      condicionesAlmacenamiento: f.condicionesAlmacenamiento || "",
+      vidaUtil: f.vidaUtil || "",
+      observaciones: f.observaciones || "",
+      procedimiento: f.procedimiento || "",
+      tiempoPreparacion: Number(f.tiempoPreparacion) || 0,
+      rendimiento: f.rendimiento || ""
+    };
+    initialFichaRef.current = fields;
+    setEspecificaciones(fields.especificaciones);
+    setCaracteristicas(fields.caracteristicas);
+    setInformacionNutricional(fields.informacionNutricional);
+    setCondicionesAlmacenamiento(fields.condicionesAlmacenamiento);
+    setVidaUtil(fields.vidaUtil);
+    setObservaciones(fields.observaciones);
+    setProcedimiento(fields.procedimiento);
+    setTiempoPreparacion(fields.tiempoPreparacion);
+    setRendimiento(fields.rendimiento);
   };
 
   const handleSave = async () => {
-    const payload = {
-      idInsumo: insumoId || null,
+    const currentFields = {
       especificaciones,
       caracteristicas,
       informacionNutricional,
@@ -70,16 +86,22 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
       rendimiento
     };
 
-    if (onSave) {
-      onSave(payload);
+    const payload = { idInsumo: insumoId || null };
+    if (!insumoId || !initialFichaRef.current) {
+      Object.assign(payload, currentFields);
+    } else {
+      for (const [field, value] of Object.entries(currentFields)) {
+        if (value !== initialFichaRef.current[field]) payload[field] = value;
+      }
     }
 
     if (insumoId) {
       try {
         setSaving(true);
-        await fichasTecnicasService.saveFichaInsumo(insumoId, payload);
+        const savedFicha = await fichasTecnicasService.saveFichaInsumo(insumoId, payload);
+        populateFields(savedFicha);
+        onSave?.(savedFicha);
         notify.success("Cambios Guardados", `Los cambios de la ficha técnica del insumo ${insumoName || ""} han sido guardados.`);
-        notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica del insumo ${insumoName || ""}`);
       } catch (err) {
         console.error(err);
         notify.error("Error", "No se pudo guardar la ficha técnica en la base de datos");
@@ -87,7 +109,8 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
         setSaving(false);
       }
     } else {
-      notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al insumo. Se guardará al crear el insumo.");
+      onSave?.(payload);
+      notify.success("Ficha Técnica Lista", "La ficha técnica se guardará junto con el insumo al crearlo.");
     }
   };
 
@@ -203,12 +226,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
           <div className="flex justify-end pt-2">
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || loadingFicha}
               onClick={handleSave}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
-              <span>{saving ? "Guardando..." : "Guardar Ficha Técnica"}</span>
+              <span>{loadingFicha ? "Cargando ficha..." : saving ? "Guardando..." : "Guardar Ficha Técnica"}</span>
             </button>
           </div>
         </div>
