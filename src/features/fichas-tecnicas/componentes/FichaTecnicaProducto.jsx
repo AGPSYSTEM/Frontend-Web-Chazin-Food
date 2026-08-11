@@ -13,6 +13,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
+  const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
@@ -57,6 +58,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const populateFields = (f) => {
     setInsumos(f.detalles || f.insumos || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
+    setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setTiempoPreparacion(f.tiempoPreparacion || 0);
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
@@ -133,6 +135,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       try {
         setSaving(true);
         await fichasTecnicasService.saveFichaProducto(productId, payload);
+        notify.success("Cambios Guardados", `Los cambios de la ficha técnica de ${productName || "producto"} han sido guardados.`);
         notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica de ${productName || "producto"}`);
       } catch (err) {
         console.error(err);
@@ -140,6 +143,8 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       } finally {
         setSaving(false);
       }
+    } else {
+      notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al producto. Se guardará al crear el producto.");
     }
   };
 
@@ -316,8 +321,17 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               <label className={labelCls}>Tiempo de Preparación (min)</label>
               <input
                 type="number"
+                min="0"
                 value={tiempoPreparacion}
-                onChange={(e) => setTiempoPreparacion(Number(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setTiempoPreparacion("");
+                    return;
+                  }
+                  const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
+                  setTiempoPreparacion(sanitized);
+                }}
                 className={inputCls}
                 placeholder="Ej: 15"
               />

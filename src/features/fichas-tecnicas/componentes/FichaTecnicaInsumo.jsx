@@ -17,6 +17,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
   const [vidaUtil, setVidaUtil] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [procedimiento, setProcedimiento] = useState("");
+  const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
   const [rendimiento, setRendimiento] = useState("");
 
@@ -51,6 +52,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
     setVidaUtil(f.vidaUtil || "");
     setObservaciones(f.observaciones || "");
     setProcedimiento(f.procedimiento || "");
+    setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setTiempoPreparacion(f.tiempoPreparacion || 0);
     setRendimiento(f.rendimiento || "");
   };
@@ -77,6 +79,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
       try {
         setSaving(true);
         await fichasTecnicasService.saveFichaInsumo(insumoId, payload);
+        notify.success("Cambios Guardados", `Los cambios de la ficha técnica del insumo ${insumoName || ""} han sido guardados.`);
         notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica del insumo ${insumoName || ""}`);
       } catch (err) {
         console.error(err);
@@ -84,6 +87,8 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
       } finally {
         setSaving(false);
       }
+    } else {
+      notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al insumo. Se guardará al crear el insumo.");
     }
   };
 
