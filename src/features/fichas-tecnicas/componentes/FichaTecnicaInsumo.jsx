@@ -78,7 +78,6 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
         setSaving(true);
         await fichasTecnicasService.saveFichaInsumo(insumoId, payload);
         notify.success("Cambios Guardados", `Los cambios de la ficha técnica del insumo ${insumoName || ""} han sido guardados.`);
-        notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica del insumo ${insumoName || ""}`);
       } catch (err) {
         console.error(err);
         notify.error("Error", "No se pudo guardar la ficha técnica en la base de datos");
