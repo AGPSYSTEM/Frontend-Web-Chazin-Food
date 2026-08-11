@@ -23,7 +23,6 @@ export function Login() {
   const [regConfirmar, setRegConfirmar] = useState("");
 
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [isRegLoading, setIsRegLoading] = useState(false);
 
   const { login, register } = useAuth();
@@ -253,7 +252,7 @@ export function Login() {
                       <input
                         type="text"
                         value={regNombre}
-                        onChange={(e) => setRegNombre(e.target.value)}
+                        onChange={(e) => setRegNombre(e.target.value.replace(/[0-9]/g, ""))}
                         className={regInputBase}
                         placeholder="Juan"
                       />
@@ -269,7 +268,7 @@ export function Login() {
                       <input
                         type="text"
                         value={regApellidos}
-                        onChange={(e) => setRegApellidos(e.target.value)}
+                        onChange={(e) => setRegApellidos(e.target.value.replace(/[0-9]/g, ""))}
                         className={regInputBase}
                         placeholder="Pérez"
                       />
@@ -297,16 +296,17 @@ export function Login() {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Número de Documento (ID) <span className="text-red-500">*</span>
+                      Número de Documento <span className="text-red-500">*</span>
                     </label>
                     <div className="relative group">
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
                         value={regDocumento}
-                        onChange={(e) => setRegDocumento(e.target.value)}
+                        onChange={(e) => setRegDocumento(e.target.value.replace(/[^0-9]/g, ""))}
                         className={regInputBase}
                         placeholder="Ej: 1094000123"
+                        inputMode="numeric"
                       />
                     </div>
                   </div>
@@ -320,9 +320,10 @@ export function Login() {
                       <input
                         type="tel"
                         value={regTelefono}
-                        onChange={(e) => setRegTelefono(e.target.value)}
+                        onChange={(e) => setRegTelefono(e.target.value.replace(/[^0-9]/g, ""))}
                         className={regInputBase}
                         placeholder="3190000000"
+                        inputMode="numeric"
                       />
                     </div>
                   </div>
@@ -369,16 +370,9 @@ export function Login() {
                         type={showRegPassword ? "text" : "password"}
                         value={regContraseña}
                         onChange={(e) => setRegContraseña(e.target.value)}
-                        className={regInputWithRight}
+                        className={regInputBase}
                         placeholder="Mínimo 6 caracteres"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegPassword(!showRegPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors z-10"
-                      >
-                        {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
                   </div>
 
@@ -389,20 +383,24 @@ export function Login() {
                     <div className="relative group">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
-                        type={showRegConfirm ? "text" : "password"}
+                        type={showRegPassword ? "text" : "password"}
                         value={regConfirmar}
                         onChange={(e) => setRegConfirmar(e.target.value)}
-                        className={regInputWithRight}
+                        className={regInputBase}
                         placeholder="Repite tu contraseña"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowRegConfirm(!showRegConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors z-10"
-                      >
-                        {showRegConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
                     </div>
+                  </div>
+
+                  <div className="sm:col-span-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="flex items-center gap-2 text-xs text-gray-500 hover:text-red-500 transition-colors select-none cursor-pointer"
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showRegPassword ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+                    </button>
                   </div>
                 </div>
 

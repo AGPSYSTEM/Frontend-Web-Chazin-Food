@@ -1,41 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { insumosService } from "../servicios/insumosService";
+import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { apiClient } from "@/shared/api/apiClient";
 
-const INITIAL_EVENTOS = [
-  {
-    id: 1,
-    tipo: "Creado",
-    nombre: "Carnes",
-    descripcion: "Se creó una nueva categoría en el inventario: Carnes",
-    fecha: "23/07/2026 06:35"
-  },
-  {
-    id: 2,
-    tipo: "Editado",
-    nombre: "Cereales",
-    descripcion: "Se actualizaron los datos de la categoría: Cereales",
-    fecha: "23/07/2026 06:35"
-  },
-  {
-    id: 3,
-    tipo: "Eliminado",
-    nombre: "Carnes",
-    descripcion: "Se eliminó del inventario la categoría: Carnes",
-    fecha: "23/07/2026 06:32"
-  }
-];
+const INITIAL_EVENTOS = [];
 
 export function useInsumos() {
   const notify = useNotifications();
   const [insumos, setInsumos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
 
-  // Traceability & Trash Bin State with localStorage persistence
+  // Traceability State with localStorage persistence
   const [eventos, setEventos] = useState(() => {
     try {
       const saved = localStorage.getItem("insumos_trazabilidad_eventos");
@@ -48,31 +29,17 @@ export function useInsumos() {
   const [unreadCount, setUnreadCount] = useState(() => {
     try {
       const saved = localStorage.getItem("insumos_trazabilidad_unread");
-      return saved ? JSON.parse(saved) : 1;
+      return saved ? JSON.parse(saved) : 0;
     } catch {
-      return 1;
+      return 0;
     }
   });
 
-  const [papeleraInsumos, setPapeleraInsumos] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_base");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Papelera state — fetched from the backend API
+  const [papeleraInsumos, setPapeleraInsumos] = useState([]);
+  const [papeleraPreparados, setPapeleraPreparados] = useState([]);
 
-  const [papeleraPreparados, setPapeleraPreparados] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_papelera_preparados");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync to localStorage
+  // Sync traceability to localStorage
   useEffect(() => {
     try {
       localStorage.setItem("insumos_trazabilidad_eventos", JSON.stringify(eventos));
@@ -85,66 +52,95 @@ export function useInsumos() {
     } catch {}
   }, [unreadCount]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_base", JSON.stringify(papeleraInsumos));
-    } catch {}
-  }, [papeleraInsumos]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_papelera_preparados", JSON.stringify(papeleraPreparados));
-    } catch {}
-  }, [papeleraPreparados]);
-
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
-      const [insumosData, categoriasData] = await Promise.all([
+      const [insumosData, categoriasData, preparadosData, proveedoresData, trazabilidadData] = await Promise.all([
         insumosService.getInsumos(),
-        insumosService.getCategorias()
+        insumosService.getCategorias(),
+        insumosService.getInsumosPreparados(),
+        proveedoresService.getProveedores().catch(() => []),
+        apiClient.get("/trazabilidad").catch(() => [])
       ]);
 
-      // Ensure mock sample data contains at least one prepared insumo if empty
-      let finalInsumos = insumosData || [];
-      if (finalInsumos.length > 0 && !finalInsumos.some((i) => i.tipo === "Preparado")) {
-        finalInsumos = [
-          ...finalInsumos,
-          {
-            id: "prep-1",
-            nombre: "salsa de la casa",
-            tipo: "Preparado",
-            descripcion: "salsa de la casa 100% artesanal",
-            precio: 2000,
-            unidadMedida: "porción",
-            estado: "Activo",
-            ingredientes: [{ id: 1, nombre: "Tomate", cantidad: 1, unidadMedida: "paq" }]
-          },
-          {
-            id: "prep-2",
-            nombre: "Salsa Especial de la Casa",
-            tipo: "Preparado",
-            descripcion: "Receta casera",
-            precio: 7500,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 2, nombre: "Mayonesa", cantidad: 1, unidadMedida: "und" }]
-          },
-          {
-            id: "prep-3",
-            nombre: "Receta Especial Jalapeños",
-            tipo: "Preparado",
-            descripcion: "Con queso chedart",
-            precio: 10000,
-            unidadMedida: "und",
-            estado: "Activo",
-            ingredientes: [{ id: 3, nombre: "Jalapeño", cantidad: 2, unidadMedida: "und" }]
-          }
-        ];
-      }
+      const baseMapped = (insumosData || []).map(i => ({
+        ...i,
+        tipo: "Base"
+      }));
 
-      setInsumos(finalInsumos);
+      const prepMapped = (preparadosData || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
+      setInsumos([...baseMapped, ...prepMapped]);
       setCategorias(categoriasData || []);
+      setProveedores(proveedoresData || []);
+
+      // Map backend trazabilidad events
+      if (Array.isArray(trazabilidadData)) {
+        const mappedBackendEvents = trazabilidadData.map((r) => {
+          let tipoLabel = "Creado";
+          if (
+            r.tipo === "compra" ||
+            r.tipoMovimiento === "Entrada" ||
+            (r.tipo && r.tipo.toLowerCase().includes("reabastec"))
+          ) {
+            tipoLabel = "Reabastecimiento";
+          } else if (r.tipo === "editar" || r.tipo === "Editado") {
+            tipoLabel = "Editado";
+          } else if (r.tipo === "eliminar" || r.tipo === "Eliminado") {
+            tipoLabel = "Eliminado";
+          } else if (r.tipo === "restaurar" || r.tipo === "Restaurado") {
+            tipoLabel = "Restaurado";
+          }
+
+          const fechaObj = r.fecha ? new Date(r.fecha) : new Date();
+          const fechaStr = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(
+            fechaObj.getMonth() + 1
+          ).padStart(2, "0")}/${fechaObj.getFullYear()} ${String(
+            fechaObj.getHours()
+          ).padStart(2, "0")}:${String(fechaObj.getMinutes()).padStart(2, "0")}`;
+
+          return {
+            id: `tz-${r.idTrazabilidad || r.id}`,
+            tipo: tipoLabel,
+            nombre: r.entidadNombre || (r.idInsumo ? `Insumo #${r.idInsumo}` : "Insumo"),
+            descripcion: r.detalle || r.motivo || "Movimiento de trazabilidad registrado",
+            fecha: fechaStr,
+            cantidad: r.cantidad,
+            tipoMovimiento: r.tipoMovimiento
+          };
+        });
+
+        setEventos((prev) => {
+          const combined = [...mappedBackendEvents, ...(prev || [])];
+          const unique = [];
+          const seen = new Set();
+          for (const item of combined) {
+            const key = `${item.tipo}-${item.nombre}-${item.fecha}-${item.descripcion}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              unique.push(item);
+            }
+          }
+          return unique;
+        });
+      }
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al obtener insumos o categorías");
@@ -153,9 +149,44 @@ export function useInsumos() {
     }
   }, []);
 
+  // Fetch papelera data from backend API
+  const fetchPapelera = useCallback(async () => {
+    try {
+      const [insumosTrash, preparadosTrash] = await Promise.all([
+        insumosService.getPapeleraInsumos(),
+        insumosService.getPapeleraPreparados()
+      ]);
+
+      const prepTrashMapped = (preparadosTrash || []).map(p => ({
+        id: p.id,
+        idInsumo: p.id,
+        nombre: p.nombre,
+        tipo: "Preparado",
+        descripcion: p.descripcion || "",
+        precio: p.precioVenta || p.costoTotal || 0,
+        costo: p.costoTotal || 0,
+        unidadMedida: p.unidadMedida || "und",
+        estado: p.estado === 1 ? "Activo" : "Inactivo",
+        ingredientes: (p.insumos || p.componentes || []).map(d => ({
+          id: d.idInsumo,
+          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+          cantidad: parseFloat(d.cantidad || 0),
+          unidadMedida: d.unidadMedida || "und",
+          precioUnitario: parseFloat(d.precioUnitario || 0)
+        }))
+      }));
+
+      setPapeleraInsumos(insumosTrash || []);
+      setPapeleraPreparados(prepTrashMapped);
+    } catch (err) {
+      console.error("Error al cargar papelera:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchInsumos();
-  }, [fetchInsumos]);
+    fetchPapelera();
+  }, [fetchInsumos, fetchPapelera]);
 
   const addTraceabilityEvent = (tipo, nombre, descripcion) => {
     const now = new Date();
@@ -181,10 +212,9 @@ export function useInsumos() {
   const filteredInsumos = insumos.filter((item) => {
     const matchSearch =
       searchTerm === "" ||
-      item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.nombre.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria;
+    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
 
     return matchSearch && matchCategoria && matchEstado;
@@ -193,9 +223,51 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      const newItem = { ...data, id: Date.now() };
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.createPreparado(payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo || 1,
+          stock: Number(data.stock) || 0,
+          stockMinimo: Number(data.stockMinimo) || 0,
+          unidadMedida: data.unidadMedida || "und",
+          precioUnitario: Number(data.precioUnitario) || 0,
+          idProveedor: data.idProveedor || null,
+          descripcion: data.descripcion || ""
+        };
+        await insumosService.createInsumo(payload);
+      }
 
-      setInsumos((prev) => [newItem, ...prev]);
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
+
+      await insumosService.createInsumo(payload);
+      await fetchInsumos();
 
       addTraceabilityEvent(
         "Creado",
@@ -218,11 +290,53 @@ export function useInsumos() {
 
   const updateInsumo = async (id, data) => {
     try {
-      setInsumos((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, ...data } : i))
-      );
-
       const isPrep = data.tipo === "Preparado";
+      if (isPrep) {
+        const payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion || "",
+          unidadMedida: data.unidadMedida || "und",
+          precioVenta: Number(data.precio) || 0,
+          insumos: (data.ingredientes || []).map(i => ({
+            idInsumo: i.id,
+            cantidad: i.cantidad,
+            unidadMedida: i.unidadMedida || "und"
+          }))
+        };
+        await insumosService.updatePreparado(id, payload);
+      } else {
+        const payload = {
+          nombre: data.nombre,
+          idCategoriaInsumo: data.idCategoriaInsumo,
+          stock: Number(data.stock),
+          stockMinimo: Number(data.stockMinimo),
+          unidadMedida: data.unidadMedida,
+          precioUnitario: Number(data.precioUnitario),
+          idProveedor: data.idProveedor,
+          descripcion: data.descripcion
+        };
+        await insumosService.updateInsumo(id, payload);
+      }
+
+      const payload = {
+        nombre: data.nombre,
+        idCategoriaInsumo: data.idCategoriaInsumo || null,
+        categoria: data.categoria || null,
+        stock: Number(data.stock) || 0,
+        stockMinimo: Number(data.stockMinimo) || 0,
+        unidadMedida: data.unidadMedida || "und",
+        precioUnitario: Number(data.precioUnitario) || 0,
+        idProveedor: data.idProveedor || null,
+        proveedor: data.proveedor || null,
+        fechaExpedicion: data.fechaExpedicion || null,
+        fechaVencimiento: data.fechaVencimiento || null,
+        descripcion: data.descripcion || "",
+        estado: data.estado || "Activo"
+      };
+
+      await insumosService.updateInsumo(id, payload);
+      await fetchInsumos();
+
       addTraceabilityEvent(
         "Editado",
         data.nombre,
@@ -239,6 +353,7 @@ export function useInsumos() {
     }
   };
 
+  // Soft delete — moves base insumo to papelera (sets estado = 0 in backend)
   const deleteInsumo = async (id, nombre) => {
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
@@ -247,25 +362,14 @@ export function useInsumos() {
     if (!confirmed) return false;
 
     try {
-      const target = insumos.find((i) => i.id === id);
-      if (!target) return false;
-
-      // Remove from active insumos
-      setInsumos((prev) => prev.filter((i) => i.id !== id));
-
-      // Move to appropriate trash list
-      if (target.tipo === "Preparado") {
-        setPapeleraPreparados((prev) => [target, ...prev]);
-      } else {
-        setPapeleraInsumos((prev) => [target, ...prev]);
-      }
+      await insumosService.deleteInsumo(id);
+      await fetchInsumos();
+      await fetchPapelera();
 
       addTraceabilityEvent(
         "Eliminado",
         nombre,
-        target.tipo === "Preparado"
-          ? `Se movió a la papelera el insumo preparado: ${nombre}`
-          : `Se eliminó del inventario el insumo: ${nombre}`
+        `Se movió a la papelera el insumo: ${nombre}`
       );
 
       notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
@@ -276,28 +380,62 @@ export function useInsumos() {
     }
   };
 
-  const restoreInsumo = (item) => {
-    // Remove from trash list
-    if (item.tipo === "Preparado") {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== item.id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== item.id));
-    }
-
-    // Add back to active insumos
-    setInsumos((prev) => [item, ...prev]);
-
-    addTraceabilityEvent(
-      "Restaurado",
-      item.nombre,
-      item.tipo === "Preparado"
-        ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
-        : `Se restauró el insumo en el inventario: ${item.nombre}`
+  // Soft delete for insumos preparados — moves prepared insumo to papelera
+  const deletePreparado = async (id, nombre) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Mover a la papelera?",
+      `¿Deseas mover el preparado "${nombre}" a la papelera de reciclaje?`
     );
+    if (!confirmed) return false;
 
-    notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    try {
+      await insumosService.deletePreparado(id);
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado",
+        nombre,
+        `Se movió a la papelera el insumo preparado: ${nombre}`
+      );
+
+      notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar el preparado");
+      return false;
+    }
   };
 
+  // Restore from papelera — calls backend API to set estado = 1
+  const restoreInsumo = async (item) => {
+    try {
+      const isPreparado = item.tipo === "Preparado" || item.componentes || item.ingredientes;
+
+      if (isPreparado) {
+        await insumosService.restorePreparado(item.id || item.idInsumo);
+      } else {
+        await insumosService.restoreInsumo(item.id || item.idInsumo);
+      }
+
+      await fetchInsumos();
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Restaurado",
+        item.nombre,
+        isPreparado
+          ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
+          : `Se restauró el insumo en el inventario: ${item.nombre}`
+      );
+
+      notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo restaurar");
+    }
+  };
+
+  // Hard delete — permanent elimination from database
   const deleteDefinitivoInsumo = async (id, nombre, isPreparado) => {
     const confirmed = await notify.confirmDelete(
       "¿Eliminar definitivamente?",
@@ -305,13 +443,25 @@ export function useInsumos() {
     );
     if (!confirmed) return;
 
-    if (isPreparado) {
-      setPapeleraPreparados((prev) => prev.filter((i) => i.id !== id));
-    } else {
-      setPapeleraInsumos((prev) => prev.filter((i) => i.id !== id));
-    }
+    try {
+      if (isPreparado) {
+        await insumosService.hardDeletePreparado(id);
+      } else {
+        await insumosService.hardDeleteInsumo(id);
+      }
 
-    notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+      await fetchPapelera();
+
+      addTraceabilityEvent(
+        "Eliminado permanente",
+        nombre,
+        `Se eliminó permanentemente ${isPreparado ? "el preparado" : "el insumo"}: ${nombre}`
+      );
+
+      notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar permanentemente");
+    }
   };
 
   const clearEventos = () => {
@@ -327,6 +477,7 @@ export function useInsumos() {
     insumos,
     filteredInsumos,
     categorias,
+    proveedores,
     loading,
     searchTerm,
     setSearchTerm,
@@ -339,9 +490,11 @@ export function useInsumos() {
     papeleraInsumos,
     papeleraPreparados,
     refetch: fetchInsumos,
+    refetchPapelera: fetchPapelera,
     createInsumo,
     updateInsumo,
     deleteInsumo,
+    deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
     clearEventos,

@@ -32,9 +32,16 @@ export function useClientes() {
       c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.telefono?.includes(searchTerm) ||
       c.documento?.includes(searchTerm);
 
-    const matchEstado = filterEstado === "Todos" || c.estado === filterEstado;
+    const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
+
+    const matchEstado =
+      filterEstado === "Todos" ||
+      clientTipo.toLowerCase() === filterEstado.toLowerCase() ||
+      c.estado === filterEstado;
+
     return matchSearch && matchEstado;
   });
 

@@ -14,6 +14,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
+  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
@@ -58,6 +59,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setInsumos(f.detalles || f.insumos || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
     setTiempoPreparacion(f.tiempoPreparacion ?? "");
+    setTiempoPreparacion(f.tiempoPreparacion || 0);
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");
@@ -134,6 +136,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
         setSaving(true);
         await fichasTecnicasService.saveFichaProducto(productId, payload);
         notify.success("Cambios Guardados", `Los cambios de la ficha técnica de ${productName || "producto"} han sido guardados.`);
+        notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica de ${productName || "producto"}`);
       } catch (err) {
         console.error(err);
         notify.error("Error", "No se pudo guardar la ficha técnica en la base de datos");

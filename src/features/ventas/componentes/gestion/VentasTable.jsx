@@ -1,83 +1,278 @@
-import { Eye, TrendingUp, Calendar } from "lucide-react";
+import { useState } from "react";
+import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+
+function formatDateSafe(dateVal, fallback = "2026-06-09") {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return String(dateVal).slice(0, 10) || fallback;
+  }
+}
 
 export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.ceil(ventas.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedVentas = ventas.slice(startIndex, startIndex + pageSize);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const getEntregaBadge = (tipo) => {
+    const tipoNormalized = (tipo || "").toLowerCase();
+    if (tipoNormalized.includes("mesa")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+          <span>🍽️</span> En Mesa
+        </span>
+      );
+    }
+    if (tipoNormalized.includes("recoger") || tipoNormalized.includes("para llevar")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+          <span>🏪</span> Recoger
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+        <span>🛵</span> Domicilio
+      </span>
+    );
+  };
+
+  const getMetodoIcon = (metodo) => {
+    const metodoNormalized = (metodo || "").toLowerCase();
+    if (metodoNormalized.includes("tarjeta")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <span>💳</span> Tarjeta
+        </span>
+      );
+    }
+    if (metodoNormalized.includes("transfer") || metodoNormalized.includes("nequi") || metodoNormalized.includes("davi")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <span>📱</span> Transferencia
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+        <span>💵</span> Efectivo
+      </span>
+    );
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="space-y-4">
+      {/* Clean CRUD Table matching system standards */}
+      <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">N° Factura / Venta</th>
-              <th className="px-6 py-4">Cliente</th>
-              <th className="px-6 py-4">Fecha</th>
-              <th className="px-6 py-4">Monto Total</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+            <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-5 py-3.5 whitespace-nowrap">ID</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">CLIENTE</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">FECHA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">HORA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">ENTREGA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">MÉTODO</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">TOTAL</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">ESTADO</th>
+              <th className="px-5 py-3.5 whitespace-nowrap text-right">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-            {ventas.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No se encontraron ventas registradas
-                </td>
-              </tr>
-            ) : (
-              ventas.map((v) => (
+            {paginatedVentas.map((v) => {
+              const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
+              const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
+              const descPct = Number(v.descuentoPorcentaje || 0);
+              const origPrice = Number(v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
+              const hasDiscount = (descPct > 0) || (origPrice > Number(v.total || 0)) || (Number(v.montoDescuento || 0) > 0);
+
+              return (
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
-                        <TrendingUp className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {v.numeroVenta || `VEN-${v.id}`}
-                        </div>
-                        <div className="text-xs text-gray-400 font-mono">ID: #{v.id}</div>
-                      </div>
+                  {/* N° Factura / Pedido */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    <div className="font-bold text-gray-900 dark:text-gray-100">
+                      {codigoPedido}
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
-                    {v.clienteNombre || v.cliente || "Cliente General"}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300 text-xs">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      {v.fecha ? new Date(v.fecha).toLocaleDateString("es-CO") : "Hoy"}
+
+                  {/* Cliente con Avatar */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                        {initial}
+                      </div>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                    ${Number(v.total || 0).toLocaleString("es-CO")}
+
+                  {/* Fecha */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
+                    {formatDateSafe(v.fecha || v.fechaVenta, "2026-06-09")}
                   </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        v.estado === "Completada" || v.estado === "Entregado"
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                          : v.estado === "En Preparación" || v.estado === "Pendiente"
-                          ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
-                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                      }`}
-                    >
-                      {v.estado || "Completada"}
+
+                  {/* Hora */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
+                    {(() => {
+                      let raw = v.horario;
+                      if (!raw || raw === "—") return "—";
+                      if (typeof raw === 'string') {
+                        if (raw.includes('AM') || raw.includes('PM')) return raw;
+                        if (raw.includes('–')) raw = raw.split('–')[0].trim();
+                        if (/^\d{1,2}:\d{2}$/.test(raw.trim())) {
+                          const parts = raw.trim().split(':');
+                          let h = parseInt(parts[0], 10);
+                          const m = parts[1];
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          h = h % 12;
+                          h = h ? h : 12;
+                          return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+                        }
+                      }
+                      const d = new Date(v.fecha || v.fechaVenta || raw);
+                      if (!isNaN(d.getTime())) {
+                        let h = d.getHours();
+                        const m = String(d.getMinutes()).padStart(2, '0');
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12;
+                        h = h ? h : 12;
+                        return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+                      }
+                      return String(raw);
+                    })()}
+                  </td>
+
+                  {/* Entrega */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
+
+                  {/* Método de Pago */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
+
+                  {/* Monto Total con Descuento Trazado */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    {hasDiscount ? (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="line-through text-gray-400 font-normal">
+                          ${origPrice.toLocaleString("es-CO")}
+                        </span>
+                        <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                          ${Number(v.total).toLocaleString("es-CO")}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                          -{descPct || Math.round(((origPrice - v.total) / origPrice) * 100)}% desc.
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                        ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Estado Badge (Verde Pagado) */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      Pagado
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+
+                  {/* Acciones */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
                     <button
-                      onClick={() => onViewDetail(v)}
-                      title="Ver Detalle de Venta"
-                      className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+                      onClick={() => onViewDetail && onViewDetail(v)}
+                      title="Ver Detalle del Pedido"
+                      className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-4 h-4 text-[#F05454]" />
+                      <span>Ver detalle</span>
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Footer */}
+      {ventas.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span>Mostrar:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-medium text-gray-700 dark:text-gray-200 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>registros por página</span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span>
+              Página {currentPage} de {totalPages} ({ventas.length} registros en total)
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Primera página"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Página anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="px-2.5 py-1 bg-[#1e293b] text-white font-semibold rounded-lg text-xs">
+                {currentPage}
+              </span>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Página siguiente"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="Última página"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

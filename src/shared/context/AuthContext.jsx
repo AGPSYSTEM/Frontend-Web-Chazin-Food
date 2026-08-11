@@ -4,7 +4,20 @@ import { apiClient } from "@/shared/api/apiClient";
 export const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("chazin_user");
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Sanitize stale JSON-encoded direccion from old sessions
+      if (parsed && parsed.direccion && typeof parsed.direccion === 'string' && parsed.direccion.trim().startsWith('{')) {
+        try { const d = JSON.parse(parsed.direccion); parsed.direccion = d.direccion || parsed.direccion; } catch (e) { /* keep */ }
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const login = async (correo, contraseña) => {
     try {
