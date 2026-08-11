@@ -248,21 +248,10 @@ export function useInsumos() {
           idProveedor: data.idProveedor || null,
           descripcion: data.descripcion || "",
           fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaVencimiento: data.fechaVencimiento || null,
+          fichaTecnica: data.fichaTecnica || null
         };
         createdResult = await insumosService.createInsumo(payload);
-      }
-
-      if (createdResult && data.fichaTecnica && !isPrep) {
-        const insId = createdResult.id || createdResult.idInsumo;
-        if (insId) {
-          try {
-            const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
-            await fichasTecnicasService.saveFichaInsumo(insId, data.fichaTecnica);
-          } catch (ftErr) {
-            throw new Error("El insumo fue creado, pero no se pudo guardar su ficha técnica. Inténtalo de nuevo desde Editar insumo.");
-          }
-        }
       }
 
       await fetchInsumos();

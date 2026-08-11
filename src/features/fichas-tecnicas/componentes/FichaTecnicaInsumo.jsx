@@ -86,7 +86,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
         setSaving(false);
       }
     } else {
-      notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al insumo. Se guardará al crear el insumo.");
+      notify.success("Ficha Técnica Lista", "La ficha técnica se guardará junto con el insumo al crearlo.");
     }
   };
 
