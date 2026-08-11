@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { productosService } from "../servicios/productosService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function useProductos() {
@@ -46,7 +47,15 @@ export function useProductos() {
 
   const createProducto = async (data) => {
     try {
-      await productosService.createProducto(data);
+      const created = await productosService.createProducto(data);
+      const createdId = created?.idProducto || created?.id || created?._id;
+      if (data.fichaTecnica && createdId) {
+        try {
+          await fichasTecnicasService.saveFichaProducto(createdId, data.fichaTecnica);
+        } catch (e) {
+          console.error("Error guardando ficha técnica del producto:", e);
+        }
+      }
       notify.success("Producto creado", "El producto fue creado exitosamente");
       await fetchProductos();
       return true;
@@ -59,6 +68,13 @@ export function useProductos() {
   const updateProducto = async (id, data) => {
     try {
       await productosService.updateProducto(id, data);
+      if (data.fichaTecnica && id) {
+        try {
+          await fichasTecnicasService.saveFichaProducto(id, data.fichaTecnica);
+        } catch (e) {
+          console.error("Error guardando ficha técnica del producto:", e);
+        }
+      }
       notify.success("Producto actualizado", "Cambios guardados correctamente");
       await fetchProductos();
       return true;
