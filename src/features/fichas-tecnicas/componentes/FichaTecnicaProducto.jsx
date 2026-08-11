@@ -14,7 +14,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
-  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
@@ -59,7 +58,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setInsumos(f.detalles || f.insumos || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
     setTiempoPreparacion(f.tiempoPreparacion ?? "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");

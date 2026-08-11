@@ -18,7 +18,6 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
   const [observaciones, setObservaciones] = useState("");
   const [procedimiento, setProcedimiento] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
-  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
   const [rendimiento, setRendimiento] = useState("");
 
   const [saving, setSaving] = useState(false);
