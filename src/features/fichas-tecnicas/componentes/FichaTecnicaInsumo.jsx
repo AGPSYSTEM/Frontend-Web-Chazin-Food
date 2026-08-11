@@ -17,7 +17,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
   const [vidaUtil, setVidaUtil] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [procedimiento, setProcedimiento] = useState("");
-  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
+  const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [rendimiento, setRendimiento] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -51,7 +51,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
     setVidaUtil(f.vidaUtil || "");
     setObservaciones(f.observaciones || "");
     setProcedimiento(f.procedimiento || "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
+    setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setRendimiento(f.rendimiento || "");
   };
 

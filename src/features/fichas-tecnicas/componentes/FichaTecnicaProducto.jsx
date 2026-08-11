@@ -13,7 +13,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
-  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
+  const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
@@ -57,7 +57,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const populateFields = (f) => {
     setInsumos(f.detalles || f.insumos || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
+    setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");
@@ -318,8 +318,17 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               <label className={labelCls}>Tiempo de Preparación (min)</label>
               <input
                 type="number"
+                min="0"
                 value={tiempoPreparacion}
-                onChange={(e) => setTiempoPreparacion(Number(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setTiempoPreparacion("");
+                    return;
+                  }
+                  const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
+                  setTiempoPreparacion(sanitized);
+                }}
                 className={inputCls}
                 placeholder="Ej: 15"
               />
