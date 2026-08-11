@@ -83,7 +83,7 @@ export function TrazabilidadProveedoresModal({
         </div>
 
         {/* Filter Pills row */}
-        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
+        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           <button
