@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Users, UserCheck, UserX, Download, Activity } from "lucide-react";
+import { Plus, Search, Users, UserCheck, UserX, Download, Activity, ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
@@ -28,6 +28,7 @@ export function Usuarios() {
 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordUsuario, setPasswordUsuario] = useState(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
   const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo").length;
@@ -78,7 +79,7 @@ export function Usuarios() {
     }
   };
 
-  const exportarReporte = () => {
+  const exportarExcel = () => {
     const rows = filteredUsuarios;
     if (rows.length === 0) return;
     const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -87,24 +88,88 @@ export function Usuarios() {
       ...rows.map((u) => [
         u.idUsuario || u.id,
         u.nombre,
-        u.apellidos,
-        u.tipoDocumento,
-        u.email,
-        u.telefono,
+        u.apellidos || "",
+        u.tipoDocumento || "",
+        u.email || "",
+        u.telefono || "",
         u.direccion || "-",
-        u.rolNombre,
-        u.estado
+        u.rolNombre || u.rol?.nombre || u.rol || "",
+        u.estado || ""
       ].map(escape).join(","))
     ].join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte-usuarios-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setExportMenuOpen(false);
+  };
+
+  const exportarPDF = () => {
+    const rows = filteredUsuarios;
+    if (rows.length === 0) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const tableRows = rows.map((u) => `
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${u.idUsuario || u.id}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${u.nombre} ${u.apellidos || ''}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${u.email || '-'}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${u.telefono || '-'}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">${u.rolNombre || u.rol?.nombre || u.rol || '-'}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0;">
+          <span style="padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; ${u.estado === 'Activo' ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #475569;'}">${u.estado}</span>
+        </td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Reporte de Usuarios - Chazin Food</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #1e293b; }
+            h1 { font-size: 20px; font-weight: bold; margin-bottom: 4px; color: #0f172a; }
+            p { font-size: 12px; color: #64748b; margin-top: 0; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+            th { padding: 8px 12px; background: #f8fafc; font-weight: 600; border-bottom: 2px solid #cbd5e1; color: #475569; }
+          </style>
+        </head>
+        <body>
+          <h1>Reporte de Usuarios - Chazin Food</h1>
+          <p>Fecha de emisión: ${new Date().toLocaleDateString('es-CO')} | Total de usuarios: ${rows.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Rol</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setExportMenuOpen(false);
   };
 
   if (loading) {
@@ -190,7 +255,7 @@ export function Usuarios() {
             />
           </div>
           <div className="flex gap-2">
-            <button onClick={exportarReporte} className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap">
+            <button onClick={exportarExcel} className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap">
               <Download className="w-4 h-4" />
               <span>Exportar CSV</span>
             </button>

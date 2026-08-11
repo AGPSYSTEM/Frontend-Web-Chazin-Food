@@ -51,9 +51,9 @@ export function useUsuarios() {
   const filteredUsuarios = usuarios.filter((u) => {
     const matchSearch =
       searchTerm === "" ||
-      u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.documento?.includes(searchTerm);
 
     const matchRol = filterRol === "Todos" || u.rolNombre.toLowerCase() === filterRol.toLowerCase();
