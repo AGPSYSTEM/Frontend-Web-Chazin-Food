@@ -1,4 +1,13 @@
-/* Number input styling */
+/* Number input styling — keep arrows visible but remove gray box */
 input[type='number'] {
   appearance: auto;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button;
+  opacity: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
