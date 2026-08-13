@@ -1,26 +1,33 @@
-/* Number input styling — arrows hidden by default, visible on hover/focus without gray box */
+/* Number input styling — arrows appear only on hover/focus, no gray box */
 input[type='number'] {
+  appearance: auto;
   -moz-appearance: textfield;
-  appearance: textfield;
 }
 
+/* Hide arrows by default with zero width */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
   opacity: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  position: relative;
 }
 
+/* Show arrows on hover/focus without gray box */
 input[type='number']:hover::-webkit-inner-spin-button,
 input[type='number']:hover::-webkit-outer-spin-button,
 input[type='number']:focus::-webkit-inner-spin-button,
 input[type='number']:focus::-webkit-outer-spin-button {
-  -webkit-appearance: inner-spin-button;
   opacity: 1;
+  width: auto;
+  background: transparent;
+  border: none;
 }
 
+/* Firefox: show arrows on hover/focus */
 input[type='number']:hover,
 input[type='number']:focus {
   -moz-appearance: auto;
-  appearance: auto;
 }
