@@ -36,7 +36,6 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
         const f = await fichasTecnicasService.getFichaByInsumo(insumoId);
         if (f && f.idFichaTecnica) {
           populateFields(f);
-          onSave?.(f);
         }
       }
     } catch (err) {
@@ -44,7 +43,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
     } finally {
       setLoadingFicha(false);
     }
-  }, [insumoId, initialData, onSave]);
+  }, [insumoId, initialData]);
 
   useEffect(() => {
     loadFichaData();
