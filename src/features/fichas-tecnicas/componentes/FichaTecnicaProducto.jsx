@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronUp, FileText, Search, Package, Plus, Minus, X, Check } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus } from "lucide-react";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
@@ -339,8 +340,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Tiempo de Preparación (min){requiredMark}</label>
-              <input
-                type="number"
+              <NumberInput
                 min="0"
                 required
                 value={tiempoPreparacion}

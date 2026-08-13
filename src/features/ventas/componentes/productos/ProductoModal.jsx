@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Utensils } from "lucide-react";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
@@ -114,8 +115,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
             <div>
               <label className={labelCls}>Precio de Venta ($ COP)</label>
-              <input
-                type="number"
+              <NumberInput
                 required
                 min="0"
                 value={form.precio}
