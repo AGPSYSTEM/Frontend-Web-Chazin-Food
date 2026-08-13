@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 /**
  * Clean NumberInput component that renders solid triangle arrows (▲ ▼) matching reference design.
+ * Arrows only appear when the input is focused (selected).
  * Provides custom stepUp/stepDown triggers that work 100% reliably across all browsers/OS
  * without gray boxes, circles, or platform GTK issues.
  */
@@ -17,6 +18,7 @@ export function NumberInput({
   ...props
 }) {
   const inputRef = useRef(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleStep = (direction) => {
     if (inputRef.current) {
@@ -37,7 +39,16 @@ export function NumberInput({
   };
 
   return (
-    <div className="relative flex items-center w-full">
+    <div
+      className="relative flex items-center w-full"
+      onFocus={() => setIsFocused(true)}
+      onBlur={(e) => {
+        // Only hide if focus leaves the entire container (input + buttons)
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setIsFocused(false);
+        }
+      }}
+    >
       <input
         ref={inputRef}
         type="number"
@@ -51,30 +62,32 @@ export function NumberInput({
         className={`${className} pr-7`}
         {...props}
       />
-      <div className="absolute right-2 flex flex-col items-center justify-center select-none z-10 gap-[2px]">
-        <button
-          type="button"
-          tabIndex="-1"
-          onClick={() => handleStep("up")}
-          className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 p-0.5 leading-none transition-colors"
-          title="Incrementar"
-        >
-          <svg width="9" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 0L10 6H0L5 0Z" fill="currentColor" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          tabIndex="-1"
-          onClick={() => handleStep("down")}
-          className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 p-0.5 leading-none transition-colors"
-          title="Decrementar"
-        >
-          <svg width="9" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 6L0 0H10L5 6Z" fill="currentColor" />
-          </svg>
-        </button>
-      </div>
+      {isFocused && (
+        <div className="absolute right-2 flex flex-col items-center justify-center select-none z-10 gap-[2px]">
+          <button
+            type="button"
+            tabIndex="-1"
+            onMouseDown={(e) => { e.preventDefault(); handleStep("up"); }}
+            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 p-0.5 leading-none transition-colors"
+            title="Incrementar"
+          >
+            <svg width="9" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 0L10 6H0L5 0Z" fill="currentColor" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            tabIndex="-1"
+            onMouseDown={(e) => { e.preventDefault(); handleStep("down"); }}
+            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100 p-0.5 leading-none transition-colors"
+            title="Decrementar"
+          >
+            <svg width="9" height="5" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 6L0 0H10L5 6Z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
