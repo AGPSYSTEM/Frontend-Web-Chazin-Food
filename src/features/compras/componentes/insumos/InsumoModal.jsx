@@ -35,7 +35,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         idProveedor: insumo.idProveedor || "",
         proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: insumo.stock || 0,
-        stockMinimo: insumo.stockMinimo || 5,
+        stockMinimo: insumo.stockMinimo ?? 5,
         fechaExpedicion: insumo.fechaExpedicion || "",
         fechaVencimiento: insumo.fechaVencimiento || "",
         descripcion: insumo.descripcion || "",

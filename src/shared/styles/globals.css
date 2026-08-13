@@ -6,11 +6,11 @@ input[type='number'] {
   background-size: 11px 15px;
 }
 
-/* Make inner spin button transparent over the SVG so native click functionality works seamlessly without GTK gray box */
+/* Make inner spin button transparent (opacity: 0.001) so native click/stepUp/stepDown works seamlessly while OS GTK gray box remains completely invisible */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: inner-spin-button;
-  opacity: 0;
+  opacity: 0.001;
   width: 24px;
   height: 100%;
   cursor: pointer;
