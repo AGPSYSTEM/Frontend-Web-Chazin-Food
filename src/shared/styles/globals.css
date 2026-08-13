@@ -1,17 +1,11 @@
-/* Number input styling — clean solid triangle arrows (▲ ▼) without OS gray boxes or circles */
-input[type='number'] {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='18' viewBox='0 0 14 18' fill='none'%3E%3Cpath d='M7 2L12 7H2L7 2Z' fill='%234B5563'/%3E%3Cpath d='M7 16L2 11H12L7 16Z' fill='%234B5563'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 11px 15px;
-}
-
-/* Make inner spin button transparent (opacity: 0.001) so native click/stepUp/stepDown works seamlessly while OS GTK gray box remains completely invisible */
+/* Hide native number input spinners globally to allow clean NumberInput component arrows */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: inner-spin-button;
-  opacity: 0.001;
-  width: 24px;
-  height: 100%;
-  cursor: pointer;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
