@@ -1,25 +1,17 @@
-/* Number input styling — clean solid triangle arrows matching reference image */
+/* Number input styling — clean solid triangle arrows (▲ ▼) without OS gray boxes or circles */
 input[type='number'] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='18' viewBox='0 0 14 18' fill='none'%3E%3Cpath d='M7 2L12 7H2L7 2Z' fill='%234B5563'/%3E%3Cpath d='M7 16L2 11H12L7 16Z' fill='%234B5563'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 11px 15px;
 }
 
+/* Make inner spin button transparent over the SVG so native click functionality works seamlessly without GTK gray box */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-  width: 18px;
+  -webkit-appearance: inner-spin-button;
+  opacity: 0;
+  width: 24px;
   height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='16' viewBox='0 0 12 16' fill='none'%3E%3Cpath d='M6 1L10.5 6.5H1.5L6 1Z' fill='%234B5563'/%3E%3Cpath d='M6 15L1.5 9.5H10.5L6 15Z' fill='%234B5563'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center right 6px;
-  background-size: 10px 14px;
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.15s ease-in-out;
-}
-
-input[type='number']:hover::-webkit-inner-spin-button,
-input[type='number']:focus::-webkit-inner-spin-button {
-  opacity: 1;
 }
