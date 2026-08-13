@@ -1,13 +1,26 @@
-/* Number input styling — keep arrows visible but remove gray box */
+/* Number input styling — arrows hidden by default, visible on hover/focus without gray box */
 input[type='number'] {
-  appearance: auto;
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+  opacity: 0;
+}
+
+input[type='number']:hover::-webkit-inner-spin-button,
+input[type='number']:hover::-webkit-outer-spin-button,
+input[type='number']:focus::-webkit-inner-spin-button,
+input[type='number']:focus::-webkit-outer-spin-button {
   -webkit-appearance: inner-spin-button;
   opacity: 1;
-  background: transparent;
-  border: none;
-  cursor: pointer;
+}
+
+input[type='number']:hover,
+input[type='number']:focus {
+  -moz-appearance: auto;
+  appearance: auto;
 }
