@@ -207,7 +207,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
               <label className={labelCls}>Stock Inicial / Actual</label>
               <NumberInput
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.stock}
                 onChange={(e) => handleNumberInput("stock", e.target.value)}
                 className={inputCls}
@@ -218,7 +218,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
               <label className={labelCls}>Stock Mínimo Alerta</label>
               <NumberInput
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.stockMinimo}
                 onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
                 className={inputCls}
