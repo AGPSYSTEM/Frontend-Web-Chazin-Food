@@ -58,10 +58,12 @@ export function AppRoutes() {
     );
   }
 
-  const userRol = user?.rol?.toLowerCase()?.trim() || "";
+  const rawRol = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isCliente = userRol === "cliente" || user?.idRol === 4;
 
   // ── Cliente: landing page ──
-  if (userRol === "cliente") {
+  if (isCliente) {
     return (
       <Routes>
         <Route path="/" element={<ClienteLanding />} />
