@@ -21,7 +21,7 @@ export function useUsuarios() {
       const data = await usuariosService.getUsuarios();
       setUsuarios((data || []).map(u => ({
         ...u,
-        idRolStr: String(u.idRol || 3),
+        idRolStr: String(u.idRol || 4),
         rolNombre: u.rol || "Cliente",
         estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
         iniciales: getIniciales(u.nombre)

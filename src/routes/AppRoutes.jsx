@@ -37,6 +37,7 @@ const PERMISSION_ROUTE_MAP = {
   "Gestión de Producción": { path: "produccion/gestion",        element: <GestionProduccion /> },
   "Clientes":              { path: "ventas/clientes",           element: <Clientes /> },
   "Gestión de Ventas":     { path: "ventas/gestion-ventas",     element: <GestionVentas /> },
+  "Punto de Venta":        { path: "ventas/pos",                element: <PosVendedor /> },
   "Vendedor":              { path: "ventas/pos",                element: <PosVendedor /> },
   "Roles":                 { path: "configuracion/roles",       element: <Roles /> },
   "Usuarios":              { path: "configuracion/usuarios",    element: <Usuarios /> },
@@ -52,16 +53,12 @@ export function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* 🚀 RUTA TEMPORAL PARA PROBAR EL POS DIRECTO SIN LOGIN */}
-        <Route path="/ventas/pos" element={<PosVendedor />} />
-
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
-  const userRol = user?.rol?.toLowerCase();
+  const userRol = user?.rol?.toLowerCase()?.trim() || "";
 
   // ── Cliente: landing page ──
   if (userRol === "cliente") {
@@ -86,8 +83,8 @@ export function AppRoutes() {
     );
   }
 
-  // ── Administrador: full access to everything ──
-  if (userRol === "administrador") {
+  // ── Administrador / Admin: full access to everything ──
+  if (userRol === "administrador" || userRol === "admin") {
     return (
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
@@ -113,23 +110,27 @@ export function AppRoutes() {
 
   // ── Any other role (e.g. Vendedor): permission-based access ──
   const userPermisos = user?.permisos || [];
-  const allowedRoutes = [];
+  const allowedRoutesMap = new Map();
   for (const perm of userPermisos) {
     const routeConfig = PERMISSION_ROUTE_MAP[perm];
-    if (routeConfig) {
-      allowedRoutes.push(routeConfig);
+    if (routeConfig && !allowedRoutesMap.has(routeConfig.path)) {
+      allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
+  const allowedRoutes = Array.from(allowedRoutesMap.values());
 
   const hasDashboard = userPermisos.includes("Dashboard");
+  const defaultPath = (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))
+    ? "ventas/pos"
+    : (allowedRoutes.length > 0 ? allowedRoutes[0].path : "");
 
   return (
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
         {hasDashboard && <Route index element={<Dashboard />} />}
-        {!hasDashboard && allowedRoutes.length > 0 && (
-          <Route index element={<Navigate to={`/${allowedRoutes[0].path}`} replace />} />
+        {!hasDashboard && defaultPath && (
+          <Route index element={<Navigate to={`/${defaultPath}`} replace />} />
         )}
         {allowedRoutes.map(
           (route) =>

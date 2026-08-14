@@ -19,6 +19,7 @@ export function usePOS({ initialClienteId = null } = {}) {
   const [categorias, setCategorias] = useState([]);
   const [productos, setProductos] = useState([]);
   const [categoriaActiva, setCategoriaActiva] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState([]);
   const [clienteId, setClienteId] = useState(initialClienteId);
   const [observacionOrden, setObservacionOrden] = useState("");
@@ -28,16 +29,26 @@ export function usePOS({ initialClienteId = null } = {}) {
   useEffect(() => {
     (async () => {
       try {
+        setLoading(true);
         const resCategorias = await posService.getCategorias();
         console.log('Respuesta Categorías:', resCategorias);
 
-        const listaCategorias = Array.isArray(resCategorias?.data)
-          ? resCategorias.data
-          : (resCategorias?.data?.data || resCategorias?.data?.categorias || []);
+        const rawList = Array.isArray(resCategorias)
+          ? resCategorias
+          : (Array.isArray(resCategorias?.data) ? resCategorias.data : (resCategorias?.data?.data || resCategorias?.data?.categorias || []));
 
-        setCategorias(listaCategorias);
+        const activeCategorias = rawList.filter(c =>
+          (c.estado === 'Activo' || c.estado === 1) &&
+          c.id !== 0 &&
+          c.idCategoriaProducto !== 0 &&
+          !c.nombre?.startsWith('__SISTEMA')
+        );
+
+        setCategorias(activeCategorias);
       } catch (e) {
-        console.error(e);
+        console.error('Error al cargar categorías:', e);
+      } finally {
+        setLoading(false);
       }
     })();
   }, []);
@@ -45,20 +56,29 @@ export function usePOS({ initialClienteId = null } = {}) {
   useEffect(() => {
     (async () => {
       try {
-        const params = categoriaActiva ? { categoriaId: categoriaActiva } : {};
-        const resProductos = await posService.getProductos(params);
+        setLoading(true);
+        const resProductos = await posService.getProductos();
         console.log('Respuesta Productos:', resProductos);
 
-        const listaProductos = Array.isArray(resProductos?.data)
-          ? resProductos.data
-          : (resProductos?.data?.data || resProductos?.data?.productos || []);
+        const rawList = Array.isArray(resProductos)
+          ? resProductos
+          : (Array.isArray(resProductos?.data) ? resProductos.data : (resProductos?.data?.data || resProductos?.data?.productos || []));
 
-        setProductos(listaProductos);
+        const activeProductos = rawList.filter(p =>
+          (p.estado === 'Activo' || p.estado === 1) &&
+          p.id !== 0 &&
+          p.idProducto !== 0 &&
+          !p.nombre?.startsWith('__SISTEMA')
+        );
+
+        setProductos(activeProductos);
       } catch (e) {
-        console.error(e);
+        console.error('Error al cargar productos:', e);
+      } finally {
+        setLoading(false);
       }
     })();
-  }, [categoriaActiva]);
+  }, []);
 
   const subtotal = useMemo(() => {
     return cart.reduce((acc, it) => {
@@ -162,6 +182,8 @@ export function usePOS({ initialClienteId = null } = {}) {
     productos,
     categoriaActiva,
     setCategoriaActiva,
+    searchTerm,
+    setSearchTerm,
     cart,
     addProduct,
     increment,

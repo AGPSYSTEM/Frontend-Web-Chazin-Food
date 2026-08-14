@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Search, ShoppingCart, Sparkles } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
@@ -17,10 +17,12 @@ const categoryIcons = {
 const getCategoryEmoji = (nombre = "") => {
   const normalized = nombre.toLowerCase();
   if (normalized.includes("hambur")) return "🍔";
+  if (normalized.includes("perro")) return "🌭";
+  if (normalized.includes("combo")) return "🍱";
   if (normalized.includes("pizza")) return "🍕";
   if (normalized.includes("pollo")) return "🍗";
   if (normalized.includes("pap")) return "🍟";
-  if (normalized.includes("beb")) return "🥤";
+  if (normalized.includes("beb") || normalized.includes("gaseos")) return "🥤";
   if (normalized.includes("acompa")) return "🥗";
   if (normalized.includes("post")) return "🍰";
   return categoryIcons.default;
@@ -32,6 +34,8 @@ export default function PosVendedor() {
     productos,
     categoriaActiva,
     setCategoriaActiva,
+    searchTerm,
+    setSearchTerm,
     cart,
     addProduct,
     increment,
@@ -44,7 +48,13 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
-  const visibleProducts = productos || [];
+  const visibleProducts = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const matchCat = categoriaActiva === null || p.idCategoriaProducto === categoriaActiva || p.categoriaId === categoriaActiva;
+      const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [productos, categoriaActiva, searchTerm]);
 
   return (
     <div className="min-h-screen bg-[#f4f4f4] px-4 py-5 lg:px-6 xl:px-8">
@@ -64,6 +74,8 @@ export default function PosVendedor() {
             <Search className="h-4 w-4 text-[#75859a]" />
             <input
               aria-label="Buscar producto"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-56 border-0 bg-transparent text-sm text-[#25364a] outline-none placeholder:text-[#8aa0b4]"
               placeholder="Buscar producto..."
             />
@@ -122,17 +134,24 @@ export default function PosVendedor() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-              {visibleProducts.map((p) => (
-                <ProductCard
-                  key={p.id}
-                  producto={p}
-                  onAdd={({ productoId, varianteId, nombre, precio, adiciones }) =>
-                    addProduct({ productoId, varianteId, nombre, precio, adiciones })
-                  }
-                />
-              ))}
-            </div>
+            {visibleProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-[#dbe3ed] bg-white px-6 py-16 text-center text-[#75859a]">
+                <p className="text-xl font-bold text-[#445366]">No se encontraron productos</p>
+                <p className="mt-1 text-sm text-[#7a8698]">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                {visibleProducts.map((p) => (
+                  <ProductCard
+                    key={p.id}
+                    producto={p}
+                    onAdd={({ productoId, varianteId, nombre, precio, adiciones }) =>
+                      addProduct({ productoId, varianteId, nombre, precio, adiciones })
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </main>
 
           <section className="rounded-[28px] border border-[#e7eaee] bg-[#f8f8f8] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">

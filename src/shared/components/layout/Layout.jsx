@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -38,6 +38,7 @@ export function Layout() {
   const [configExpanded, setConfigExpanded] = useState(false);
   const [darkMode, toggleDarkMode] = useDarkMode();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { confirmLogout, success } = useNotifications();
 
@@ -50,9 +51,13 @@ export function Layout() {
 
   // ── Permission helper ──
   // Administrador always has all permissions; for other roles, check the permisos array
-  const isAdmin = user?.rol?.toLowerCase() === "administrador";
+  const isAdmin = user?.rol?.toLowerCase() === "administrador" || user?.rol?.toLowerCase() === "admin";
   const userPermisos = user?.permisos || [];
-  const hasPerm = (permName) => isAdmin || userPermisos.includes(permName);
+  const hasPerm = (permName) => {
+    if (isAdmin) return true;
+    if (permName === "Punto de Venta" && (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))) return true;
+    return userPermisos.includes(permName);
+  };
 
   const handleLogout = async () => {
     setSidebarOpen(false);
@@ -60,6 +65,7 @@ export function Layout() {
     if (confirmed) {
       logout();
       success("Sesión cerrada", "Has salido del sistema correctamente");
+      navigate("/login", { replace: true });
     }
   };
 
@@ -119,6 +125,7 @@ export function Layout() {
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
+    { to: "/ventas/pos", label: "Punto de Venta", perm: "Punto de Venta" },
     { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
     { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
   ];
