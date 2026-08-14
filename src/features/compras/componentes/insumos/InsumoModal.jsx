@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Package } from "lucide-react";
 import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -35,7 +36,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         idProveedor: insumo.idProveedor || "",
         proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: insumo.stock || 0,
-        stockMinimo: insumo.stockMinimo || 5,
+        stockMinimo: insumo.stockMinimo ?? 5,
         fechaExpedicion: insumo.fechaExpedicion || "",
         fechaVencimiento: insumo.fechaVencimiento || "",
         descripcion: insumo.descripcion || "",
@@ -192,8 +193,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
 
             <div>
               <label className={labelCls}>Precio Unitario ($)</label>
-              <input
-                type="number"
+              <NumberInput
                 min="0"
                 step="0.01"
                 value={form.precioUnitario}
@@ -205,10 +205,9 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
 
             <div>
               <label className={labelCls}>Stock Inicial / Actual</label>
-              <input
-                type="number"
+              <NumberInput
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.stock}
                 onChange={(e) => handleNumberInput("stock", e.target.value)}
                 className={inputCls}
@@ -217,10 +216,9 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
 
             <div>
               <label className={labelCls}>Stock Mínimo Alerta</label>
-              <input
-                type="number"
+              <NumberInput
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.stockMinimo}
                 onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
                 className={inputCls}

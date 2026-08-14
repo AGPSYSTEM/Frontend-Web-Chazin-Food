@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, FileText, Check } from "lucide-react";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#F05454] focus:border-transparent text-sm";
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
+const requiredMark = <span className="text-red-500"> *</span>;
 
 export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }) {
   const notify = useNotifications();
@@ -35,7 +37,6 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
         const f = await fichasTecnicasService.getFichaByInsumo(insumoId);
         if (f && f.idFichaTecnica) {
           populateFields(f);
-          onSave?.(f);
         }
       }
     } catch (err) {
@@ -43,7 +44,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
     } finally {
       setLoadingFicha(false);
     }
-  }, [insumoId, initialData, onSave]);
+  }, [insumoId, initialData]);
 
   useEffect(() => {
     loadFichaData();
@@ -85,6 +86,25 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
       tiempoPreparacion: Number(tiempoPreparacion) || 0,
       rendimiento
     };
+
+    const requiredFields = [
+      ["Especificaciones técnicas", especificaciones],
+      ["Características organolépticas / físicas", caracteristicas],
+      ["Información nutricional", informacionNutricional],
+      ["Condiciones de almacenamiento", condicionesAlmacenamiento],
+      ["Vida útil", vidaUtil],
+      ["Procedimiento de procesamiento / preparación", procedimiento],
+      ["Tiempo de preparación", tiempoPreparacion],
+      ["Rendimiento", rendimiento]
+    ];
+    const missingFields = requiredFields
+      .filter(([, value]) => String(value ?? "").trim() === "")
+      .map(([label]) => label);
+
+    if (missingFields.length > 0) {
+      notify.error("Campos obligatorios", `Completa los campos obligatorios: ${missingFields.join(", ")}.`);
+      return;
+    }
 
     const payload = { idInsumo: insumoId || null };
     if (!insumoId || !initialFichaRef.current) {
@@ -140,36 +160,39 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
           
           {/* Especificaciones */}
           <div>
-            <label className={labelCls}>Especificaciones Técnicas</label>
+            <label className={labelCls}>Especificaciones Técnicas{requiredMark}</label>
             <textarea
               value={especificaciones}
               onChange={(e) => setEspecificaciones(e.target.value)}
               className={`${inputCls} resize-none`}
               rows={3}
+              required
               placeholder="Describe las especificaciones técnicas (calibre, color, peso promedio...)"
             />
           </div>
 
           {/* Características */}
           <div>
-            <label className={labelCls}>Características Organolépticas / Físicas</label>
+            <label className={labelCls}>Características Organolépticas / Físicas{requiredMark}</label>
             <textarea
               value={caracteristicas}
               onChange={(e) => setCaracteristicas(e.target.value)}
               className={`${inputCls} resize-none`}
               rows={3}
+              required
               placeholder="Textura, sabor, frescura, ausencia de magulladuras..."
             />
           </div>
 
           {/* Información Nutricional */}
           <div>
-            <label className={labelCls}>Información Nutricional (por 100g / unidad)</label>
+            <label className={labelCls}>Información Nutricional (por 100g / unidad){requiredMark}</label>
             <textarea
               value={informacionNutricional}
               onChange={(e) => setInformacionNutricional(e.target.value)}
               className={`${inputCls} resize-none`}
               rows={3}
+              required
               placeholder="Calorías, proteínas, carbohidratos, grasas, fibra..."
             />
           </div>
@@ -177,22 +200,24 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
           {/* Condiciones de Almacenamiento & Vida Útil */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Condiciones de Almacenamiento</label>
+              <label className={labelCls}>Condiciones de Almacenamiento{requiredMark}</label>
               <textarea
                 value={condicionesAlmacenamiento}
                 onChange={(e) => setCondicionesAlmacenamiento(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Temperatura, humedad recomendada..."
               />
             </div>
             <div>
-              <label className={labelCls}>Vida Útil</label>
+              <label className={labelCls}>Vida Útil{requiredMark}</label>
               <textarea
                 value={vidaUtil}
                 onChange={(e) => setVidaUtil(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Ej: 7 días refrigerado, 30 días congelado"
               />
             </div>
@@ -201,12 +226,13 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
           {/* Procedimiento & Rendimiento (Para insumos preparados) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Procedimiento de Procesamiento / Preparación (Opcional)</label>
+              <label className={labelCls}>Procedimiento de Procesamiento / Preparación{requiredMark}</label>
               <textarea
                 value={procedimiento}
                 onChange={(e) => setProcedimiento(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Procedimiento de desinfección o pre-preparación..."
               />
             </div>
@@ -218,6 +244,31 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave }
                 className={`${inputCls} resize-none`}
                 rows={3}
                 placeholder="Alérgenos, certificaciones, notas del proveedor..."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Tiempo de Procesamiento / Preparación (min){requiredMark}</label>
+              <NumberInput
+                min="0"
+                required
+                value={tiempoPreparacion}
+                onChange={(e) => setTiempoPreparacion(e.target.value)}
+                className={inputCls}
+                placeholder="Ej: 15"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Rendimiento{requiredMark}</label>
+              <input
+                type="text"
+                required
+                value={rendimiento}
+                onChange={(e) => setRendimiento(e.target.value)}
+                className={inputCls}
+                placeholder="Ej: 1 porción"
               />
             </div>
           </div>
