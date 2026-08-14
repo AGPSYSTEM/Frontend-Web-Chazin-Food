@@ -3,6 +3,7 @@ import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles } from "
 import { useProductos } from "../hooks/useProductos";
 import { ProductosTable } from "../componentes/productos/ProductosTable";
 import { ProductoModal } from "../componentes/productos/ProductoModal";
+import { VerProductoModal } from "../componentes/productos/VerProductoModal";
 import { EventosModal } from "../componentes/productos/EventosModal";
 import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
 import { eventosService } from "../servicios/eventosService";
@@ -21,11 +22,13 @@ export function Productos() {
     setFilterEstado,
     createProducto,
     updateProducto,
-    deleteProducto
+    deleteProducto,
+    refetch
   } = useProductos();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
@@ -51,26 +54,32 @@ export function Productos() {
     const sorted = [...productos].sort((a, b) => (b.ventas || 0) - (a.ventas || 0));
     const masVendido = sorted[0] || { nombre: "—", ventas: 0 };
     const totalVendidos = productos.reduce((acc, p) => acc + (p.ventas || 0), 0);
-    const bajoStock = productos.filter(
-      (p) => p.stock !== undefined && p.stock !== null && p.stock <= (p.stockMinimo || 5)
-    ).length;
+    const eventosActivos = productos.reduce((acc, p) => acc + (p.eventos && p.eventos.length > 0 ? 1 : 0), 0);
 
     return {
       total,
       masVendidoNombre: masVendido.nombre || "—",
       masVendidoVentas: masVendido.ventas || 0,
       totalVendidos,
-      bajoStock
+      eventosActivos
     };
   }, [productos]);
 
   const handleOpenCreate = () => {
     setEditingProducto(null);
+    setIsViewMode(false);
     setModalOpen(true);
   };
 
   const handleOpenEdit = (p) => {
     setEditingProducto(p);
+    setIsViewMode(false);
+    setModalOpen(true);
+  };
+
+  const handleOpenView = (p) => {
+    setEditingProducto(p);
+    setIsViewMode(true);
     setModalOpen(true);
   };
 
@@ -94,6 +103,7 @@ export function Productos() {
 
   const handleEventoCreated = () => {
     fetchEventos();
+    refetch();
   };
 
   return (
@@ -149,15 +159,15 @@ export function Productos() {
           </div>
         </div>
 
-        {/* Card 4: Bajo Stock */}
+        {/* Card 4: Eventos Activos */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-            <AlertCircle className="w-6 h-6 text-red-400" />
+          <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 h-6 text-purple-400" />
           </div>
           <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Bajo Stock</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.bajoStock}</p>
-            <p className="text-xs text-red-400 font-medium">requieren atención</p>
+            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Productos con Evento</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.eventosActivos}</p>
+            <p className="text-xs text-purple-400 font-medium">promociones</p>
           </div>
         </div>
       </div>
@@ -219,22 +229,30 @@ export function Productos() {
           productos={filteredProductos}
           onEdit={handleOpenEdit}
           onDelete={deleteProducto}
-          onView={(p) => {
-            setEditingProducto(p);
-            setModalOpen(true);
-          }}
+          onView={handleOpenView}
           onCreateEvento={handleCreateEvento}
         />
       )}
 
-      {/* Producto Modal */}
-      <ProductoModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={handleSave}
-        producto={editingProducto}
-        categorias={categorias}
-      />
+      {/* Producto Modal (Create/Edit) */}
+      {!isViewMode && (
+        <ProductoModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSave}
+          producto={editingProducto}
+          categorias={categorias}
+        />
+      )}
+
+      {/* Ver Producto Modal (Read Only) */}
+      {isViewMode && (
+        <VerProductoModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          producto={editingProducto}
+        />
+      )}
 
       {/* Eventos Modal (Versionamiento de Fichas Técnicas) */}
       <EventosModal

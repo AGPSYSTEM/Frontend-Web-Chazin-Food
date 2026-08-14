@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -193,7 +193,8 @@ export function ClienteLanding() {
               imagen: p.imagen || "🍔",
               descripcion: p.descripcion || "",
               stock: p.stock || 0,
-              adiciones: p.adiciones || []
+              adiciones: p.adiciones || [],
+              eventos: p.eventos || []
             }));
           setProductosList(apiProds);
         } else {
@@ -651,7 +652,25 @@ export function ClienteLanding() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion}</p>
                 </div>
                 <div className="space-y-3 pt-2">
-                  <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                  <div className="flex flex-col">
+                    {producto.eventos && producto.eventos.length > 0 && producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                      <>
+                        <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <Zap className="w-4 h-4" />
+                          ${(() => {
+                            const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
+                            if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
+                            const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
+                            if (evtDesc) return (producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                            return producto.precio.toLocaleString();
+                          })()}
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleProductClick(producto)}
                     className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
@@ -681,8 +700,52 @@ export function ClienteLanding() {
               <div className="text-6xl mb-2">{productoSeleccionado.producto.imagen}</div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion}</p>
-              <p className="text-xl font-extrabold text-red-600 dark:text-red-400 mt-2">${productoSeleccionado.producto.precio.toLocaleString()}</p>
+              <div className="mt-2 flex flex-col items-center">
+                {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                  <>
+                    <span className="text-sm text-gray-400 line-through">${productoSeleccionado.producto.precio.toLocaleString()}</span>
+                    <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Zap className="w-5 h-5" />
+                      ${(() => {
+                        const evtPrecio = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
+                        if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
+                        const evtDesc = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Descuento");
+                        if (evtDesc) return (productoSeleccionado.producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                        return productoSeleccionado.producto.precio.toLocaleString();
+                      })()}
+                    </span>
+                  </>
+                ) : (
+                  <p className="text-xl font-extrabold text-red-600 dark:text-red-400">${productoSeleccionado.producto.precio.toLocaleString()}</p>
+                )}
+              </div>
             </div>
+
+            {/* Eventos */}
+            {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl p-3 border border-yellow-100 dark:border-yellow-900/30">
+                <p className="text-xs font-bold text-yellow-600 dark:text-yellow-500 mb-2 uppercase tracking-wider flex items-center gap-1"><Zap className="w-4 h-4"/> Eventos Activos</p>
+                <div className="space-y-2">
+                  {productoSeleccionado.producto.eventos.map((evt, i) => (
+                    <div key={i} className="text-xs flex flex-col gap-0.5">
+                      <span className="font-bold text-gray-800 dark:text-gray-200">{evt.nombreEvento || evt.nombre}</span>
+                      {evt.tipoEvento === "Descuento" && (
+                        <span className="text-emerald-600 font-semibold">-{Number(evt.descuento)}% de descuento</span>
+                      )}
+                      {evt.tipoEvento === "Promoción Precio" && (
+                        <span className="text-purple-600 font-semibold">Precio promocional: ${Number(evt.nuevoPrecio).toLocaleString()}</span>
+                      )}
+                      {evt.tipoEvento === "Añadir Insumos" && (
+                        <span className="text-blue-600 font-semibold">
+                          {evt.accionInsumo === "Quitar" ? "Insumos removidos" : "Insumos extra incluidos"}
+                        </span>
+                      )}
+                      <p className="text-gray-500 dark:text-gray-400">{evt.descripcion}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Cantidad */}
             <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl">
@@ -738,7 +801,17 @@ export function ClienteLanding() {
             >
               <ShoppingCart className="w-4 h-4" />
               Agregar al carrito • ${(
-                (productoSeleccionado.producto.precio +
+                ((() => {
+                  let basePrice = productoSeleccionado.producto.precio;
+                  const evtPrecio = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Promoción Precio");
+                  const evtDesc = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Descuento");
+                  if (evtPrecio) {
+                    basePrice = Number(evtPrecio.nuevoPrecio);
+                  } else if (evtDesc) {
+                    basePrice = basePrice * (1 - Number(evtDesc.descuento)/100);
+                  }
+                  return basePrice;
+                })() +
                   productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + a.precio * a.cantidad, 0)) *
                 productoSeleccionado.cantidad
               ).toLocaleString()}
