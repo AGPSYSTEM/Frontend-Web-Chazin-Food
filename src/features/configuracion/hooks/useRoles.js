@@ -84,6 +84,18 @@ export function useRoles() {
   };
 
   const deleteRol = async (id, nombre) => {
+    const targetRol = roles.find((r) => r.id === id || r.nombre?.toLowerCase() === nombre?.toLowerCase());
+    if (targetRol && (targetRol.nombre?.toLowerCase() === "administrador" || String(targetRol.id) === "1")) {
+      notifError("Acción no permitida", "El rol Administrador no se puede eliminar bajo ninguna circunstancia.");
+      return false;
+    }
+    if (targetRol && (targetRol.usuarios || 0) > 0) {
+      notifError(
+        "No se puede eliminar",
+        `El rol "${targetRol.nombre}" no se puede eliminar porque tiene ${targetRol.usuarios} usuario(s) asociado(s). Debes reasignar o cambiar de rol a dichos usuarios antes de eliminarlo.`
+      );
+      return false;
+    }
     const confirmed = await confirmDelete(
       `¿Eliminar rol ${nombre}?`,
       "Esta acción no se puede deshacer."
