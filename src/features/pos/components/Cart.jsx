@@ -5,83 +5,83 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
   const isEmpty = cart.length === 0;
 
   return (
-    <div className="flex h-full flex-col rounded-[28px] border border-[#eef1f5] bg-[#f4f4f4] p-4 shadow-[0_10px_26px_rgba(15,23,42,0.08)]">
+    <div className="flex h-full flex-col rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-[#f8f8f8] dark:bg-gray-900/60 p-4 shadow-sm transition-colors">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[0.7rem] uppercase tracking-[0.2em] text-[#7a8698]">Pedido</p>
-          <h3 className="text-[2rem] font-black text-[#1f2d3d]">Carrito</h3>
+          <p className="text-[0.65rem] uppercase tracking-[0.2em] font-bold text-[#7a8698] dark:text-gray-400">PEDIDO</p>
+          <h3 className="text-xl font-black text-[#1f2d3d] dark:text-gray-100">Carrito</h3>
         </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f05454]/10 text-[#f05454]">
-          <ShoppingCart className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
+          <ShoppingCart className="h-4 w-4" />
         </div>
       </div>
 
       {isEmpty ? (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-[#dbe3ed] bg-white/70 px-6 py-10 text-center text-[#75859a]">
-          <ShoppingCart className="mb-3 h-10 w-10 text-[#bfcad7]" />
-          <p className="text-lg font-semibold text-[#445366]">Carrito vacío</p>
-          <p className="mt-1 text-sm">Agrega productos para comenzar la venta</p>
+        <div className="flex flex-1 flex-col items-center justify-center rounded-[20px] border-2 border-dashed border-[#dbe3ed] dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-12 text-center text-[#75859a] dark:text-gray-400 min-h-[260px]">
+          <ShoppingCart className="mb-2 h-10 w-10 text-[#bfcad7] dark:text-gray-600" />
+          <p className="text-sm font-bold text-[#445366] dark:text-gray-200">Carrito vacío</p>
+          <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400 leading-tight">Agrega productos para comenzar la venta</p>
         </div>
       ) : (
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+        <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[380px]">
           {cart.map((it, idx) => (
-            <div key={`${it.productoId}-${it.varianteId}-${idx}`} className="rounded-[22px] border border-[#e8edf4] bg-white p-3 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
+            <div key={`${it.productoId}-${it.varianteId}-${idx}`} className="rounded-[18px] border border-[#e8edf4] dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-base font-black text-[#1e2b39]">{it.nombre}</div>
-                  <div className="mt-1 text-sm text-[#647489]">
-                    ${Number(it.precio || 0).toLocaleString("es-CL")} c/u
+                  <div className="text-xs font-bold text-[#1e2b39] dark:text-gray-100 line-clamp-1">{it.nombre}</div>
+                  <div className="mt-0.5 text-[11px] text-[#647489] dark:text-gray-400">
+                    ${Number(it.precio || 0).toLocaleString("es-CO")} c/u
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => decrement(idx)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#fef2f2] text-[#f05454] transition hover:bg-[#fde7e7]"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 transition hover:bg-[#fde7e7] dark:hover:bg-red-900/50 shrink-0"
                   aria-label="Eliminar producto"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
 
               {(it.adiciones || []).length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="mt-1.5 flex flex-wrap gap-1">
                   {(it.adiciones || []).map((adicion, i) => (
-                    <span key={`${adicion.id}-${i}`} className="rounded-full bg-[#eef5ff] px-2 py-1 text-[0.7rem] font-medium text-[#49617a]">
+                    <span key={`${adicion.id}-${i}`} className="rounded-full bg-[#eef5ff] dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-[#49617a] dark:text-blue-300">
                       {adicion.nombre}
                     </span>
                   ))}
                 </div>
               )}
 
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#e9edf3] bg-[#f7fafc] p-1">
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-[#e9edf3] dark:border-gray-700 bg-[#f7fafc] dark:bg-gray-800 px-1 py-0.5">
                   <button
                     type="button"
                     onClick={() => decrement(idx)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#1f2d3d] shadow-sm"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-gray-700 text-[#1f2d3d] dark:text-gray-100 shadow-sm text-xs"
                   >
-                    <Minus className="h-4 w-4" />
+                    <Minus className="h-3 w-3" />
                   </button>
-                  <span className="min-w-[24px] text-center text-base font-bold text-[#1f2d3d]">{it.cantidad || 1}</span>
+                  <span className="min-w-[18px] text-center text-xs font-bold text-[#1f2d3d] dark:text-gray-100">{it.cantidad || 1}</span>
                   <button
                     type="button"
                     onClick={() => increment(idx)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f05454] text-white shadow-sm"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f05454] text-white shadow-sm text-xs"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3 w-3" />
                   </button>
                 </div>
 
-                <div className="text-right text-base font-black text-[#1f2d3d]">
-                  ${Number((it.precio || 0) * (it.cantidad || 1)).toLocaleString("es-CL")}
+                <div className="text-right text-xs font-black text-[#1f2d3d] dark:text-gray-100">
+                  ${Number((it.precio || 0) * (it.cantidad || 1)).toLocaleString("es-CO")}
                 </div>
               </div>
 
-              <div className="mt-3">
+              <div className="mt-2">
                 <input
                   placeholder="Observaciones..."
-                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#29384d] outline-none transition focus:border-[#f05454] focus:ring-2 focus:ring-[#fdc9c9]"
+                  className="w-full rounded-lg border border-[#e2e8f0] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 px-2.5 py-1 text-xs text-[#29384d] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-[#f05454]"
                   value={it.observacion || ""}
                   onChange={(e) => setItemObservacion(idx, e.target.value)}
                 />
@@ -91,18 +91,18 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
         </div>
       )}
 
-      <div className="mt-4 rounded-[22px] bg-white p-3 shadow-sm ring-1 ring-[#eef1f5]">
-        <div className="flex items-center justify-between text-sm text-[#647489]">
+      <div className="mt-3 rounded-[18px] bg-white dark:bg-gray-900 p-3 shadow-sm border border-[#edf1f5] dark:border-gray-800">
+        <div className="flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
           <span>Subtotal</span>
-          <span className="font-semibold text-[#1e2b39]">${Number(subtotal || 0).toLocaleString("es-CL")}</span>
+          <span className="font-semibold text-[#1e2b39] dark:text-gray-100">${Number(subtotal || 0).toLocaleString("es-CO")}</span>
         </div>
-        <div className="mt-2 flex items-center justify-between text-sm text-[#647489]">
+        <div className="mt-1.5 flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
           <span>Descuento</span>
-          <span className="font-semibold text-[#1e2b39]">${Number(descuento || 0).toLocaleString("es-CL")}</span>
+          <span className="font-semibold text-[#1e2b39] dark:text-gray-100">${Number(descuento || 0).toLocaleString("es-CO")}</span>
         </div>
-        <div className="mt-3 flex items-center justify-between border-t border-[#edf1f5] pt-3 text-lg font-black text-[#1e2b39]">
+        <div className="mt-2.5 flex items-center justify-between border-t border-[#edf1f5] dark:border-gray-800 pt-2 text-sm font-black text-[#1e2b39] dark:text-gray-100">
           <span>Total</span>
-          <span className="text-[#f05454]">${Number(total || 0).toLocaleString("es-CL")}</span>
+          <span className="text-[#f05454] dark:text-red-400">${Number(total || 0).toLocaleString("es-CO")}</span>
         </div>
       </div>
 
@@ -110,7 +110,7 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
         type="button"
         onClick={() => submitOrder()}
         disabled={loading || isEmpty}
-        className="mt-4 w-full rounded-[18px] bg-[#f05454] px-4 py-3 text-base font-black text-white shadow-[0_12px_22px_rgba(240,84,84,0.28)] transition hover:-translate-y-0.5 hover:bg-[#e64b4b] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 w-full rounded-[16px] bg-[#f05454] px-4 py-2.5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition hover:bg-[#e64b4b] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
       >
         {loading ? "Procesando..." : "Enviar orden"}
       </button>
