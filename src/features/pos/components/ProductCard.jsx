@@ -1,17 +1,18 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 const getProductEmoji = (name = "") => {
   const normalized = name.toLowerCase();
   if (normalized.includes("hamburg")) return "🍔";
   if (normalized.includes("salchip")) return "🍟";
+  if (normalized.includes("perro")) return "🌭";
   if (normalized.includes("pollo")) return "🍗";
   if (normalized.includes("papas")) return "🍟";
   if (normalized.includes("beb")) return "🥤";
-  if (normalized.includes("coca")) return "🥤";
+  if (normalized.includes("gaseos") || normalized.includes("coca")) return "🥤";
   if (normalized.includes("pizza")) return "🍕";
   if (normalized.includes("postre")) return "🍰";
-  if (normalized.includes("combo")) return "🍔";
+  if (normalized.includes("combo")) return "🍱";
   return "🍽️";
 };
 
@@ -46,59 +47,71 @@ export function ProductCard({ producto, onAdd }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-[26px] border border-[#f7d7d7] bg-white shadow-[0_12px_28px_rgba(31,45,61,0.1)] ring-1 ring-[#f1d2d2]">
-      <div className="flex h-40 items-center justify-center bg-[#f05454]">
-        <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full bg-[#f7f7f7]/5 text-[5.1rem] shadow-inner shadow-[#b92d2d]/30">
+    <article className="overflow-hidden rounded-[22px] border border-[#e5e9ef] dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-all flex flex-col h-[290px] justify-between">
+      {/* Red Coral Top Banner - 128px height */}
+      <div className="flex h-32 items-center justify-center bg-[#e05454] shrink-0">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-3xl sm:text-4xl shadow-inner">
           {getProductEmoji(producto.nombre)}
         </div>
       </div>
 
-      <div className="bg-[#f9f9f9] p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-[1.1rem] font-black text-[#1d2b3a]">{producto.nombre}</h3>
-            <p className="mt-1 line-clamp-2 text-sm text-[#66768b]">{producto.descripcion || "Producto disponible"}</p>
+      {/* Card Body - Dark Mode Aware */}
+      <div className="bg-white dark:bg-gray-900 p-3.5 flex flex-col justify-between flex-1 text-center transition-colors">
+        <div className="flex flex-col items-center">
+          {/* Centered Title container fixed height (40px) */}
+          <div className="h-10 flex items-center justify-center text-center w-full px-1">
+            <h3 className="text-xs sm:text-sm font-extrabold text-[#1f2d3d] dark:text-gray-100 leading-snug line-clamp-2 text-center">
+              {producto.nombre}
+            </h3>
+          </div>
+
+          {/* Centered Subtitle container */}
+          <div className="h-4 flex items-center justify-center text-center mt-1 w-full px-1">
+            <p className="text-[11px] text-[#718096] dark:text-gray-400 truncate text-center w-full">
+              {producto.descripcion || "Producto de prueba"}
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <div className="text-[1.6rem] font-black text-[#f05454]">
-            ${Number(producto.precio ?? 0).toLocaleString("es-CL")}
-          </div>
+        {/* Price & Button Bar */}
+        <div className="pt-2.5 flex items-center justify-center gap-2.5 sm:gap-3 px-2 mt-auto w-full border-t border-gray-100 dark:border-gray-800">
+          <span className="text-xs sm:text-sm font-black text-[#f05454] dark:text-red-400 leading-none whitespace-nowrap shrink-0 flex items-center">
+            ${Number(producto.precio ?? 0).toLocaleString("es-CO")}
+          </span>
           <button
             type="button"
             onClick={() => handleAdd(variantes[0])}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#f05454] px-3 py-2 text-sm font-bold text-white shadow-[0_8px_18px_rgba(240,84,84,0.3)] transition hover:-translate-y-0.5 hover:bg-[#e44b4b]"
+            className="inline-flex items-center justify-center gap-1 rounded-xl bg-[#f05454] hover:bg-[#d94444] px-2.5 py-1.5 text-[11px] font-bold text-white leading-none shadow-sm shrink-0 transition-all cursor-pointer active:scale-95"
           >
-            <Plus className="h-4 w-4" />
-            Agregar
+            <Plus className="h-3 w-3 stroke-[2.5]" />
+            <span>Agregar</span>
           </button>
         </div>
 
         {adiciones.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-center">
             <button
               type="button"
-              className="text-xs font-semibold uppercase tracking-[0.12em] text-[#f05454] underline decoration-2 underline-offset-4"
+              className="text-[10px] font-bold text-[#f05454] dark:text-red-400 hover:underline"
               onClick={() => setShowAdditions((prev) => !prev)}
             >
-              {showAdditions ? "Ocultar adiciones" : "Adiciones"}
+              {showAdditions ? "Ocultar adiciones" : "+ Adiciones"}
             </button>
 
             {showAdditions && (
-              <div className="mt-2 space-y-2 rounded-2xl border border-[#e9edf2] bg-white p-2 shadow-sm">
+              <div className="mt-1 space-y-1 rounded-xl border border-[#e9edf2] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 p-1.5 text-[11px] text-left">
                 {adiciones.map((adicion) => (
-                  <label key={adicion.id} className="flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-sm text-[#334155] hover:bg-[#f8fafc]">
-                    <span className="flex items-center gap-2">
+                  <label key={adicion.id} className="flex cursor-pointer items-center justify-between gap-1 py-0.5 text-slate-700 dark:text-gray-200 hover:bg-slate-100/80 dark:hover:bg-gray-700 rounded px-1">
+                    <span className="flex items-center gap-1">
                       <input
                         type="checkbox"
                         checked={selectedAdditions.some((a) => a.id === adicion.id)}
                         onChange={() => toggleAdicion(adicion)}
-                        className="h-4 w-4 rounded border-[#d5dbe2] accent-[#f05454]"
+                        className="h-3 w-3 rounded border-[#d5dbe2] dark:border-gray-600 accent-[#f05454]"
                       />
-                      <span>{adicion.nombre}</span>
+                      <span className="truncate max-w-[90px]">{adicion.nombre}</span>
                     </span>
-                    <span className="font-semibold text-[#6a7380]">+${Number(adicion.precio || 0).toLocaleString("es-CL")}</span>
+                    <span className="font-semibold text-slate-500 dark:text-gray-400 text-[10px]">+${Number(adicion.precio || 0).toLocaleString("es-CO")}</span>
                   </label>
                 ))}
               </div>
