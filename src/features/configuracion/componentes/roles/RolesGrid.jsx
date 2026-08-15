@@ -33,12 +33,30 @@ const getRolAccent = (nombre) => {
   }
 };
 
+const MODULOS_PERMISOS_VALIDOS = [
+  "Dashboard",
+  "Roles",
+  "Usuarios",
+  "Categoría Insumos",
+  "Insumos",
+  "Proveedores",
+  "Gestión de Compras",
+  "Categoría Productos",
+  "Productos",
+  "Fichas Técnicas",
+  "Gestión de Producción",
+  "Punto de Venta",
+  "Clientes",
+  "Gestión de Ventas"
+];
+
 export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {roles.map((rol) => {
         const accent = getRolAccent(rol.nombre);
-        const permisosCount = rol.permisos?.length || 0;
+        const permisosFiltrados = (rol.permisos || []).filter((p) => MODULOS_PERMISOS_VALIDOS.includes(p));
+        const permisosCount = permisosFiltrados.length;
 
         return (
           <div key={rol.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden hover:shadow-md transition-shadow">
@@ -78,7 +96,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
               <div className="mb-4">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Permisos Asignados</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(rol.permisos || []).slice(0, 3).map((permiso, i) => (
+                  {permisosFiltrados.slice(0, 3).map((permiso, i) => (
                     <span key={i} className={`px-3 py-1 rounded-full text-xs font-medium ${accent.badge}`}>
                       {permiso}
                     </span>
