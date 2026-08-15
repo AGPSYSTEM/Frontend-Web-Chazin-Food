@@ -114,10 +114,10 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 flex items-center justify-center gap-2 sm:gap-2.5 text-[10px] lg:text-[11px] font-medium whitespace-nowrap">
+              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 px-1 flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] xl:text-[11px] font-medium">
                 <button
                   onClick={() => onOpenPermisos(rol)}
-                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
+                  className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
                   title="Permisos del rol"
                 >
                   <Shield className="w-3 h-3 stroke-[2]" />
@@ -128,7 +128,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
 
                 <button
                   onClick={() => onEdit(rol)}
-                  className="flex items-center gap-1 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
+                  className="flex items-center gap-0.5 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
                   title="Editar rol"
                 >
                   <Edit className="w-3 h-3 stroke-[2]" />
@@ -140,7 +140,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                     <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
                     <button
                       onClick={() => onToggleEstado(rol.id)}
-                      className={`flex items-center gap-1 transition-colors shrink-0 ${
+                      className={`flex items-center gap-0.5 transition-colors shrink-0 ${
                         rol.estado === "Activo"
                           ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
                           : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
@@ -148,9 +148,9 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                       title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
                     >
                       {rol.estado === "Activo" ? (
-                        <ToggleRight className="w-3 h-3 stroke-[2] text-amber-500" />
+                        <ToggleRight className="w-3.5 h-3.5 stroke-[2] text-amber-500" />
                       ) : (
-                        <ToggleLeft className="w-3 h-3 stroke-[2] text-emerald-500" />
+                        <ToggleLeft className="w-3.5 h-3.5 stroke-[2] text-emerald-500" />
                       )}
                       <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
                     </button>
@@ -165,7 +165,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                       className="flex items-center justify-center text-red-500 hover:text-red-600 transition-colors shrink-0 p-0.5"
                       title="Eliminar rol"
                     >
-                      <Trash2 className="w-3 h-3 stroke-[2]" />
+                      <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
                     </button>
                   </>
                 )}
