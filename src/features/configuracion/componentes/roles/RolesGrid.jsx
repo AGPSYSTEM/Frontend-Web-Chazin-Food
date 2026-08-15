@@ -57,6 +57,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
         const accent = getRolAccent(rol.nombre);
         const permisosFiltrados = (rol.permisos || []).filter((p) => MODULOS_PERMISOS_VALIDOS.includes(p));
         const permisosCount = permisosFiltrados.length;
+        const isAdministrador = (rol.nombre || "").toLowerCase() === "administrador" || String(rol.id) === "1";
 
         return (
           <div key={rol.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden hover:shadow-md transition-shadow">
