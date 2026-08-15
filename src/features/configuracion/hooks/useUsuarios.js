@@ -19,13 +19,17 @@ export function useUsuarios() {
     try {
       setLoading(true);
       const data = await usuariosService.getUsuarios();
-      setUsuarios((data || []).map(u => ({
-        ...u,
-        idRolStr: String(u.idRol || 3),
-        rolNombre: u.rol || "Cliente",
-        estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
-        iniciales: getIniciales(u.nombre)
-      })));
+      setUsuarios(
+        (data || [])
+          .filter((u) => (u.rol || u.rolNombre || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1")
+          .map((u) => ({
+            ...u,
+            idRolStr: String(u.idRol || 4),
+            rolNombre: u.rol || "Cliente",
+            estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
+            iniciales: getIniciales(u.nombre)
+          }))
+      );
     } catch (err) {
       console.error(err);
       notifError("Error", err.message || "Error al obtener usuarios");
@@ -37,7 +41,11 @@ export function useUsuarios() {
   const fetchRoles = useCallback(async () => {
     try {
       const data = await usuariosService.getRoles();
-      setRolesList((data || []).filter(r => r.estado === "Activo" || r.estado === 1));
+      setRolesList(
+        (data || []).filter(
+          (r) => (r.estado === "Activo" || r.estado === 1) && r.nombre?.toLowerCase() !== "administrador" && String(r.id) !== "1"
+        )
+      );
     } catch (err) {
       console.error("Error al cargar roles:", err);
     }
@@ -49,6 +57,9 @@ export function useUsuarios() {
   }, [fetchUsers, fetchRoles]);
 
   const filteredUsuarios = usuarios.filter((u) => {
+    const isNotAdmin = (u.rolNombre || u.rol || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1";
+    if (!isNotAdmin) return false;
+
     const matchSearch =
       searchTerm === "" ||
       u.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
