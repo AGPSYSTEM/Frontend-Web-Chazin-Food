@@ -1,9 +1,10 @@
-/* Hide number input spinners globally */
+/* Hide native number input spinners globally to allow clean NumberInput component arrows */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;

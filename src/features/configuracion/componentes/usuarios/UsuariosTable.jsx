@@ -1,4 +1,28 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, User } from "lucide-react";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
+
+const parseDireccion = (raw) => {
+  if (!raw) return "-";
+  if (typeof raw === "string" && raw.trim().startsWith("{")) {
+    try {
+      const obj = JSON.parse(raw);
+      return obj.direccion || raw;
+    } catch { return raw; }
+  }
+  return raw;
+};
+
+const getRolColor = (rol) => {
+  switch (rol) {
+    case "Administrador":
+      return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300";
+    case "Cocinero":
+      return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300";
+    case "Cliente":
+      return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300";
+    default:
+      return "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300";
+  }
+};
 
 const getRolStyle = (rol = "") => {
   const r = rol.toLowerCase();
@@ -117,6 +141,12 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     <span>{[t1, t2, t3].filter(Boolean).join(" ")}</span>
                   </div>
                 )}
+                {usuario.rolNombre === "Cliente" && usuario.direccion && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                    <span className="truncate">{parseDireccion(usuario.direccion)}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 pt-1">
                   <span
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getRolStyle(
@@ -127,7 +157,8 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     {usuario.rolNombre}
                   </span>
                 </div>
-                <div className="text-[11px] text-gray-400 pt-1">
+                <div className="flex items-center gap-1.5 text-[11px] text-gray-400 pt-1">
+                  <Calendar className="w-3 h-3" />
                   Último acceso: {uYear}{uMonthDay} {uTime}
                 </div>
               </div>
@@ -168,7 +199,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
         )}
       </div>
 
-      {/* Desktop Table View (lg+) - Matching reference image 1 & 2 1:1 */}
+      {/* Desktop Table View (lg+) */}
       <div className="hidden lg:block bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">

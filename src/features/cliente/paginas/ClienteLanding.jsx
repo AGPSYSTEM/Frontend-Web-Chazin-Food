@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -8,8 +8,31 @@ import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { categoriaProductosService } from "@/features/ventas/servicios/categoriaProductosService";
+import { productosService } from "@/features/ventas/servicios/productosService";
 
-const categorias = [
+const defaultCategoryIcons = {
+  "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
+  "salchipapas": { icon: "🍟", color: "from-yellow-500 to-amber-600" },
+  "perros calientes": { icon: "🌭", color: "from-orange-400 to-red-500" },
+  "perros": { icon: "🌭", color: "from-orange-400 to-red-500" },
+  "pollo": { icon: "🍗", color: "from-amber-500 to-orange-600" },
+  "bebidas": { icon: "🥤", color: "from-blue-400 to-blue-600" },
+  "refrescos": { icon: "🥤", color: "from-blue-400 to-blue-600" },
+  "acompañamientos": { icon: "🥗", color: "from-green-400 to-green-600" },
+  "combos": { icon: "🍱", color: "from-purple-400 to-purple-600" },
+  "postres": { icon: "🍰", color: "from-pink-400 to-rose-500" },
+  "helados": { icon: "🍦", color: "from-indigo-400 to-purple-500" },
+  "entradas": { icon: "🧆", color: "from-emerald-400 to-teal-500" },
+  "pizzas": { icon: "🍕", color: "from-red-500 to-amber-500" }
+};
+
+const getCategoryMeta = (nombre) => {
+  const key = String(nombre || "").toLowerCase().trim();
+  return defaultCategoryIcons[key] || { icon: "🍽️", color: "from-red-400 to-red-600" };
+};
+
+const categoriasDefault = [
   { id: 1, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
   { id: 2, nombre: "Salchipapas", icon: "🍟", color: "from-yellow-500 to-amber-600" },
   { id: 3, nombre: "Perros Calientes", icon: "🌭", color: "from-orange-400 to-red-500" },
@@ -19,7 +42,7 @@ const categorias = [
   { id: 8, nombre: "Combos", icon: "🍱", color: "from-purple-400 to-purple-600" }
 ];
 
-const productos = [
+const productosDefault = [
   { id: 1, nombre: "Hamburguesa Especial", precio: 15000, categoria: 1, imagen: "🍔", descripcion: "Doble carne, queso, lechuga, tomate y salsas", stock: 25 },
   { id: 2, nombre: "Salchipapa Grande", precio: 12000, categoria: 2, imagen: "🍟", descripcion: "Papas fritas con salchicha y salsas", stock: 30 },
   { id: 3, nombre: "Perro Caliente Especial", precio: 10000, categoria: 3, imagen: "🌭", descripcion: "Hot dog con salsas y papa chip", stock: 20 },
@@ -117,6 +140,7 @@ export function ClienteLanding() {
   const [checkoutEfectivoPaga, setCheckoutEfectivoPaga] = useState("");
   const [checkoutTransferReferencia, setCheckoutTransferReferencia] = useState("");
   const [checkoutTransferBanco, setCheckoutTransferBanco] = useState("Bancolombia");
+  const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
 
   const [showPedidos, setShowPedidos] = useState(false);
   const [showPerfil, setShowPerfil] = useState(false);
@@ -125,6 +149,66 @@ export function ClienteLanding() {
 
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
+
+  const [categoriasList, setCategoriasList] = useState([]);
+  const [productosList, setProductosList] = useState([]);
+
+  // Fetch catalog categories & products dynamically from API
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      try {
+        const [catsRes, prodsRes] = await Promise.allSettled([
+          categoriaProductosService.getCategorias(),
+          productosService.getProductos()
+        ]);
+
+        if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value) && catsRes.value.length > 0) {
+          const apiCats = catsRes.value
+            .filter(c => c.estado === 'Activo' || c.estado === 1 || c.estado === undefined)
+            .map(c => {
+              const meta = getCategoryMeta(c.nombre);
+              return {
+                id: c.id || c.idCategoriaProducto,
+                idCategoriaProducto: c.idCategoriaProducto || c.id,
+                nombre: c.nombre,
+                icon: c.icon || meta.icon,
+                color: meta.color
+              };
+            });
+          setCategoriasList(apiCats);
+        } else {
+          setCategoriasList(categoriasDefault);
+        }
+
+        if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value) && prodsRes.value.length > 0) {
+          const apiProds = prodsRes.value
+            .filter(p => p.estado === 'Activo' || p.estado === 1 || p.estado === undefined)
+            .map(p => ({
+              id: p.id || p.idProducto,
+              idProducto: p.idProducto || p.id,
+              nombre: p.nombre,
+              precio: parseFloat(p.precio || 0),
+              categoria: p.idCategoriaProducto || p.categoria,
+              categoriaNombre: p.categoria,
+              imagen: p.imagen || "🍔",
+              descripcion: p.descripcion || "",
+              stock: p.stock || 0,
+              adiciones: p.adiciones || [],
+              eventos: p.eventos || []
+            }));
+          setProductosList(apiProds);
+        } else {
+          setProductosList(productosDefault);
+        }
+      } catch (e) {
+        console.warn("Error cargando catálogo dinámico en ClienteLanding:", e);
+        setCategoriasList(categoriasDefault);
+        setProductosList(productosDefault);
+      }
+    };
+
+    fetchCatalog();
+  }, []);
 
   // Fetch client orders from backend
   const fetchMyOrders = async () => {
@@ -163,8 +247,38 @@ export function ClienteLanding() {
     fetchMyOrders();
   }, [isAuthenticated, user]);
 
-  const productosFiltrados = productos.filter((p) => {
-    const matchCategoria = !selectedCategoria || p.categoria === selectedCategoria;
+  const handleCancelarPedido = async (pedidoId) => {
+    const isConfirmed = await confirmAction(
+      "¿Cancelar este pedido?",
+      "Esta acción cambiará el estado del pedido a Cancelado. ¿Deseas continuar?"
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await ventasService.cancelarVenta(pedidoId);
+      success("Pedido cancelado", "Tu pedido fue cancelado exitosamente.");
+      await fetchMyOrders();
+    } catch (err) {
+      console.warn("Error cancelando pedido:", err);
+      try {
+        await ventasService.updateEstadoVenta(pedidoId, "CANCELADO");
+        success("Pedido cancelado", "Tu pedido fue cancelado exitosamente.");
+        await fetchMyOrders();
+      } catch (err2) {
+        error("Error al cancelar pedido", err2.message || "No se pudo cancelar el pedido.");
+      }
+    }
+  };
+
+  const activeCategorias = categoriasList.length > 0 ? categoriasList : categoriasDefault;
+  const activeProductos = productosList.length > 0 ? productosList : productosDefault;
+
+  const productosFiltrados = activeProductos.filter((p) => {
+    const matchCategoria = !selectedCategoria || 
+      p.categoria === selectedCategoria || 
+      p.idCategoriaProducto === selectedCategoria ||
+      String(p.categoria) === String(selectedCategoria) ||
+      (typeof selectedCategoria === 'string' && String(p.categoriaNombre || '').toLowerCase() === selectedCategoria.toLowerCase());
     const matchSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
     return matchCategoria && matchSearch;
   });
@@ -240,13 +354,19 @@ export function ClienteLanding() {
     }
     if (cart.length === 0) return;
     setCheckoutNombre(user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "");
-    setCheckoutDireccion(user?.direccion || "");
+    const rawDir = user?.direccion || "";
+    let cleanDir = rawDir;
+    if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
+      try { const p = JSON.parse(rawDir); cleanDir = p.direccion || rawDir; } catch (e) { /* keep raw */ }
+    }
+    setCheckoutDireccion(cleanDir);
     setCheckoutEspecificaciones("");
     setCheckoutMetodoPago("efectivo");
     setCheckoutTipoEntrega("domicilio");
     setCheckoutEfectivoPaga("");
     setCheckoutTransferReferencia("");
     setCheckoutTransferBanco("Bancolombia");
+    setCheckoutTarjetaNumero("");
     setShowCheckout(true);
   };
 
@@ -269,6 +389,10 @@ export function ClienteLanding() {
       error("Referencia requerida", "Ingresa el número de referencia de la transferencia");
       return;
     }
+    if (checkoutMetodoPago === "tarjeta" && !checkoutTarjetaNumero.trim()) {
+      error("Tarjeta requerida", "Ingresa el número de tarjeta");
+      return;
+    }
 
     const confirmed = await confirmAction(
       "Confirmar Pedido",
@@ -278,13 +402,39 @@ export function ClienteLanding() {
 
     if (confirmed) {
       try {
+        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
+        const metodoPagoNormalizado = checkoutMetodoPago === "tarjeta" ? "Tarjeta" : checkoutMetodoPago === "transferencia" ? "Transferencia" : "Efectivo";
+
         const ventaPayload = {
           idCliente: user?.idCliente || null,
           idUsuario: user?.idUsuario || user?.id || user?._id,
           subtotal: clientSubtotal,
           total: totalCheckout,
+          tipoEntrega: tipoEntregaNormalizado,
+          metodoPago: metodoPagoNormalizado,
+          direccion: checkoutDireccion,
           estadoEntrega: "PENDIENTE",
-          observaciones: `${checkoutTipoEntrega === "domicilio" ? `Entrega Domicilio (${checkoutDireccion})` : "Para llevar"}. Método: ${checkoutMetodoPago}. ${checkoutEspecificaciones ? `Notas: ${checkoutEspecificaciones}` : ''}`,
+          observaciones: JSON.stringify({
+            tipoEntrega: tipoEntregaNormalizado,
+            metodoPago: metodoPagoNormalizado,
+            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
+            especificaciones: checkoutEspecificaciones || "",
+            efectivoConCuanto: checkoutEfectivoPaga || "",
+            vueltoEfectivo: vueltoEfectivo || 0,
+            transferenciaReferencia: checkoutTransferReferencia || "",
+            transferenciaBanco: checkoutTransferBanco || "",
+            tarjetaNumero: checkoutTarjetaNumero ? `****${checkoutTarjetaNumero.replace(/\s/g, '').slice(-4)}` : "",
+            codigoPedido: `VEN-${String(Date.now()).slice(-4)}`,
+            clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}`.trim() : "Cliente General"),
+            productos: cart.map(item => ({
+              id: item.id,
+              nombre: item.nombre,
+              cantidad: item.cantidad,
+              precioUnitario: item.precio,
+              total: item.precio * item.cantidad,
+              adiciones: item.adiciones ? item.adiciones.map(a => a.nombre) : []
+            }))
+          }),
           detalles: cart.map(item => ({
             idVariante: item.id || 1,
             cantidad: item.cantidad,
@@ -469,16 +619,24 @@ export function ClienteLanding() {
             onClick={() => setSelectedCategoria(null)}
             className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === null ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
           >
-            <div className="text-3xl">🍽️</div>
+            <div className="flex items-center justify-center h-12 w-12 rounded-xl">
+              <div className="text-3xl">🍽️</div>
+            </div>
             <p className="text-xs font-semibold">Todos</p>
           </button>
-          {categorias.map((cat) => (
+          {activeCategorias.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategoria(cat.id)}
               className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === cat.id ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
             >
-              <div className="text-3xl">{cat.icon}</div>
+              <div className="flex items-center justify-center h-12 w-12 rounded-xl overflow-hidden bg-white dark:bg-gray-800/50 shadow-sm border border-gray-100 dark:border-gray-700">
+                {cat.icon?.includes('/') || cat.icon?.includes('.') ? (
+                  <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-3xl">{cat.icon}</div>
+                )}
+              </div>
               <p className="text-xs font-semibold leading-tight">{cat.nombre}</p>
             </button>
           ))}
@@ -488,13 +646,17 @@ export function ClienteLanding() {
       {/* Productos */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          {selectedCategoria ? categorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
+          {selectedCategoria ? activeCategorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (
             <div key={producto.id} className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between">
-              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative">
-                <div className="text-7xl">{producto.imagen}</div>
+              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative overflow-hidden">
+                {producto.imagen?.includes('/') || producto.imagen?.includes('.') ? (
+                  <img src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-7xl">{producto.imagen}</div>
+                )}
               </div>
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div>
@@ -502,7 +664,25 @@ export function ClienteLanding() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion}</p>
                 </div>
                 <div className="space-y-3 pt-2">
-                  <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                  <div className="flex flex-col">
+                    {producto.eventos && producto.eventos.length > 0 && producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                      <>
+                        <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <Zap className="w-4 h-4" />
+                          ${(() => {
+                            const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
+                            if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
+                            const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
+                            if (evtDesc) return (producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                            return producto.precio.toLocaleString();
+                          })()}
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleProductClick(producto)}
                     className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
@@ -529,11 +709,61 @@ export function ClienteLanding() {
             </button>
 
             <div className="text-center pt-2">
-              <div className="text-6xl mb-2">{productoSeleccionado.producto.imagen}</div>
+              <div className="flex justify-center mb-4 mt-2">
+                {productoSeleccionado.producto.imagen?.includes('/') || productoSeleccionado.producto.imagen?.includes('.') ? (
+                  <img src={productoSeleccionado.producto.imagen} alt={productoSeleccionado.producto.nombre} className="w-48 h-48 object-cover rounded-2xl shadow-md" />
+                ) : (
+                  <div className="text-6xl">{productoSeleccionado.producto.imagen}</div>
+                )}
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion}</p>
-              <p className="text-xl font-extrabold text-red-600 dark:text-red-400 mt-2">${productoSeleccionado.producto.precio.toLocaleString()}</p>
+              <div className="mt-2 flex flex-col items-center">
+                {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                  <>
+                    <span className="text-sm text-gray-400 line-through">${productoSeleccionado.producto.precio.toLocaleString()}</span>
+                    <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Zap className="w-5 h-5" />
+                      ${(() => {
+                        const evtPrecio = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
+                        if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
+                        const evtDesc = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Descuento");
+                        if (evtDesc) return (productoSeleccionado.producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                        return productoSeleccionado.producto.precio.toLocaleString();
+                      })()}
+                    </span>
+                  </>
+                ) : (
+                  <p className="text-xl font-extrabold text-red-600 dark:text-red-400">${productoSeleccionado.producto.precio.toLocaleString()}</p>
+                )}
+              </div>
             </div>
+
+            {/* Eventos */}
+            {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl p-3 border border-yellow-100 dark:border-yellow-900/30">
+                <p className="text-xs font-bold text-yellow-600 dark:text-yellow-500 mb-2 uppercase tracking-wider flex items-center gap-1"><Zap className="w-4 h-4"/> Eventos Activos</p>
+                <div className="space-y-2">
+                  {productoSeleccionado.producto.eventos.map((evt, i) => (
+                    <div key={i} className="text-xs flex flex-col gap-0.5">
+                      <span className="font-bold text-gray-800 dark:text-gray-200">{evt.nombreEvento || evt.nombre}</span>
+                      {evt.tipoEvento === "Descuento" && (
+                        <span className="text-emerald-600 font-semibold">-{Number(evt.descuento)}% de descuento</span>
+                      )}
+                      {evt.tipoEvento === "Promoción Precio" && (
+                        <span className="text-purple-600 font-semibold">Precio promocional: ${Number(evt.nuevoPrecio).toLocaleString()}</span>
+                      )}
+                      {evt.tipoEvento === "Añadir Insumos" && (
+                        <span className="text-blue-600 font-semibold">
+                          {evt.accionInsumo === "Quitar" ? "Insumos removidos" : "Insumos extra incluidos"}
+                        </span>
+                      )}
+                      <p className="text-gray-500 dark:text-gray-400">{evt.descripcion}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Cantidad */}
             <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl">
@@ -589,7 +819,17 @@ export function ClienteLanding() {
             >
               <ShoppingCart className="w-4 h-4" />
               Agregar al carrito • ${(
-                (productoSeleccionado.producto.precio +
+                ((() => {
+                  let basePrice = productoSeleccionado.producto.precio;
+                  const evtPrecio = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Promoción Precio");
+                  const evtDesc = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Descuento");
+                  if (evtPrecio) {
+                    basePrice = Number(evtPrecio.nuevoPrecio);
+                  } else if (evtDesc) {
+                    basePrice = basePrice * (1 - Number(evtDesc.descuento)/100);
+                  }
+                  return basePrice;
+                })() +
                   productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + a.precio * a.cantidad, 0)) *
                 productoSeleccionado.cantidad
               ).toLocaleString()}
@@ -691,152 +931,304 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* MODAL CHECKOUT */}
+      {/* MODAL CHECKOUT — Diseño Aprobado */}
       {showCheckout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowCheckout(false)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full shadow-2xl border border-gray-200 dark:border-gray-800 max-h-[92vh] overflow-hidden flex flex-col">
 
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Finalizar Pedido</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ingresa los datos para la entrega de tu pedido</p>
-            </div>
-
-            {/* Tipo de Entrega */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setCheckoutTipoEntrega("domicilio")}
-                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "domicilio" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
-              >
-                Domicilio 🛵
-              </button>
-              <button
-                type="button"
-                onClick={() => setCheckoutTipoEntrega("llevar")}
-                className={`py-2.5 rounded-xl transition-all ${checkoutTipoEntrega === "llevar" ? "bg-white dark:bg-gray-700 text-red-600 dark:text-white shadow-xs" : "text-gray-500"}`}
-              >
-                Para Llevar 🛍️
-              </button>
-            </div>
-
-            {/* Formulario */}
-            <div className="space-y-3 text-xs">
+            {/* ═══ HEADER ROJO ═══ */}
+            <div className="bg-[#E53935] px-5 py-4 flex items-center justify-between rounded-t-2xl shrink-0">
               <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Nombre Completo:</label>
-                <input
-                  type="text"
-                  value={checkoutNombre}
-                  onChange={(e) => setCheckoutNombre(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
-                  placeholder="Tu nombre"
-                />
+                <h3 className="text-lg font-extrabold text-white tracking-tight">Finalizar Pedido</h3>
+                <p className="text-[11px] text-white/70 mt-0.5">Completa los datos de entrega y pago</p>
+              </div>
+              <button onClick={() => setShowCheckout(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+                <X className="w-4 h-4 text-white" />
+              </button>
+            </div>
+
+            {/* ═══ CUERPO SCROLLEABLE ═══ */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+
+              {/* ── Resumen del pedido ── */}
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-4 space-y-2 border border-gray-100 dark:border-gray-700">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🛒 Resumen</h4>
+                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
+                  <span>Subtotal ({getTotalItems()} prod.)</span>
+                  <span className="font-semibold">${clientSubtotal.toLocaleString('es-CO')}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-400 dark:text-gray-500">
+                  <span>IVA (0%)</span>
+                  <span>$0</span>
+                </div>
+                <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between items-center">
+                  <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total</span>
+                  <span className="text-lg font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+                </div>
               </div>
 
-              {checkoutTipoEntrega === "domicilio" && (
+              {/* ── Tipo de Entrega ── */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🚚 Tipo de Entrega</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Card Domicilio */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutTipoEntrega("domicilio")}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                      checkoutTipoEntrega === "domicilio"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutTipoEntrega === "domicilio" && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3.5 h-3.5 text-white" />
+                      </span>
+                    )}
+                    <span className="text-2xl block mb-1">🛵</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Domicilio</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Llevamos tu pedido</span>
+                  </button>
+                  {/* Card Recoger */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutTipoEntrega("llevar")}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                      checkoutTipoEntrega === "llevar"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutTipoEntrega === "llevar" && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3.5 h-3.5 text-white" />
+                      </span>
+                    )}
+                    <span className="text-2xl block mb-1">🏪</span>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Recoger en Local</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Pasas a recogerlo</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Datos de Entrega / Contacto ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  📍 {checkoutTipoEntrega === "domicilio" ? "Datos de Entrega" : "Datos de Contacto"}
+                </h4>
                 <div>
-                  <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Dirección de Entrega: *</label>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Nombre del destinatario</label>
                   <input
                     type="text"
-                    value={checkoutDireccion}
-                    onChange={(e) => setCheckoutDireccion(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
-                    placeholder="Ej: Calle 15 # 24-30 Apt 302"
+                    value={checkoutNombre}
+                    onChange={(e) => setCheckoutNombre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
+                    placeholder="Tu nombre completo"
                   />
                 </div>
-              )}
 
-              <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Método de Pago:</label>
+                {checkoutTipoEntrega === "domicilio" ? (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Dirección de entrega <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={checkoutDireccion}
+                      onChange={(e) => setCheckoutDireccion(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
+                      placeholder="Ej: Calle 45 #12-30, Apto 201"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67. Te notificaremos cuando esté listo.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Método de Pago ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">💳 Método de Pago</h4>
                 <div className="grid grid-cols-3 gap-2">
+                  {/* Efectivo */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("efectivo")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "efectivo" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "efectivo"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
                   >
-                    <Banknote className="w-4 h-4" />
-                    Efectivo
+                    {checkoutMetodoPago === "efectivo" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">💵</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Efectivo</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("transferencia")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "transferencia" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    Nequi/Davi
-                  </button>
+                  {/* Tarjeta */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("tarjeta")}
-                    className={`p-2.5 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${checkoutMetodoPago === "tarjeta" ? "border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "tarjeta"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
                   >
-                    <CreditCard className="w-4 h-4" />
-                    Tarjeta
+                    {checkoutMetodoPago === "tarjeta" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">💳</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Tarjeta</span>
+                  </button>
+                  {/* Transferencia */}
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutMetodoPago("transferencia")}
+                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                      checkoutMetodoPago === "transferencia"
+                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {checkoutMetodoPago === "transferencia" && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <span className="text-lg">📱</span>
+                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Transferencia</span>
                   </button>
                 </div>
+
+                {/* Sub-sección Efectivo */}
+                {checkoutMetodoPago === "efectivo" && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
+                    <label className="block text-xs font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto vas a pagar? (opcional)</label>
+                    <input
+                      type="number"
+                      value={checkoutEfectivoPaga}
+                      onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
+                      placeholder="Ej: 50000"
+                      className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-amber-500 transition-colors"
+                    />
+                    {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        💰 Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Sub-sección Tarjeta */}
+                {checkoutMetodoPago === "tarjeta" && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de tarjeta <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400" />
+                        <input
+                          type="text"
+                          value={checkoutTarjetaNumero}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
+                            setCheckoutTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, '$1 '));
+                          }}
+                          placeholder="0000 0000 0000 0000"
+                          className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors tracking-widest"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Monto a cargar</label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={`$ ${totalCheckout.toLocaleString('es-CO')}`}
+                        className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-gray-700 border border-blue-200 dark:border-blue-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-sección Transferencia */}
+                {checkoutMetodoPago === "transferencia" && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Entidad / Banco origen</label>
+                      <select
+                        value={checkoutTransferBanco}
+                        onChange={(e) => setCheckoutTransferBanco(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                      >
+                        <optgroup label="Billeteras digitales">
+                          <option value="Nequi">Nequi</option>
+                          <option value="Daviplata">Daviplata</option>
+                        </optgroup>
+                        <optgroup label="Bancos">
+                          <option value="Bancolombia">Bancolombia</option>
+                          <option value="Davivienda">Davivienda</option>
+                          <option value="BBVA">BBVA</option>
+                          <option value="Banco de Bogotá">Banco de Bogotá</option>
+                          <option value="Banco Caja Social">Banco Caja Social</option>
+                          <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
+                          <option value="Otro">Otro</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div className="bg-blue-100/60 dark:bg-blue-900/30 rounded-lg p-2.5">
+                      <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de referencia <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        value={checkoutTransferReferencia}
+                        onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
+                        placeholder="Ej: 987654321"
+                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {checkoutMetodoPago === "efectivo" && (
-                <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
-                  <label className="block font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto efectivo pagas?</label>
-                  <input
-                    type="number"
-                    value={checkoutEfectivoPaga}
-                    onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
-                    placeholder={`Ej: ${totalCheckout}`}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-amber-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
-                  />
-                  {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      Vueltos a entregar: ${vueltoEfectivo.toLocaleString('es-CO')}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {checkoutMetodoPago === "transferencia" && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
-                  <p className="text-blue-800 dark:text-blue-300 font-semibold">Nequi/Bancolombia: 3190000001</p>
-                  <input
-                    type="text"
-                    value={checkoutTransferReferencia}
-                    onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
-                    placeholder="Número de Comprobante / Referencia *"
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 rounded-lg text-gray-900 dark:text-gray-100 outline-none"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">Notas especiales o instrucciones:</label>
+              {/* ── Especificaciones ── */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">📝 Especificaciones (opcional)</h4>
                 <textarea
                   rows={2}
                   value={checkoutEspecificaciones}
                   onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
-                  placeholder="Ej: Sin cebolla, llamar al llegar..."
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none"
+                  placeholder="Ej: Sin cebolla, dejar en portería, tocar timbre..."
+                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors resize-none"
                 />
               </div>
             </div>
 
-            {/* Resumen */}
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex justify-between items-center">
-              <span className="font-extrabold text-sm text-gray-900 dark:text-gray-100">Total a Pagar:</span>
-              <span className="font-black text-xl text-red-600 dark:text-red-400">${totalCheckout.toLocaleString('es-CO')}</span>
+            {/* ═══ FOOTER FIJO ═══ */}
+            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-3 rounded-b-2xl">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total a pagar:</span>
+                <span className="text-xl font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+              </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right -mt-1">🏷️ Precio sin IVA aplicado</p>
+              <button
+                onClick={handleConfirmarPedido}
+                className="w-full py-3.5 bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Confirmar Pedido
+              </button>
             </div>
-
-            <button
-              onClick={handleConfirmarPedido}
-              className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-5 h-5" />
-              Confirmar Pedido
-            </button>
           </div>
         </div>
       )}
@@ -897,6 +1289,18 @@ export function ClienteLanding() {
                       <span className="text-gray-500">Total:</span>
                       <span className="text-red-600 dark:text-red-400 text-sm">${Number(p.total || 0).toLocaleString()}</span>
                     </div>
+
+                    {(String(p.estado).toUpperCase() === 'PENDIENTE' || String(p.estado).toLowerCase() === 'en cola') && (
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={() => handleCancelarPedido(p.id)}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Cancelar Pedido
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

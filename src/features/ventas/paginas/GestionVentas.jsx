@@ -13,6 +13,7 @@ import {
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
+import { VentasHistorialCardsView } from "../componentes/gestion/VentasHistorialCardsView";
 import { VentasHistorialTableView } from "../componentes/gestion/VentasHistorialTableView";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
@@ -38,6 +39,17 @@ export function GestionVentas() {
   const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
 
+function formatDateSafe(dateVal, fallback = "") {
+  if (!dateVal) return fallback;
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return String(dateVal).slice(0, 10) || fallback;
+  }
+}
+
   const periodLabelMap = {
     hoy: "Hoy",
     "7_dias": "Últimos 7 días",
@@ -50,7 +62,7 @@ export function GestionVentas() {
   // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
   const displayedVentas = filteredVentas.filter((v) => {
     if (filterFecha) {
-      const ventaDate = v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "";
+      const ventaDate = formatDateSafe(v.fecha || v.fechaVenta, "");
       if (ventaDate !== filterFecha) return false;
     }
     if (filterMetodoPago !== "Todos") {
@@ -243,7 +255,8 @@ export function GestionVentas() {
           </div>
         </div>
 
-        {/* Period Selector Row */}
+        {/* Period Selector Row — shown only on Pedidos Pagados */}
+        {activeTab === "pedidos_pagados" && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
             Período:
@@ -267,57 +280,63 @@ export function GestionVentas() {
             })}
           </div>
         </div>
+        )}
 
-        {/* TAB CONTENT: REPORTES vs TABLAS */}
+        {/* TAB CONTENT: REPORTES vs HISTORIAL vs PEDIDOS PAGADOS */}
         {activeTab === "reportes" ? (
-          <VentasReportesView ventas={ventas} selectedPeriod={selectedPeriod} />
-        ) : (
-          /* TABLAS: Pedidos Pagados / Historial */
+          <VentasReportesView ventas={ventas} />
+        ) : activeTab === "historial" ? (
           <div className="space-y-6 pt-2">
             {/* Historial Header with Exportar Button & Dropdown */}
-            {activeTab === "historial" && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  Historial — {periodText}
-                </h2>
-                <div className="relative shrink-0 self-start sm:self-auto">
-                  <button
-                    onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                    className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                    <span>Exportar</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Historial — {periodText}
+              </h2>
+              <div className="relative shrink-0 self-start sm:self-auto">
+                <button
+                  onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                  className="px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                  <span>Exportar</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+                </button>
 
-                  {exportMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-30 py-1.5 overflow-hidden">
-                      <button
-                        onClick={() => {
-                          handleExportExcel();
-                          setExportMenuOpen(false);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                        <span>Exportar a Excel (.csv)</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleExportPDF();
-                          setExportMenuOpen(false);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 flex items-center gap-2.5 transition-colors cursor-pointer border-t border-gray-100 dark:border-gray-700/60"
-                      >
-                        <FileText className="w-4 h-4 text-rose-600" />
-                        <span>Exportar a PDF</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {exportMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-30 py-1.5 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        handleExportExcel();
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <span>Exportar a Excel (.csv)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleExportPDF();
+                        setExportMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 flex items-center gap-2.5 transition-colors cursor-pointer border-t border-gray-100 dark:border-gray-700/60"
+                    >
+                      <FileText className="w-4 h-4 text-rose-600" />
+                      <span>Exportar a PDF</span>
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
+            <VentasHistorialCardsView
+              ventas={ventas}
+              onViewDetail={handleViewDetail}
+            />
+          </div>
+        ) : (
+          /* Pedidos Pagados */
+          <div className="space-y-6 pt-2">
             {/* Search Bar & Filter Toggle */}
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative flex-1 w-full">
@@ -345,7 +364,7 @@ export function GestionVentas() {
               </button>
             </div>
 
-            {/* Inline Filter Panel */}
+            {/* Inline Filter Panel (Captura 2) */}
             {filterDropdownOpen && (
               <div className="bg-gray-50/70 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-4">
                 <div className="flex flex-col sm:flex-row items-end gap-4">
@@ -417,12 +436,6 @@ export function GestionVentas() {
                   No se encontraron pedidos con los filtros aplicados
                 </p>
               </div>
-            ) : activeTab === "historial" ? (
-              <VentasHistorialTableView
-                ventas={displayedVentas}
-                onViewDetail={handleViewDetail}
-                onUpdateEstado={updateEstado}
-              />
             ) : (
               <VentasTable
                 ventas={displayedVentas}

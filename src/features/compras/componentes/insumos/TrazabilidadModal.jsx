@@ -44,7 +44,7 @@ export function TrazabilidadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[900px] max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -55,13 +55,13 @@ export function TrazabilidadModal({
               <h2 className="text-xl font-bold text-[#1e293b] dark:text-gray-100">
                 Trazabilidad de Insumos
               </h2>
-              <p className="text-xs text-gray-400">
-                {eventos.length} {eventos.length === 1 ? "evento registrado" : "eventos registrados"}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {eventos.length} eventos registrados
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={onOpenPapelera}
               className="px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
@@ -89,7 +89,7 @@ export function TrazabilidadModal({
         </div>
 
         {/* Filter Pills row */}
-        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
+        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
           <Filter className="w-4 h-4 text-gray-400 shrink-0" />
 
           <button

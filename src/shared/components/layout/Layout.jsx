@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -38,6 +38,7 @@ export function Layout() {
   const [configExpanded, setConfigExpanded] = useState(false);
   const [darkMode, toggleDarkMode] = useDarkMode();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { confirmLogout, success } = useNotifications();
 
@@ -50,9 +51,13 @@ export function Layout() {
 
   // ── Permission helper ──
   // Administrador always has all permissions; for other roles, check the permisos array
-  const isAdmin = user?.rol?.toLowerCase() === "administrador";
+  const isAdmin = user?.rol?.toLowerCase() === "administrador" || user?.rol?.toLowerCase() === "admin";
   const userPermisos = user?.permisos || [];
-  const hasPerm = (permName) => isAdmin || userPermisos.includes(permName);
+  const hasPerm = (permName) => {
+    if (isAdmin) return true;
+    if (permName === "Punto de Venta" && (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))) return true;
+    return userPermisos.includes(permName);
+  };
 
   const handleLogout = async () => {
     setSidebarOpen(false);
@@ -60,14 +65,15 @@ export function Layout() {
     if (confirmed) {
       logout();
       success("Sesión cerrada", "Has salido del sistema correctamente");
+      navigate("/login", { replace: true });
     }
   };
 
-  const handleSectionClick = (fn, cur) => {
-    if (!sidebarOpen) {
-      setSidebarOpen(true);
-      fn(true);
-    } else fn(!cur);
+  const closeAllSections = () => {
+    setComprasExpanded(false);
+    setProduccionExpanded(false);
+    setVentasExpanded(false);
+    setConfigExpanded(false);
   };
 
   const openSection = (section) => {
@@ -75,7 +81,27 @@ export function Layout() {
     setProduccionExpanded(section === "produccion");
     setVentasExpanded(section === "ventas");
     setConfigExpanded(section === "config");
-    setSidebarOpen(true);
+  };
+
+  const handleSectionClick = (section, cur) => {
+    if (!sidebarOpen) {
+      setSidebarOpen(true);
+      openSection(section);
+    } else {
+      if (cur) {
+        closeAllSections();
+      } else {
+        openSection(section);
+      }
+    }
+  };
+
+  const handleMobileSectionClick = (section, cur) => {
+    if (cur) {
+      closeAllSections();
+    } else {
+      openSection(section);
+    }
   };
 
   // Filter nav items based on permissions
@@ -99,6 +125,7 @@ export function Layout() {
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
+    { to: "/ventas/pos", label: "Punto de Venta", perm: "Punto de Venta" },
     { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
     { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
   ];
@@ -170,7 +197,7 @@ export function Layout() {
               {/* Configuración */}
               {showConfig && (
                 <li>
-                  <button onClick={() => handleSectionClick(setConfigExpanded, configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <button onClick={() => handleSectionClick("config", configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Configuración</span>}</div>
                     {sidebarOpen && (configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
                   </button>
@@ -185,7 +212,7 @@ export function Layout() {
               {/* Compras */}
               {showCompras && (
                 <li>
-                  <button onClick={() => handleSectionClick(setComprasExpanded, comprasExpanded)} title="Compras" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <button onClick={() => handleSectionClick("compras", comprasExpanded)} title="Compras" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Compras</span>}</div>
                     {sidebarOpen && (comprasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
                   </button>
@@ -200,7 +227,7 @@ export function Layout() {
               {/* Producción */}
               {showProduccion && (
                 <li>
-                  <button onClick={() => handleSectionClick(setProduccionExpanded, produccionExpanded)} title="Producción" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <button onClick={() => handleSectionClick("produccion", produccionExpanded)} title="Producción" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Producción</span>}</div>
                     {sidebarOpen && (produccionExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
                   </button>
@@ -215,7 +242,7 @@ export function Layout() {
               {/* Ventas */}
               {showVentas && (
                 <li>
-                  <button onClick={() => handleSectionClick(setVentasExpanded, ventasExpanded)} title="Ventas" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <button onClick={() => handleSectionClick("ventas", ventasExpanded)} title="Ventas" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Ventas</span>}</div>
                     {sidebarOpen && (ventasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
                   </button>
@@ -265,7 +292,7 @@ export function Layout() {
          ═══════════════════════════════════════════════════════════ */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-[42vw] max-w-[280px] min-w-[168px]
+          fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
           bg-white dark:bg-gray-900
           shadow-2xl flex flex-col
           transition-transform duration-300 ease-out
@@ -312,7 +339,7 @@ export function Layout() {
           {showConfig && (
             <div className="mx-2">
               <button
-                onClick={() => setConfigExpanded((v) => !v)}
+                onClick={() => handleMobileSectionClick("config", configExpanded)}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" /><span className="font-medium">Configuración</span></div>
@@ -343,7 +370,7 @@ export function Layout() {
           {showCompras && (
             <div className="mx-2">
               <button
-                onClick={() => setComprasExpanded((v) => !v)}
+                onClick={() => handleMobileSectionClick("compras", comprasExpanded)}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/compras") ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" /><span className="font-medium">Compras</span></div>
@@ -370,7 +397,7 @@ export function Layout() {
           {showProduccion && (
             <div className="mx-2">
               <button
-                onClick={() => setProduccionExpanded((v) => !v)}
+                onClick={() => handleMobileSectionClick("produccion", produccionExpanded)}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/produccion") || produccionPaths.some((p) => isActive(p)) ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" /><span className="font-medium">Producción</span></div>
@@ -397,7 +424,7 @@ export function Layout() {
           {showVentas && (
             <div className="mx-2">
               <button
-                onClick={() => setVentasExpanded((v) => !v)}
+                onClick={() => handleMobileSectionClick("ventas", ventasExpanded)}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" /><span className="font-medium">Ventas</span></div>

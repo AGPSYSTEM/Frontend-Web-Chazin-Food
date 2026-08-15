@@ -9,6 +9,7 @@ import { InsumoPreparadoModal } from "../componentes/insumos/InsumoPreparadoModa
 import { TrazabilidadModal } from "../componentes/insumos/TrazabilidadModal";
 import { PapeleraReciclajeView } from "../componentes/insumos/PapeleraReciclajeView";
 import { VerInsumoModal } from "../componentes/insumos/VerInsumoModal";
+import { AdicionesModal } from "../componentes/insumos/AdicionesModal";
 
 export function Insumos() {
   const {
@@ -42,6 +43,7 @@ export function Insumos() {
   const [modalPreparadoOpen, setModalPreparadoOpen] = useState(false);
   const [editingInsumo, setEditingInsumo] = useState(null);
   const [viewingInsumo, setViewingInsumo] = useState(null);
+  const [adicionesModalOpen, setAdicionesModalOpen] = useState(false);
 
   // Separate base insumos and prepared insumos
   const insumosBase = filteredInsumos.filter((i) => i.tipo !== "Preparado");
@@ -247,8 +249,16 @@ export function Insumos() {
             {/* Action Buttons row */}
             <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
               <button
+                onClick={() => setAdicionesModalOpen(true)}
+                className="w-full sm:w-1/3 flex items-center justify-center gap-2 py-3 px-6 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-2xl shadow-xs transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Adiciones</span>
+              </button>
+
+              <button
                 onClick={handleOpenCreatePreparado}
-                className="w-full sm:w-1/2 flex items-center justify-center gap-2 py-3 px-6 bg-[#2c3e50] hover:bg-[#1f2d3a] text-white font-medium rounded-2xl shadow-xs transition-colors"
+                className="w-full sm:w-1/3 flex items-center justify-center gap-2 py-3 px-6 bg-[#2c3e50] hover:bg-[#1f2d3a] text-white font-medium rounded-2xl shadow-xs transition-colors"
               >
                 <FlaskConical className="w-5 h-5" />
                 <span>Insumo Preparado</span>
@@ -256,7 +266,7 @@ export function Insumos() {
 
               <button
                 onClick={handleOpenCreateBase}
-                className="w-full sm:w-1/2 flex items-center justify-center gap-2 py-3 px-6 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-2xl shadow-xs transition-colors"
+                className="w-full sm:w-1/3 flex items-center justify-center gap-2 py-3 px-6 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-2xl shadow-xs transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 <span>Nuevo Insumo</span>
@@ -333,6 +343,13 @@ export function Insumos() {
           setTrazabilidadOpen(false);
           setViewMode("papelera");
         }}
+      />
+
+      {/* Adiciones Modal */}
+      <AdicionesModal
+        isOpen={adicionesModalOpen}
+        onClose={() => setAdicionesModalOpen(false)}
+        insumos={insumosBase}
       />
     </div>
   );

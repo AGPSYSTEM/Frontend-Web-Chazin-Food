@@ -30,6 +30,13 @@ export function useUsuarios() {
             iniciales: getIniciales(u.nombre)
           }))
       );
+      setUsuarios((data || []).map(u => ({
+        ...u,
+        idRolStr: String(u.idRol || 4),
+        rolNombre: u.rol || "Cliente",
+        estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
+        iniciales: getIniciales(u.nombre)
+      })));
     } catch (err) {
       console.error(err);
       notifError("Error", err.message || "Error al obtener usuarios");
@@ -84,8 +91,11 @@ export function useUsuarios() {
         telefono: form.telefono,
         direccion: form.direccion,
         password: form.password,
+        contrasena: form.password,
         idRol: parseInt(form.idRolStr, 10),
-        estado: form.estado.toUpperCase()
+        estado: form.estado.toUpperCase(),
+        enviarCorreoBienvenida: form.enviarCorreoBienvenida,
+        notificarEmail: form.notificarEmail || form.enviarCorreoBienvenida
       };
       await usuariosService.createUsuario(payload);
       success("Éxito", "Usuario creado correctamente");
@@ -107,7 +117,9 @@ export function useUsuarios() {
         telefono: form.telefono,
         direccion: form.direccion,
         idRol: parseInt(form.idRolStr, 10),
-        estado: form.estado.toUpperCase()
+        estado: form.estado.toUpperCase(),
+        notificarCambios: form.notificarCambios,
+        notificarEmail: form.notificarEmail || form.notificarCambios
       };
       await usuariosService.updateUsuario(id, payload);
       success("Éxito", "Usuario actualizado correctamente");
@@ -133,9 +145,15 @@ export function useUsuarios() {
     }
   };
 
-  const changePassword = async (id, password) => {
+  const changePassword = async (id, data) => {
     try {
-      await usuariosService.changePassword(id, { password });
+      const passwordVal = typeof data === "string" ? data : data.password;
+      const notifVal = typeof data === "object" ? data.notificarEmail : true;
+      await usuariosService.changePassword(id, {
+        password: passwordVal,
+        contrasena: passwordVal,
+        notificarEmail: notifVal
+      });
       success("Éxito", "Contraseña cambiada exitosamente");
       return true;
     } catch (err) {

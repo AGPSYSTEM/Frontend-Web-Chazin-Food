@@ -3,18 +3,51 @@ import { X, User, Package, TrendingUp, Award, Flame } from "lucide-react";
 export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
   if (!isOpen) return null;
 
-  // Calculate stats dynamically if available, otherwise use default mock stats matching the mockup
-  const totalPedidosCount = pedidos.length > 0 ? pedidos.length : 2;
-  const totalProductosCount = pedidos.length > 0 
-    ? pedidos.reduce((acc, p) => acc + (p.items || []).reduce((iAcc, item) => iAcc + (item.cantidad || 1), 0), 0)
-    : 5;
-  const totalGastado = pedidos.length > 0
-    ? pedidos.reduce((acc, p) => acc + (p.total || 0), 0)
-    : 81000;
+  // Dynamic real stats from client orders
+  const totalPedidosCount = pedidos.length;
+  const totalProductosCount = pedidos.reduce(
+    (acc, p) => acc + (p.items || []).reduce((iAcc, item) => iAcc + (item.cantidad || 1), 0),
+    0
+  );
+  const totalGastado = pedidos.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
 
-  const userName = user?.nombre
-    ? `${user.nombre} ${user.apellidos || ''}`.trim()
-    : "María García";
+  // Calculate favorite product dynamically from real order items
+  const itemCounts = {};
+  pedidos.forEach((p) => {
+    (p.items || []).forEach((item) => {
+      const name = item.nombre || "Producto";
+      itemCounts[name] = (itemCounts[name] || 0) + (Number(item.cantidad) || 1);
+    });
+  });
+
+  const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
+  const favoriteProduct = sortedItems.length > 0 ? sortedItems[0][0] : "Sin pedidos aún";
+  const favoriteCount = sortedItems.length > 0 ? sortedItems[0][1] : 0;
+
+  // Fidelidad racha (recompensa cada 3 compras)
+  const streak = totalPedidosCount % 3;
+  const neededForReward = 3 - streak;
+
+  // Format clean full name avoiding word duplication
+  const formatFullName = (u) => {
+    if (!u) return "Cliente";
+    const nombre = (u.nombre || "").trim();
+    const apellidos = (u.apellidos || u.apellido || "").trim();
+
+    if (!apellidos) return nombre;
+    if (!nombre) return apellidos;
+
+    const nombreWords = nombre.split(/\s+/);
+    const apellidosWords = apellidos.split(/\s+/);
+
+    const uniqueApellidos = apellidosWords.filter(
+      (w) => !nombreWords.some((nw) => nw.toLowerCase() === w.toLowerCase())
+    ).join(" ");
+
+    return uniqueApellidos ? `${nombre} ${uniqueApellidos}` : nombre;
+  };
+
+  const userName = formatFullName(user);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -24,17 +57,17 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
       >
         {/* Header */}
         <div className="bg-[#f05454] p-6 text-white relative flex items-center gap-4 shrink-0">
-          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0 shadow-inner">
+          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0 shadow-inner font-bold text-xl">
             <User className="w-7 h-7 stroke-[2.5]" />
           </div>
-          <div>
+          <div className="pr-8">
             <h2 className="text-2xl font-bold tracking-tight text-white">Mi Perfil</h2>
-            <p className="text-sm text-white/90 font-medium">{userName}</p>
+            <p className="text-sm text-white/90 font-medium capitalize">{userName}</p>
           </div>
           <button
             onClick={onClose}
             title="Cerrar modal"
-            className="absolute top-5 right-5 w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white"
+            className="absolute top-5 right-5 w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center text-white cursor-pointer"
           >
             <X className="w-5 h-5 stroke-[2.5]" />
           </button>
@@ -107,10 +140,12 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
             </div>
             <div className="mt-3">
               <h4 className="text-xl font-extrabold text-amber-900 dark:text-amber-300">
-                Hamburguesa Especial
+                {favoriteProduct}
               </h4>
               <p className="text-xs font-semibold text-amber-700/90 dark:text-amber-400 mt-1">
-                Lo has pedido 2 veces
+                {favoriteCount > 0
+                  ? `Lo has pedido ${favoriteCount} ${favoriteCount === 1 ? 'vez' : 'veces'}`
+                  : "Realiza tu primera compra para ver tu producto preferido"}
               </p>
             </div>
           </div>
@@ -131,15 +166,17 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
               </div>
             </div>
 
-            {/* Segmented Progress Bars */}
+            {/* Segmented Progress Bars (100% dynamic based on streak) */}
             <div className="grid grid-cols-3 gap-2 my-2.5">
-              <div className="h-3 rounded-full bg-gradient-to-r from-orange-500 to-red-500 shadow-xs"></div>
-              <div className="h-3 rounded-full bg-gradient-to-r from-orange-500 to-red-500 shadow-xs"></div>
-              <div className="h-3 rounded-full bg-amber-100 dark:bg-gray-800"></div>
+              <div className={`h-3 rounded-full transition-colors ${streak >= 1 ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-xs' : 'bg-amber-100 dark:bg-gray-800'}`}></div>
+              <div className={`h-3 rounded-full transition-colors ${streak >= 2 ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-xs' : 'bg-amber-100 dark:bg-gray-800'}`}></div>
+              <div className={`h-3 rounded-full transition-colors ${streak === 0 && totalPedidosCount > 0 ? 'bg-gradient-to-r from-orange-500 to-red-500 shadow-xs' : 'bg-amber-100 dark:bg-gray-800'}`}></div>
             </div>
 
             <p className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
-              Te falta 1 compra para tu próxima recompensa 🎁
+              {neededForReward === 3 && streak === 0 && totalPedidosCount > 0
+                ? "¡Felicidades! Has completado tu racha 🎉"
+                : `Te ${neededForReward === 1 ? 'falta 1 compra' : `faltan ${neededForReward} compras`} para tu próxima recompensa 🎁`}
             </p>
           </div>
 
@@ -163,7 +200,7 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
         <div className="p-4 bg-gray-50/80 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-sm"
+            className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-sm cursor-pointer"
           >
             Cerrar
           </button>

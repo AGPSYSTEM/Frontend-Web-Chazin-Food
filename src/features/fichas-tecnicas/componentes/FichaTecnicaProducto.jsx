@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronUp, FileText, Search, Package, Plus, Minus, X, Check } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus } from "lucide-react";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#F05454] focus:border-transparent text-sm";
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
+const requiredMark = <span className="text-red-500"> *</span>;
 
 export function FichaTecnicaProducto({ productId, productName, initialData, onSave }) {
   const notify = useNotifications();
@@ -13,7 +15,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
-  const [tiempoPreparacion, setTiempoPreparacion] = useState(0);
+  const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
@@ -57,7 +59,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const populateFields = (f) => {
     setInsumos(f.detalles || f.insumos || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
-    setTiempoPreparacion(f.tiempoPreparacion || 0);
+    setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");
@@ -107,6 +109,26 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const handleSave = async () => {
+    const requiredFields = [
+      ["Procedimiento de preparación", procedimiento],
+      ["Tiempo de preparación", tiempoPreparacion],
+      ["Rendimiento / porciones", rendimiento],
+      ["Especificaciones técnicas", especificaciones],
+      ["Características organolépticas", caracteristicas],
+      ["Información nutricional", informacionNutricional],
+      ["Condiciones de almacenamiento", condicionesAlmacenamiento],
+      ["Vida útil", vidaUtil]
+    ];
+    const missingFields = requiredFields
+      .filter(([, value]) => String(value ?? "").trim() === "")
+      .map(([label]) => label);
+
+    if (insumos.length === 0) missingFields.unshift("Ingredientes / insumos necesarios");
+    if (missingFields.length > 0) {
+      notify.error("Campos obligatorios", `Completa los campos obligatorios: ${missingFields.join(", ")}.`);
+      return;
+    }
+
     const payload = {
       idProducto: productId || null,
       procedimiento,
@@ -133,6 +155,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       try {
         setSaving(true);
         await fichasTecnicasService.saveFichaProducto(productId, payload);
+        notify.success("Cambios Guardados", `Los cambios de la ficha técnica de ${productName || "producto"} han sido guardados.`);
         notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica de ${productName || "producto"}`);
       } catch (err) {
         console.error(err);
@@ -140,6 +163,8 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       } finally {
         setSaving(false);
       }
+    } else {
+      notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al producto. Se guardará al crear el producto.");
     }
   };
 
@@ -170,7 +195,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           {/* Section 1: Insumos / Ingredientes */}
           <div>
             <label className={labelCls}>
-              Ingredientes / Insumos necesarios
+              Ingredientes / Insumos necesarios{requiredMark}
               <span className="text-gray-400 font-normal text-xs ml-1">— busca y selecciona</span>
             </label>
             <div className="relative">
@@ -300,12 +325,13 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
 
           {/* Section 2: Procedimiento */}
           <div>
-            <label className={labelCls}>Procedimiento de Preparación</label>
+            <label className={labelCls}>Procedimiento de Preparación{requiredMark}</label>
             <textarea
               value={procedimiento}
               onChange={(e) => setProcedimiento(e.target.value)}
               className={`${inputCls} resize-none`}
               rows={4}
+              required
               placeholder="Describe paso a paso cómo se prepara el producto..."
             />
           </div>
@@ -313,19 +339,29 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           {/* Section 3: Tiempo & Rendimiento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Tiempo de Preparación (min)</label>
-              <input
-                type="number"
+              <label className={labelCls}>Tiempo de Preparación (min){requiredMark}</label>
+              <NumberInput
+                min="0"
+                required
                 value={tiempoPreparacion}
-                onChange={(e) => setTiempoPreparacion(Number(e.target.value) || 0)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setTiempoPreparacion("");
+                    return;
+                  }
+                  const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
+                  setTiempoPreparacion(sanitized);
+                }}
                 className={inputCls}
                 placeholder="Ej: 15"
               />
             </div>
             <div>
-              <label className={labelCls}>Rendimiento / Porciones</label>
+              <label className={labelCls}>Rendimiento / Porciones{requiredMark}</label>
               <input
                 type="text"
+                required
                 value={rendimiento}
                 onChange={(e) => setRendimiento(e.target.value)}
                 className={inputCls}
@@ -337,22 +373,24 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           {/* Section 4: Especificaciones & Características */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Especificaciones Técnicas</label>
+              <label className={labelCls}>Especificaciones Técnicas{requiredMark}</label>
               <textarea
                 value={especificaciones}
                 onChange={(e) => setEspecificaciones(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Gramaje, temperatura de cocción, estándares..."
               />
             </div>
             <div>
-              <label className={labelCls}>Características Organolépticas</label>
+              <label className={labelCls}>Características Organolépticas{requiredMark}</label>
               <textarea
                 value={caracteristicas}
                 onChange={(e) => setCaracteristicas(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Sabor, textura, aroma, apariencia..."
               />
             </div>
@@ -361,22 +399,24 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           {/* Section 5: Información Nutricional & Condiciones Almacenamiento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Información Nutricional</label>
+              <label className={labelCls}>Información Nutricional{requiredMark}</label>
               <textarea
                 value={informacionNutricional}
                 onChange={(e) => setInformacionNutricional(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Calorías, proteínas, carbohidratos..."
               />
             </div>
             <div>
-              <label className={labelCls}>Condiciones de Almacenamiento</label>
+              <label className={labelCls}>Condiciones de Almacenamiento{requiredMark}</label>
               <textarea
                 value={condicionesAlmacenamiento}
                 onChange={(e) => setCondicionesAlmacenamiento(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
+                required
                 placeholder="Refrigeración, temperatura ideal..."
               />
             </div>
@@ -385,9 +425,10 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           {/* Section 6: Vida Útil & Observaciones */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Vida Útil</label>
+              <label className={labelCls}>Vida Útil{requiredMark}</label>
               <input
                 type="text"
+                required
                 value={vidaUtil}
                 onChange={(e) => setVidaUtil(e.target.value)}
                 className={inputCls}

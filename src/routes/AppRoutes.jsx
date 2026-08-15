@@ -19,6 +19,7 @@ import { ClienteLanding } from "@/features/cliente/paginas/ClienteLanding";
 import { CocineroDashboard } from "@/features/cocinero/paginas/CocineroDashboard";
 import { FichasTecnicas } from "@/features/fichas-tecnicas/paginas/FichasTecnicas";
 import { GestionProduccion } from "@/features/produccion/paginas/GestionProduccion";
+import PosVendedor from "@/features/pos/paginas/PosVendedor";
 
 /**
  * Maps permission names (as stored in the DB) to route paths.
@@ -36,6 +37,8 @@ const PERMISSION_ROUTE_MAP = {
   "Gestión de Producción": { path: "produccion/gestion",        element: <GestionProduccion /> },
   "Clientes":              { path: "ventas/clientes",           element: <Clientes /> },
   "Gestión de Ventas":     { path: "ventas/gestion-ventas",     element: <GestionVentas /> },
+  "Punto de Venta":        { path: "ventas/pos",                element: <PosVendedor /> },
+  "Vendedor":              { path: "ventas/pos",                element: <PosVendedor /> },
   "Roles":                 { path: "configuracion/roles",       element: <Roles /> },
   "Usuarios":              { path: "configuracion/usuarios",    element: <Usuarios /> },
 };
@@ -55,10 +58,12 @@ export function AppRoutes() {
     );
   }
 
-  const userRol = user?.rol?.toLowerCase();
+  const rawRol = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isCliente = userRol === "cliente" || user?.idRol === 4;
 
   // ── Cliente: landing page ──
-  if (userRol === "cliente") {
+  if (isCliente) {
     return (
       <Routes>
         <Route path="/" element={<ClienteLanding />} />
@@ -80,8 +85,8 @@ export function AppRoutes() {
     );
   }
 
-  // ── Administrador: full access to everything ──
-  if (userRol === "administrador") {
+  // ── Administrador / Admin: full access to everything ──
+  if (userRol === "administrador" || userRol === "admin") {
     return (
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
@@ -96,6 +101,7 @@ export function AppRoutes() {
           <Route path="ventas/productos" element={<Productos />} />
           <Route path="ventas/clientes" element={<Clientes />} />
           <Route path="ventas/gestion-ventas" element={<GestionVentas />} />
+          <Route path="ventas/pos" element={<PosVendedor />} />
           <Route path="ventas/fichas-tecnicas" element={<FichasTecnicas />} />
           <Route path="configuracion/roles" element={<Roles />} />
           <Route path="configuracion/usuarios" element={<Usuarios />} />
@@ -106,23 +112,27 @@ export function AppRoutes() {
 
   // ── Any other role (e.g. Vendedor): permission-based access ──
   const userPermisos = user?.permisos || [];
-  const allowedRoutes = [];
+  const allowedRoutesMap = new Map();
   for (const perm of userPermisos) {
     const routeConfig = PERMISSION_ROUTE_MAP[perm];
-    if (routeConfig) {
-      allowedRoutes.push(routeConfig);
+    if (routeConfig && !allowedRoutesMap.has(routeConfig.path)) {
+      allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
+  const allowedRoutes = Array.from(allowedRoutesMap.values());
 
   const hasDashboard = userPermisos.includes("Dashboard");
+  const defaultPath = (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))
+    ? "ventas/pos"
+    : (allowedRoutes.length > 0 ? allowedRoutes[0].path : "");
 
   return (
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
         {hasDashboard && <Route index element={<Dashboard />} />}
-        {!hasDashboard && allowedRoutes.length > 0 && (
-          <Route index element={<Navigate to={`/${allowedRoutes[0].path}`} replace />} />
+        {!hasDashboard && defaultPath && (
+          <Route index element={<Navigate to={`/${defaultPath}`} replace />} />
         )}
         {allowedRoutes.map(
           (route) =>
