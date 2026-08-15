@@ -153,7 +153,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                   <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
                 </button>
 
-                {onDelete && (
+                {onDelete && !isAdministrador && (
                   <>
                     <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
                     <button
