@@ -114,7 +114,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 flex items-center justify-center gap-1.5 text-[10px] lg:text-[11px] font-medium whitespace-nowrap">
+              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 flex items-center justify-center gap-2 sm:gap-2.5 text-[10px] lg:text-[11px] font-medium whitespace-nowrap">
                 <button
                   onClick={() => onOpenPermisos(rol)}
                   className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
@@ -135,24 +135,27 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                   <span>Editar</span>
                 </button>
 
-                <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
-
-                <button
-                  onClick={() => onToggleEstado(rol.id)}
-                  className={`flex items-center gap-1 transition-colors shrink-0 ${
-                    rol.estado === "Activo"
-                      ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                      : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
-                  }`}
-                  title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
-                >
-                  {rol.estado === "Activo" ? (
-                    <ToggleRight className="w-3 h-3 stroke-[2] text-amber-500" />
-                  ) : (
-                    <ToggleLeft className="w-3 h-3 stroke-[2] text-emerald-500" />
-                  )}
-                  <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
-                </button>
+                {!isAdministrador && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+                    <button
+                      onClick={() => onToggleEstado(rol.id)}
+                      className={`flex items-center gap-1 transition-colors shrink-0 ${
+                        rol.estado === "Activo"
+                          ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                          : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                      }`}
+                      title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
+                    >
+                      {rol.estado === "Activo" ? (
+                        <ToggleRight className="w-3 h-3 stroke-[2] text-amber-500" />
+                      ) : (
+                        <ToggleLeft className="w-3 h-3 stroke-[2] text-emerald-500" />
+                      )}
+                      <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
+                    </button>
+                  </>
+                )}
 
                 {onDelete && !isAdministrador && (
                   <>

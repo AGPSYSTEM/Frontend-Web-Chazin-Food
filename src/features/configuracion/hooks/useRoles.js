@@ -71,6 +71,10 @@ export function useRoles() {
   const toggleEstadoRol = async (id) => {
     const rolActual = roles.find((r) => r.id === id);
     if (!rolActual) return;
+    if (rolActual.nombre?.toLowerCase() === "administrador" || String(rolActual.id) === "1") {
+      notifError("Acción no permitida", "El rol Administrador debe permanecer activo y no se puede desactivar.");
+      return false;
+    }
     const nuevoEstado = rolActual.estado === "Activo" ? "Inactivo" : "Activo";
     try {
       await rolesService.updateRol(id, { estado: nuevoEstado });
