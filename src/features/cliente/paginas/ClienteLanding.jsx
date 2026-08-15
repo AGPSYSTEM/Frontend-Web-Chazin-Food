@@ -619,7 +619,9 @@ export function ClienteLanding() {
             onClick={() => setSelectedCategoria(null)}
             className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === null ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
           >
-            <div className="text-3xl">🍽️</div>
+            <div className="flex items-center justify-center h-12 w-12 rounded-xl">
+              <div className="text-3xl">🍽️</div>
+            </div>
             <p className="text-xs font-semibold">Todos</p>
           </button>
           {activeCategorias.map((cat) => (
@@ -628,7 +630,13 @@ export function ClienteLanding() {
               onClick={() => setSelectedCategoria(cat.id)}
               className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === cat.id ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
             >
-              <div className="text-3xl">{cat.icon}</div>
+              <div className="flex items-center justify-center h-12 w-12 rounded-xl overflow-hidden bg-white dark:bg-gray-800/50 shadow-sm border border-gray-100 dark:border-gray-700">
+                {cat.icon?.includes('/') || cat.icon?.includes('.') ? (
+                  <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-3xl">{cat.icon}</div>
+                )}
+              </div>
               <p className="text-xs font-semibold leading-tight">{cat.nombre}</p>
             </button>
           ))}
@@ -643,8 +651,12 @@ export function ClienteLanding() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (
             <div key={producto.id} className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between">
-              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative">
-                <div className="text-7xl">{producto.imagen}</div>
+              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative overflow-hidden">
+                {producto.imagen?.includes('/') || producto.imagen?.includes('.') ? (
+                  <img src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-7xl">{producto.imagen}</div>
+                )}
               </div>
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div>
@@ -697,7 +709,13 @@ export function ClienteLanding() {
             </button>
 
             <div className="text-center pt-2">
-              <div className="text-6xl mb-2">{productoSeleccionado.producto.imagen}</div>
+              <div className="flex justify-center mb-4 mt-2">
+                {productoSeleccionado.producto.imagen?.includes('/') || productoSeleccionado.producto.imagen?.includes('.') ? (
+                  <img src={productoSeleccionado.producto.imagen} alt={productoSeleccionado.producto.nombre} className="w-48 h-48 object-cover rounded-2xl shadow-md" />
+                ) : (
+                  <div className="text-6xl">{productoSeleccionado.producto.imagen}</div>
+                )}
+              </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion}</p>
               <div className="mt-2 flex flex-col items-center">
