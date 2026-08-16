@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -315,18 +315,28 @@ export function ClienteLanding() {
     }
   };
 
-  const handleAdicionQuantityChange = (idAdicion, delta) => {
+  const handleAdicionQuantityChange = (idAdicion, delta, e) => {
+    if (e) e.stopPropagation();
     if (!productoSeleccionado) return;
-    setProductoSeleccionado({
-      ...productoSeleccionado,
-      adicionesSeleccionadas: productoSeleccionado.adicionesSeleccionadas.map((a) => {
-        if (a.idAdicion === idAdicion) {
-          const newQuantity = Math.max(1, a.cantidad + delta);
-          return { ...a, cantidad: newQuantity };
-        }
-        return a;
-      })
-    });
+    const existing = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === idAdicion);
+    if (!existing) return;
+
+    if (existing.cantidad + delta <= 0) {
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        adicionesSeleccionadas: productoSeleccionado.adicionesSeleccionadas.filter((a) => a.idAdicion !== idAdicion)
+      });
+    } else {
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        adicionesSeleccionadas: productoSeleccionado.adicionesSeleccionadas.map((a) => {
+          if (a.idAdicion === idAdicion) {
+            return { ...a, cantidad: a.cantidad + delta };
+          }
+          return a;
+        })
+      });
+    }
   };
 
   const handleAddToCart = () => {
@@ -790,20 +800,64 @@ export function ClienteLanding() {
             {/* Adiciones */}
             <div>
               <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Adiciones disponibles:</p>
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {adicionesDisponibles.map((ad) => {
                   const selected = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === ad.idAdicion);
                   return (
                     <div
                       key={ad.idAdicion}
-                      onClick={() => handleAdicionToggle(ad)}
-                      className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-colors ${selected ? "border-red-500 bg-red-50/50 dark:bg-red-950/30 font-semibold" : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                      className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all ${
+                        selected
+                          ? "border-[#F05454] bg-red-50/60 dark:bg-red-950/30 shadow-xs"
+                          : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>{ad.imagen}</span>
-                        <span className="text-gray-800 dark:text-gray-200">{ad.nombre}</span>
+                      <div
+                        onClick={() => handleAdicionToggle(ad)}
+                        className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
+                      >
+                        <span className="text-lg shrink-0">{ad.imagen}</span>
+                        <div className="min-w-0">
+                          <p className="text-gray-900 dark:text-gray-100 font-bold truncate">{ad.nombre}</p>
+                          <p className="text-[#F05454] dark:text-red-400 font-extrabold text-[11px]">
+                            +${Number(ad.precio).toLocaleString("es-CO")}
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-red-600 font-bold">+${ad.precio.toLocaleString()}</span>
+
+                      {/* Stepper Sumar / Restar cuando está seleccionada */}
+                      {selected ? (
+                        <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-1 rounded-xl border border-red-200 dark:border-red-900/60 shadow-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, -1, e)}
+                            className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                            title="Restar cantidad"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-black text-gray-900 dark:text-gray-100 min-w-5 text-center text-xs">
+                            {selected.cantidad}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, 1, e)}
+                            className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                            title="Sumar cantidad"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAdicionToggle(ad)}
+                          className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-[#F05454] hover:text-white text-gray-700 dark:text-gray-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Agregar</span>
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -931,116 +985,147 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* MODAL CHECKOUT — Diseño Aprobado */}
+      {/* MODAL CHECKOUT — Diseño Exacto Aprobado */}
       {showCheckout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full shadow-2xl border border-gray-200 dark:border-gray-800 max-h-[92vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[94vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
 
-            {/* ═══ HEADER ROJO ═══ */}
-            <div className="bg-[#E53935] px-5 py-4 flex items-center justify-between rounded-t-2xl shrink-0">
+            {/* ═══ HEADER ROJO GRADIENT CON BORDES REDONDEADOS ═══ */}
+            <div className="bg-gradient-to-r from-[#D9383A] to-[#E03E3E] px-6 py-5 flex items-center justify-between rounded-t-3xl shrink-0">
               <div>
-                <h3 className="text-lg font-extrabold text-white tracking-tight">Finalizar Pedido</h3>
-                <p className="text-[11px] text-white/70 mt-0.5">Completa los datos de entrega y pago</p>
+                <h3 className="text-xl font-black text-white tracking-tight">Finalizar Pedido</h3>
+                <p className="text-xs text-white/90 font-medium mt-0.5">Completa los datos de entrega y pago</p>
               </div>
-              <button onClick={() => setShowCheckout(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
-                <X className="w-4 h-4 text-white" />
+              <button
+                type="button"
+                onClick={() => setShowCheckout(false)}
+                className="w-9 h-9 rounded-2xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Cerrar"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* ═══ CUERPO SCROLLEABLE ═══ */}
-            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+            <div className="overflow-y-auto flex-1 p-6 space-y-6 scrollbar-thin">
 
-              {/* ── Resumen del pedido ── */}
-              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-xl p-4 space-y-2 border border-gray-100 dark:border-gray-700">
-                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🛒 Resumen</h4>
-                <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                  <span>Subtotal ({getTotalItems()} prod.)</span>
-                  <span className="font-semibold">${clientSubtotal.toLocaleString('es-CO')}</span>
+              {/* ── 1. Resumen de compra (Tarjeta Superior) ── */}
+              <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
+                <div className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-semibold">
+                    <ShoppingCart className="w-4 h-4 text-[#E03E3E]" /> Subtotal ({getTotalItems()} prod.)
+                  </span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString('es-CO')}</span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-400 dark:text-gray-500">
+                <div className="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400">
                   <span>IVA (0%)</span>
                   <span>$0</span>
                 </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-2 flex justify-between items-center">
-                  <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total</span>
-                  <span className="text-lg font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+                <div className="border-t border-gray-100 dark:border-gray-700/80 pt-2 flex justify-between items-center">
+                  <span className="text-base font-black text-gray-900 dark:text-gray-100">Total</span>
+                  <span className="text-xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
                 </div>
               </div>
 
-              {/* ── Tipo de Entrega ── */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">🚚 Tipo de Entrega</h4>
+              {/* ── 2. Tipo de Entrega ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-[#B91C1C]" />
+                  <span>Tipo de Entrega</span>
+                </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {/* Card Domicilio */}
                   <button
                     type="button"
                     onClick={() => setCheckoutTipoEntrega("domicilio")}
-                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                       checkoutTipoEntrega === "domicilio"
-                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
                     }`}
                   >
-                    {checkoutTipoEntrega === "domicilio" && (
-                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-3.5 h-3.5 text-white" />
-                      </span>
-                    )}
-                    <span className="text-2xl block mb-1">🛵</span>
-                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Domicilio</span>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Llevamos tu pedido</span>
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className="flex items-center gap-2">
+                        <Truck className={`w-4 h-4 ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
+                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
+                          Domicilio
+                        </span>
+                      </div>
+                      {checkoutTipoEntrega === "domicilio" && (
+                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
+                      Llevamos tu pedido
+                    </span>
                   </button>
+
                   {/* Card Recoger */}
                   <button
                     type="button"
                     onClick={() => setCheckoutTipoEntrega("llevar")}
-                    className={`relative p-4 rounded-xl border-2 text-center transition-all ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                       checkoutTipoEntrega === "llevar"
-                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
                     }`}
                   >
-                    {checkoutTipoEntrega === "llevar" && (
-                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#E53935] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-3.5 h-3.5 text-white" />
-                      </span>
-                    )}
-                    <span className="text-2xl block mb-1">🏪</span>
-                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">Recoger en Local</span>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500">Pasas a recogerlo</span>
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className="flex items-center gap-2">
+                        <Store className={`w-4 h-4 ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
+                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
+                          Recoger en Local
+                        </span>
+                      </div>
+                      {checkoutTipoEntrega === "llevar" && (
+                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
+                      Pasas a recogerlo
+                    </span>
                   </button>
                 </div>
               </div>
 
-              {/* ── Datos de Entrega / Contacto ── */}
+              {/* ── 3. Datos de Entrega ── */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                  📍 {checkoutTipoEntrega === "domicilio" ? "Datos de Entrega" : "Datos de Contacto"}
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#B91C1C]" />
+                  <span>Datos de Entrega</span>
                 </h4>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Nombre del destinatario</label>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Nombre del destinatario
+                  </label>
                   <input
                     type="text"
                     value={checkoutNombre}
                     onChange={(e) => setCheckoutNombre(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
-                    placeholder="Tu nombre completo"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
+                    placeholder="María García"
                   />
                 </div>
 
                 {checkoutTipoEntrega === "domicilio" ? (
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Dirección de entrega <span className="text-red-500">*</span></label>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Dirección de entrega <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       value={checkoutDireccion}
                       onChange={(e) => setCheckoutDireccion(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
                       placeholder="Ej: Calle 45 #12-30, Apto 201"
                     />
                   </div>
                 ) : (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex items-start gap-2">
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-3 flex items-start gap-2">
                     <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                     <p className="text-xs text-blue-700 dark:text-blue-300">
                       <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67. Te notificaremos cuando esté listo.
@@ -1049,92 +1134,110 @@ export function ClienteLanding() {
                 )}
               </div>
 
-              {/* ── Método de Pago ── */}
+              {/* ── 4. Método de Pago ── */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">💳 Método de Pago</h4>
-                <div className="grid grid-cols-3 gap-2">
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-[#B91C1C]" />
+                  <span>Método de Pago</span>
+                </h4>
+                <div className="grid grid-cols-3 gap-2.5">
                   {/* Efectivo */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("efectivo")}
-                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                    className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                       checkoutMetodoPago === "efectivo"
-                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-xs"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    {checkoutMetodoPago === "efectivo" && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-3 h-3 text-white" />
+                    <Banknote className="w-5 h-5 text-inherit" />
+                    <span className="text-xs font-bold text-inherit">Efectivo</span>
+                    {checkoutMetodoPago === "efectivo" ? (
+                      <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
+                        ✓
                       </span>
+                    ) : (
+                      <span className="h-4" />
                     )}
-                    <span className="text-lg">💵</span>
-                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Efectivo</span>
                   </button>
+
                   {/* Tarjeta */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("tarjeta")}
-                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                    className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                       checkoutMetodoPago === "tarjeta"
-                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-xs"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    {checkoutMetodoPago === "tarjeta" && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-3 h-3 text-white" />
+                    <CreditCard className="w-5 h-5 text-inherit" />
+                    <span className="text-xs font-bold text-inherit">Tarjeta</span>
+                    {checkoutMetodoPago === "tarjeta" ? (
+                      <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
+                        ✓
                       </span>
+                    ) : (
+                      <span className="h-4" />
                     )}
-                    <span className="text-lg">💳</span>
-                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Tarjeta</span>
                   </button>
+
                   {/* Transferencia */}
                   <button
                     type="button"
                     onClick={() => setCheckoutMetodoPago("transferencia")}
-                    className={`relative p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                    className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                       checkoutMetodoPago === "transferencia"
-                        ? "border-[#E53935] bg-red-50/60 dark:bg-red-950/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-xs"
+                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
                     }`}
                   >
-                    {checkoutMetodoPago === "transferencia" && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#E53935] rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-3 h-3 text-white" />
+                    <Smartphone className="w-5 h-5 text-inherit" />
+                    <span className="text-xs font-bold text-inherit">Transferencia</span>
+                    {checkoutMetodoPago === "transferencia" ? (
+                      <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
+                        ✓
                       </span>
+                    ) : (
+                      <span className="h-4" />
                     )}
-                    <span className="text-lg">📱</span>
-                    <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Transferencia</span>
                   </button>
                 </div>
 
-                {/* Sub-sección Efectivo */}
+                {/* Sub-formulario Efectivo */}
                 {checkoutMetodoPago === "efectivo" && (
-                  <div className="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
-                    <label className="block text-xs font-semibold text-amber-800 dark:text-amber-300">¿Con cuánto vas a pagar? (opcional)</label>
-                    <input
-                      type="number"
-                      value={checkoutEfectivoPaga}
-                      onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
-                      placeholder="Ej: 50000"
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-amber-500 transition-colors"
-                    />
+                  <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-4 space-y-2">
+                    <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
+                      ¿Con cuánto vas a pagar? <span className="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
+                    </label>
+                    <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#86EFAC] dark:border-emerald-700 rounded-2xl px-4 py-2.5 shadow-2xs">
+                      <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
+                      <input
+                        type="number"
+                        value={checkoutEfectivoPaga}
+                        onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
+                        placeholder="Ej: 50000"
+                        className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
+                      />
+                    </div>
                     {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
-                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400 mt-1">
                         💰 Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
                       </p>
                     )}
                   </div>
                 )}
 
-                {/* Sub-sección Tarjeta */}
+                {/* Sub-formulario Tarjeta */}
                 {checkoutMetodoPago === "tarjeta" && (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de tarjeta <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400" />
+                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
+                        Número de tarjeta <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl px-4 py-2.5 shadow-2xs">
+                        <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
                         <input
                           type="text"
                           value={checkoutTarjetaNumero}
@@ -1143,31 +1246,35 @@ export function ClienteLanding() {
                             setCheckoutTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, '$1 '));
                           }}
                           placeholder="0000 0000 0000 0000"
-                          className="w-full pl-10 pr-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors tracking-widest"
+                          className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Monto a cargar</label>
+                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
+                        Monto a cargar
+                      </label>
                       <input
                         type="text"
                         readOnly
                         value={`$ ${totalCheckout.toLocaleString('es-CO')}`}
-                        className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-gray-700 border border-blue-200 dark:border-blue-700 rounded-lg text-sm text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed"
+                        className="w-full px-4 py-2.5 bg-white/70 dark:bg-gray-800/80 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-700 dark:text-gray-200 outline-none cursor-not-allowed"
                       />
                     </div>
                   </div>
                 )}
 
-                {/* Sub-sección Transferencia */}
+                {/* Sub-formulario Transferencia */}
                 {checkoutMetodoPago === "transferencia" && (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 space-y-3">
+                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Entidad / Banco origen</label>
+                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
+                        Entidad / Banco origen
+                      </label>
                       <select
                         value={checkoutTransferBanco}
                         onChange={(e) => setCheckoutTransferBanco(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
                       >
                         <optgroup label="Billeteras digitales">
                           <option value="Nequi">Nequi</option>
@@ -1184,49 +1291,59 @@ export function ClienteLanding() {
                         </optgroup>
                       </select>
                     </div>
-                    <div className="bg-blue-100/60 dark:bg-blue-900/30 rounded-lg p-2.5">
-                      <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.</p>
+                    <div className="bg-blue-100/70 dark:bg-blue-900/30 p-2.5 rounded-xl text-xs text-[#1E40AF] dark:text-blue-300 font-medium">
+                      Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1">Número de referencia <span className="text-red-500">*</span></label>
+                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
+                        Número de referencia <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         value={checkoutTransferReferencia}
                         onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
                         placeholder="Ej: 987654321"
-                        className="w-full px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 transition-colors"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* ── Especificaciones ── */}
+              {/* ── 5. Especificaciones ── */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">📝 Especificaciones (opcional)</h4>
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#B91C1C]" />
+                  <span>Especificaciones</span>
+                  <span className="font-normal text-gray-400 text-[11px] lowercase">(opcional)</span>
+                </h4>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={checkoutEspecificaciones}
                   onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
                   placeholder="Ej: Sin cebolla, dejar en portería, tocar timbre..."
-                  className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E53935] focus:ring-1 focus:ring-[#E53935]/30 transition-colors resize-none"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition resize-none"
                 />
               </div>
             </div>
 
-            {/* ═══ FOOTER FIJO ═══ */}
-            <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-3 rounded-b-2xl">
+            {/* ═══ FOOTER FIJO CON PRECIO Y BOTÓN CONFIRMAR ═══ */}
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-3 rounded-b-3xl">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-extrabold text-gray-900 dark:text-gray-100">Total a pagar:</span>
-                <span className="text-xl font-black text-[#E53935]">${totalCheckout.toLocaleString('es-CO')}</span>
+                <span className="text-base font-bold text-gray-900 dark:text-gray-100">Total a pagar:</span>
+                <span className="text-2xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
               </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 text-right -mt-1">🏷️ Precio sin IVA aplicado</p>
+              <div className="flex items-center justify-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                <Info className="w-3.5 h-3.5" />
+                <span>Precio sin IVA aplicado</span>
+              </div>
               <button
+                type="button"
                 onClick={handleConfirmarPedido}
-                className="w-full py-3.5 bg-[#E53935] hover:bg-[#D32F2F] text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 active:scale-[0.98]"
+                className="w-full py-4 bg-[#E03E3E] hover:bg-[#C92A2A] active:scale-98 text-white font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle className="w-5 h-5" />
-                Confirmar Pedido
+                <span>Confirmar Pedido</span>
               </button>
             </div>
           </div>

@@ -4,8 +4,6 @@ import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
 
-const INITIAL_EVENTOS = [];
-
 export function useInsumos() {
   const notify = useNotifications();
   const [insumos, setInsumos] = useState([]);
@@ -16,51 +14,33 @@ export function useInsumos() {
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
 
-  // Traceability State with localStorage persistence
-  const [eventos, setEventos] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_trazabilidad_eventos");
-      return saved ? JSON.parse(saved) : INITIAL_EVENTOS;
-    } catch {
-      return INITIAL_EVENTOS;
-    }
-  });
-
-  const [unreadCount, setUnreadCount] = useState(() => {
-    try {
-      const saved = localStorage.getItem("insumos_trazabilidad_unread");
-      return saved ? JSON.parse(saved) : 0;
-    } catch {
-      return 0;
-    }
-  });
-
-  // Papelera state — fetched from the backend API
+  // Traceability & Papelera State from backend
+  const [eventos, setEventos] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [papeleraInsumos, setPapeleraInsumos] = useState([]);
   const [papeleraPreparados, setPapeleraPreparados] = useState([]);
 
-  // Sync traceability to localStorage
-  useEffect(() => {
+  const fetchTrazabilidad = useCallback(async () => {
     try {
-      localStorage.setItem("insumos_trazabilidad_eventos", JSON.stringify(eventos));
-    } catch {}
-  }, [eventos]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("insumos_trazabilidad_unread", JSON.stringify(unreadCount));
-    } catch {}
-  }, [unreadCount]);
+      const [trazabilidadData, unreadData] = await Promise.all([
+        apiClient.get("/trazabilidad").catch(() => []),
+        apiClient.get("/trazabilidad/unread-count").catch(() => ({ unreadCount: 0 }))
+      ]);
+      setEventos(Array.isArray(trazabilidadData) ? trazabilidadData : []);
+      setUnreadCount(unreadData?.unreadCount ?? 0);
+    } catch (err) {
+      console.warn("Error cargando trazabilidad:", err);
+    }
+  }, []);
 
   const fetchInsumos = useCallback(async () => {
     try {
       setLoading(true);
-      const [insumosData, categoriasData, preparadosData, proveedoresData, trazabilidadData] = await Promise.all([
+      const [insumosData, categoriasData, preparadosData, proveedoresData] = await Promise.all([
         insumosService.getInsumos(),
         insumosService.getCategorias(),
         insumosService.getInsumosPreparados(),
-        proveedoresService.getProveedores().catch(() => []),
-        apiClient.get("/trazabilidad").catch(() => [])
+        proveedoresService.getProveedores().catch(() => [])
       ]);
 
       const baseMapped = (insumosData || []).map(i => ({
@@ -91,63 +71,14 @@ export function useInsumos() {
       setCategorias(categoriasData || []);
       setProveedores(proveedoresData || []);
 
-      // Map backend trazabilidad events
-      if (Array.isArray(trazabilidadData)) {
-        const mappedBackendEvents = trazabilidadData.map((r) => {
-          let tipoLabel = "Creado";
-          if (
-            r.tipo === "compra" ||
-            r.tipoMovimiento === "Entrada" ||
-            (r.tipo && r.tipo.toLowerCase().includes("reabastec"))
-          ) {
-            tipoLabel = "Reabastecimiento";
-          } else if (r.tipo === "editar" || r.tipo === "Editado") {
-            tipoLabel = "Editado";
-          } else if (r.tipo === "eliminar" || r.tipo === "Eliminado") {
-            tipoLabel = "Eliminado";
-          } else if (r.tipo === "restaurar" || r.tipo === "Restaurado") {
-            tipoLabel = "Restaurado";
-          }
-
-          const fechaObj = r.fecha ? new Date(r.fecha) : new Date();
-          const fechaStr = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(
-            fechaObj.getMonth() + 1
-          ).padStart(2, "0")}/${fechaObj.getFullYear()} ${String(
-            fechaObj.getHours()
-          ).padStart(2, "0")}:${String(fechaObj.getMinutes()).padStart(2, "0")}`;
-
-          return {
-            id: `tz-${r.idTrazabilidad || r.id}`,
-            tipo: tipoLabel,
-            nombre: r.entidadNombre || (r.idInsumo ? `Insumo #${r.idInsumo}` : "Insumo"),
-            descripcion: r.detalle || r.motivo || "Movimiento de trazabilidad registrado",
-            fecha: fechaStr,
-            cantidad: r.cantidad,
-            tipoMovimiento: r.tipoMovimiento
-          };
-        });
-
-        setEventos((prev) => {
-          const combined = [...mappedBackendEvents, ...(prev || [])];
-          const unique = [];
-          const seen = new Set();
-          for (const item of combined) {
-            const key = `${item.tipo}-${item.nombre}-${item.fecha}-${item.descripcion}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              unique.push(item);
-            }
-          }
-          return unique;
-        });
-      }
+      await fetchTrazabilidad();
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al obtener insumos o categorías");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchTrazabilidad]);
 
   // Fetch papelera data from backend API
   const fetchPapelera = useCallback(async () => {
@@ -188,27 +119,6 @@ export function useInsumos() {
     fetchPapelera();
   }, [fetchInsumos, fetchPapelera]);
 
-  const addTraceabilityEvent = (tipo, nombre, descripcion) => {
-    const now = new Date();
-    const formattedDate = `${String(now.getDate()).padStart(2, "0")}/${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(
-      2,
-      "0"
-    )}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    const newEv = {
-      id: Date.now(),
-      tipo,
-      nombre,
-      descripcion,
-      fecha: formattedDate
-    };
-
-    setEventos((prev) => [newEv, ...prev]);
-    setUnreadCount((prev) => prev + 1);
-  };
-
   const filteredInsumos = insumos.filter((item) => {
     const matchSearch =
       searchTerm === "" ||
@@ -223,7 +133,6 @@ export function useInsumos() {
   const createInsumo = async (data) => {
     try {
       const isPrep = data.tipo === "Preparado";
-      let createdResult = null;
       if (isPrep) {
         const payload = {
           nombre: data.nombre,
@@ -236,7 +145,7 @@ export function useInsumos() {
             unidadMedida: i.unidadMedida || "und"
           }))
         };
-        createdResult = await insumosService.createPreparado(payload);
+        await insumosService.createPreparado(payload);
       } else {
         const payload = {
           nombre: data.nombre,
@@ -251,18 +160,10 @@ export function useInsumos() {
           fechaVencimiento: data.fechaVencimiento || null,
           fichaTecnica: data.fichaTecnica || null
         };
-        createdResult = await insumosService.createInsumo(payload);
+        await insumosService.createInsumo(payload);
       }
 
       await fetchInsumos();
-
-      addTraceabilityEvent(
-        "Creado",
-        data.nombre,
-        isPrep
-          ? `Se creó la receta del insumo preparado: ${data.nombre}`
-          : `Se creó un nuevo insumo en el inventario: ${data.nombre}`
-      );
 
       notify.success(
         isPrep ? "Insumo preparado creado" : "Insumo creado",
@@ -302,29 +203,13 @@ export function useInsumos() {
           idProveedor: data.idProveedor,
           descripcion: data.descripcion,
           fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaVencimiento: data.fechaVencimiento || null,
+          fichaTecnica: data.fichaTecnica || null
         };
         await insumosService.updateInsumo(id, payload);
-
-        if (data.fichaTecnica) {
-          try {
-            const { fichasTecnicasService } = await import("@/features/fichas-tecnicas/servicios/fichasTecnicasService");
-            await fichasTecnicasService.saveFichaInsumo(id, data.fichaTecnica);
-          } catch (ftErr) {
-            console.warn("Ficha técnica no se pudo actualizar automáticamente:", ftErr);
-          }
-        }
       }
 
       await fetchInsumos();
-
-      addTraceabilityEvent(
-        "Editado",
-        data.nombre,
-        isPrep
-          ? `Se actualizaron los datos de la receta: ${data.nombre}`
-          : `Se actualizaron los datos del insumo: ${data.nombre}`
-      );
 
       notify.success("Insumo actualizado", "Los datos fueron guardados exitosamente.");
       return true;
@@ -347,12 +232,6 @@ export function useInsumos() {
       await fetchInsumos();
       await fetchPapelera();
 
-      addTraceabilityEvent(
-        "Eliminado",
-        nombre,
-        `Se movió a la papelera el insumo: ${nombre}`
-      );
-
       notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
       return true;
     } catch (err) {
@@ -373,12 +252,6 @@ export function useInsumos() {
       await insumosService.deletePreparado(id);
       await fetchInsumos();
       await fetchPapelera();
-
-      addTraceabilityEvent(
-        "Eliminado",
-        nombre,
-        `Se movió a la papelera el insumo preparado: ${nombre}`
-      );
 
       notify.success("Movido a papelera", `"${nombre}" fue enviado a la papelera.`);
       return true;
@@ -402,14 +275,6 @@ export function useInsumos() {
       await fetchInsumos();
       await fetchPapelera();
 
-      addTraceabilityEvent(
-        "Restaurado",
-        item.nombre,
-        isPreparado
-          ? `Se restauró de la papelera la receta del preparado: ${item.nombre}`
-          : `Se restauró el insumo en el inventario: ${item.nombre}`
-      );
-
       notify.success("Insumo restaurado", `"${item.nombre}" volvió a estar activo.`);
     } catch (err) {
       notify.error("Error", err.message || "No se pudo restaurar");
@@ -432,12 +297,7 @@ export function useInsumos() {
       }
 
       await fetchPapelera();
-
-      addTraceabilityEvent(
-        "Eliminado permanente",
-        nombre,
-        `Se eliminó permanentemente ${isPreparado ? "el preparado" : "el insumo"}: ${nombre}`
-      );
+      await fetchTrazabilidad();
 
       notify.success("Eliminado permanente", `"${nombre}" fue eliminado por completo.`);
     } catch (err) {
@@ -445,13 +305,24 @@ export function useInsumos() {
     }
   };
 
-  const clearEventos = () => {
-    setEventos([]);
-    notify.success("Trazabilidad limpia", "Se borró el historial de eventos.");
+  const clearEventos = async () => {
+    try {
+      await apiClient.delete("/trazabilidad/clear");
+      setEventos([]);
+      setUnreadCount(0);
+      notify.success("Trazabilidad limpia", "Se borró el historial de eventos.");
+    } catch (err) {
+      console.error("Error al limpiar eventos:", err);
+    }
   };
 
-  const resetUnreadCount = () => {
-    setUnreadCount(0);
+  const resetUnreadCount = async () => {
+    try {
+      await apiClient.put("/trazabilidad/read-all");
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Error al marcar como leídos:", err);
+    }
   };
 
   return {
@@ -482,3 +353,4 @@ export function useInsumos() {
     resetUnreadCount
   };
 }
+

@@ -1,7 +1,7 @@
 import React from "react";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 
-export function Cart({ cart, increment, decrement, setItemObservacion, submitOrder, loading, subtotal, descuento, total }) {
+export function Cart({ cart, increment, decrement, setItemObservacion, submitOrder, loading, subtotal, descuento, total, onClose = null }) {
   const isEmpty = cart.length === 0;
 
   return (
@@ -11,8 +11,19 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
           <p className="text-[0.65rem] uppercase tracking-[0.2em] font-bold text-[#7a8698] dark:text-gray-400">PEDIDO</p>
           <h3 className="text-xl font-black text-[#1f2d3d] dark:text-gray-100">Carrito</h3>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
-          <ShoppingCart className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
+            <ShoppingCart className="h-4 w-4" />
+          </div>
         </div>
       </div>
 

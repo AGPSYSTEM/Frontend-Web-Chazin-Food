@@ -5,6 +5,7 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 export function useClientes() {
   const notify = useNotifications();
   const [clientes, setClientes] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
@@ -12,8 +13,12 @@ export function useClientes() {
   const fetchClientes = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await clientesService.getClientes();
+      const [data, statsData] = await Promise.all([
+        clientesService.getClientes(),
+        clientesService.getStats().catch(() => null)
+      ]);
       setClientes(data || []);
+      setStats(statsData);
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al cargar lista de clientes");
@@ -89,6 +94,7 @@ export function useClientes() {
   return {
     clientes,
     filteredClientes,
+    stats,
     loading,
     searchTerm,
     setSearchTerm,

@@ -5,6 +5,7 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 export function useGestionVentas() {
   const notify = useNotifications();
   const [ventas, setVentas] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
@@ -13,15 +14,19 @@ export function useGestionVentas() {
   const fetchVentas = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await ventasService.getVentas();
+      const [data, statsData] = await Promise.all([
+        ventasService.getVentas({ periodo: selectedPeriod }),
+        ventasService.getStats(selectedPeriod).catch(() => null)
+      ]);
       setVentas(data || []);
+      setStats(statsData);
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al cargar historial de ventas");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedPeriod]);
 
   useEffect(() => {
     fetchVentas();
@@ -45,25 +50,7 @@ export function useGestionVentas() {
       (filterEstado === "Completada" && (v.estado === "Completada" || v.estadoEntrega === "ENTREGADO" || v.estadoEntrega === "LISTO")) ||
       (filterEstado === "Anulada" && (v.estado === "Anulada" || v.estadoEntrega === "CANCELADO"));
 
-    let matchPeriod = true;
-    if (v.fecha || v.fechaVenta) {
-      const vDate = new Date(v.fecha || v.fechaVenta);
-      const now = new Date();
-      if (!isNaN(vDate.getTime())) {
-        if (selectedPeriod === "hoy") {
-          matchPeriod = vDate.toDateString() === now.toDateString();
-        } else if (selectedPeriod === "7_dias") {
-          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchPeriod = vDate >= sevenDaysAgo;
-        } else if (selectedPeriod === "este_mes") {
-          matchPeriod = vDate.getMonth() === now.getMonth() && vDate.getFullYear() === now.getFullYear();
-        } else if (selectedPeriod === "este_ano") {
-          matchPeriod = vDate.getFullYear() === now.getFullYear();
-        }
-      }
-    }
-
-    return matchSearch && matchEstado && matchPeriod;
+    return matchSearch && matchEstado;
   });
 
   const createVenta = async (data) => {
@@ -111,6 +98,7 @@ export function useGestionVentas() {
   return {
     ventas,
     filteredVentas,
+    stats,
     loading,
     searchTerm,
     setSearchTerm,
@@ -124,3 +112,4 @@ export function useGestionVentas() {
     cancelarVenta
   };
 }
+

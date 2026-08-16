@@ -10,21 +10,29 @@ export function useGestionProduccion() {
   const [filterEstado, setFilterEstado] = useState("Todos");
   const [filterPrioridad, setFilterPrioridad] = useState("Todas");
 
-  const fetchOrdenes = useCallback(async () => {
+  const fetchOrdenes = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const data = await produccionService.getOrdenes();
       setOrdenes(data || []);
     } catch (err) {
       console.error(err);
-      notify.error("Error", err.message || "Error al cargar órdenes de producción");
+      if (!isSilent) {
+        notify.error("Error", err.message || "Error al cargar órdenes de producción");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchOrdenes();
+
+    const interval = setInterval(() => {
+      fetchOrdenes(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [fetchOrdenes]);
 
   const filteredOrdenes = ordenes.filter((o) => {

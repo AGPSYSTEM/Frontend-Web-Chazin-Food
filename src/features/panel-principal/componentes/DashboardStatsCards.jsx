@@ -20,11 +20,11 @@ export function DashboardStatsCards({ stats }) {
     },
     {
       title: "Insumos Críticos",
-      value: stats.insumosBajoStock || 3,
-      change: "Requiere reabastecimiento",
-      isPositive: false,
+      value: stats.insumosBajoStock ?? 0,
+      change: (stats.insumosBajoStock ?? 0) > 0 ? "Requiere reabastecimiento" : "Inventario óptimo",
+      isPositive: (stats.insumosBajoStock ?? 0) === 0,
       icon: AlertCircle,
-      color: "text-red-600 bg-red-50 dark:bg-red-900/30"
+      color: (stats.insumosBajoStock ?? 0) > 0 ? "text-red-600 bg-red-50 dark:bg-red-900/30" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30"
     },
     {
       title: "Clientes Activos",

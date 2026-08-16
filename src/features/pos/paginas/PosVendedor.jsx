@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Search, ShoppingCart, Sparkles } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
@@ -48,6 +48,9 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
       const matchCat = categoriaActiva === null || p.idCategoriaProducto === categoriaActiva || p.categoriaId === categoriaActiva;
@@ -57,36 +60,99 @@ export default function PosVendedor() {
   }, [productos, categoriaActiva, searchTerm]);
 
   return (
-    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 transition-colors">
+    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 pb-24 lg:pb-5 transition-colors">
       <div className="w-full">
         {/* Header */}
-        <header className="mb-4 flex items-center justify-between gap-3 px-1 py-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white">
-              <ShoppingCart className="h-5 w-5" />
+        <header className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1 py-1">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white shrink-0">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
+                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
-              <h1 className="text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
-            </div>
+
+            {/* Mobile quick cart badge */}
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="lg:hidden relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 border border-red-200 dark:border-red-800 shrink-0"
+              aria-label="Ver carrito"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalCartItems > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f05454] text-[10px] font-black text-white">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm">
-            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
+            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
             <input
               aria-label="Buscar producto"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-48 sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
+              className="w-full sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
               placeholder="Buscar producto..."
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </header>
 
+        {/* Mobile Horizontal Categories (Visible only on < lg) */}
+        <div className="lg:hidden mb-3.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCategoriaActiva(null)}
+              className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                categoriaActiva === null
+                  ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                  : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+              }`}
+            >
+              <span>🍽️</span>
+              <span>Todos</span>
+            </button>
+
+            {categorias.map((c) => {
+              const active = categoriaActiva === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoriaActiva(c.id)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                    active
+                      ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                      : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+                  }`}
+                >
+                  <span>{getCategoryEmoji(c.nombre)}</span>
+                  <span>{c.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 3 Column Flex Layout */}
         <div className="flex flex-col lg:flex-row gap-4 w-full items-start">
-          {/* Categorías (Left Column) */}
-          <aside className="w-full lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm">
+          {/* Categorías (Left Column - Desktop only) */}
+          <aside className="hidden lg:block lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm sticky top-4 self-start">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-black text-[#1f2d3d] dark:text-gray-100">Categorías</h2>
               <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
@@ -144,7 +210,7 @@ export default function PosVendedor() {
                 <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
               </div>
             ) : (
-              <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+              <div className="grid gap-3.5 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleProducts.map((p) => (
                   <ProductCard
                     key={p.id}
@@ -158,8 +224,8 @@ export default function PosVendedor() {
             )}
           </main>
 
-          {/* Carrito (Right Column Panel) */}
-          <section className="w-full lg:w-[285px] shrink-0">
+          {/* Carrito (Right Column Panel - Desktop only) */}
+          <section className="hidden lg:block lg:w-[285px] shrink-0 sticky top-4 self-start">
             <Cart
               cart={cart}
               increment={increment}
@@ -174,6 +240,66 @@ export default function PosVendedor() {
           </section>
         </div>
       </div>
+
+      {/* Mobile Floating Cart Action Bar (< lg) */}
+      {totalCartItems > 0 && (
+        <div className="lg:hidden fixed bottom-3 inset-x-3 z-40">
+          <div className="bg-gray-900/95 dark:bg-gray-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-gray-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f05454] text-white shrink-0">
+                <ShoppingBag className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#f05454] text-[10px] font-black">
+                  {totalCartItems}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Total
+                </p>
+                <p className="text-base font-black text-white truncate">
+                  ${Number(total || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="px-4 py-2.5 bg-[#f05454] hover:bg-[#e04545] text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
+            >
+              <span>Ver Pedido</span>
+              <ChevronRight className="h-4 w-4 stroke-[3]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Slide-up Modal Drawer */}
+      {isMobileCartOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileCartOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 w-full sm:max-w-md max-h-[85vh] bg-[#f8f8f8] dark:bg-gray-900 rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
+            <Cart
+              cart={cart}
+              increment={increment}
+              decrement={decrement}
+              setItemObservacion={setItemObservacion}
+              submitOrder={() => submitOrder()}
+              loading={loading}
+              subtotal={subtotal}
+              descuento={descuento}
+              total={total}
+              onClose={() => setIsMobileCartOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

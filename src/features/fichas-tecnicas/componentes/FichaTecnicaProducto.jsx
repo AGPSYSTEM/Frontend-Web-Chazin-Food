@@ -9,7 +9,7 @@ const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 d
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
 const requiredMark = <span className="text-red-500"> *</span>;
 
-export function FichaTecnicaProducto({ productId, productName, initialData, onSave }) {
+export function FichaTecnicaProducto({ productId, productName, initialData, onSave, readOnly = false }) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
   const [dbInsumosList, setDbInsumosList] = useState([]);
@@ -167,6 +167,105 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       notify.success("Ficha Técnica Creada Exitosamente", "La ficha técnica fue adjuntada al producto. Se guardará al crear el producto.");
     }
   };
+
+  if (readOnly) {
+    return (
+      <div className="space-y-6">
+        {/* Quick Stats header */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl">
+            <p className="text-xs font-bold text-[#F05454] uppercase tracking-wider">Tiempo Estimado</p>
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">
+              ⏱️ {tiempoPreparacion ? `${tiempoPreparacion} min` : "10-15 min"}
+            </p>
+          </div>
+          <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
+            <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Rendimiento</p>
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">
+              🍽️ {rendimiento || "1 porción"}
+            </p>
+          </div>
+          <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
+            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Vida Útil</p>
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 truncate">
+              🌿 {vidaUtil || "Consumo inmediato"}
+            </p>
+          </div>
+        </div>
+
+        {/* Ingredientes */}
+        <div className="p-5 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-3">
+          <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
+            <Package className="w-4 h-4 text-[#F05454]" />
+            Ingredientes e Insumos ({insumos.length})
+          </h3>
+          {insumos.length > 0 ? (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {insumos.map((item, idx) => (
+                <div key={idx} className="py-2.5 flex items-center justify-between text-sm">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {item.nombreInsumo || item.insumo?.nombre || `Insumo #${item.idInsumo}`}
+                  </span>
+                  <span className="font-black text-[#F05454] dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-lg text-xs">
+                    {item.cantidad} {item.unidadMedida || item.insumo?.unidadMedida || "und"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 italic">No hay ingredientes registrados para esta ficha técnica.</p>
+          )}
+        </div>
+
+        {/* Procedimiento */}
+        <div className="p-5 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 space-y-3">
+          <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#F05454]" />
+            Procedimiento Paso a Paso
+          </h3>
+          {procedimiento ? (
+            <ol className="space-y-2 list-decimal list-inside text-sm text-gray-700 dark:text-gray-300">
+              {procedimiento.split("\n").filter(Boolean).map((paso, i) => (
+                <li key={i} className="leading-relaxed pl-1 py-1 font-medium">
+                  {paso}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-xs text-gray-400 italic">Preparar siguiendo las pautas generales de cocina.</p>
+          )}
+        </div>
+
+        {/* Detalles adicionales */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {especificaciones && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Especificaciones</p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">{especificaciones}</p>
+            </div>
+          )}
+          {caracteristicas && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Características Sensoriales</p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">{caracteristicas}</p>
+            </div>
+          )}
+          {informacionNutricional && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Información Nutricional</p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">{informacionNutricional}</p>
+            </div>
+          )}
+          {condicionesAlmacenamiento && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-1">Condiciones de Almacenamiento</p>
+              <p className="text-xs text-gray-700 dark:text-gray-300">{condicionesAlmacenamiento}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const isConfigured = insumos.length > 0 || procedimiento.trim().length > 0;
 

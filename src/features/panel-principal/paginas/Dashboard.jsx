@@ -1,8 +1,34 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { TrendingUp, ShoppingCart, Users, Package, DollarSign, AlertCircle, Settings, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ShoppingCart, Users, Package, DollarSign, AlertCircle, Settings, ChevronRight } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+
+function StatVariation({ value, label = "vs mes anterior" }) {
+  const num = Number(value || 0);
+  if (num > 0) {
+    return (
+      <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1 font-medium">
+        <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+        <span>+{num}% {label}</span>
+      </p>
+    );
+  }
+  if (num < 0) {
+    return (
+      <p className="text-red-600 dark:text-red-400 text-xs mt-1 flex items-center gap-1 font-medium">
+        <TrendingDown className="w-3.5 h-3.5 shrink-0" />
+        <span>{num}% {label}</span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-gray-500 dark:text-gray-400 text-xs mt-1 flex items-center gap-1 font-medium">
+      <Minus className="w-3.5 h-3.5 shrink-0" />
+      <span>0% {label}</span>
+    </p>
+  );
+}
 
 function useDarkMode() {
   const [isDark, setIsDark] = useState(
@@ -123,9 +149,7 @@ export function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-0.5">Ventas del Mes</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{ventasFormatted}</p>
-            <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.ventasVariacion || 0}%
-            </p>
+            <StatVariation value={stats.ventasVariacion} />
           </div>
         </div>
 
@@ -139,9 +163,7 @@ export function Dashboard() {
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
               {Number(stats.pedidosTotal || 0).toLocaleString("es-CO")}
             </p>
-            <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.pedidosVariacion || 0}%
-            </p>
+            <StatVariation value={stats.pedidosVariacion} />
           </div>
         </div>
 
@@ -155,9 +177,7 @@ export function Dashboard() {
             <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
               {Number(stats.clientesActivos || stats.clientesTotal || 0).toLocaleString("es-CO")}
             </p>
-            <p className="text-green-600 dark:text-green-400 text-xs mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 shrink-0" /> +{stats.clientesVariacion || 0}%
-            </p>
+            <StatVariation value={stats.clientesVariacion} />
           </div>
         </div>
 

@@ -44,8 +44,8 @@ export function CartProvider({ children }) {
 
   const getSubtotal = () => {
     return cart.reduce((total, item) => {
-      const adicionesTotal = (item.adiciones || []).reduce((sum, adicion) => sum + adicion.precio * adicion.cantidad, 0);
-      return total + (item.precio + adicionesTotal) * item.cantidad;
+      const adicionesTotal = (item.adiciones || []).reduce((sum, adicion) => sum + (Number(adicion.precio) || 0) * (Number(adicion.cantidad) || 1), 0);
+      return total + ((Number(item.precio) || 0) + adicionesTotal) * (Number(item.cantidad) || 1);
     }, 0);
   };
 

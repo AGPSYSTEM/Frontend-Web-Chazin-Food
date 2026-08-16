@@ -12,6 +12,7 @@ export function Clientes() {
   const {
     clientes,
     filteredClientes,
+    stats,
     loading,
     searchTerm,
     setSearchTerm,
@@ -75,7 +76,7 @@ export function Clientes() {
       </div>
 
       {/* 4 Stat Cards Grid */}
-      <ClientesStatsCards clientes={clientes} />
+      <ClientesStatsCards clientes={clientes} stats={stats} />
 
       {/* Filter and Action Bar Box */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">

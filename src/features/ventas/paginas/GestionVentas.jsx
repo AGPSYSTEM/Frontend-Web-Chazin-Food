@@ -22,6 +22,7 @@ export function GestionVentas() {
   const {
     ventas,
     filteredVentas,
+    stats,
     loading,
     searchTerm,
     setSearchTerm,
@@ -198,7 +199,7 @@ function formatDateSafe(dateVal, fallback = "") {
       </div>
 
       {/* Top 4 Stats Cards */}
-      <VentasStatsCards ventas={ventas} />
+      <VentasStatsCards ventas={ventas} stats={stats} />
 
       {/* Main Navigation Tabs */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-6">

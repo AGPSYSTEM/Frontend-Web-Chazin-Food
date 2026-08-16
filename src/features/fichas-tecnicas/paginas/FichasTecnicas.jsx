@@ -78,11 +78,13 @@ export function FichasTecnicas({ readOnly = false }) {
             <FichaTecnicaProducto
               productId={selected.id || selected.idProducto}
               productName={selected.nombre}
+              readOnly={readOnly}
             />
           ) : (
             <FichaTecnicaInsumo
               insumoId={selected.id || selected.idInsumo}
               insumoName={selected.nombre}
+              readOnly={readOnly}
             />
           )}
         </div>

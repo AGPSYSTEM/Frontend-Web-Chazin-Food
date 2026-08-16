@@ -1,23 +1,22 @@
 import { TrendingUp, Users, ShoppingBag } from "lucide-react";
 
-export function VentasStatsCards({ ventas = [] }) {
-  const totalVentasSum = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
-  const totalVentasStr = `$${totalVentasSum.toLocaleString("es-CO")}`;
+export function VentasStatsCards({ ventas = [], stats = null }) {
+  const totalVentasSum = stats ? stats.totalVentas : ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const totalVentasStr = stats ? stats.totalVentasFormatted : `$${totalVentasSum.toLocaleString("es-CO")}`;
 
-  const pedidosCount = ventas.length;
+  const pedidosCount = stats ? stats.pedidosCount : ventas.length;
 
-  const ticketPromedioVal = pedidosCount > 0 ? Math.round(totalVentasSum / pedidosCount) : 0;
-  const ticketPromedioStr = `$${ticketPromedioVal.toLocaleString("es-CO")}`;
+  const ticketPromedioVal = stats ? stats.ticketPromedio : (pedidosCount > 0 ? Math.round(totalVentasSum / pedidosCount) : 0);
+  const ticketPromedioStr = stats ? stats.ticketPromedioFormatted : `$${ticketPromedioVal.toLocaleString("es-CO")}`;
 
-  const descOtorgadosSum = ventas.reduce((acc, v) => acc + Number(v.montoDescuento || v.descuentoMonto || v.descuentoAplicado || 0), 0);
-  const descOtorgadosStr = `$${descOtorgadosSum.toLocaleString("es-CO")}`;
+  const descOtorgadosSum = stats ? stats.totalDescuentos : ventas.reduce((acc, v) => acc + Number(v.montoDescuento || v.descuentoMonto || v.descuentoAplicado || 0), 0);
+  const descOtorgadosStr = stats ? stats.totalDescuentosFormatted : `$${descOtorgadosSum.toLocaleString("es-CO")}`;
 
-  const uniqueClientsCount = new Set(ventas.map(v => v.idCliente || v.clienteNombre || v.cliente).filter(Boolean)).size || 1;
-  const frecuenciaVal = pedidosCount > 0 ? (pedidosCount / uniqueClientsCount).toFixed(1) : "0.0";
+  const frecuenciaVal = stats ? stats.frecuenciaCompra : (pedidosCount > 0 ? (pedidosCount / (new Set(ventas.map(v => v.idCliente || v.clienteNombre || v.cliente).filter(Boolean)).size || 1)).toFixed(1) : "0.0");
 
-  const tasaDescuentoVal = (totalVentasSum + descOtorgadosSum) > 0
+  const tasaDescuentoVal = stats ? stats.tasaDescuento : ((totalVentasSum + descOtorgadosSum) > 0
     ? ((descOtorgadosSum / (totalVentasSum + descOtorgadosSum)) * 100).toFixed(1)
-    : "0.0";
+    : "0.0");
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

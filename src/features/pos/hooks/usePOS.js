@@ -31,7 +31,6 @@ export function usePOS({ initialClienteId = null } = {}) {
       try {
         setLoading(true);
         const resCategorias = await posService.getCategorias();
-        console.log('Respuesta Categorías:', resCategorias);
 
         const rawList = Array.isArray(resCategorias)
           ? resCategorias
@@ -58,7 +57,6 @@ export function usePOS({ initialClienteId = null } = {}) {
       try {
         setLoading(true);
         const resProductos = await posService.getProductos();
-        console.log('Respuesta Productos:', resProductos);
 
         const rawList = Array.isArray(resProductos)
           ? resProductos

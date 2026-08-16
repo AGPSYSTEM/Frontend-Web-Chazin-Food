@@ -47,10 +47,10 @@ export function ProductCard({ producto, onAdd }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-[22px] border border-[#e5e9ef] dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-all flex flex-col h-[290px] justify-between">
-      {/* Red Coral Top Banner - 128px height */}
-      <div className="flex h-32 items-center justify-center bg-[#e05454] shrink-0">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-3xl sm:text-4xl shadow-inner">
+    <article className="overflow-hidden rounded-[22px] border border-[#e5e9ef] dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-all flex flex-col h-[255px] sm:h-[290px] justify-between">
+      {/* Red Coral Top Banner */}
+      <div className="flex h-24 sm:h-32 items-center justify-center bg-[#e05454] shrink-0">
+        <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-white/15 text-2xl sm:text-4xl shadow-inner">
           {getProductEmoji(producto.nombre)}
         </div>
       </div>
