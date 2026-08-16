@@ -154,6 +154,8 @@ export function usePOS({ initialClienteId = null } = {}) {
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
         idCliente: clienteId,
+        tipoVenta: "PUNTO_DE_VENTA",
+        tipoEntrega: "Local",
         observacion: observacionOrden,
         estado: "PENDIENTE",
         items: cart.map((it) => ({

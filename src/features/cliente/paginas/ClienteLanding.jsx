@@ -192,7 +192,6 @@ export function ClienteLanding() {
               categoriaNombre: p.categoria,
               imagen: p.imagen || "🍔",
               descripcion: p.descripcion || "",
-              stock: p.stock || 0,
               adiciones: p.adiciones || [],
               eventos: p.eventos || []
             }));
@@ -420,6 +419,7 @@ export function ClienteLanding() {
           idUsuario: user?.idUsuario || user?.id || user?._id,
           subtotal: clientSubtotal,
           total: totalCheckout,
+          tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
           tipoEntrega: tipoEntregaNormalizado,
           metodoPago: metodoPagoNormalizado,
           direccion: checkoutDireccion,
