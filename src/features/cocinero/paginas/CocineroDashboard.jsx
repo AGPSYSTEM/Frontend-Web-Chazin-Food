@@ -174,7 +174,19 @@ export function CocineroDashboard() {
     }
   };
 
-  const pedidosFiltrados = pedidos.filter((p) => {
+  const pedidosAprobados = pedidos.filter((p) => {
+    // Solo mostrar pedidos aprobados por el administrador que no estén rechazados ni cancelados
+    const isApproved = p.estadoAprobacion === "APROBADO";
+    const isPendingApproval = p.estado === "Por Aprobar" || p.estadoAprobacion === "PENDIENTE";
+    const isRejected = p.estado === "Rechazado" || p.estadoAprobacion === "RECHAZADO" || p.estado === "Anulada" || p.estadoEntrega === "CANCELADO";
+
+    if (isRejected || isPendingApproval || !isApproved) {
+      return false;
+    }
+    return true;
+  });
+
+  const pedidosFiltrados = pedidosAprobados.filter((p) => {
     if (filtroEstado === "Todos") return true;
     if (filtroEstado === "Pendiente") return p.estado === "Pendiente" || p.estado === "En Cola" || p.estadoEntrega === "PENDIENTE";
     if (filtroEstado === "En Preparación") return p.estado === "En Preparación" || p.estadoEntrega === "PREPARANDO";
@@ -249,7 +261,7 @@ export function CocineroDashboard() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
             {["Todos", "Pendiente", "En Preparación", "Listo"].map((st) => {
-              const count = pedidos.filter((p) => {
+              const count = pedidosAprobados.filter((p) => {
                 if (st === "Todos") return true;
                 if (st === "Pendiente") return p.estado === "Pendiente" || p.estado === "En Cola" || p.estadoEntrega === "PENDIENTE";
                 if (st === "En Preparación") return p.estado === "En Preparación" || p.estadoEntrega === "PREPARANDO";
@@ -279,7 +291,7 @@ export function CocineroDashboard() {
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-gray-500 font-bold">
-            <span>Órdenes activas: {pedidosFiltrados.length}</span>
+            <span>Órdenes en cocina: {pedidosFiltrados.length}</span>
             {refreshing && <span className="text-[#F05454] text-[11px] animate-pulse">Sincronizando...</span>}
           </div>
         </div>
