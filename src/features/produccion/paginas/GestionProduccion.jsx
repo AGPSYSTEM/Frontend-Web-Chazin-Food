@@ -26,12 +26,13 @@ export function GestionProduccion() {
 
   // Dynamic stat counts
   const stats = useMemo(() => {
+    const porAprobar = ordenes.filter((o) => o.estado === "Por Aprobar" || o.estadoAprobacion === "PENDIENTE").length;
     const enCola = ordenes.filter((o) => o.estado === "En Cola").length;
     const enPreparacion = ordenes.filter((o) => o.estado === "En Preparación").length;
     const listos = ordenes.filter((o) => o.estado === "Listo" || o.estado === "Listos").length;
     const total = ordenes.length;
 
-    return { enCola, enPreparacion, listos, total };
+    return { porAprobar, enCola, enPreparacion, listos, total };
   }, [ordenes]);
 
   return (
@@ -42,56 +43,77 @@ export function GestionProduccion() {
           Gestión de Producción
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Administra las órdenes de producción en tiempo real
+          Administra y aprueba las órdenes de producción en tiempo real
         </p>
       </div>
 
       {/* Separator */}
       <hr className="border-gray-200 dark:border-gray-700" />
 
-      {/* 4 Stat Cards - 2x2 Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: En Cola */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
-          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">En Cola</p>
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Card 1: Por Aprobar */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-amber-200/60 dark:border-amber-900/40 shadow-xs space-y-2 bg-gradient-to-br from-amber-50/30 to-transparent dark:from-amber-950/10">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Por Aprobar</p>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+          </div>
           <div className="flex items-baseline">
-            <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <span className="text-3xl font-black text-amber-800 dark:text-amber-300">
+              {stats.porAprobar}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: En Cola */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">En Cola</p>
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-300 dark:bg-gray-700" />
+          </div>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-black text-gray-900 dark:text-gray-100">
               {stats.enCola}
             </span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-gray-300 ml-2.5 mb-1" />
           </div>
         </div>
 
-        {/* Card 2: En Preparación */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
-          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">En Preparación</p>
+        {/* Card 3: En Preparación */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-500 dark:text-blue-400">En Preparación</p>
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+          </div>
           <div className="flex items-baseline">
-            <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
               {stats.enPreparacion}
             </span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-400 ml-2.5 mb-1" />
           </div>
         </div>
 
-        {/* Card 3: Listos */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
-          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">Listos</p>
+        {/* Card 4: Listos */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-500 dark:text-green-400">Listos</p>
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+          </div>
           <div className="flex items-baseline">
-            <span className="text-3xl font-bold text-green-600 dark:text-green-400">
+            <span className="text-3xl font-black text-green-600 dark:text-green-400">
               {stats.listos}
             </span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-400 ml-2.5 mb-1" />
           </div>
         </div>
 
-        {/* Card 4: Total del Día */}
-        <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
-          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">Total del Día</p>
+        {/* Card 5: Total */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#F05454] dark:text-red-400">Total del Día</p>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+          </div>
           <div className="flex items-baseline">
-            <span className="text-3xl font-bold text-[#F05454] dark:text-red-400">
+            <span className="text-3xl font-black text-[#F05454] dark:text-red-400">
               {stats.total}
             </span>
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-300 ml-2.5 mb-1" />
           </div>
         </div>
       </div>
@@ -118,11 +140,13 @@ export function GestionProduccion() {
             className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors shrink-0 cursor-pointer"
           >
             <option value="Todos">Todos los estados</option>
+            <option value="Por Aprobar">Por Aprobar</option>
             <option value="En Cola">En Cola</option>
             <option value="En Preparación">En Preparación</option>
             <option value="Listo">Listo</option>
             <option value="Despachado">Despachado</option>
             <option value="Entregado">Entregado</option>
+            <option value="Rechazado">Rechazado</option>
           </select>
 
           {/* Filter Prioridad */}

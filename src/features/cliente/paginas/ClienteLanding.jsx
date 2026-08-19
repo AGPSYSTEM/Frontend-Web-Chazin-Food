@@ -229,32 +229,127 @@ export function ClienteLanding() {
     fetchCatalog();
   }, []);
 
-  // Fetch client orders from backend
+  // Fetch client orders from backend + local history synchronization
   const fetchMyOrders = async () => {
     if (!isAuthenticated) return;
     try {
       setLoadingPedidos(true);
-      const data = await ventasService.getVentas();
-      if (data && Array.isArray(data)) {
-        // Filter orders for current user
-        const userId = user?.idUsuario || user?.id || user?._id;
-        const myOrders = data.filter(v => 
-          v.idUsuario === userId || 
-          v.idCliente === user?.idCliente ||
-          v.clienteNombre === `${user?.nombre || ''} ${user?.apellidos || ''}`.trim()
-        );
-        
-        setPedidos(myOrders.map(o => ({
-          id: o.idVenta || o.id,
-          numeroVenta: o.numeroVenta || `VEN-${String(o.idVenta || o.id).padStart(4, '0')}`,
-          fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString('es-CO') : o.fecha || 'Hoy',
-          items: o.detalles && o.detalles.length > 0 
-            ? o.detalles.map(d => ({ nombre: d.observaciones || `Producto #${d.idVariante}`, cantidad: d.cantidad, precio: d.precioUnitario }))
-            : [{ nombre: 'Pedido de comida', cantidad: 1, precio: o.total }],
-          total: o.total,
-          estado: o.estado || o.estadoEntrega || 'Pendiente'
-        })));
+      const userId = user?.idUsuario || user?.id || user?._id;
+      const storageKey = `mis_pedidos_${userId || 'guest'}`;
+      let localHistory = [];
+      try {
+        localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      } catch (e) {
+        localHistory = [];
       }
+
+      let backendOrders = [];
+      try {
+        const data = await ventasService.getVentas();
+        if (data && Array.isArray(data)) {
+          backendOrders = data.filter(v => 
+            v.idUsuario === userId || 
+            v.idCliente === user?.idCliente ||
+            v.clienteNombre === `${user?.nombre || ''} ${user?.apellidos || ''}`.trim()
+          );
+        }
+      } catch (err) {
+        console.log("No se pudieron cargar pedidos del backend:", err);
+      }
+
+      // Map backend orders by id and code
+      const backendMap = new Map();
+      backendOrders.forEach(o => {
+        const id = o.idVenta || o.id;
+        const code = o.numeroVenta || o.codigoPedido;
+        if (id) backendMap.set(String(id), o);
+        if (code) backendMap.set(String(code), o);
+      });
+
+      const mergedPedidos = [];
+      const processedBackendIds = new Set();
+
+      // Check all orders the client previously placed
+      for (const localOrd of localHistory) {
+        const matched = backendMap.get(String(localOrd.id)) || backendMap.get(String(localOrd.numeroVenta));
+        if (matched) {
+          processedBackendIds.add(String(matched.idVenta || matched.id));
+          let currentEstado = matched.estado || matched.estadoEntrega || 'Por Aprobar';
+          if (matched.estadoAprobacion === 'RECHAZADO' || matched.estadoEntrega === 'CANCELADO') {
+            currentEstado = 'Anulada';
+          } else if (matched.estadoAprobacion === 'PENDIENTE') {
+            currentEstado = 'Por Aprobar';
+          } else if (matched.estadoEntrega === 'PREPARANDO') {
+            currentEstado = 'En Preparación';
+          } else if (matched.estadoEntrega === 'LISTO') {
+            currentEstado = 'Listo';
+          } else if (matched.estadoEntrega === 'ENTREGADO') {
+            currentEstado = 'Completada';
+          }
+
+          localOrd.estado = currentEstado;
+          mergedPedidos.push({
+            id: matched.idVenta || matched.id || localOrd.id,
+            numeroVenta: matched.numeroVenta || localOrd.numeroVenta,
+            fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString('es-CO') : localOrd.fecha,
+            items: localOrd.items || [],
+            total: matched.total || localOrd.total,
+            estado: currentEstado
+          });
+        } else {
+          // The order was deleted from the backend DB / gestión de producción!
+          // Mark as Anulada so the client sees it as cancelled/anulado instead of disappearing
+          localOrd.estado = 'Anulada';
+          mergedPedidos.push({
+            ...localOrd,
+            estado: 'Anulada'
+          });
+        }
+      }
+
+      // Add any orders from backend that were not in localHistory
+      for (const o of backendOrders) {
+        const idStr = String(o.idVenta || o.id);
+        if (!processedBackendIds.has(idStr)) {
+          let currentEstado = o.estado || o.estadoEntrega || 'Por Aprobar';
+          if (o.estadoAprobacion === 'RECHAZADO' || o.estadoEntrega === 'CANCELADO') {
+            currentEstado = 'Anulada';
+          } else if (o.estadoAprobacion === 'PENDIENTE') {
+            currentEstado = 'Por Aprobar';
+          } else if (o.estadoEntrega === 'PREPARANDO') {
+            currentEstado = 'En Preparación';
+          } else if (o.estadoEntrega === 'LISTO') {
+            currentEstado = 'Listo';
+          } else if (o.estadoEntrega === 'ENTREGADO') {
+            currentEstado = 'Completada';
+          }
+
+          let itemsList = [{ nombre: 'Pedido de comida', cantidad: 1, precio: o.total }];
+          if (o.detalles && o.detalles.length > 0) {
+            itemsList = o.detalles.map(d => ({
+              nombre: d.observaciones || `Producto #${d.idVariante}`,
+              cantidad: d.cantidad,
+              precio: d.precioUnitario
+            }));
+          }
+
+          const newEntry = {
+            id: o.idVenta || o.id,
+            numeroVenta: o.numeroVenta || `VEN-${String(o.idVenta || o.id).padStart(4, '0')}`,
+            fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString('es-CO') : 'Hoy',
+            items: itemsList,
+            total: o.total,
+            estado: currentEstado
+          };
+
+          localHistory.unshift(newEntry);
+          mergedPedidos.push(newEntry);
+        }
+      }
+
+      // Keep up to 50 items in local storage
+      localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
+      setPedidos(mergedPedidos);
     } catch (err) {
       console.log("Error cargando pedidos:", err);
     } finally {
@@ -505,8 +600,34 @@ export function ClienteLanding() {
           })
         };
 
-        await ventasService.createVenta(ventaPayload);
-        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado y ha sido enviado a cocina.");
+        const nuevaVentaRes = await ventasService.createVenta(ventaPayload);
+        
+        // Save to client's local orders history so it is preserved even if deleted from DB
+        try {
+          const userId = user?.idUsuario || user?.id || user?._id;
+          const storageKey = `mis_pedidos_${userId || 'guest'}`;
+          const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          const orderId = nuevaVentaRes?.idVenta || nuevaVentaRes?.id || Date.now();
+          const orderCode = nuevaVentaRes?.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
+          
+          localHistory.unshift({
+            id: orderId,
+            numeroVenta: orderCode,
+            fecha: new Date().toLocaleString('es-CO'),
+            items: cart.map(it => ({
+              nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
+              cantidad: it.cantidad,
+              precio: it.precio
+            })),
+            total: totalFinal,
+            estado: 'Por Aprobar'
+          });
+          localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
+        } catch (storageErr) {
+          console.warn("No se pudo guardar pedido en historial local:", storageErr);
+        }
+
+        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado y está pendiente de aprobación.");
         clearCart();
         setShowCheckout(false);
         setShowCart(false);
@@ -538,17 +659,23 @@ export function ClienteLanding() {
       case "En Preparación":
       case "PREPARANDO":
       case "En preparación":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Completada":
+        return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800";
+      case "Listo":
       case "LISTO":
+      case "Completada":
       case "ENTREGADO":
       case "Entregado":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
+        return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800";
       case "Anulada":
       case "CANCELADO":
-        return "bg-rose-100 text-rose-800 border-rose-300";
+      case "Rechazado":
+      case "RECHAZADO":
+        return "bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800";
+      case "Por Aprobar":
+      case "PENDIENTE":
+      case "Pendiente":
       default:
-        return "bg-blue-100 text-blue-800 border-blue-300";
+        return "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800";
     }
   };
 

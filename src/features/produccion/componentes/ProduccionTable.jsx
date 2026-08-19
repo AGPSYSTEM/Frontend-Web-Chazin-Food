@@ -1,4 +1,4 @@
-import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2, Check, X } from "lucide-react";
 
 export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails }) {
   const getNextStatusConfig = (currentStatus) => {
@@ -58,7 +58,10 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
               </tr>
             ) : (
               ordenes.map((o) => {
+                const isPorAprobar = o.estado === "Por Aprobar" || o.estadoAprobacion === "PENDIENTE";
+                const isRechazado = o.estado === "Rechazado" || o.estadoAprobacion === "RECHAZADO" || o.estado === "Anulada";
                 const nextConfig = getNextStatusConfig(o.estado);
+
                 return (
                   <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     {/* Orden / Código */}
@@ -69,7 +72,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                           <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-gray-100">
                             <span>{o.platilloNombre}</span>
                             {o.alerta && (
-                              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" title="Alerta especial" />
+                              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" title="Pendiente de aprobación / Alerta especial" />
                             )}
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{o.codigo || `OP-00${o.id}`}</div>
@@ -121,7 +124,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
                         <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                        <span>{o.responsable || o.cocinero || "María G."}</span>
+                        <span>{o.responsable || o.cocinero || "Cliente"}</span>
                       </div>
                     </td>
 
@@ -156,30 +159,62 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     {/* Estado */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                          o.estado === "En Preparación"
-                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                          isPorAprobar
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                            : isRechazado
+                            ? "bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                            : o.estado === "En Preparación"
+                            ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                             : o.estado === "Listo" || o.estado === "Listos"
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
                             : o.estado === "Despachado"
-                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                             : o.estado === "Entregado"
-                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                             : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                         }`}
                       >
-                        {o.estado}
+                        {isPorAprobar && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                        {isRechazado && <X className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />}
+                        <span>{isPorAprobar ? "Por Aprobar" : isRechazado ? "Rechazado" : o.estado}</span>
                       </span>
                     </td>
 
                     {/* Avanza a */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      {nextConfig ? (
+                      {isPorAprobar ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onUpdateEstado && onUpdateEstado(o.id, "Aprobado")}
+                            title="Aprobar pedido y enviar a cocina"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Aprobar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateEstado && onUpdateEstado(o.id, "Rechazado")}
+                            title="Rechazar pedido"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Rechazar</span>
+                          </button>
+                        </div>
+                      ) : isRechazado ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
+                          <X className="w-3.5 h-3.5" />
+                          <span>Rechazado</span>
+                        </span>
+                      ) : nextConfig ? (
                         <button
                           type="button"
                           onClick={() => onUpdateEstado && onUpdateEstado(o.id, nextConfig.next)}
                           title={`Avanzar estado a: ${nextConfig.next}`}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${nextConfig.color}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${nextConfig.color}`}
                         >
                           <span>{nextConfig.label}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
