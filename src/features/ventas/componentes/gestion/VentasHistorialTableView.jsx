@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
   if (!dateVal) return fallback;
@@ -138,7 +139,8 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
           </thead>
           <tbody className="divide-y divide-gray-200/60 dark:divide-gray-800 text-sm bg-white dark:bg-gray-900">
             {paginatedVentas.map((v) => {
-              const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const rawName = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const clienteNombre = formatNombreCompleto(rawName) || "Cliente General";
               const inicialCliente = clienteNombre.charAt(0).toUpperCase();
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
 

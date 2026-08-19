@@ -4,6 +4,13 @@ import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { Lock, Mail, Eye, EyeOff, ChefHat, Sparkles, User, UserPlus, LogIn, Phone, MapPin, CreditCard } from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import {
+  sanitizeTelefono,
+  sanitizeDocumento,
+  getDocConfig,
+  validateTelefono,
+  validateDocumento
+} from "@/shared/utils/validationUtils";
 
 export function Login() {
   const [tab, setTab] = useState("login");
@@ -62,6 +69,21 @@ export function Login() {
       toast.error("Campos requeridos", "Por favor completa todos los campos obligatorios");
       return;
     }
+
+    const docVal = validateDocumento(regDocumento, regTipoDocumento);
+    if (!docVal.isValid) {
+      toast.error("Documento inválido", docVal.error);
+      return;
+    }
+
+    if (regTelefono) {
+      const telVal = validateTelefono(regTelefono);
+      if (!telVal.isValid) {
+        toast.error("Teléfono inválido", telVal.error);
+        return;
+      }
+    }
+
     if (regContraseña.length < 6) {
       toast.error("Contraseña débil", "La contraseña debe tener al menos 6 caracteres");
       return;
@@ -73,13 +95,13 @@ export function Login() {
     setIsRegLoading(true);
 
     const result = await register({
-      idUsuario: regDocumento,
-      nombre: regNombre,
-      apellidos: regApellidos,
+      idUsuario: sanitizeDocumento(regDocumento, regTipoDocumento),
+      nombre: regNombre.trim(),
+      apellidos: regApellidos.trim(),
       tipoDocumento: regTipoDocumento,
-      telefono: regTelefono || null,
-      direccion: regDireccion,
-      email: regCorreo,
+      telefono: sanitizeTelefono(regTelefono) || null,
+      direccion: regDireccion.trim(),
+      email: regCorreo.trim(),
       contrasena: regContraseña
     });
 
@@ -283,44 +305,59 @@ export function Login() {
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <select
                         value={regTipoDocumento}
-                        onChange={(e) => setRegTipoDocumento(e.target.value)}
+                        onChange={(e) => {
+                          const newTipo = e.target.value;
+                          setRegTipoDocumento(newTipo);
+                          setRegDocumento(sanitizeDocumento(regDocumento, newTipo));
+                        }}
                         className={regSelectBase}
                       >
                         <option value="C.C.">C.C. (Cédula de Ciudadanía)</option>
                         <option value="T.I.">T.I. (Tarjeta de Identidad)</option>
                         <option value="C.E.">C.E. (Cédula de Extranjería)</option>
-                        <option value="P.P.">Pasaporte</option>
+                        <option value="Pasaporte">Pasaporte</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Número de Documento <span className="text-red-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-gray-700">
+                        Número de Documento <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {getDocConfig(regTipoDocumento).helper}
+                      </span>
+                    </div>
                     <div className="relative group">
                       <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
                         value={regDocumento}
-                        onChange={(e) => setRegDocumento(e.target.value.replace(/[^0-9]/g, ""))}
+                        maxLength={getDocConfig(regTipoDocumento).max}
+                        onChange={(e) => setRegDocumento(sanitizeDocumento(e.target.value, regTipoDocumento))}
                         className={regInputBase}
-                        placeholder="Ej: 1094000123"
-                        inputMode="numeric"
+                        placeholder={getDocConfig(regTipoDocumento).helper}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Teléfono
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-gray-700">
+                        Teléfono
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        Máx. 10 dígitos ({regTelefono.length}/10)
+                      </span>
+                    </div>
                     <div className="relative group">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="tel"
                         value={regTelefono}
-                        onChange={(e) => setRegTelefono(e.target.value.replace(/[^0-9]/g, ""))}
+                        maxLength={10}
+                        onChange={(e) => setRegTelefono(sanitizeTelefono(e.target.value))}
                         className={regInputBase}
                         placeholder="3190000000"
                         inputMode="numeric"

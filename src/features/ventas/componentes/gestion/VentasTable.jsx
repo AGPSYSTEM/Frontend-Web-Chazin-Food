@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
   if (!dateVal) return fallback;
@@ -16,7 +17,8 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const totalPages = Math.ceil(ventas.length / pageSize) || 1;
+  const totalRecords = ventas.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedVentas = ventas.slice(startIndex, startIndex + pageSize);
 
@@ -92,7 +94,8 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {paginatedVentas.map((v) => {
-              const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const rawName = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const clienteNombre = formatNombreCompleto(rawName) || "Cliente General";
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
               const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
               const descPct = Number(v.descuentoPorcentaje || 0);
@@ -224,18 +227,18 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
-            <span>registros por página</span>
+            <span>registros</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span>
-              Página {currentPage} de {totalPages} ({ventas.length} registros en total)
+              Mostrando {startIndex + 1} a {Math.min(startIndex + pageSize, totalRecords)} de {totalRecords} registros
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Primera página"
               >
                 <ChevronsLeft className="w-4 h-4" />
@@ -243,20 +246,18 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Página anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-
-              <span className="px-2.5 py-1 bg-[#1e293b] text-white font-semibold rounded-lg text-xs">
+              <span className="px-2 py-0.5 bg-[#F05454] text-white font-bold rounded-md">
                 {currentPage}
               </span>
-
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Página siguiente"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -264,7 +265,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <button
                 onClick={() => handlePageChange(totalPages)}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Última página"
               >
                 <ChevronsRight className="w-4 h-4" />

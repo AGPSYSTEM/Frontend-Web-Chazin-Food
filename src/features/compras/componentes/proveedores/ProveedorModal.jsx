@@ -136,7 +136,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
   // ── Manejadores de cambio con filtrado en tiempo real ──────────────────────
 
   const handleNitChange = (e) => {
-    const value = e.target.value.replace(/[^0-9.\-]/g, "");
+    const value = e.target.value.replace(/[^0-9.\-]/g, "").slice(0, 20);
     const newForm = { ...form, nit: value };
     setForm(newForm);
     if (submitted) setErrors(validate(newForm));
@@ -150,7 +150,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
   };
 
   const handleTelefonoChange = (e) => {
-    const value = e.target.value.replace(/[^0-9\s+\-()]/g, "");
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     const newForm = { ...form, telefono: value };
     setForm(newForm);
     if (submitted) setErrors(validate(newForm));

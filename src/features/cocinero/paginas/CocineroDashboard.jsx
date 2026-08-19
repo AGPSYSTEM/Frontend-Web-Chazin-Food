@@ -186,7 +186,7 @@ export function CocineroDashboard() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <div className="w-full flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white/20 shrink-0 border border-gray-200 dark:border-gray-700 shadow-xs">
               <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" />
@@ -244,7 +244,7 @@ export function CocineroDashboard() {
       </header>
 
       {/* Main Container */}
-      <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      <main className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-xs">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0">

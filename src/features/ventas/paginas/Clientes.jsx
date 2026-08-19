@@ -64,7 +64,7 @@ export function Clientes() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">

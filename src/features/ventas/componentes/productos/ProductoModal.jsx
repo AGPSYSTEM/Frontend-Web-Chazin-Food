@@ -11,6 +11,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const isEditing = !!producto;
   const [form, setForm] = useState({
     nombre: "",
+    idCategoriaProducto: null,
     categoria: "",
     precio: "",
     descripcion: "",
@@ -24,13 +25,25 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
 
     if (producto) {
+      const selectedCat = (categorias || []).find(c => c.nombre === producto.categoria || (c.id && c.id === producto.idCategoriaProducto) || (c.idCategoriaProducto && c.idCategoriaProducto === producto.idCategoriaProducto));
       setForm({
         nombre: producto.nombre || "",
-        categoria: producto.categoria || (categorias[0]?.nombre || ""),
+        idCategoriaProducto: producto.idCategoriaProducto || producto.categoriaId || selectedCat?.id || selectedCat?.idCategoriaProducto || null,
+        categoria: producto.categoria || (selectedCat?.nombre || (categorias[0]?.nombre || "")),
         precio: producto.precio || "",
         descripcion: producto.descripcion || "",
         imagen: producto.imagen || "",
@@ -41,6 +54,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     } else {
       setForm({
         nombre: "",
+        idCategoriaProducto: categorias[0]?.id || categorias[0]?.idCategoriaProducto || null,
         categoria: categorias[0]?.nombre || "",
         precio: "",
         descripcion: "",
@@ -68,7 +82,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.nombre.trim() || uploading) return;
-    onSave({ ...form, precio: Number(form.precio) || 0, fichaTecnica });
+    const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
+    onSave({
+      ...form,
+      idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
+      precio: Number(form.precio) || 0,
+      fichaTecnica
+    });
   };
 
   const handleImageUpload = async (e) => {
@@ -103,7 +123,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    >
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
@@ -114,8 +139,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Cerrar"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -140,11 +167,19 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <label className={labelCls}>Categoría</label>
               <select
                 value={form.categoria}
-                onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                onChange={(e) => {
+                  const selectedName = e.target.value;
+                  const catObj = (categorias || []).find(c => c.nombre === selectedName);
+                  setForm({
+                    ...form,
+                    categoria: selectedName,
+                    idCategoriaProducto: catObj?.id || catObj?.idCategoriaProducto || null
+                  });
+                }}
                 className={inputCls}
               >
                 {categorias.map((c) => (
-                  <option key={c.id || c.nombre} value={c.nombre}>
+                  <option key={c.id || c.idCategoriaProducto || c.nombre} value={c.nombre}>
                     {c.nombre}
                   </option>
                 ))}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -23,12 +23,24 @@ const defaultCategoryIcons = {
   "combos": { icon: "🍱", color: "from-purple-400 to-purple-600" },
   "postres": { icon: "🍰", color: "from-pink-400 to-rose-500" },
   "helados": { icon: "🍦", color: "from-indigo-400 to-purple-500" },
-  "entradas": { icon: "🧆", color: "from-emerald-400 to-teal-500" },
+  "entradas": { icon: "🌮", color: "from-emerald-400 to-teal-500" },
   "pizzas": { icon: "🍕", color: "from-red-500 to-amber-500" }
 };
 
 const getCategoryMeta = (nombre) => {
   const key = String(nombre || "").toLowerCase().trim();
+  if (key.includes("hambur")) return { icon: "🍔", color: "from-yellow-400 to-orange-500" };
+  if (key.includes("perro") || key.includes("hot dog")) return { icon: "🌭", color: "from-orange-400 to-red-500" };
+  if (key.includes("salchipapa")) return { icon: "🍟", color: "from-yellow-500 to-amber-600" };
+  if (key.includes("papa")) return { icon: "🍟", color: "from-yellow-500 to-amber-600" };
+  if (key.includes("pollo") || key.includes("alitas") || key.includes("nugget")) return { icon: "🍗", color: "from-amber-500 to-orange-600" };
+  if (key.includes("pizza")) return { icon: "🍕", color: "from-red-500 to-amber-500" };
+  if (key.includes("combo")) return { icon: "🍱", color: "from-purple-400 to-purple-600" };
+  if (key.includes("bebida") || key.includes("gaseosa") || key.includes("jugo") || key.includes("refresco")) return { icon: "🥤", color: "from-blue-400 to-blue-600" };
+  if (key.includes("postre") || key.includes("torta") || key.includes("pastel")) return { icon: "🍰", color: "from-pink-400 to-rose-500" };
+  if (key.includes("helado")) return { icon: "🍦", color: "from-indigo-400 to-purple-500" };
+  if (key.includes("acompa") || key.includes("ensalada")) return { icon: "🥗", color: "from-green-400 to-green-600" };
+  if (key.includes("entrada") || key.includes("snack") || key.includes("taco")) return { icon: "🌮", color: "from-emerald-400 to-teal-500" };
   return defaultCategoryIcons[key] || { icon: "🍽️", color: "from-red-400 to-red-600" };
 };
 
@@ -128,6 +140,14 @@ export function ClienteLanding() {
 
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const categoryCarouselRef = useRef(null);
+
+  const scrollCategories = (direction) => {
+    if (categoryCarouselRef.current) {
+      const scrollAmount = direction === "left" ? -280 : 280;
+      categoryCarouselRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
   const [showCart, setShowCart] = useState(false);
   const [showEmptyCartLoginModal, setShowEmptyCartLoginModal] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -273,13 +293,26 @@ export function ClienteLanding() {
   const activeProductos = productosList.length > 0 ? productosList : productosDefault;
 
   const productosFiltrados = activeProductos.filter((p) => {
-    const matchCategoria = !selectedCategoria || 
-      p.categoria === selectedCategoria || 
-      p.idCategoriaProducto === selectedCategoria ||
-      String(p.categoria) === String(selectedCategoria) ||
-      (typeof selectedCategoria === 'string' && String(p.categoriaNombre || '').toLowerCase() === selectedCategoria.toLowerCase());
-    const matchSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchCategoria && matchSearch;
+    const prodName = (p.nombre || "").toLowerCase();
+    const prodDesc = (p.descripcion || "").toLowerCase();
+    const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
+    if (!matchSearch) return false;
+
+    if (!selectedCategoria) return true;
+
+    const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
+    const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+    const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
+
+    const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
+    const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+
+    const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+    const matchSubcategory = singularCatName.length >= 3 && (
+      prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+    );
+
+    return matchCatId || matchCatName || matchSubcategory;
   });
 
   const handleProductClick = (producto) => {
@@ -523,7 +556,7 @@ export function ClienteLanding() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
       {/* Header */}
       <header className="bg-white dark:bg-gray-900 dark:border-b dark:border-gray-800 shadow-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-4">
               <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
@@ -545,7 +578,7 @@ export function ClienteLanding() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
-                className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
                 title="Cambiar Modo"
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -555,7 +588,7 @@ export function ClienteLanding() {
                 <>
                   <button
                     onClick={() => setShowPerfil(true)}
-                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                   >
                     <User className="w-5 h-5 text-[#f05454]" />
                     <span className="hidden sm:inline">Mi Perfil</span>
@@ -566,7 +599,7 @@ export function ClienteLanding() {
                       fetchMyOrders();
                       setShowPedidos(true);
                     }}
-                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                   >
                     <Package className="w-5 h-5 text-red-500" />
                     <span className="hidden sm:inline">Mis Pedidos</span>
@@ -575,7 +608,7 @@ export function ClienteLanding() {
               ) : (
                 <button
                   onClick={() => navigate("/login")}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors font-medium text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors font-medium text-sm cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Iniciar Sesión</span>
@@ -590,7 +623,7 @@ export function ClienteLanding() {
                   }
                   setShowCart(true);
                 }}
-                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm"
+                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
                 {getTotalItems() > 0 && (
@@ -604,7 +637,7 @@ export function ClienteLanding() {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
-                  className="p-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 rounded-xl transition-colors"
+                  className="p-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
                   title="Cerrar Sesión"
                 >
                   <LogOut className="w-5 h-5" />
@@ -617,14 +650,14 @@ export function ClienteLanding() {
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 text-white py-10 md:py-14 shadow-inner">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2">
+        <div className="w-full px-4 sm:px-6 lg:px-8 text-center space-y-2">
           <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">¡El sabor auténtico de Chazin Food!</h2>
           <p className="text-sm sm:text-lg text-red-100 font-medium">Haz tu pedido online y recíbelo fresco en tu puerta</p>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 -mt-6">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-3 border border-gray-100 dark:border-gray-800">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -639,42 +672,96 @@ export function ClienteLanding() {
         </div>
       </div>
 
-      {/* Categorías */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-5">Categorías</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      {/* Categorías Carousel */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-4">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Categorías</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Explora nuestro menú</p>
+        </div>
+
+        {/* Carousel Wrapper with Left & Right Buttons */}
+        <div className="relative flex items-center gap-2 sm:gap-3 w-full">
+          {/* Left Button */}
           <button
-            onClick={() => setSelectedCategoria(null)}
-            className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === null ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+            type="button"
+            onClick={() => scrollCategories("left")}
+            aria-label="Anterior categoría"
+            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
           >
-            <div className="flex items-center justify-center h-12 w-12 rounded-xl">
-              <div className="text-3xl">🍽️</div>
-            </div>
-            <p className="text-xs font-semibold">Todos</p>
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          {activeCategorias.map((cat) => (
+
+          {/* Horizontal Carousel Container */}
+          <div
+            ref={categoryCarouselRef}
+            className="flex-1 flex items-stretch gap-3 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1"
+            style={{
+              scrollSnapType: "x mandatory",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none"
+            }}
+          >
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategoria(cat.id)}
-              className={`p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-1.5 ${selectedCategoria === cat.id ? "bg-red-500 text-white shadow-lg scale-105 font-bold" : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+              type="button"
+              onClick={() => setSelectedCategoria(null)}
+              style={{ scrollSnapAlign: "start" }}
+              className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
+                selectedCategoria === null
+                  ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
+                  : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+              }`}
             >
-              <div className="flex items-center justify-center h-12 w-12 rounded-xl overflow-hidden bg-white dark:bg-gray-800/50 shadow-sm border border-gray-100 dark:border-gray-700">
-                {cat.icon?.includes('/') || cat.icon?.includes('.') ? (
-                  <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="text-3xl">{cat.icon}</div>
-                )}
+              <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-white/20 dark:bg-gray-800/60 shadow-xs">
+                <div className="text-3xl">🍽️</div>
               </div>
-              <p className="text-xs font-semibold leading-tight">{cat.nombre}</p>
+              <p className="text-xs font-semibold truncate w-full">Todos</p>
             </button>
-          ))}
+
+            {activeCategorias.map((cat) => {
+              const isSelected = selectedCategoria === cat.id || selectedCategoria === cat.idCategoriaProducto;
+              return (
+                <button
+                  key={cat.id || cat.idCategoriaProducto || cat.nombre}
+                  type="button"
+                  onClick={() => setSelectedCategoria(cat.id || cat.idCategoriaProducto)}
+                  style={{ scrollSnapAlign: "start" }}
+                  className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
+                    isSelected
+                      ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
+                      : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+                  }`}
+                >
+                  <div className="flex items-center justify-center h-12 w-12 rounded-xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
+                    {cat.icon?.includes("/") || cat.icon?.includes(".") ? (
+                      <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-3xl">{cat.icon || getCategoryMeta(cat.nombre).icon}</div>
+                    )}
+                  </div>
+                  <p className="text-xs font-semibold leading-tight line-clamp-2 text-center w-full" title={cat.nombre}>
+                    {cat.nombre}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Button */}
+          <button
+            type="button"
+            onClick={() => scrollCategories("right")}
+            aria-label="Siguiente categoría"
+            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
+          >
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
         </div>
       </div>
 
       {/* Productos */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-16">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          {selectedCategoria ? activeCategorias.find((c) => c.id === selectedCategoria)?.nombre : "Menú Principal"}
+          {selectedCategoria ? activeCategorias.find((c) => (c.id === selectedCategoria || c.idCategoriaProducto === selectedCategoria))?.nombre : "Menú Principal"}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (

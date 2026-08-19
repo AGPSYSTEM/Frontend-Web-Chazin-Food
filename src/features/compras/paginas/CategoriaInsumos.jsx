@@ -43,7 +43,7 @@ export function CategoriaInsumos() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#1e293b] dark:text-gray-100">

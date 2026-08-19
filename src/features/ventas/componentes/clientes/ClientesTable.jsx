@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
   const [pageSize, setPageSize] = useState(10);
@@ -78,7 +79,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                              {c.nombre} {c.apellidos || ""}
+                              {formatNombreCompleto(c.nombre, c.apellidos) || "Cliente General"}
                             </p>
                             {!tieneCuenta && (
                               <span title="Sin cuenta de usuario asociada" className="text-amber-500">

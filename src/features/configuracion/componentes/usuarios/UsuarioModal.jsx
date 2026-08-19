@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import { X, Upload, Eye, EyeOff, Lock } from "lucide-react";
+import {
+  sanitizeTelefono,
+  sanitizeDocumento,
+  getDocConfig,
+  validateTelefono,
+  validateDocumento,
+  formatNombreCompleto
+} from "@/shared/utils/validationUtils";
 
-const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
+const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors text-xs placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
 
 export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesList = [] }) {
@@ -9,6 +17,8 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
   const [form, setForm] = useState({
     nombre: "",
     apellidos: "",
+    tipoDocumento: "C.C.",
+    documento: "",
     email: "",
     telefono: "",
     password: "",
@@ -24,12 +34,13 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
 
   useEffect(() => {
     if (usuario) {
-      const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim();
       setForm({
-        nombre: nombreCompleto || usuario.nombre || "",
+        nombre: usuario.nombre || "",
         apellidos: usuario.apellidos || "",
+        tipoDocumento: usuario.tipoDocumento || "C.C.",
+        documento: usuario.documento || (usuario.idUsuario ? String(usuario.idUsuario) : ""),
         email: usuario.email || usuario.correo || "",
-        telefono: usuario.telefono || "",
+        telefono: sanitizeTelefono(usuario.telefono || ""),
         password: "",
         confirmPassword: "",
         idRolStr: String(usuario.idRol || usuario.idRolStr || "1"),
@@ -42,6 +53,8 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
       setForm({
         nombre: "",
         apellidos: "",
+        tipoDocumento: "C.C.",
+        documento: "",
         email: "",
         telefono: "",
         password: "",
@@ -58,9 +71,32 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
 
   if (!isOpen) return null;
 
+  const docConfig = getDocConfig(form.tipoDocumento);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrorMsg("");
+
+    if (!form.nombre.trim()) {
+      setErrorMsg("El nombre del usuario es obligatorio.");
+      return;
+    }
+
+    if (form.telefono) {
+      const telVal = validateTelefono(form.telefono);
+      if (!telVal.isValid) {
+        setErrorMsg(telVal.error);
+        return;
+      }
+    }
+
+    if (form.documento) {
+      const docVal = validateDocumento(form.documento, form.tipoDocumento);
+      if (!docVal.isValid) {
+        setErrorMsg(docVal.error);
+        return;
+      }
+    }
 
     if (!isEditing) {
       if (form.password !== form.confirmPassword) {
@@ -75,19 +111,26 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
 
     onSave({
       ...form,
+      nombre: form.nombre.trim(),
+      apellidos: form.apellidos.trim(),
+      telefono: sanitizeTelefono(form.telefono),
+      documento: sanitizeDocumento(form.documento, form.tipoDocumento),
       notificarEmail: isEditing ? form.notificarCambios : form.enviarCorreoBienvenida
     });
   };
 
-  const initials = isEditing && form.nombre
-    ? form.nombre.split(" ").slice(0, 2).map(n => n.charAt(0).toUpperCase()).join("") || "US"
-    : "US";
+  const displayName = formatNombreCompleto(form.nombre, form.apellidos) || "Usuario";
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n.charAt(0).toUpperCase())
+    .join("") || "US";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-150">
         
-        {/* Header (Captura 3 Edit vs Captura 4 Create) */}
+        {/* Header */}
         <div className="flex items-start justify-between p-6 pb-2 border-b border-gray-100/60 dark:border-gray-800/60">
           {isEditing ? (
             <div className="flex items-center gap-3">
@@ -99,7 +142,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   Editar Usuario
                 </h2>
                 <p className="text-xs text-gray-400 font-medium">
-                  {form.nombre || "Usuario"}
+                  {displayName}
                 </p>
               </div>
             </div>
@@ -121,12 +164,12 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200">
+            <div className="p-3 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-800">
               {errorMsg}
             </div>
           )}
 
-          {/* CREATION ONLY: Avatar Upload (Captura 4 & 5) */}
+          {/* CREATION ONLY: Avatar Upload */}
           {!isEditing && (
             <div className="space-y-1.5">
               <label className={labelCls}>Imagen de Perfil (Opcional)</label>
@@ -146,23 +189,90 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
             </div>
           )}
 
-          {/* Nombre Completo */}
-          <div>
-            <label className={labelCls}>Nombre Completo</label>
-            <input
-              type="text"
-              required
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value.replace(/[0-9]/g, "") })}
-              className={inputCls}
-              placeholder={isEditing ? "Nombre Completo" : "Ej: Juan Pérez"}
-            />
+          {/* Nombres y Apellidos Separados */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Nombres *</label>
+              <input
+                type="text"
+                required
+                value={form.nombre}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
+                    setForm({ ...form, nombre: val });
+                  }
+                }}
+                className={inputCls}
+                placeholder="Ej: Juan Carlos"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Apellidos</label>
+              <input
+                type="text"
+                value={form.apellidos}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
+                    setForm({ ...form, apellidos: val });
+                  }
+                }}
+                className={inputCls}
+                placeholder="Ej: Pérez Gómez"
+              />
+            </div>
+          </div>
+
+          {/* Tipo de Documento y Número de Documento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Tipo de Documento</label>
+              <select
+                value={form.tipoDocumento}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  setForm({
+                    ...form,
+                    tipoDocumento: newTipo,
+                    documento: sanitizeDocumento(form.documento, newTipo)
+                  });
+                }}
+                className={`${inputCls} cursor-pointer`}
+              >
+                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
+                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="NIT">NIT</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Número de Documento</label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {docConfig.helper}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.documento}
+                maxLength={docConfig.max}
+                onChange={(e) => {
+                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
+                  setForm({ ...form, documento: clean });
+                }}
+                className={inputCls}
+                placeholder={docConfig.helper}
+              />
+            </div>
           </div>
 
           {/* Email + Telefono (2 Cols) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Email</label>
+              <label className={labelCls}>Email *</label>
               <input
                 type="email"
                 required
@@ -173,19 +283,28 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               />
             </div>
             <div>
-              <label className={labelCls}>Teléfono</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Teléfono</label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  Máx. 10 dígitos ({form.telefono.length}/10)
+                </span>
+              </div>
               <input
                 type="tel"
                 value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value.replace(/[^0-9]/g, "") })}
+                maxLength={10}
+                onChange={(e) => {
+                  const clean = sanitizeTelefono(e.target.value);
+                  setForm({ ...form, telefono: clean });
+                }}
                 className={inputCls}
-                placeholder="319 000 0000"
+                placeholder="3190000000"
                 inputMode="numeric"
               />
             </div>
           </div>
 
-          {/* EDITING MODE: Rol + Estado (2 Cols) & Blue Banner (Captura 3) */}
+          {/* EDITING MODE: Rol + Estado (2 Cols) & Blue Banner */}
           {isEditing ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -194,7 +313,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   <select
                     value={form.idRolStr}
                     onChange={(e) => setForm({ ...form, idRolStr: e.target.value })}
-                    className={inputCls}
+                    className={`${inputCls} cursor-pointer`}
                   >
                     {rolesList.length > 0 ? (
                       rolesList.map((r) => (
@@ -205,8 +324,9 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                     ) : (
                       <>
                         <option value="1">Administrador</option>
-                        <option value="2">Empleado</option>
-                        <option value="3">Cliente</option>
+                        <option value="2">Cocinero</option>
+                        <option value="3">Vendedor</option>
+                        <option value="4">Cliente</option>
                       </>
                     )}
                   </select>
@@ -216,7 +336,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   <select
                     value={form.estado}
                     onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                    className={inputCls}
+                    className={`${inputCls} cursor-pointer`}
                   >
                     <option value="Activo">Activo</option>
                     <option value="Inactivo">Inactivo</option>
@@ -224,7 +344,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 </div>
               </div>
 
-              {/* Blue Notification Box for Editing (Captura 3) */}
+              {/* Blue Notification Box for Editing */}
               <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100/80 dark:border-blue-900/50 rounded-2xl p-4 space-y-1.5">
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-blue-900 dark:text-blue-200">
                   <input
@@ -236,12 +356,12 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   <span>Notificar al usuario por correo electrónico sobre los cambios</span>
                 </label>
                 <p className="text-[11px] text-blue-600 dark:text-blue-400 pl-6 leading-relaxed">
-                  Se enviará un correo automático a <span className="font-semibold">{form.email || "usuario@chazinfood.com"}</span> detallando los datos modificados (Nombre, Teléfono, Rol o Estado).
+                  Se enviará un correo automático a <span className="font-semibold">{form.email || "usuario@chazinfood.com"}</span> detallando los datos modificados.
                 </p>
               </div>
             </>
           ) : (
-            /* CREATION MODE: Credenciales Box & Rol Assignment Box (Captura 4 & 5) */
+            /* CREATION MODE: Credenciales Box & Rol Assignment Box */
             <>
               {/* Box 1: Credenciales de Acceso */}
               <div className="bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 space-y-3">
@@ -299,7 +419,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   </button>
                 </div>
                 <p className="text-[11px] text-gray-400">
-                  La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números
+                  La contraseña debe tener al menos 8 caracteres
                 </p>
               </div>
 
@@ -314,7 +434,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                     <select
                       value={form.idRolStr}
                       onChange={(e) => setForm({ ...form, idRolStr: e.target.value })}
-                      className={inputCls}
+                      className={`${inputCls} cursor-pointer`}
                     >
                       {rolesList.length > 0 ? (
                         rolesList.map((r) => (
@@ -324,9 +444,10 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                         ))
                       ) : (
                         <>
-                          <option value="3">Cliente</option>
                           <option value="1">Administrador</option>
-                          <option value="2">Empleado</option>
+                          <option value="2">Cocinero</option>
+                          <option value="3">Vendedor</option>
+                          <option value="4">Cliente</option>
                         </>
                       )}
                     </select>
@@ -336,7 +457,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                     <select
                       value={form.estado}
                       onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                      className={inputCls}
+                      className={`${inputCls} cursor-pointer`}
                     >
                       <option value="Activo">Activo</option>
                       <option value="Inactivo">Inactivo</option>
@@ -344,13 +465,12 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   </div>
                 </div>
 
-                {/* Inner Blue Banner */}
                 <div className="bg-blue-50/80 dark:bg-blue-950/40 p-2.5 rounded-xl border border-blue-100/80 dark:border-blue-900/50 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                   El usuario heredará todos los permisos asignados al rol seleccionado
                 </div>
               </div>
 
-              {/* Welcome Checkbox (Captura 5) */}
+              {/* Welcome Checkbox */}
               <div className="pt-1">
                 <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-700 dark:text-gray-300">
                   <input

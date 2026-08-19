@@ -1,4 +1,5 @@
 import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
   if (!raw) return "-";
@@ -112,7 +113,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight truncate">
-                      {usuario.nombre} {usuario.apellidos}
+                      {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
                       ID #{usuario.id || usuario.idUsuario}
@@ -251,13 +252,8 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                         </div>
                         <div>
                           <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                            {usuario.nombre}
+                            {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                           </p>
-                          {usuario.apellidos && (
-                            <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                              {usuario.apellidos}
-                            </p>
-                          )}
                           <p className="text-xs text-gray-400 dark:text-gray-500 font-normal mt-0.5">
                             ID #{usuario.id || usuario.idUsuario}
                           </p>

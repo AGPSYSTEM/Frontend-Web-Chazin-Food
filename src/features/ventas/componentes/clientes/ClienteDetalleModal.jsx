@@ -1,4 +1,5 @@
 import { X, Mail, Phone, MapPin, TrendingUp, Clock, Calendar, Star, AlertCircle } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   if (!isOpen || !cliente) return null;
@@ -81,7 +82,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                {cliente.nombre} {cliente.apellidos || ""}
+                {formatNombreCompleto(cliente.nombre, cliente.apellidos) || "Cliente General"}
               </h2>
               <p className="text-xs text-gray-400 font-medium">Cliente #{cliente.id || cliente.idCliente || 1}</p>
             </div>

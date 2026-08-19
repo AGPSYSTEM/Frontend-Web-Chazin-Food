@@ -53,7 +53,7 @@ export function FichasTecnicas({ readOnly = false }) {
   if (selected) {
     const isProducto = activeTab === "productos";
     return (
-      <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
         <button
           onClick={() => setSelected(null)}
           className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-[#F05454] transition-colors"
@@ -93,7 +93,7 @@ export function FichasTecnicas({ readOnly = false }) {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {readOnly && (
         <Link
           to="/"

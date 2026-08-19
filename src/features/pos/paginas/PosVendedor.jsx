@@ -19,14 +19,15 @@ const categoryIcons = {
 const getCategoryEmoji = (nombre = "") => {
   const normalized = nombre.toLowerCase();
   if (normalized.includes("hambur")) return "🍔";
-  if (normalized.includes("perro")) return "🌭";
+  if (normalized.includes("perro") || normalized.includes("hot dog")) return "🌭";
+  if (normalized.includes("salchipapa") || normalized.includes("papa")) return "🍟";
   if (normalized.includes("combo")) return "🍱";
   if (normalized.includes("pizza")) return "🍕";
-  if (normalized.includes("pollo")) return "🍗";
-  if (normalized.includes("pap")) return "🍟";
-  if (normalized.includes("beb") || normalized.includes("gaseos")) return "🥤";
-  if (normalized.includes("acompa")) return "🥗";
-  if (normalized.includes("post")) return "🍰";
+  if (normalized.includes("pollo") || normalized.includes("alitas")) return "🍗";
+  if (normalized.includes("beb") || normalized.includes("gaseos") || normalized.includes("jugo")) return "🥤";
+  if (normalized.includes("acompa") || normalized.includes("ensalada")) return "🥗";
+  if (normalized.includes("post") || normalized.includes("torta")) return "🍰";
+  if (normalized.includes("taco") || normalized.includes("entrada")) return "🌮";
   return categoryIcons.default;
 };
 
@@ -68,11 +69,26 @@ export default function PosVendedor() {
 
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
-      const matchCat = categoriaActiva === null || p.idCategoriaProducto === categoriaActiva || p.categoriaId === categoriaActiva;
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchCat && matchSearch;
+      if (!matchSearch) return false;
+      if (categoriaActiva === null) return true;
+
+      const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
+      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+      const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
+      const prodName = (p.nombre || "").toLowerCase().trim();
+
+      const matchCatId = (p.idCategoriaProducto === categoriaActiva) || (p.categoriaId === categoriaActiva) || (p.id === categoriaActiva);
+      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+
+      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+      const matchSubcategory = singularCatName.length >= 3 && (
+        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      );
+
+      return matchCatId || matchCatName || matchSubcategory;
     });
-  }, [productos, categoriaActiva, searchTerm]);
+  }, [productos, categoriaActiva, searchTerm, categorias]);
 
   return (
     <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 pb-24 lg:pb-5 transition-colors">
