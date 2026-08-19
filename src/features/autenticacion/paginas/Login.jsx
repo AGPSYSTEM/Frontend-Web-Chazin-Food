@@ -46,12 +46,12 @@ export function Login() {
       return;
     }
     setIsLoginLoading(true);
-    const success = await login(loginCorreo, loginContraseña);
-    if (success) {
+    const result = await login(loginCorreo, loginContraseña);
+    if (result === true || result?.success) {
       toast.success("¡Bienvenido!", "Inicio de sesión exitoso");
       setTimeout(() => navigate("/"), 500);
     } else {
-      toast.error("Error de autenticación", "Correo o contraseña incorrectos");
+      toast.error("Error de autenticación", result?.message || "Correo o contraseña incorrectos");
     }
     setIsLoginLoading(false);
   };

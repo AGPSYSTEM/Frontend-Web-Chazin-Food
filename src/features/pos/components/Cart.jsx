@@ -1,8 +1,29 @@
 import React from "react";
 import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 
-export function Cart({ cart, increment, decrement, setItemObservacion, submitOrder, loading, subtotal, descuento, total, onClose = null }) {
+export function Cart({
+  cart,
+  increment,
+  decrement,
+  setItemObservacion,
+  submitOrder,
+  onOpenCheckout = null,
+  loading,
+  subtotal,
+  descuento,
+  total,
+  onClose = null
+}) {
   const isEmpty = cart.length === 0;
+
+  const handleProceed = () => {
+    if (onOpenCheckout) {
+      if (onClose) onClose();
+      onOpenCheckout();
+    } else {
+      submitOrder();
+    }
+  };
 
   return (
     <div className="flex h-full flex-col rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-[#f8f8f8] dark:bg-gray-900/60 p-4 shadow-sm transition-colors">
@@ -58,8 +79,14 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
               {(it.adiciones || []).length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {(it.adiciones || []).map((adicion, i) => (
-                    <span key={`${adicion.id}-${i}`} className="rounded-full bg-[#eef5ff] dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-[#49617a] dark:text-blue-300">
-                      {adicion.nombre}
+                    <span
+                      key={`${adicion.idAdicion || adicion.id || i}-${i}`}
+                      className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
+                    >
+                      <span>+{adicion.nombre}</span>
+                      {Number(adicion.precio) > 0 && (
+                        <span className="opacity-75">(${Number(adicion.precio).toLocaleString("es-CO")})</span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -85,7 +112,10 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
                 </div>
 
                 <div className="text-right text-xs font-black text-[#1f2d3d] dark:text-gray-100">
-                  ${Number((it.precio || 0) * (it.cantidad || 1)).toLocaleString("es-CO")}
+                  ${Number(
+                    ((Number(it.precio) || 0) + (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0)) *
+                      (it.cantidad || 1)
+                  ).toLocaleString("es-CO")}
                 </div>
               </div>
 
@@ -119,11 +149,11 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
 
       <button
         type="button"
-        onClick={() => submitOrder()}
+        onClick={handleProceed}
         disabled={loading || isEmpty}
-        className="mt-3 w-full rounded-[16px] bg-[#f05454] px-4 py-2.5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition hover:bg-[#e64b4b] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+        className="mt-3 w-full rounded-[16px] bg-[#f05454] hover:bg-[#e04545] px-4 py-3 text-xs sm:text-sm font-black text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer active:scale-98"
       >
-        {loading ? "Procesando..." : "Enviar orden"}
+        {loading ? "Procesando..." : "Finalizar Pedido"}
       </button>
     </div>
   );

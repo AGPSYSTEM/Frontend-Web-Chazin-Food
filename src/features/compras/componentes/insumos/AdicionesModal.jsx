@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Edit, Trash2, Save, Image as ImageIcon } from "lucide-react";
 import { adicionesService } from "../../servicios/adicionesService";
+import { useToast } from "@/shared/context/ToastContext";
+import { useConfirm } from "@/shared/context/ConfirmContext";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [adiciones, setAdiciones] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -31,6 +35,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       setAdiciones(data);
     } catch (err) {
       console.error(err);
+      toast.error("Error", "No se pudieron cargar las adiciones");
     } finally {
       setLoading(false);
     }
@@ -41,7 +46,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     setFormData({
       id: null,
       nombre: "",
-      idInsumo: "",
+      idInsumo: insumos && insumos.length > 0 ? (insumos[0].id || insumos[0].idInsumo) : "",
       precio: "",
       descripcion: "",
       imagen: "",
@@ -63,19 +68,31 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Seguro que deseas eliminar esta adición?")) {
+    const isConfirmed = await confirm({
+      title: "¿Eliminar adición?",
+      message: "¿Estás seguro de que deseas desactivar esta adición?",
+      type: "danger",
+      confirmText: "Eliminar",
+      cancelText: "Cancelar"
+    });
+    if (isConfirmed) {
       try {
         await adicionesService.deleteAdicion(id);
+        toast.success("Adición eliminada", "La adición fue eliminada correctamente");
         await loadAdiciones();
       } catch (err) {
         console.error(err);
-        alert("Error al eliminar");
+        toast.error("Error", err.message || "Error al eliminar la adición");
       }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.nombre.trim() || !formData.idInsumo || formData.precio === "") {
+      toast.error("Campos requeridos", "Por favor completa el nombre, insumo base y precio");
+      return;
+    }
     try {
       const payload = {
         ...formData,
@@ -86,15 +103,17 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
       if (isEditing) {
         await adicionesService.updateAdicion(formData.id, payload);
+        toast.success("Adición actualizada", "La adición se actualizó correctamente");
       } else {
         await adicionesService.createAdicion(payload);
+        toast.success("Adición creada", "La adición se creó exitosamente");
       }
       
       setShowForm(false);
       await loadAdiciones();
     } catch (err) {
       console.error(err);
-      alert("Error al guardar la adición");
+      toast.error("Error al guardar", err.message || "No se pudo guardar la adición");
     }
   };
 

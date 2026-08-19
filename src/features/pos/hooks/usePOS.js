@@ -147,24 +147,75 @@ export function usePOS({ initialClienteId = null } = {}) {
     });
   }
 
-  async function submitOrder({ idUsuario = authenticatedUserId } = {}) {
+  async function submitOrder(checkoutData = {}) {
     setLoading(true);
     setError(null);
     try {
+      const {
+        idUsuario = authenticatedUserId,
+        tipoEntrega = "Recoger",
+        direccion = "Recoger en Local",
+        clienteNombre = "Cliente Mostrador",
+        metodoPago = "Efectivo",
+        datosPago = {},
+        observacion = ""
+      } = checkoutData;
+
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
         idCliente: clienteId,
+        clienteNombre,
         tipoVenta: "PUNTO_DE_VENTA",
-        tipoEntrega: "Local",
-        observacion: observacionOrden,
+        tipoEntrega,
+        direccion,
+        metodoPago,
+        subtotal: subtotal,
+        descuentoAplicado: descuento,
+        total: total,
+        observacion: observacion || observacionOrden,
+        observaciones: {
+          tipoEntrega,
+          direccion,
+          metodoPago,
+          clienteNombre,
+          efectivoConCuanto: datosPago.efectivoConCuanto || null,
+          vueltoEfectivo: datosPago.vueltoEfectivo || null,
+          tarjetaNumero: datosPago.tarjetaNumero || null,
+          transferBanco: datosPago.transferBanco || null,
+          transferenciaReferencia: datosPago.transferReferencia || null,
+          especificaciones: observacion || observacionOrden || "",
+          productos: cart.map((it) => {
+            const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
+            const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+            return {
+              idVariante: it.varianteId,
+              nombre: it.nombre,
+              cantidad: it.cantidad,
+              precioUnitario: Number(it.precio) || 0,
+              total: lineTotal,
+              observaciones: it.observacion || "",
+              adiciones: it.adiciones || []
+            };
+          })
+        },
         estado: "PENDIENTE",
-        items: cart.map((it) => ({
-          idVariante: it.varianteId,
-          cantidad: it.cantidad,
-          idAdiciones: (it.adiciones || []).map((a) => a.id),
-          observacion: it.observacion || ""
-        }))
+        estadoEntrega: "PENDIENTE",
+        items: cart.map((it) => {
+          const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
+          const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+          return {
+            idVariante: it.varianteId,
+            cantidad: it.cantidad,
+            precioUnitario: Number(it.precio) || 0,
+            subtotal: lineTotal,
+            idAdiciones: (it.adiciones || []).map((a) => a.idAdicion || a.id),
+            adiciones: it.adiciones || [],
+            observacion: it.observacion || "",
+            nombre: it.nombre
+          };
+        })
       };
+
       const res = await posService.createVenta(payload);
       setCart([]);
       return res;

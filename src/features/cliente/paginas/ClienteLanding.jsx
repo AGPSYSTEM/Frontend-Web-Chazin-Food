@@ -435,23 +435,41 @@ export function ClienteLanding() {
             transferenciaBanco: checkoutTransferBanco || "",
             tarjetaNumero: checkoutTarjetaNumero ? `****${checkoutTarjetaNumero.replace(/\s/g, '').slice(-4)}` : "",
             codigoPedido: `VEN-${String(Date.now()).slice(-4)}`,
-            clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}`.trim() : "Cliente General"),
-            productos: cart.map(item => ({
-              id: item.id,
-              nombre: item.nombre,
-              cantidad: item.cantidad,
-              precioUnitario: item.precio,
-              total: item.precio * item.cantidad,
-              adiciones: item.adiciones ? item.adiciones.map(a => a.nombre) : []
-            }))
+            productos: cart.map(item => {
+              const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
+              const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+              return {
+                id: item.id,
+                idVariante: item.id,
+                nombre: item.nombre,
+                cantidad: item.cantidad,
+                precioUnitario: Number(item.precio) || 0,
+                total: lineTotal,
+                observaciones: item.observacion || item.observaciones || item.especificaciones || "",
+                adiciones: (item.adiciones || []).map(a => ({
+                  idAdicion: a.idAdicion || a.id,
+                  nombre: a.nombre,
+                  precio: Number(a.precio) || 0,
+                  cantidad: Number(a.cantidad || 1)
+                }))
+              };
+            })
           }),
-          detalles: cart.map(item => ({
-            idVariante: item.id || 1,
-            cantidad: item.cantidad,
-            precioUnitario: item.precio,
-            subtotal: item.precio * item.cantidad,
-            observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
-          }))
+          descuentoAplicado: 0,
+          detalles: cart.map(item => {
+            const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
+            const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+            return {
+              idVariante: item.id || 1,
+              cantidad: item.cantidad,
+              precioUnitario: Number(item.precio) || 0,
+              subtotal: lineTotal,
+              idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
+              adiciones: item.adiciones || [],
+              observacion: item.observacion || item.observaciones || "",
+              observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+            };
+          })
         };
 
         await ventasService.createVenta(ventaPayload);

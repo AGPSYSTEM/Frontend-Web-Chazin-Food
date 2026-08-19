@@ -59,19 +59,25 @@ export function VentasReportesView({ ventas = [] }) {
 
       const prods = Array.isArray(v.productos) && v.productos.length > 0 ? v.productos : (v.detalles || []);
       prods.forEach((p) => {
-        // Obtener nombre raw del producto
-        const rawName = p.nombre || p.nombreProducto || (typeof p.observaciones === 'string' ? p.observaciones : null);
-        // Excluir entradas sin nombre, ficticias o de sistema
+        // Obtener nombre real del producto
+        let rawName = p.nombre || p.nombreProducto || p.variante?.producto?.nombre || p.variante?.nombre || null;
+        if (rawName && (rawName === "Producto" || rawName === "Producto General" || rawName.startsWith("Producto #"))) {
+          rawName = p.variante?.producto?.nombre || p.variante?.nombre || null;
+        }
+
+        // Excluir entradas sin nombre, ficticias, observaciones o de sistema
         if (
           !rawName ||
+          rawName === "Producto" ||
           rawName === "Pedido de Venta" ||
           rawName === "Producto General" ||
-          rawName.startsWith("Producto #")
+          rawName.startsWith("Producto #") ||
+          rawName.toLowerCase().startsWith("sin ")
         ) return;
 
         // Limpiar adiciones entre paréntesis para consolidar variantes del mismo producto (ej: "Pollo Broaster (+Salsa...)" -> "Pollo Broaster")
-        const nombreLimpio = rawName.replace(/\s*\(.*?\)/g, "").trim();
-        if (!nombreLimpio || nombreLimpio === "Pedido de Venta" || nombreLimpio === "Producto General") return;
+        let nombreLimpio = rawName.replace(/\s*\(.*?\)/g, "").replace(/\s*-\s*base/i, "").trim();
+        if (!nombreLimpio || nombreLimpio === "Producto" || nombreLimpio === "Pedido de Venta" || nombreLimpio === "Producto General") return;
 
         // Agrupar usando el nombre limpio en minúsculas como clave única
         const groupKey = nombreLimpio.toLowerCase();

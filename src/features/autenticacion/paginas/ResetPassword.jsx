@@ -10,8 +10,7 @@ export function ResetPassword() {
 
   const [nuevaContraseña, setNuevaContraseña] = useState("");
   const [confirmarContraseña, setConfirmarContraseña] = useState("");
-  const [showPassword1, setShowPassword1] = useState(false);
-  const [showPassword2, setShowPassword2] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
@@ -135,20 +134,13 @@ export function ResetPassword() {
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       id="nueva"
-                      type={showPassword1 ? "text" : "password"}
+                      type={showPasswords ? "text" : "password"}
                       value={nuevaContraseña}
                       onChange={(e) => setNuevaContraseña(e.target.value)}
                       placeholder="Ingresa tu nueva contraseña"
-                      className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
                       disabled={isLoading}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword1(!showPassword1)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword1 ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
                   </div>
                 </div>
 
@@ -161,21 +153,26 @@ export function ResetPassword() {
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       id="confirmar"
-                      type={showPassword2 ? "text" : "password"}
+                      type={showPasswords ? "text" : "password"}
                       value={confirmarContraseña}
                       onChange={(e) => setConfirmarContraseña(e.target.value)}
                       placeholder="Confirma tu nueva contraseña"
-                      className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
                       disabled={isLoading}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword2(!showPassword2)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword2 ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
                   </div>
+                </div>
+
+                {/* Botón único para mostrar/ocultar ambas contraseñas */}
+                <div className="flex items-center gap-2 -mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(!showPasswords)}
+                    className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 hover:text-red-500 transition-colors select-none cursor-pointer"
+                  >
+                    {showPasswords ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPasswords ? "Ocultar contraseñas" : "Mostrar contraseñas"}
+                  </button>
                 </div>
 
                 {/* Password requirements */}

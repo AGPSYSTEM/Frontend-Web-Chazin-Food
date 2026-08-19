@@ -3,6 +3,8 @@ import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X } from "lu
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
+import PosCheckoutModal from "../components/PosCheckoutModal";
+import { useToast } from "@/shared/context/ToastContext";
 
 const categoryIcons = {
   default: "🍽️",
@@ -29,6 +31,7 @@ const getCategoryEmoji = (nombre = "") => {
 };
 
 export default function PosVendedor() {
+  const toast = useToast();
   const {
     categorias,
     productos,
@@ -49,7 +52,19 @@ export default function PosVendedor() {
   } = usePOS();
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+
+  const handleConfirmCheckout = async (checkoutData) => {
+    try {
+      await submitOrder(checkoutData);
+      setIsCheckoutModalOpen(false);
+      setIsMobileCartOpen(false);
+      toast.success("¡Venta completada!", "El pedido fue registrado exitosamente.");
+    } catch (err) {
+      toast.error("Error al registrar venta", err.message || "No se pudo procesar la venta.");
+    }
+  };
 
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
@@ -210,7 +225,7 @@ export default function PosVendedor() {
                 <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
               </div>
             ) : (
-              <div className="grid gap-3.5 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3.5 sm:gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleProducts.map((p) => (
                   <ProductCard
                     key={p.id}
@@ -231,6 +246,7 @@ export default function PosVendedor() {
               increment={increment}
               decrement={decrement}
               setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => setIsCheckoutModalOpen(true)}
               submitOrder={() => submitOrder()}
               loading={loading}
               subtotal={subtotal}
@@ -264,10 +280,10 @@ export default function PosVendedor() {
 
             <button
               type="button"
-              onClick={() => setIsMobileCartOpen(true)}
+              onClick={() => setIsCheckoutModalOpen(true)}
               className="px-4 py-2.5 bg-[#f05454] hover:bg-[#e04545] text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
             >
-              <span>Ver Pedido</span>
+              <span>Finalizar Pedido</span>
               <ChevronRight className="h-4 w-4 stroke-[3]" />
             </button>
           </div>
@@ -289,6 +305,10 @@ export default function PosVendedor() {
               increment={increment}
               decrement={decrement}
               setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => {
+                setIsMobileCartOpen(false);
+                setIsCheckoutModalOpen(true);
+              }}
               submitOrder={() => submitOrder()}
               loading={loading}
               subtotal={subtotal}
@@ -299,6 +319,18 @@ export default function PosVendedor() {
           </div>
         </div>
       )}
+
+      {/* Pos Checkout Modal */}
+      <PosCheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        cart={cart}
+        subtotal={subtotal}
+        descuento={descuento}
+        total={total}
+        onConfirm={handleConfirmCheckout}
+        loading={loading}
+      />
     </div>
   );
 }

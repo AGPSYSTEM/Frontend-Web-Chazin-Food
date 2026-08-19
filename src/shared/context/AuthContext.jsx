@@ -25,12 +25,12 @@ export function AuthProvider({ children }) {
       if (userData) {
         setUser(userData);
         localStorage.setItem("chazin_user", JSON.stringify(userData));
-        return true;
+        return { success: true };
       }
-      return false;
+      return { success: false, message: "Error al iniciar sesión" };
     } catch (err) {
       console.error("Error en login:", err);
-      return false;
+      return { success: false, message: err.message || "Correo o contraseña incorrectos" };
     }
   };
 

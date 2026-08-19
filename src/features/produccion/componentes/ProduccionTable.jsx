@@ -62,10 +62,10 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                 return (
                   <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     {/* Orden / Código */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl select-none shrink-0">{o.imagen || "🍔"}</div>
-                        <div>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl select-none shrink-0 mt-0.5">{o.imagen || "🍔"}</div>
+                        <div className="space-y-1">
                           <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-gray-100">
                             <span>{o.platilloNombre}</span>
                             {o.alerta && (
@@ -73,6 +73,41 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                             )}
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{o.codigo || `OP-00${o.id}`}</div>
+
+                          {/* Badges de Adiciones y Observaciones */}
+                          {Array.isArray(o.productos) && (
+                            <div className="space-y-1 pt-0.5 max-w-sm">
+                              {o.productos.map((prod, pIdx) => {
+                                const adds = Array.isArray(prod.adiciones) ? prod.adiciones : [];
+                                const obs = prod.observaciones || prod.observacion || "";
+                                if (adds.length === 0 && !obs) return null;
+                                return (
+                                  <div key={pIdx} className="text-[11px] space-y-0.5">
+                                    {adds.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {adds.map((ad, aIdx) => (
+                                          <span
+                                            key={aIdx}
+                                            className="px-1.5 py-0.5 bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-300 font-bold rounded text-[10px] border border-red-100 dark:border-red-900/50"
+                                          >
+                                            + {typeof ad === "object" ? ad.nombre : String(ad)}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {obs && (
+                                      <div
+                                        className="text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded text-[10px] font-medium italic border border-amber-200 dark:border-amber-900/50 inline-block max-w-full truncate"
+                                        title={obs}
+                                      >
+                                        📝 Nota: {obs}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

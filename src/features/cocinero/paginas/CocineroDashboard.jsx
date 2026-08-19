@@ -352,23 +352,38 @@ export function CocineroDashboard() {
 
                             {/* Additions / Customizations */}
                             {Array.isArray(prod.adiciones) && prod.adiciones.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {prod.adiciones.map((ad, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-2 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-bold rounded-md"
-                                  >
-                                    + {typeof ad === "object" ? ad.nombre : ad}
-                                  </span>
-                                ))}
+                              <div className="space-y-1 mt-1.5">
+                                <span className="text-[10px] font-black text-red-500 uppercase tracking-wider">
+                                  Adiciones Extra:
+                                </span>
+                                <div className="flex flex-wrap gap-1">
+                                  {prod.adiciones.map((ad, i) => {
+                                    const adName = typeof ad === "object" ? (ad.nombre || ad.nombreAdicion) : String(ad);
+                                    const adQty = typeof ad === "object" && ad.cantidad > 1 ? `x${ad.cantidad} ` : "";
+                                    return (
+                                      <span
+                                        key={i}
+                                        className="px-2 py-0.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-[#F05454] dark:text-red-300 text-[11px] font-black rounded-lg"
+                                      >
+                                        + {adQty}{adName}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
 
                             {/* Client notes / specifications */}
-                            {cleanNote(prod.observaciones, prod.nombre) && (
-                              <p className="text-xs text-[#F05454] dark:text-red-400 mt-1 font-bold">
-                                ⚠️ Nota: {cleanNote(prod.observaciones, prod.nombre)}
-                              </p>
+                            {cleanNote(prod.observaciones || prod.observacion || prod.nota || prod.especificaciones, prod.nombre) && (
+                              <div className="mt-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-2 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-bold text-amber-700 dark:text-amber-400">Nota: </span>
+                                  <span className="font-semibold italic">
+                                    "{cleanNote(prod.observaciones || prod.observacion || prod.nota || prod.especificaciones, prod.nombre)}"
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </div>
 
