@@ -1,5 +1,5 @@
 import { X, Mail, Phone, MapPin, TrendingUp, Clock, Calendar, Star, AlertCircle } from "lucide-react";
-import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
 
 export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   if (!isOpen || !cliente) return null;
@@ -106,35 +106,35 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
           <h3 className="text-xs font-extrabold tracking-wider text-gray-700 dark:text-gray-300 uppercase">
             Información de Contacto
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
+              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-gray-400">Teléfono</p>
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                  {cliente.telefono || "Sin registrar"}
+                </p>
+              </div>
+            </div>
+
             <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
               <Mail className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold text-gray-400">Email</p>
                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
-                  {cliente.email || "Sin email registrado"}
+                  {cliente.email || "Sin registrar"}
                 </p>
               </div>
             </div>
 
             <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
-              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-gray-400">Teléfono</p>
-                <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                  {cliente.telefono || "Sin teléfono"}
+                <p className="text-[10px] font-semibold text-gray-400">Dirección</p>
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                  {formatDireccion(cliente.direccion)}
                 </p>
               </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
-            <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold text-gray-400">Dirección</p>
-              <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
-                {cliente.direccion || "Medellín, Colombia"}
-              </p>
             </div>
           </div>
         </div>

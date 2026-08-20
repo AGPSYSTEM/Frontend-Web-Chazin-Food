@@ -132,3 +132,27 @@ export function splitNombreCompleto(fullName = "") {
   if (parts.length === 3) return { nombre: parts[0], apellidos: `${parts[1]} ${parts[2]}` };
   return { nombre: `${parts[0]} ${parts[1]}`, apellidos: parts.slice(2).join(" ") };
 }
+
+/**
+ * Limpia y normaliza la dirección de un cliente, evitando que se muestren strings JSON o metadatos crudos
+ */
+export function formatDireccion(dir = "") {
+  if (!dir) return "Medellín, Colombia";
+  const str = String(dir).trim();
+  if (str.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed && typeof parsed === "object") {
+        return parsed.direccion || parsed.d || "Medellín, Colombia";
+      }
+    } catch {
+      const match = str.match(/"direccion"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || str.match(/"d"\s*:\s*"([^"]+)"/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return "Medellín, Colombia";
+  }
+  return str;
+}
+

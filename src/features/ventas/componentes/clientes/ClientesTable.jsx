@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert, Flame } from "lucide-react";
-import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
@@ -89,7 +89,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                             )}
                           </div>
                           <p className="text-[11px] text-gray-400 mt-0.5 max-w-xs truncate">
-                            {c.direccion || "Medellín, Colombia"}
+                            {formatDireccion(c.direccion)}
                           </p>
                         </div>
                       </div>
