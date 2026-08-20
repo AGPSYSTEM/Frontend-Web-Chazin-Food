@@ -3,6 +3,7 @@ import { X, Utensils, UploadCloud, Loader2 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -288,8 +289,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleAdicion(adicion)}
-                        className="rounded text-[#F05454] focus:ring-[#F05454]"
+                        className="rounded text-[#F05454] focus:ring-[#F05454] cursor-pointer"
                       />
+                      <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
+                        {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
+                          <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          getAdditionEmoji(adicion.nombre, adicion.imagen)
+                        )}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {adicion.nombre}

@@ -81,7 +81,7 @@ export function usePOS({ initialClienteId = null } = {}) {
   const subtotal = useMemo(() => {
     return cart.reduce((acc, it) => {
       const base = (it.precio || 0) * (it.cantidad || 1);
-      const adds = (it.adiciones || []).reduce((a, b) => a + (b.precio || 0), 0) * (it.cantidad || 1);
+      const adds = (it.adiciones || []).reduce((a, b) => a + (Number(b.precio) || 0) * (Number(b.cantidad) || 1), 0) * (it.cantidad || 1);
       return acc + base + adds;
     }, 0);
   }, [cart]);
@@ -90,16 +90,17 @@ export function usePOS({ initialClienteId = null } = {}) {
 
   const total = subtotal - descuento;
 
-  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "" }) {
+  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1 }) {
     setCart((prev) => {
-      const adicionIds = (adiciones || []).map((a) => a.id || a).slice();
+      const qtyToAdd = Number(cantidad) > 0 ? Number(cantidad) : 1;
+      const adicionIds = (adiciones || []).map((a) => (typeof a === "object" ? `${a.id || a.idAdicion}x${a.cantidad || 1}` : a)).slice();
       const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds);
       if (idx >= 0) {
         const newCart = [...prev];
-        newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + 1 };
+        newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + qtyToAdd };
         return newCart;
       }
-      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: 1, observacion }];
+      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: qtyToAdd, observacion }];
     });
   }
 

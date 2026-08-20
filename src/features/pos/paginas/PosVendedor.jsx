@@ -246,8 +246,8 @@ export default function PosVendedor() {
                   <ProductCard
                     key={p.id}
                     producto={p}
-                    onAdd={({ productoId, varianteId, nombre, precio, adiciones }) =>
-                      addProduct({ productoId, varianteId, nombre, precio, adiciones })
+                    onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
+                      addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
                     }
                   />
                 ))}

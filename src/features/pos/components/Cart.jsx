@@ -78,17 +78,21 @@ export function Cart({
 
               {(it.adiciones || []).length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {(it.adiciones || []).map((adicion, i) => (
-                    <span
-                      key={`${adicion.idAdicion || adicion.id || i}-${i}`}
-                      className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
-                    >
-                      <span>+{adicion.nombre}</span>
-                      {Number(adicion.precio) > 0 && (
-                        <span className="opacity-75">(${Number(adicion.precio).toLocaleString("es-CO")})</span>
-                      )}
-                    </span>
-                  ))}
+                  {(it.adiciones || []).map((adicion, i) => {
+                    const adQty = Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
+                    const adPrice = (Number(adicion.precio) || 0) * (Number(adicion.cantidad) || 1);
+                    return (
+                      <span
+                        key={`${adicion.idAdicion || adicion.id || i}-${i}`}
+                        className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
+                      >
+                        <span>+{adQty}{adicion.nombre}</span>
+                        {adPrice > 0 && (
+                          <span className="opacity-75">(${adPrice.toLocaleString("es-CO")})</span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
 
