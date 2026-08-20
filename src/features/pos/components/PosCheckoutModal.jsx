@@ -294,78 +294,20 @@ export function PosCheckoutModal({
               )}
             </div>
 
-            {/* CASO A: Cliente Asociado Seleccionado */}
-            {selectedCliente ? (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border-2 border-[#f05454]/40 shadow-xs space-y-3 animate-in fade-in duration-200">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-[#f05454] text-white flex items-center justify-center text-lg font-black shadow-xs shrink-0">
-                      {selectedCliente.tipo === "VIP" ? "🥇" : selectedCliente.tipo === "Frecuente" ? "🥈" : selectedCliente.tipo === "Regular" ? "🥉" : "👤"}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
-                          {selectedCliente.nombre} {selectedCliente.apellidos || ''}
-                        </h5>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Cuenta Activa</span>
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
-                        {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
-                        {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleClearSelectedClient}
-                    className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
-                    title="Desvincular y volver a Mostrador"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs bg-[#FFF5F5] dark:bg-red-950/30 p-2.5 rounded-xl border border-red-100 dark:border-red-900/50 text-[#f05454] font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <Flame className="w-4 h-4 text-orange-500" />
-                    <span>Beneficio: {discountPercent}% OFF y acumulará racha de compra</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsSearchingClient(true)}
-                    className="text-xs text-gray-600 dark:text-gray-300 hover:text-[#f05454] underline cursor-pointer font-semibold ml-2"
-                  >
-                    Cambiar
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
-                    Nombre en Comanda / Factura:
-                  </label>
-                  <input
-                    type="text"
-                    value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
-                  />
-                </div>
-              </div>
-            ) : isSearchingClient ? (
-              /* CASO B: Buscador Interactivo de Clientes */
+            {/* CASO B: Buscador Interactivo de Clientes (Se muestra al presionar Buscar o Cambiar) */}
+            {isSearchingClient ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
                     <Search className="w-3.5 h-3.5 text-[#f05454]" />
-                    <span>Buscar Cliente con Cuenta</span>
+                    <span>{selectedCliente ? "Cambiar Cliente Asociado" : "Buscar Cliente con Cuenta"}</span>
                   </span>
                   <button
                     type="button"
-                    onClick={() => setIsSearchingClient(false)}
+                    onClick={() => {
+                      setIsSearchingClient(false);
+                      setClientSearchTerm("");
+                    }}
                     className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-bold cursor-pointer"
                   >
                     Cancelar
@@ -439,7 +381,10 @@ export function PosCheckoutModal({
                       <p>No se encontraron clientes coincidentes.</p>
                       <button
                         type="button"
-                        onClick={() => setIsQuickRegisterOpen(true)}
+                        onClick={() => {
+                          setIsSearchingClient(false);
+                          setIsQuickRegisterOpen(true);
+                        }}
                         className="px-3 py-1.5 bg-[#f05454] text-white text-xs font-bold rounded-xl hover:bg-[#e04545] transition cursor-pointer inline-flex items-center gap-1.5"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
@@ -452,12 +397,17 @@ export function PosCheckoutModal({
                       const cNombre = `${c.nombre || ''} ${c.apellidos || ''}`.trim() || 'Cliente';
                       const cTipo = c.tipo || 'Nuevo';
                       const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
+                      const isCurrentlySelected = selectedCliente && (selectedCliente.id || selectedCliente.idCliente) === cId;
 
                       return (
                         <div
                           key={cId}
                           onClick={() => handleSelectClient(c)}
-                          className="p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20 transition flex items-center justify-between gap-2.5 cursor-pointer group"
+                          className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2.5 cursor-pointer group ${
+                            isCurrentlySelected
+                              ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/30"
+                              : "border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20"
+                          }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs font-black shrink-0 group-hover:bg-[#f05454] group-hover:text-white transition">
@@ -484,7 +434,7 @@ export function PosCheckoutModal({
                               </span>
                             )}
                             <span className="px-2.5 py-1 bg-white dark:bg-gray-800 text-[#f05454] group-hover:bg-[#f05454] group-hover:text-white border border-[#f05454] text-[11px] font-black rounded-xl transition shadow-2xs">
-                              Asociar
+                              {isCurrentlySelected ? "Seleccionado ✓" : "Asociar"}
                             </span>
                           </div>
                         </div>
@@ -574,6 +524,70 @@ export function PosCheckoutModal({
                   </button>
                 </div>
               </form>
+            ) : selectedCliente ? (
+              /* CASO A: Cliente Asociado Seleccionado */
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border-2 border-[#f05454]/40 shadow-xs space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-[#f05454] text-white flex items-center justify-center text-lg font-black shadow-xs shrink-0">
+                      {selectedCliente.tipo === "VIP" ? "🥇" : selectedCliente.tipo === "Frecuente" ? "🥈" : selectedCliente.tipo === "Regular" ? "🥉" : "👤"}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
+                          {selectedCliente.nombre} {selectedCliente.apellidos || ''}
+                        </h5>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Cuenta Activa</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                        {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
+                        {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedClient}
+                    className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                    title="Desvincular y volver a Mostrador"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between text-xs bg-[#FFF5F5] dark:bg-red-950/30 p-2.5 rounded-xl border border-red-100 dark:border-red-900/50 text-[#f05454] font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span>Beneficio: {discountPercent}% OFF y acumulará racha de compra</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSearchingClient(true);
+                      setClientSearchTerm("");
+                    }}
+                    className="text-xs text-gray-600 dark:text-gray-300 hover:text-[#f05454] underline cursor-pointer font-bold ml-2"
+                  >
+                    Cambiar
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
+                    Nombre en Comanda / Factura:
+                  </label>
+                  <input
+                    type="text"
+                    value={clienteNombre}
+                    onChange={(e) => setClienteNombre(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                  />
+                </div>
+              </div>
             ) : (
               /* CASO D: Modo Mostrador por Defecto */
               <div className="space-y-2.5">
