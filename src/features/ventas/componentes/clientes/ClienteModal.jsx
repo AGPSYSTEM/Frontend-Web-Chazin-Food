@@ -8,7 +8,7 @@ import {
   validateDocumento
 } from "@/shared/utils/validationUtils";
 
-export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
+export function ClienteModal({ isOpen, onClose, onSave, cliente = null, zIndex = "z-50" }) {
   const isEditing = !!cliente;
   const [form, setForm] = useState({
     nombre: "",
@@ -51,7 +51,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
         direccion: "",
         tipo: "Nuevo",
         descuentoPorcentaje: 0,
-        sinCuenta: true // Default to true when admin manually creates a client
+        sinCuenta: false // Default to creating full account so they have fidelity!
       });
     }
     setErrorMsg("");
@@ -106,7 +106,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
   const firstChar = form.nombre ? form.nombre.charAt(0).toUpperCase() : "C";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs`}>
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg p-6 space-y-5 border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
         
         {/* Header with initial avatar & close icon */}

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { clientesService } from "@/features/ventas/servicios/clientesService";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import { ClienteModal } from "@/features/ventas/componentes/clientes/ClienteModal";
 
 export function PosCheckoutModal({
   isOpen,
@@ -42,12 +43,8 @@ export function PosCheckoutModal({
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all"); // "all", "fidelity", "with_account"
   
-  // Quick new client inline register
-  const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
-  const [quickNombre, setQuickNombre] = useState("");
-  const [quickApellidos, setQuickApellidos] = useState("");
-  const [quickTelefono, setQuickTelefono] = useState("");
-  const [quickEmail, setQuickEmail] = useState("");
+  // Full ClienteModal state
+  const [isClienteModalOpen, setIsClienteModalOpen] = useState(false);
   const [registeringClient, setRegisteringClient] = useState(false);
 
   const [metodoPago, setMetodoPago] = useState("efectivo"); // "efectivo", "tarjeta", "transferencia"
@@ -114,7 +111,7 @@ export function PosCheckoutModal({
     setSelectedCliente(c);
     setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
     setIsSearchingClient(false);
-    setIsQuickRegisterOpen(false);
+    setIsClienteModalOpen(false);
   };
 
   const handleClearSelectedClient = () => {
@@ -122,35 +119,16 @@ export function PosCheckoutModal({
     setClienteNombre("Cliente Mostrador");
   };
 
-  const handleCreateQuickClient = async (e) => {
-    e.preventDefault();
-    if (!quickNombre.trim()) {
-      alert("Por favor ingresa al menos el nombre del cliente.");
-      return;
-    }
+  const handleSaveNewCliente = async (form) => {
     try {
       setRegisteringClient(true);
-      const payload = {
-        nombre: quickNombre.trim(),
-        apellidos: quickApellidos.trim(),
-        telefono: quickTelefono.trim(),
-        email: quickEmail.trim(),
-        direccion: "Atención en Punto de Venta",
-        contrasena: "123456" // Default initial password for their online access
-      };
-      const res = await clientesService.createCliente(payload);
+      const res = await clientesService.createCliente(form);
       const newClient = res?.data || res;
       
       // Update local clients list
       setClientesList(prev => [newClient, ...prev]);
       handleSelectClient(newClient);
-      
-      // Reset form
-      setQuickNombre("");
-      setQuickApellidos("");
-      setQuickTelefono("");
-      setQuickEmail("");
-      setIsQuickRegisterOpen(false);
+      setIsClienteModalOpen(false);
     } catch (err) {
       alert("Error al registrar cliente: " + (err.message || "Intenta nuevamente."));
     } finally {
@@ -383,9 +361,9 @@ export function PosCheckoutModal({
                         type="button"
                         onClick={() => {
                           setIsSearchingClient(false);
-                          setIsQuickRegisterOpen(true);
+                          setIsClienteModalOpen(true);
                         }}
-                        className="px-3 py-1.5 bg-[#f05454] text-white text-xs font-bold rounded-xl hover:bg-[#e04545] transition cursor-pointer inline-flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-[#f05454] text-white text-xs font-bold rounded-xl hover:bg-[#e04545] transition cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
                       >
                         <UserPlus className="w-3.5 h-3.5" />
                         <span>+ Registrar este Cliente</span>
@@ -443,87 +421,6 @@ export function PosCheckoutModal({
                   )}
                 </div>
               </div>
-            ) : isQuickRegisterOpen ? (
-              /* CASO C: Registro Rápido Inline en Mostrador */
-              <form onSubmit={handleCreateQuickClient} className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-emerald-300 dark:border-emerald-700 shadow-sm space-y-3 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                    <UserPlus className="w-4 h-4" />
-                    <span>Crear Cuenta Rápida de Cliente</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickRegisterOpen(false)}
-                    className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Nombre *</label>
-                    <input
-                      type="text"
-                      required
-                      value={quickNombre}
-                      onChange={(e) => setQuickNombre(e.target.value)}
-                      placeholder="Ej. Carlos"
-                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Apellidos</label>
-                    <input
-                      type="text"
-                      value={quickApellidos}
-                      onChange={(e) => setQuickApellidos(e.target.value)}
-                      placeholder="Ej. Rodríguez"
-                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Teléfono</label>
-                    <input
-                      type="text"
-                      value={quickTelefono}
-                      onChange={(e) => setQuickTelefono(e.target.value)}
-                      placeholder="Ej. 3001234567"
-                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Correo</label>
-                    <input
-                      type="email"
-                      value={quickEmail}
-                      onChange={(e) => setQuickEmail(e.target.value)}
-                      placeholder="correo@ejemplo.com"
-                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickRegisterOpen(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={registeringClient}
-                    className="px-4 py-1.5 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer shadow-xs"
-                  >
-                    {registeringClient ? "Creando..." : "Crear y Asociar"}
-                  </button>
-                </div>
-              </form>
             ) : selectedCliente ? (
               /* CASO A: Cliente Asociado Seleccionado */
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border-2 border-[#f05454]/40 shadow-xs space-y-3 animate-in fade-in duration-200">
@@ -625,7 +522,7 @@ export function PosCheckoutModal({
                   <span>¿El cliente quiere acumular racha o descuento?</span>
                   <button
                     type="button"
-                    onClick={() => setIsQuickRegisterOpen(true)}
+                    onClick={() => setIsClienteModalOpen(true)}
                     className="text-[#f05454] font-bold hover:underline cursor-pointer"
                   >
                     + Registrar nuevo cliente
@@ -922,6 +819,14 @@ export function PosCheckoutModal({
           </div>
         </div>
       </div>
+
+      {/* Modal Completo de Gestión de Cliente (Reutilizado) */}
+      <ClienteModal
+        isOpen={isClienteModalOpen}
+        onClose={() => setIsClienteModalOpen(false)}
+        onSave={handleSaveNewCliente}
+        zIndex="z-[70]"
+      />
     </div>
   );
 }
