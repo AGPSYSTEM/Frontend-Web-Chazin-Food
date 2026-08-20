@@ -1,16 +1,29 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
-function formatDateSafe(dateVal, fallback = "2026-06-09") {
+function formatDateSafe(dateVal, fallback = "Hoy") {
   if (!dateVal) return fallback;
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
-    return d.toISOString().split("T")[0];
+    return d.toLocaleDateString("es-CO", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" });
   } catch (e) {
     return String(dateVal).slice(0, 10) || fallback;
   }
+}
+
+function formatTimeSafe(dateVal, fallbackHorario = "12:30 PM") {
+  if (dateVal) {
+    try {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hour12: true });
+      }
+    } catch (e) {}
+  }
+  return fallbackHorario;
 }
 
 export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
@@ -99,7 +112,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
               const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
               const descPct = Number(v.descuentoPorcentaje || 0);
-              const origPrice = Number(v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
+              const origPrice = Number(v.subtotal || v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
               const hasDiscount = (descPct > 0) || (origPrice > Number(v.total || 0)) || (Number(v.montoDescuento || 0) > 0);
 
               return (
@@ -111,50 +124,33 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     </div>
                   </td>
 
-                  {/* Cliente con Avatar */}
+                  {/* Cliente con Avatar e Insignia */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
                         {initial}
                       </div>
-                      <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
+                        {v.clienteFidelidad?.tipo && v.clienteFidelidad.tipo !== "Nuevo" && (
+                          <FidelidadBadge
+                            tipo={v.clienteFidelidad.tipo}
+                            descuento={v.clienteFidelidad.descuentoPorcentaje}
+                            size="sm"
+                          />
+                        )}
+                      </div>
                     </div>
                   </td>
 
                   {/* Fecha */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
-                    {formatDateSafe(v.fecha || v.fechaVenta, "2026-06-09")}
+                    {formatDateSafe(v.fecha || v.fechaVenta, "Hoy")}
                   </td>
 
                   {/* Hora */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
-                    {(() => {
-                      let raw = v.horario;
-                      if (!raw || raw === "—") return "—";
-                      if (typeof raw === 'string') {
-                        if (raw.includes('AM') || raw.includes('PM')) return raw;
-                        if (raw.includes('–')) raw = raw.split('–')[0].trim();
-                        if (/^\d{1,2}:\d{2}$/.test(raw.trim())) {
-                          const parts = raw.trim().split(':');
-                          let h = parseInt(parts[0], 10);
-                          const m = parts[1];
-                          const ampm = h >= 12 ? 'PM' : 'AM';
-                          h = h % 12;
-                          h = h ? h : 12;
-                          return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
-                        }
-                      }
-                      const d = new Date(v.fecha || v.fechaVenta || raw);
-                      if (!isNaN(d.getTime())) {
-                        let h = d.getHours();
-                        const m = String(d.getMinutes()).padStart(2, '0');
-                        const ampm = h >= 12 ? 'PM' : 'AM';
-                        h = h % 12;
-                        h = h ? h : 12;
-                        return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
-                      }
-                      return String(raw);
-                    })()}
+                    {formatTimeSafe(v.fecha || v.fechaVenta, v.horario)}
                   </td>
 
                   {/* Entrega */}

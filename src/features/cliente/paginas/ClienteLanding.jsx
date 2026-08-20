@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import { categoriaProductosService } from "@/features/ventas/servicios/categoriaProductosService";
 import { productosService } from "@/features/ventas/servicios/productosService";
@@ -508,7 +509,15 @@ export function ClienteLanding() {
   };
 
   const clientSubtotal = getSubtotal();
-  const totalCheckout = clientSubtotal;
+  const fidelidadCliente = user?.fidelidad || {};
+  const pedidosCount = pedidos.length;
+  const tipoFidelidad = fidelidadCliente.tipo || user?.tipo || (pedidosCount >= 9 ? "VIP" : pedidosCount >= 6 ? "Frecuente" : pedidosCount >= 3 ? "Regular" : "Nuevo");
+  const discountPercent = Number(fidelidadCliente.descuentoPorcentaje !== undefined ? fidelidadCliente.descuentoPorcentaje : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0));
+  const comprasCiclo = fidelidadCliente.comprasCiclo !== undefined ? fidelidadCliente.comprasCiclo : (pedidosCount % 3);
+  const comprasFaltantes = fidelidadCliente.comprasFaltantes !== undefined ? fidelidadCliente.comprasFaltantes : (3 - (comprasCiclo % 3));
+  const siguienteNivel = fidelidadCliente.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
+  const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
+  const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
   const vueltoEfectivo = Math.max(0, Number(checkoutEfectivoPaga || 0) - totalCheckout);
 
   const handleConfirmarPedido = async () => {
@@ -546,6 +555,7 @@ export function ClienteLanding() {
           idCliente: user?.idCliente || null,
           idUsuario: user?.idUsuario || user?.id || user?._id,
           subtotal: clientSubtotal,
+          descuentoAplicado: clientDiscountMonto,
           total: totalCheckout,
           tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
           tipoEntrega: tipoEntregaNormalizado,
@@ -583,7 +593,6 @@ export function ClienteLanding() {
               };
             })
           }),
-          descuentoAplicado: 0,
           detalles: cart.map(item => {
             const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
@@ -695,7 +704,17 @@ export function ClienteLanding() {
                 />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                  {isAuthenticated && (
+                    <FidelidadBadge
+                      tipo={tipoFidelidad}
+                      descuento={discountPercent}
+                      enGracia={fidelidadCliente.enGracia}
+                      size="sm"
+                    />
+                  )}
+                </div>
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {isAuthenticated ? `¡Bienvenido, ${user?.nombre}!` : "Bienvenido a Chazin Food"}
                 </p>
@@ -798,6 +817,69 @@ export function ClienteLanding() {
           </div>
         </div>
       </div>
+
+      {/* Banner de Fidelidad del Cliente */}
+      {isAuthenticated && (
+        <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
+          <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-red-950/20 border border-amber-200 dark:border-amber-900/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center text-2xl shadow-xs shrink-0">
+                {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-wider text-orange-900 dark:text-orange-300">
+                    Membresía {tipoFidelidad}
+                  </span>
+                  {discountPercent > 0 && (
+                    <span className="px-2 py-0.5 bg-[#f05454] text-white text-[10px] font-black rounded-lg">
+                      {discountPercent}% OFF activo
+                    </span>
+                  )}
+                  {fidelidadCliente.enGracia && (
+                    <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Periodo de Gracia: {fidelidadCliente.diasGraciaRestantes || 0}d</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <Flame className="w-3.5 h-3.5 text-orange-500" />
+                  <span>
+                    Racha: <strong>{comprasCiclo} de 3</strong>
+                  </span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-[#f05454] font-bold">
+                    {comprasFaltantes === 0 
+                      ? "¡Meta alcanzada! 🎉" 
+                      : tipoFidelidad === "VIP"
+                        ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para renovar`
+                        : `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para subir a ${siguienteNivel}`}
+                  </span>
+                  {tipoFidelidad !== "Nuevo" && fidelidadCliente.diasRestantes !== undefined && !fidelidadCliente.enGracia && (
+                    <>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span>Vigencia: {fidelidadCliente.diasRestantes}d restantes</span>
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPerfil(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Ver Beneficios y Racha</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Categorías Carousel */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -1560,10 +1642,24 @@ export function ClienteLanding() {
             </div>
 
             {/* ═══ FOOTER FIJO CON PRECIO Y BOTÓN CONFIRMAR ═══ */}
-            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-3 rounded-b-3xl">
-              <div className="flex justify-between items-center">
-                <span className="text-base font-bold text-gray-900 dark:text-gray-100">Total a pagar:</span>
-                <span className="text-2xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
+            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-2.5 rounded-b-3xl">
+              <div className="space-y-1.5">
+                {clientDiscountMonto > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">${clientSubtotal.toLocaleString('es-CO')}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-xl">
+                      <span>Descuento Fidelidad ({discountPercent}% OFF):</span>
+                      <span>-${clientDiscountMonto.toLocaleString('es-CO')}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between items-center pt-1 border-t border-gray-100 dark:border-gray-800">
+                  <span className="text-base font-bold text-gray-900 dark:text-gray-100">Total a pagar:</span>
+                  <span className="text-2xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
+                </div>
               </div>
               <div className="flex items-center justify-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium">
                 <Info className="w-3.5 h-3.5" />

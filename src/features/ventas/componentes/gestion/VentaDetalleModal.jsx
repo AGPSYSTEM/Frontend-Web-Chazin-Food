@@ -11,8 +11,12 @@ import {
   Clock,
   Calendar,
   Sparkles,
-  ShoppingBag
+  ShoppingBag,
+  UserCheck,
+  User,
+  ShieldCheck
 } from "lucide-react";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function VentaDetalleModal({ isOpen, onClose, venta }) {
   if (!isOpen || !venta) return null;
@@ -41,19 +45,23 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
     obsMeta.clienteNombre ||
     (typeof venta.cliente === "string" ? venta.cliente : "Cliente Mostrador");
 
-  let fecha = "2026-08-18";
+  let fecha = "Hoy";
+  let horario = "12:30 PM";
   if (venta.fecha || venta.fechaVenta) {
     try {
       const d = new Date(venta.fecha || venta.fechaVenta);
-      fecha = !isNaN(d.getTime())
-        ? d.toISOString().split("T")[0]
-        : String(venta.fecha || venta.fechaVenta).slice(0, 10);
+      if (!isNaN(d.getTime())) {
+        fecha = d.toLocaleDateString("es-CO", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" });
+        horario = d.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hour12: true });
+      }
     } catch (e) {
       fecha = String(venta.fecha || venta.fechaVenta).slice(0, 10);
     }
   }
+  if (venta.horario && !venta.horario.includes("–")) {
+    horario = venta.horario;
+  }
 
-  const horario = venta.horario || obsMeta.horario || "12:30 – 12:48";
   const metodoPago = obsMeta.metodoPago || venta.metodoPago || "Efectivo";
   const tipoEntrega = obsMeta.tipoEntrega || venta.tipoEntrega || "Recoger";
   const total = Number(venta.total || 0);
@@ -88,6 +96,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
   };
 
   const entregaInfo = getEntregaBadge(tipoEntrega);
+  const clienteFidelidad = venta.clienteFidelidad || {
+    tipo: obsMeta.tipoFidelidad || (descuentoPorcentaje > 0 ? (descuentoPorcentaje >= 15 ? "VIP" : descuentoPorcentaje >= 10 ? "Frecuente" : "Regular") : "Nuevo"),
+    descuentoPorcentaje: descuentoPorcentaje
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
@@ -107,13 +119,41 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
             </span>
           </div>
           <div className="text-xl sm:text-2xl font-black tracking-tight mt-1">{codigo}</div>
-          <div className="text-xs sm:text-sm text-red-100 font-medium">{cliente}</div>
+          <div className="text-xs sm:text-sm text-red-100 font-medium flex items-center gap-2 mt-1 flex-wrap">
+            <span>{cliente}</span>
+            <FidelidadBadge
+              tipo={clienteFidelidad.tipo}
+              descuento={clienteFidelidad.descuentoPorcentaje || descuentoPorcentaje}
+              enGracia={clienteFidelidad.enGracia}
+              size="sm"
+            />
+          </div>
         </div>
 
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-gray-900 dark:text-gray-100">
           {/* 2x2 Grid Info Cards */}
           <div className="grid grid-cols-2 gap-2.5">
+            {/* Responsable de la Venta */}
+            <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-2xl p-3 flex items-center justify-between text-xs col-span-2 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                    <span>Responsable: {venta.responsable?.nombre || "Vendedor / POS"}</span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+                      {venta.responsable?.rol || "Vendedor"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>{venta.responsable?.tieneCuenta ? "Cuenta de usuario registrada y activa" : "Pedido generado vía catálogo en línea"}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-gray-400" />

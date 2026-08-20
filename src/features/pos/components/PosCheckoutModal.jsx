@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Store,
@@ -8,20 +8,48 @@ import {
   Smartphone,
   CheckCircle2,
   ShoppingBag,
-  Info
+  Info,
+  User,
+  Search,
+  Sparkles,
+  UserCheck,
+  UserPlus,
+  RotateCcw,
+  Check,
+  Flame,
+  Phone,
+  Mail,
+  ShieldCheck
 } from "lucide-react";
+import { clientesService } from "@/features/ventas/servicios/clientesService";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function PosCheckoutModal({
   isOpen,
   onClose,
-  cart,
-  subtotal,
-  descuento,
-  total,
+  cart = [],
+  subtotal = 0,
+  descuento = 0,
+  total = 0,
   onConfirm,
-  loading
+  loading = false
 }) {
+  const safeCart = Array.isArray(cart) ? cart : [];
+  const [clientesList, setClientesList] = useState([]);
+  const [selectedCliente, setSelectedCliente] = useState(null);
   const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [clientFilter, setClientFilter] = useState("all"); // "all", "fidelity", "with_account"
+  
+  // Quick new client inline register
+  const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
+  const [quickNombre, setQuickNombre] = useState("");
+  const [quickApellidos, setQuickApellidos] = useState("");
+  const [quickTelefono, setQuickTelefono] = useState("");
+  const [quickEmail, setQuickEmail] = useState("");
+  const [registeringClient, setRegisteringClient] = useState(false);
+
   const [metodoPago, setMetodoPago] = useState("efectivo"); // "efectivo", "tarjeta", "transferencia"
 
   // Pago en Efectivo
@@ -34,10 +62,101 @@ export function PosCheckoutModal({
   const [transferBanco, setTransferBanco] = useState("Nequi");
   const [transferReferencia, setTransferReferencia] = useState("");
 
+  // Load clients on modal open
+  useEffect(() => {
+    if (isOpen) {
+      clientesService.getClientes().then(res => {
+        if (Array.isArray(res)) {
+          // Filter out generic placeholder entries
+          const validClients = res.filter(c => 
+            c.idCliente !== 26 && 
+            !c.nombre?.toLowerCase().includes("cliente mostrador")
+          );
+          setClientesList(validClients);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
+  // Compute discount and total dynamically based on selected client's fidelity tier
+  const discountPercent = selectedCliente 
+    ? Number(selectedCliente.descuentoPorcentaje || (selectedCliente.tipo === 'VIP' ? 15 : selectedCliente.tipo === 'Frecuente' ? 10 : selectedCliente.tipo === 'Regular' ? 5 : 0)) 
+    : 0;
+  const calculatedDescuento = discountPercent > 0 ? Math.round(Number(subtotal || 0) * (discountPercent / 100)) : Number(descuento || 0);
+  const finalTotal = Math.max(0, Number(subtotal || 0) - calculatedDescuento);
+
   const montoPagaNum = Number(efectivoPaga) || 0;
-  const vueltoEfectivo = montoPagaNum >= total ? montoPagaNum - total : 0;
+  const vueltoEfectivo = montoPagaNum >= finalTotal ? montoPagaNum - finalTotal : 0;
+
+  // Filtered clients list
+  const filteredClientes = clientesList.filter(c => {
+    const search = clientSearchTerm.toLowerCase().trim();
+    const fullName = `${c.nombre || ''} ${c.apellidos || ''}`.toLowerCase();
+    const phone = String(c.telefono || '').toLowerCase();
+    const email = String(c.email || '').toLowerCase();
+
+    const matchSearch = !search || fullName.includes(search) || phone.includes(search) || email.includes(search);
+    if (!matchSearch) return false;
+
+    if (clientFilter === "fidelity") {
+      const hasFidelity = c.tipo && c.tipo !== "Nuevo" && c.descuentoPorcentaje > 0;
+      return hasFidelity;
+    }
+    if (clientFilter === "with_account") {
+      return Boolean(c.tieneCuenta || c.idUsuario);
+    }
+    return true;
+  });
+
+  const handleSelectClient = (c) => {
+    setSelectedCliente(c);
+    setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
+    setIsSearchingClient(false);
+    setIsQuickRegisterOpen(false);
+  };
+
+  const handleClearSelectedClient = () => {
+    setSelectedCliente(null);
+    setClienteNombre("Cliente Mostrador");
+  };
+
+  const handleCreateQuickClient = async (e) => {
+    e.preventDefault();
+    if (!quickNombre.trim()) {
+      alert("Por favor ingresa al menos el nombre del cliente.");
+      return;
+    }
+    try {
+      setRegisteringClient(true);
+      const payload = {
+        nombre: quickNombre.trim(),
+        apellidos: quickApellidos.trim(),
+        telefono: quickTelefono.trim(),
+        email: quickEmail.trim(),
+        direccion: "Atención en Punto de Venta",
+        contrasena: "123456" // Default initial password for their online access
+      };
+      const res = await clientesService.createCliente(payload);
+      const newClient = res?.data || res;
+      
+      // Update local clients list
+      setClientesList(prev => [newClient, ...prev]);
+      handleSelectClient(newClient);
+      
+      // Reset form
+      setQuickNombre("");
+      setQuickApellidos("");
+      setQuickTelefono("");
+      setQuickEmail("");
+      setIsQuickRegisterOpen(false);
+    } catch (err) {
+      alert("Error al registrar cliente: " + (err.message || "Intenta nuevamente."));
+    } finally {
+      setRegisteringClient(false);
+    }
+  };
 
   const handleConfirm = (e) => {
     e.preventDefault();
@@ -53,9 +172,14 @@ export function PosCheckoutModal({
     }
 
     const payload = {
+      idCliente: selectedCliente ? (selectedCliente.id || selectedCliente.idCliente) : null,
       tipoEntrega: "Recoger",
       direccion: "Recoger en Local",
       clienteNombre: clienteNombre.trim() || "Cliente Mostrador",
+      subtotal: Number(subtotal || 0),
+      descuentoAplicado: calculatedDescuento,
+      descuentoPorcentaje: discountPercent,
+      total: finalTotal,
       metodoPago:
         metodoPago === "tarjeta"
           ? "Tarjeta"
@@ -96,7 +220,7 @@ export function PosCheckoutModal({
           </button>
           <h2 className="text-xl sm:text-2xl font-black tracking-tight">Finalizar Pedido</h2>
           <p className="text-xs text-red-100 mt-0.5 font-medium">
-            Completa los datos de entrega y pago
+            Punto de Venta — Entrega en mostrador y fidelización
           </p>
         </div>
 
@@ -105,29 +229,32 @@ export function PosCheckoutModal({
           {/* 1. Tarjeta Resumen Financiero */}
           <div className="bg-[#f8fafc] dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-              <span>Subtotal ({cart.reduce((a, b) => a + (b.cantidad || 1), 0)} items)</span>
+              <span>Subtotal ({safeCart.reduce((a, b) => a + (Number(b.cantidad) || 1), 0)} items)</span>
               <span className="font-bold text-gray-800 dark:text-gray-200">
                 ${Number(subtotal || 0).toLocaleString("es-CO")}
               </span>
             </div>
 
-            {Number(descuento) > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400">
-                <span>Descuento</span>
-                <span className="font-bold">-${Number(descuento).toLocaleString("es-CO")}</span>
+            {calculatedDescuento > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-emerald-500" />
+                  <span>Descuento Fidelidad {selectedCliente ? selectedCliente.tipo : ''} ({discountPercent}% OFF)</span>
+                </span>
+                <span className="font-bold text-sm">-${calculatedDescuento.toLocaleString("es-CO")}</span>
               </div>
             )}
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-base font-black text-gray-900 dark:text-gray-100">Total</span>
+              <span className="text-base font-black text-gray-900 dark:text-gray-100">Total a Pagar</span>
               <span className="text-2xl font-black text-[#f05454] dark:text-red-400">
-                ${Number(total || 0).toLocaleString("es-CO")}
+                ${finalTotal.toLocaleString("es-CO")}
               </span>
             </div>
           </div>
 
           {/* 2. Tipo de Entrega (Únicamente Recoger en Local) */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
               <Store className="w-4 h-4 text-[#f05454]" />
               <span>Tipo de Entrega</span>
@@ -141,7 +268,7 @@ export function PosCheckoutModal({
                 <div>
                   <p className="font-bold text-sm text-[#f05454]">Recoger en Local</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Pasas a recogerlo / Entrega en mostrador
+                    Pasas a recogerlo / Entrega física en mostrador
                   </p>
                 </div>
               </div>
@@ -151,31 +278,352 @@ export function PosCheckoutModal({
             </div>
           </div>
 
-          {/* 3. Datos de Entrega */}
-          <div className="space-y-2.5">
-            <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#f05454]" />
-              <span>Datos de Entrega</span>
-            </h4>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                Nombre del destinatario
-              </label>
-              <input
-                type="text"
-                value={clienteNombre}
-                onChange={(e) => setClienteNombre(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30 focus:border-[#f05454]"
-                placeholder="Ej. María García / Cliente Mostrador"
-              />
+          {/* 3. Panel Interactivo de Gestión y Asociación de Clientes */}
+          <div className="space-y-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                <User className="w-4 h-4 text-[#f05454]" />
+                <span>Cliente y Fidelidad</span>
+              </h4>
+              {selectedCliente && (
+                <FidelidadBadge
+                  tipo={selectedCliente.tipo || "Nuevo"}
+                  descuento={selectedCliente.descuentoPorcentaje}
+                  size="sm"
+                />
+              )}
             </div>
 
-            <div className="bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3 flex items-start gap-2.5">
-              <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
-                <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67.
-                Entrega física en mostrador.
+            {/* CASO A: Cliente Asociado Seleccionado */}
+            {selectedCliente ? (
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border-2 border-[#f05454]/40 shadow-xs space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-[#f05454] text-white flex items-center justify-center text-lg font-black shadow-xs shrink-0">
+                      {selectedCliente.tipo === "VIP" ? "🥇" : selectedCliente.tipo === "Frecuente" ? "🥈" : selectedCliente.tipo === "Regular" ? "🥉" : "👤"}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
+                          {selectedCliente.nombre} {selectedCliente.apellidos || ''}
+                        </h5>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Cuenta Activa</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                        {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
+                        {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedClient}
+                    className="text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                    title="Desvincular y volver a Mostrador"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between text-xs bg-[#FFF5F5] dark:bg-red-950/30 p-2.5 rounded-xl border border-red-100 dark:border-red-900/50 text-[#f05454] font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span>Beneficio: {discountPercent}% OFF y acumulará racha de compra</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchingClient(true)}
+                    className="text-xs text-gray-600 dark:text-gray-300 hover:text-[#f05454] underline cursor-pointer font-semibold ml-2"
+                  >
+                    Cambiar
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
+                    Nombre en Comanda / Factura:
+                  </label>
+                  <input
+                    type="text"
+                    value={clienteNombre}
+                    onChange={(e) => setClienteNombre(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                  />
+                </div>
+              </div>
+            ) : isSearchingClient ? (
+              /* CASO B: Buscador Interactivo de Clientes */
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 shadow-sm space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <Search className="w-3.5 h-3.5 text-[#f05454]" />
+                    <span>Buscar Cliente con Cuenta</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchingClient(false)}
+                    className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-bold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                {/* Input de Búsqueda */}
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={clientSearchTerm}
+                    onChange={(e) => setClientSearchTerm(e.target.value)}
+                    placeholder="Buscar por nombre, teléfono o email..."
+                    className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                    autoFocus
+                  />
+                  {clientSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setClientSearchTerm("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtros Rápidos */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setClientFilter("all")}
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                      clientFilter === "all"
+                        ? "bg-[#f05454] text-white"
+                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                    }`}
+                  >
+                    Todos ({clientesList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientFilter("fidelity")}
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                      clientFilter === "fidelity"
+                        ? "bg-amber-500 text-white"
+                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Con Fidelidad</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientFilter("with_account")}
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                      clientFilter === "with_account"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                    }`}
+                  >
+                    Con Cuenta Activa
+                  </button>
+                </div>
+
+                {/* Lista de Resultados */}
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                  {filteredClientes.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400 space-y-2">
+                      <p>No se encontraron clientes coincidentes.</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsQuickRegisterOpen(true)}
+                        className="px-3 py-1.5 bg-[#f05454] text-white text-xs font-bold rounded-xl hover:bg-[#e04545] transition cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>+ Registrar este Cliente</span>
+                      </button>
+                    </div>
+                  ) : (
+                    filteredClientes.map((c) => {
+                      const cId = c.id || c.idCliente;
+                      const cNombre = `${c.nombre || ''} ${c.apellidos || ''}`.trim() || 'Cliente';
+                      const cTipo = c.tipo || 'Nuevo';
+                      const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
+
+                      return (
+                        <div
+                          key={cId}
+                          onClick={() => handleSelectClient(c)}
+                          className="p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20 transition flex items-center justify-between gap-2.5 cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs font-black shrink-0 group-hover:bg-[#f05454] group-hover:text-white transition">
+                              {cTipo === "VIP" ? "🥇" : cTipo === "Frecuente" ? "🥈" : cTipo === "Regular" ? "🥉" : "👤"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                                {cNombre}
+                              </p>
+                              <p className="text-[10.5px] text-gray-500 dark:text-gray-400 truncate">
+                                {c.telefono || c.email || "Cliente Registrado"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {cDesc ? (
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black rounded-lg">
+                                {cDesc}
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-[10px] font-semibold rounded-md">
+                                {cTipo}
+                              </span>
+                            )}
+                            <span className="px-2.5 py-1 bg-white dark:bg-gray-800 text-[#f05454] group-hover:bg-[#f05454] group-hover:text-white border border-[#f05454] text-[11px] font-black rounded-xl transition shadow-2xs">
+                              Asociar
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            ) : isQuickRegisterOpen ? (
+              /* CASO C: Registro Rápido Inline en Mostrador */
+              <form onSubmit={handleCreateQuickClient} className="bg-white dark:bg-gray-800 rounded-2xl p-3.5 border border-emerald-300 dark:border-emerald-700 shadow-sm space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                    <UserPlus className="w-4 h-4" />
+                    <span>Crear Cuenta Rápida de Cliente</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickRegisterOpen(false)}
+                    className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Nombre *</label>
+                    <input
+                      type="text"
+                      required
+                      value={quickNombre}
+                      onChange={(e) => setQuickNombre(e.target.value)}
+                      placeholder="Ej. Carlos"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Apellidos</label>
+                    <input
+                      type="text"
+                      value={quickApellidos}
+                      onChange={(e) => setQuickApellidos(e.target.value)}
+                      placeholder="Ej. Rodríguez"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Teléfono</label>
+                    <input
+                      type="text"
+                      value={quickTelefono}
+                      onChange={(e) => setQuickTelefono(e.target.value)}
+                      placeholder="Ej. 3001234567"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] font-bold text-gray-600 dark:text-gray-400 mb-0.5">Correo</label>
+                    <input
+                      type="email"
+                      value={quickEmail}
+                      onChange={(e) => setQuickEmail(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickRegisterOpen(false)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={registeringClient}
+                    className="px-4 py-1.5 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer shadow-xs"
+                  >
+                    {registeringClient ? "Creando..." : "Crear y Asociar"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* CASO D: Modo Mostrador por Defecto */
+              <div className="space-y-2.5">
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                      <span>🌱</span>
+                      <span>Venta Rápida (Cliente Mostrador)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSearchingClient(true)}
+                      className="px-3 py-1 bg-[#f05454] hover:bg-[#e04545] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Search className="w-3 h-3" />
+                      <span>Buscar Cliente con Cuenta</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">
+                      Nombre para la comanda o recibo:
+                    </label>
+                    <input
+                      type="text"
+                      value={clienteNombre}
+                      onChange={(e) => setClienteNombre(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                      placeholder="Ej. Cliente Mostrador / Mesa 3"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 px-1">
+                  <span>¿El cliente quiere acumular racha o descuento?</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickRegisterOpen(true)}
+                    className="text-[#f05454] font-bold hover:underline cursor-pointer"
+                  >
+                    + Registrar nuevo cliente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 rounded-xl p-2.5 flex items-start gap-2">
+              <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-blue-800 dark:text-blue-200 leading-relaxed">
+                <span className="font-bold">Entrega:</span> Chazin Food — Cra. 12 #45-67. Mostrador físico.
               </p>
             </div>
           </div>
@@ -365,42 +813,49 @@ export function PosCheckoutModal({
           <div className="space-y-2.5">
             <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-[#f05454]" />
-              <span>Resumen de Productos ({cart.length})</span>
+              <span>Resumen de Productos ({safeCart.length})</span>
             </h4>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {cart.map((item, idx) => {
-                const itemAddsTotal = (item.adiciones || []).reduce(
-                  (s, a) => s + (Number(a.precio) || 0),
+              {safeCart.map((item, idx) => {
+                const itemAdds = Array.isArray(item.adiciones) ? item.adiciones : [];
+                const itemAddsTotal = itemAdds.reduce(
+                  (s, a) => s + ((typeof a === "object" ? Number(a.precio || 0) : 0) * (typeof a === "object" ? (Number(a.cantidad) || 1) : 1)),
                   0
                 );
                 const itemLineTotal =
-                  ((Number(item.precio) || 0) + itemAddsTotal) * (item.cantidad || 1);
+                  ((Number(item.precio) || 0) + itemAddsTotal) * (Number(item.cantidad) || 1);
 
                 return (
                   <div
-                    key={`${item.productoId}-${idx}`}
+                    key={`${item.productoId || idx}-${idx}`}
                     className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#fbfcfd] dark:bg-gray-800/40 text-xs flex flex-col gap-1.5"
                   >
                     <div className="flex items-center justify-between font-bold text-gray-900 dark:text-gray-100">
                       <span className="truncate">
-                        {item.cantidad}x {item.nombre}
+                        {item.cantidad || 1}x {item.nombre || "Producto"}
                       </span>
                       <span className="shrink-0 text-gray-800 dark:text-gray-200 font-black">
                         ${itemLineTotal.toLocaleString("es-CO")}
                       </span>
                     </div>
 
-                    {(item.adiciones || []).length > 0 && (
+                    {itemAdds.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-0.5">
-                        {item.adiciones.map((adc, aIdx) => (
-                          <span
-                            key={aIdx}
-                            className="bg-red-50 dark:bg-red-950/40 text-[#f05454] dark:text-red-300 border border-red-100 dark:border-red-900/50 px-2 py-0.5 rounded-md text-[10px] font-semibold"
-                          >
-                            +{adc.nombre} (${Number(adc.precio).toLocaleString("es-CO")})
-                          </span>
-                        ))}
+                        {itemAdds.map((adc, aIdx) => {
+                          const adcName = typeof adc === "object" ? (adc.nombre || adc.nombreAdicion || "Adición") : String(adc);
+                          const adcPrice = typeof adc === "object" ? (Number(adc.precio || 0) * (Number(adc.cantidad) || 1)) : 0;
+                          const adcQty = typeof adc === "object" && Number(adc.cantidad) > 1 ? `${adc.cantidad}x ` : "";
+
+                          return (
+                            <span
+                              key={aIdx}
+                              className="bg-red-50 dark:bg-red-950/40 text-[#f05454] dark:text-red-300 border border-red-100 dark:border-red-900/50 px-2 py-0.5 rounded-md text-[10px] font-semibold"
+                            >
+                              +{adcQty}{adcName} {adcPrice > 0 ? `($${adcPrice.toLocaleString("es-CO")})` : ""}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -423,7 +878,7 @@ export function PosCheckoutModal({
               Total a pagar:
             </span>
             <span className="text-xl sm:text-2xl font-black text-[#f05454] dark:text-red-400">
-              ${Number(total || 0).toLocaleString("es-CO")}
+              ${finalTotal.toLocaleString("es-CO")}
             </span>
           </div>
 

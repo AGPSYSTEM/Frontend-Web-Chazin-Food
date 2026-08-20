@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert, Flame } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
   const [pageSize, setPageSize] = useState(10);
@@ -108,8 +109,14 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-center font-bold text-gray-700 dark:text-gray-300">
-                      {c.compras || 0}
+                    <td className="px-5 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{c.compras || 0}</span>
+                        <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-0.5">
+                          <Flame className="w-2.5 h-2.5" />
+                          <span>{c.fidelidad?.comprasCiclo !== undefined ? c.fidelidad.comprasCiclo : ((c.compras || 0) % 3)}/3</span>
+                        </span>
+                      </div>
                     </td>
 
                     <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100">
@@ -117,9 +124,12 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${getTipoBadge(tipoCliente)}`}>
-                        {tipoCliente}
-                      </span>
+                      <FidelidadBadge
+                        tipo={tipoCliente}
+                        descuento={c.descuentoPorcentaje}
+                        enGracia={c.fidelidad?.enGracia}
+                        size="sm"
+                      />
                     </td>
 
                     <td className="px-5 py-4">

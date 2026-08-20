@@ -304,35 +304,49 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
           </div>
 
           {/* Nivel de Fidelidad & Descuento (%) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Nivel de Fidelidad
-              </label>
-              <select
-                value={form.tipo}
-                onChange={(e) => handleTipoChange(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer"
-              >
-                <option value="VIP">VIP (15%)</option>
-                <option value="Frecuente">Frecuente (10%)</option>
-                <option value="Regular">Regular (5%)</option>
-                <option value="Nuevo">Nuevo (0%)</option>
-              </select>
+          <div className="bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                <span>⭐ Nivel de Fidelidad (Automatizado)</span>
+              </span>
+              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
+                3 compras / nivel
+              </span>
             </div>
 
-            <div>
-              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Descuento (%)
-              </label>
-              <input
-                type="number"
-                readOnly
-                value={form.descuentoPorcentaje}
-                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 font-semibold cursor-not-allowed outline-none select-none text-xs"
-                title="El porcentaje de descuento se asigna automáticamente según el Nivel de Fidelidad (VIP: 15%, Frecuente: 10%, Regular: 5%, Nuevo: 0%)"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Nivel Asignado
+                </label>
+                <select
+                  value={form.tipo}
+                  onChange={(e) => handleTipoChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer font-bold"
+                >
+                  <option value="VIP">🥇 VIP (15% OFF)</option>
+                  <option value="Frecuente">🥈 Frecuente (10% OFF)</option>
+                  <option value="Regular">🥉 Regular (5% OFF)</option>
+                  <option value="Nuevo">🌱 Nuevo (0%)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Descuento Automático
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${form.descuentoPorcentaje}% de descuento`}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 font-bold cursor-not-allowed outline-none select-none text-xs"
+                />
+              </div>
             </div>
+
+            <p className="text-[10.5px] text-gray-500 dark:text-gray-400">
+              💡 El sistema actualiza el nivel automáticamente con las compras del cliente: Regular (3 compras, 1 mes), Frecuente (1 mes + 10d gracia), VIP (1 mes + 15d gracia).
+            </p>
           </div>
 
           {/* Action Buttons */}

@@ -76,17 +76,18 @@ export function Cart({
                 </button>
               </div>
 
-              {(it.adiciones || []).length > 0 && (
+              {Array.isArray(it.adiciones) && it.adiciones.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {(it.adiciones || []).map((adicion, i) => {
-                    const adQty = Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
-                    const adPrice = (Number(adicion.precio) || 0) * (Number(adicion.cantidad) || 1);
+                  {it.adiciones.map((adicion, i) => {
+                    const adName = typeof adicion === "object" ? (adicion.nombre || adicion.nombreAdicion || "Adición") : String(adicion);
+                    const adQty = typeof adicion === "object" && Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
+                    const adPrice = typeof adicion === "object" ? (Number(adicion.precio || 0) * (Number(adicion.cantidad) || 1)) : 0;
                     return (
                       <span
-                        key={`${adicion.idAdicion || adicion.id || i}-${i}`}
+                        key={`${typeof adicion === 'object' ? (adicion.idAdicion || adicion.id || i) : i}-${i}`}
                         className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
                       >
-                        <span>+{adQty}{adicion.nombre}</span>
+                        <span>+{adQty}{adName}</span>
                         {adPrice > 0 && (
                           <span className="opacity-75">(${adPrice.toLocaleString("es-CO")})</span>
                         )}
