@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2, CalendarClock } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
   { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos" },
@@ -9,6 +10,7 @@ const TIPO_EVENTO_OPTIONS = [
 ];
 
 export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
+  const { success, error: notifyError } = useNotifications();
   const [tipoEvento, setTipoEvento] = useState("Añadir Insumos");
   const [isTemporal, setIsTemporal] = useState(false);
   const [nombreEvento, setNombreEvento] = useState("");
@@ -24,9 +26,16 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   const [showInsumoDropdown, setShowInsumoDropdown] = useState(false);
   const [insumosSeleccionados, setInsumosSeleccionados] = useState([]);
 
-  // States for Promo/Desc
+  // States for Promo/Desc (Single product)
   const [nuevoPrecio, setNuevoPrecio] = useState("");
   const [descuento, setDescuento] = useState("");
+  
+  // States for Global Events (Multiple products)
+  const [productoSearch, setProductoSearch] = useState("");
+  const [productosBD, setProductosBD] = useState([]);
+  const [filteredProductos, setFilteredProductos] = useState([]);
+  const [showProductoDropdown, setShowProductoDropdown] = useState(false);
+  const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   
   const [saving, setSaving] = useState(false);
 
@@ -48,10 +57,16 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       setNuevoPrecio("");
       setDescuento("");
 
-      // Fetch insumos
+      // Fetch insumos and productos
       eventosService.getInsumos().then((data) => {
         setInsumosBD(data || []);
       }).catch(() => setInsumosBD([]));
+
+      if (!producto) {
+        eventosService.getProductos().then((data) => {
+          setProductosBD(data || []);
+        }).catch(() => setProductosBD([]));
+      }
     }
   }, [isOpen]);
 
@@ -72,6 +87,49 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       setShowInsumoDropdown(results.length > 0);
     }
   }, [insumoSearch, insumosBD, insumosSeleccionados]);
+
+  useEffect(() => {
+    if (!producto) {
+      if (productoSearch.trim() === "") {
+        setFilteredProductos([]);
+        setShowProductoDropdown(false);
+      } else {
+        const term = productoSearch.toLowerCase();
+        const results = productosBD.filter(
+          (p) => {
+            const isMatch = p.nombre?.toLowerCase().includes(term);
+            const isNotAdded = !productosSeleccionados.some(sel => String(sel.id) === String(p.id || p.idProducto));
+            return isMatch && isNotAdded;
+          }
+        );
+        setFilteredProductos(results.slice(0, 6));
+        setShowProductoDropdown(results.length > 0);
+      }
+    }
+  }, [productoSearch, productosBD, productosSeleccionados, producto]);
+
+  const handleSelectProducto = (prod) => {
+    setProductosSeleccionados(prev => [
+      ...prev,
+      {
+        id: prod.id || prod.idProducto,
+        nombre: prod.nombre,
+        precioBase: prod.precio,
+        nuevoPrecio: "",
+        descuento: ""
+      }
+    ]);
+    setProductoSearch("");
+    setShowProductoDropdown(false);
+  };
+
+  const quitarProducto = (idx) => {
+    setProductosSeleccionados(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateProducto = (idx, field, value) => {
+    setProductosSeleccionados(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
 
   const handleSelectInsumo = (insumo) => {
     setInsumosSeleccionados(prev => [
@@ -96,7 +154,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   };
 
   const handleSubmit = async () => {
-    if (!nombreEvento.trim()) return;
+    if (!nombreEvento.trim()) {
+      notifyError("Validación Fallida", "El Título del Evento es obligatorio.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -116,6 +177,16 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       if (tipoEvento === "Añadir Insumos") {
         payload.accion = accion;
         payload.insumos = insumosSeleccionados;
+        if (nuevoPrecio) {
+          payload.nuevoPrecio = Number(nuevoPrecio);
+        }
+      } else if (!producto) {
+        // Global event: mapped to array of products
+        payload.productos = productosSeleccionados.map(p => ({
+          idProducto: p.id,
+          nuevoPrecio: tipoEvento === "Promoción Precio" ? Number(p.nuevoPrecio) : null,
+          descuento: tipoEvento === "Descuento" ? Number(p.descuento) : null
+        }));
       } else if (tipoEvento === "Descuento") {
         payload.descuento = Number(descuento);
       } else if (tipoEvento === "Promoción Precio") {
@@ -123,10 +194,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       }
 
       await eventosService.createEvento(payload);
+      success("¡Evento Creado!", "El evento se ha registrado correctamente.");
       if (onCreated) onCreated();
       onClose();
     } catch (err) {
       console.error("Error al crear evento:", err);
+      notifyError("Error al crear evento", err.response?.data?.message || err.message || "Ocurrió un error inesperado.");
     } finally {
       setSaving(false);
     }
@@ -142,8 +215,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           <div className="flex items-center gap-4">
             <div className="text-4xl">🎉</div>
             <div>
-              <h2 className="text-xl font-bold text-white">Crear Evento</h2>
-              <p className="text-purple-200 text-sm">{producto?.nombre || "Producto"}</p>
+              <h2 className="text-xl font-bold text-white">{producto ? "Crear Evento" : "Crear Evento Global"}</h2>
+              <p className="text-purple-200 text-sm">{producto?.nombre || "Múltiples productos"}</p>
             </div>
           </div>
           <button
@@ -376,46 +449,115 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           )}
 
           {/* Sección de Precio / Descuento */}
-          {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio") && (
+          {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio" || tipoEvento === "Añadir Insumos") && (
             <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                {tipoEvento === "Descuento" ? "Detalles del Descuento" : "Detalles de la Promoción"}
+                {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
-                  <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                    ${producto?.precio?.toLocaleString() || "0"}
+              {producto ? (
+                // Single product event
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
+                    <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
+                      ${producto?.precio?.toLocaleString() || "0"}
+                    </div>
                   </div>
+                  
+                  {tipoEvento === "Descuento" ? (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={descuento}
+                        onChange={(e) => setDescuento(e.target.value)}
+                        placeholder="Ej: 10 (%) o 5000 ($)"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        {tipoEvento === "Añadir Insumos" ? "Precio Final con Adiciones" : "Nuevo Precio Promocional"}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={nuevoPrecio}
+                        onChange={(e) => setNuevoPrecio(e.target.value)}
+                        placeholder="Ej: 15000"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                      />
+                    </div>
+                  )}
                 </div>
-                
-                {tipoEvento === "Descuento" ? (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={descuento}
-                      onChange={(e) => setDescuento(e.target.value)}
-                      placeholder="Ej: 10 (%) o 5000 ($)"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                    />
+              ) : (
+                // Multiple product event
+                <div className="space-y-4">
+                  <div className="relative z-10">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={productoSearch}
+                        onChange={(e) => setProductoSearch(e.target.value)}
+                        onFocus={() => {
+                          if (filteredProductos.length > 0) setShowProductoDropdown(true);
+                        }}
+                        placeholder="Buscar productos para agregar al evento..."
+                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    {showProductoDropdown && (
+                      <div className="absolute top-full mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        {filteredProductos.map((prod) => (
+                          <button
+                            key={prod.id || prod.idProducto}
+                            type="button"
+                            onClick={() => handleSelectProducto(prod)}
+                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
+                          >
+                            <span className="font-medium">{prod.nombre}</span>
+                            <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">${prod.precio}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Nuevo Precio Promocional</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={nuevoPrecio}
-                      onChange={(e) => setNuevoPrecio(e.target.value)}
-                      placeholder="Ej: 15000"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                    />
-                  </div>
-                )}
-              </div>
+                  
+                  {productosSeleccionados.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {productosSeleccionados.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.nombre}</p>
+                            <p className="text-xs text-gray-400">Precio base: ${item.precioBase}</p>
+                          </div>
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder={tipoEvento === "Descuento" ? "Desc" : "Precio"}
+                              value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
+                              onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
+                              className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => quitarProducto(idx)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

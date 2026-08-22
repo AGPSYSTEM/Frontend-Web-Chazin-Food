@@ -186,6 +186,25 @@ export function PosCheckoutModal({
 
       {/* Modal Container */}
       <div className="relative z-10 w-full max-w-lg bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Loading Overlay */}
+        {loading && (
+          <div className="absolute inset-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-[#f05454]/30 animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
+              <div className="relative bg-white dark:bg-gray-800 p-5 rounded-full shadow-2xl border-2 border-[#f05454]/10">
+                <Flame className="w-12 h-12 text-[#f05454] animate-bounce" />
+              </div>
+            </div>
+            <h3 className="mt-8 text-xl font-black text-gray-900 dark:text-gray-100">
+              ¡Cocinando tu pedido! <span className="animate-pulse">🔥</span>
+            </h3>
+            <p className="text-sm text-gray-500 font-medium mt-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" /> Enviando magia a la cocina...
+            </p>
+          </div>
+        )}
+
         {/* Header con degradado Coral */}
         <div className="relative bg-gradient-to-r from-[#d84040] via-[#e05454] to-[#f05454] text-white p-5 sm:p-6 shrink-0">
           <button

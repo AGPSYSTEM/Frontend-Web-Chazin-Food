@@ -164,6 +164,11 @@ export function Dashboard() {
               {Number(stats.pedidosTotal || 0).toLocaleString("es-CO")}
             </p>
             <StatVariation value={stats.pedidosVariacion} />
+            {stats.frecuenciaVentas !== undefined && (
+              <p className="text-blue-600 dark:text-blue-400 text-xs mt-1.5 flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-900/20 w-fit px-2 py-0.5 rounded">
+                ⚡ {stats.frecuenciaVentas} pedidos / día
+              </p>
+            )}
           </div>
         </div>
 

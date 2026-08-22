@@ -311,6 +311,8 @@ export function CocineroDashboard() {
 
   // Interactive Checklist of prepared dishes per order { "orderId-itemIdx": boolean }
   const [checkedItems, setCheckedItems] = useState({});
+  // Collapsible tickets state (defaults to collapsed)
+  const [expandedTickets, setExpandedTickets] = useState({});
 
   // Receta / Ficha Técnica Modal
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
@@ -855,10 +857,15 @@ export function CocineroDashboard() {
                 badgeLabel = "En Mesa";
               }
 
+              const isExpanded = expandedTickets[orderId];
+              const toggleCollapse = () => setExpandedTickets(prev => ({...prev, [orderId]: !prev[orderId]}));
+
               return (
                 <div
                   key={orderId}
-                  className={`flex flex-col h-[540px] rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all overflow-hidden relative ${
+                  className={`flex flex-col rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative ${
+                    isExpanded ? "h-[540px] overflow-hidden" : "h-auto"
+                  } ${
                     isListo
                       ? "border-green-200 dark:border-green-900/60"
                       : isPreparando
@@ -878,7 +885,11 @@ export function CocineroDashboard() {
                   />
 
                   {/* ── Card Header ── */}
-                  <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 shrink-0 space-y-2">
+                  <div 
+                    onClick={toggleCollapse}
+                    className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 shrink-0 space-y-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title={isExpanded ? "Colapsar comanda" : "Expandir comanda"}
+                  >
                     {/* Row 1: Code, Type Badge & Status */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -906,6 +917,11 @@ export function CocineroDashboard() {
                           )}
                           <span>{badgeLabel}</span>
                         </span>
+                        
+                        {/* Toggle Icon */}
+                        <div className="ml-auto text-gray-400">
+                          <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : "rotate-0"}`} />
+                        </div>
                       </div>
 
                       {/* State Badge */}
@@ -983,6 +999,7 @@ export function CocineroDashboard() {
                   </div>
 
                   {/* ── Card Body (Scrollable Items List) ── */}
+                  {isExpanded && (
                   <div className="flex-1 overflow-y-auto p-4 space-y-2.5 pr-2">
                     {items.length === 0 ? (
                       <p className="text-xs text-gray-400 italic text-center py-6">Sin platillos desglosados en orden</p>
@@ -1126,6 +1143,7 @@ export function CocineroDashboard() {
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* ── Card Footer (Pinned & Actionable) ── */}
                   <div className="p-3.5 bg-gray-50/80 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 shrink-0">

@@ -7,6 +7,7 @@ export function useDashboardStats() {
     ventasVariacion: 0,
     pedidosTotal: 0,
     pedidosVariacion: 0,
+    frecuenciaVentas: 0,
     clientesActivos: 0,
     clientesVariacion: 0,
     productosTotal: 0,

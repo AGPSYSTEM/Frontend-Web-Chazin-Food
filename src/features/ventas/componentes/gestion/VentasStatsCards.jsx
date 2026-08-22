@@ -14,6 +14,9 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
 
   const frecuenciaVal = stats ? stats.frecuenciaCompra : (pedidosCount > 0 ? (pedidosCount / (new Set(ventas.map(v => v.idCliente || v.clienteNombre || v.cliente).filter(Boolean)).size || 1)).toFixed(1) : "0.0");
 
+  const uniqueDays = stats ? (stats.uniqueDays || 1) : (new Set(ventas.map(v => new Date(v.fechaRegistro || v.fechaVenta || v.createdAt || Date.now()).toISOString().split('T')[0])).size || 1);
+  const frecuenciaDiariaVal = stats ? stats.frecuenciaDiaria : (pedidosCount > 0 ? (pedidosCount / uniqueDays).toFixed(1) : "0.0");
+
   const tasaDescuentoVal = stats ? stats.tasaDescuento : ((totalVentasSum + descOtorgadosSum) > 0
     ? ((descOtorgadosSum / (totalVentasSum + descOtorgadosSum)) * 100).toFixed(1)
     : "0.0");
@@ -58,18 +61,26 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
 
       {/* 3. Frecuencia de Compra */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col justify-between space-y-4">
-        <div className="w-11 h-11 rounded-2xl bg-blue-100/70 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-          <Users className="w-5 h-5 stroke-[2.5]" />
+        <div className="flex items-center justify-between">
+          <div className="w-11 h-11 rounded-2xl bg-blue-100/70 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5 stroke-[2.5]" />
+          </div>
+          <div className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-black shadow-xs">
+            {frecuenciaDiariaVal} ped/día
+          </div>
         </div>
         <div>
-          <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight">
-            {frecuenciaVal} ped/cli
-          </span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight">
+              {frecuenciaVal}
+            </span>
+            <span className="text-sm font-bold text-gray-500">ped/cli</span>
+          </div>
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 block">
             Frecuencia de Compra
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 font-medium block mt-0.5">
-            pedidos por cliente
+            pedidos promedio por cliente
           </span>
         </div>
       </div>
