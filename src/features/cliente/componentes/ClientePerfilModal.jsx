@@ -87,12 +87,39 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
   const comprasFaltantes = fidelidad.comprasFaltantes !== undefined ? fidelidad.comprasFaltantes : (3 - comprasCiclo);
   const siguienteNivel = fidelidad.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
   const enGracia = Boolean(fidelidad.enGracia);
-  const diasRestantes = fidelidad.diasRestantes !== undefined ? fidelidad.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);
-  const diasGraciaRestantes = fidelidad.diasGraciaRestantes || 0;
-  const fechaVencimientoObj = fidelidad.fechaVencimientoNivel ? new Date(fidelidad.fechaVencimientoNivel) : null;
+  const diasRestantesRaw = fidelidad.diasRestantes !== undefined ? fidelidad.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);
+  const diasGraciaRestantesRaw = fidelidad.diasGraciaRestantes || 0;
+  const fechaVencimientoObj = fidelidad.fechaVencimientoNivel || fidelidad.vence ? new Date(fidelidad.fechaVencimientoNivel || fidelidad.vence) : null;
   const fechaVenceFormatted = fechaVencimientoObj && !isNaN(fechaVencimientoObj.getTime())
     ? fechaVencimientoObj.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
     : null;
+
+  // Real-time client-side calculation of remaining days to ensure countdown is always 100% active
+  const now = new Date();
+  let diasRestantes = diasRestantesRaw;
+  let enGraciaActivo = enGracia;
+  let diasGraciaRestantes = diasGraciaRestantesRaw;
+
+  if (tipoFidelidad !== "Nuevo" && fechaVencimientoObj && !isNaN(fechaVencimientoObj.getTime())) {
+    const diffMs = fechaVencimientoObj.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 0) {
+      diasRestantes = diffDays;
+      enGraciaActivo = false;
+      diasGraciaRestantes = 0;
+    } else {
+      const diasExpirado = Math.abs(diffDays);
+      const limiteGracia = tipoFidelidad === "VIP" ? 15 : (tipoFidelidad === "Frecuente" ? 10 : 0);
+      if (limiteGracia > 0 && diasExpirado <= limiteGracia) {
+        enGraciaActivo = true;
+        diasGraciaRestantes = Math.max(1, limiteGracia - diasExpirado);
+        diasRestantes = 0;
+      } else {
+        diasRestantes = 0;
+      }
+    }
+  }
 
   // Format clean full name avoiding word duplication
   const formatFullName = (u) => {
@@ -215,19 +242,6 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
 
         {/* Tabs */}
         <div className="flex border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <button
-            onClick={() => setTab("fidelidad")}
-            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${tab === "fidelidad" ? "text-[#f05454] border-b-2 border-[#f05454]" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
-          >
-            <Crown className="w-3.5 h-3.5" /> Fidelidad
-          </button>
-          <button
-            onClick={() => setTab("editar")}
-            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${tab === "editar" ? "text-[#f05454] border-b-2 border-[#f05454]" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
-          >
-            <Edit2 className="w-3.5 h-3.5" /> Editar Datos
-          </button>
-        </div>
 
         {/* Body Content */}
         <div className="overflow-y-auto flex-1">

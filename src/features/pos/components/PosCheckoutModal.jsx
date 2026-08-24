@@ -13,7 +13,6 @@ import {
   Search,
   Sparkles,
   UserCheck,
-  UserPlus,
   RotateCcw,
   Check,
   Flame,
@@ -23,7 +22,7 @@ import {
 } from "lucide-react";
 import { clientesService } from "@/features/ventas/servicios/clientesService";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
-import { ClienteModal } from "@/features/ventas/componentes/clientes/ClienteModal";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 
 export function PosCheckoutModal({
   isOpen,
@@ -35,6 +34,7 @@ export function PosCheckoutModal({
   onConfirm,
   loading = false
 }) {
+  const { user } = useAuth();
   const safeCart = Array.isArray(cart) ? cart : [];
   const [clientesList, setClientesList] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState(null);
@@ -42,10 +42,11 @@ export function PosCheckoutModal({
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [clientFilter, setClientFilter] = useState("all"); // "all", "fidelity", "with_account"
-  
-  // Full ClienteModal state
-  const [isClienteModalOpen, setIsClienteModalOpen] = useState(false);
-  const [registeringClient, setRegisteringClient] = useState(false);
+
+  const responsableNombre = user
+    ? `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.nombre || "Vendedor"
+    : "Vendedor Mostrador";
+  const responsableRol = user?.rol || user?.rolInfo?.nombre || (user?.idRol === 1 ? "Administrador" : "Vendedor");
 
   const [metodoPago, setMetodoPago] = useState("efectivo"); // "efectivo", "tarjeta", "transferencia"
 
@@ -111,7 +112,6 @@ export function PosCheckoutModal({
     setSelectedCliente(c);
     setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
     setIsSearchingClient(false);
-    setIsClienteModalOpen(false);
   };
 
   const handleClearSelectedClient = () => {
@@ -119,41 +119,39 @@ export function PosCheckoutModal({
     setClienteNombre("Cliente Mostrador");
   };
 
-  const handleSaveNewCliente = async (form) => {
-    try {
-      setRegisteringClient(true);
-      const res = await clientesService.createCliente(form);
-      const newClient = res?.data || res;
-      
-      // Update local clients list
-      setClientesList(prev => [newClient, ...prev]);
-      handleSelectClient(newClient);
-      setIsClienteModalOpen(false);
-    } catch (err) {
-      alert("Error al registrar cliente: " + (err.message || "Intenta nuevamente."));
-    } finally {
-      setRegisteringClient(false);
-    }
-  };
-
   const handleConfirm = (e) => {
     e.preventDefault();
 
-    // Validaciones
-    if (metodoPago === "tarjeta" && !tarjetaNumero.trim()) {
-      alert("Por favor ingresa los datos de la tarjeta.");
-      return;
-    }
-    if (metodoPago === "transferencia" && !transferReferencia.trim()) {
-      alert("Por favor ingresa el número de referencia de la transferencia.");
-      return;
+    // Validaciones estrictas de Pago Obligatorio (primero el pago antes de entregar el producto)
+    if (metodoPago === "efectivo") {
+      if (!efectivoPaga || Number(efectivoPaga) <= 0) {
+        alert(`El pago es obligatorio. Debes ingresar el monto recibido en efectivo (mínimo $${finalTotal.toLocaleString("es-CO")}).`);
+        return;
+      }
+      if (Number(efectivoPaga) < finalTotal) {
+        alert(`Monto insuficiente. El cliente debe pagar mínimo el total de la orden ($${finalTotal.toLocaleString("es-CO")}).`);
+        return;
+      }
+    } else if (metodoPago === "tarjeta") {
+      const cleanCard = tarjetaNumero.replace(/\s+/g, "");
+      if (!cleanCard || cleanCard.length < 15) {
+        alert("Por favor ingresa los 16 dígitos de la tarjeta para registrar el pago.");
+        return;
+      }
+    } else if (metodoPago === "transferencia") {
+      if (!transferReferencia.trim()) {
+        alert("Por favor ingresa el número de referencia del comprobante de transferencia.");
+        return;
+      }
     }
 
     const payload = {
+      idUsuario: user?.idUsuario || user?.id || null,
       idCliente: selectedCliente ? (selectedCliente.id || selectedCliente.idCliente) : null,
       tipoEntrega: "Recoger",
       direccion: "Recoger en Local",
       clienteNombre: clienteNombre.trim() || "Cliente Mostrador",
+      responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
       descuentoAplicado: calculatedDescuento,
       descuentoPorcentaje: discountPercent,
@@ -250,26 +248,46 @@ export function PosCheckoutModal({
             </div>
           </div>
 
-          {/* 2. Tipo de Entrega (Únicamente Recoger en Local) */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
-              <Store className="w-4 h-4 text-[#f05454]" />
-              <span>Tipo de Entrega</span>
-            </h4>
-
-            <div className="p-3.5 rounded-2xl border border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/40 text-[#f05454]">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-[#f05454]">Recoger en Local</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    Pasas a recogerlo / Entrega física en mostrador
-                  </p>
+          {/* 2. Responsable (Vendedor) y Tipo de Entrega */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Responsable de la Venta (Usuario autenticado) */}
+            <div className="p-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/50 shadow-xs flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 shrink-0">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-400 block">
+                  Responsable
+                </span>
+                <p className="font-bold text-xs text-gray-900 dark:text-gray-100 truncate leading-tight">
+                  {responsableNombre}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[9.5px] font-bold rounded-md shrink-0">
+                    {responsableRol}
+                  </span>
+                  <span className="text-[10px] text-gray-400 truncate">
+                    • En turno
+                  </span>
                 </div>
               </div>
-              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black">
+            </div>
+
+            {/* Tipo de Entrega (Mostrador / Local) */}
+            <div className="p-3.5 rounded-2xl border border-[#f05454]/40 bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/40 text-[#f05454] shrink-0">
+                  <Store className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#f05454]">
+                    Entrega
+                  </span>
+                  <p className="font-bold text-xs text-[#f05454] truncate">Recoger en Local</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Mostrador físico</p>
+                </div>
+              </div>
+              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0">
                 ✓
               </span>
             </div>
@@ -374,19 +392,8 @@ export function PosCheckoutModal({
                 {/* Lista de Resultados */}
                 <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                   {filteredClientes.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400 space-y-2">
+                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
                       <p>No se encontraron clientes coincidentes.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSearchingClient(false);
-                          setIsClienteModalOpen(true);
-                        }}
-                        className="px-3 py-1.5 bg-[#f05454] text-white text-xs font-bold rounded-xl hover:bg-[#e04545] transition cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>+ Registrar este Cliente</span>
-                      </button>
                     </div>
                   ) : (
                     filteredClientes.map((c) => {
@@ -494,7 +501,7 @@ export function PosCheckoutModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
-                    Nombre en Comanda / Factura:
+                    Nombre del Cliente en Factura / Comanda:
                   </label>
                   <input
                     type="text"
@@ -505,47 +512,46 @@ export function PosCheckoutModal({
                 </div>
               </div>
             ) : (
-              /* CASO D: Modo Mostrador por Defecto */
+              /* CASO D: Modo Mostrador / Venta Rápida (Cliente sin Cuenta) */
               <div className="space-y-2.5">
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                      <span>🌱</span>
-                      <span>Venta Rápida (Cliente Mostrador)</span>
-                    </span>
+                <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🌱</span>
+                      <div>
+                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
+                          Cliente Mostrador (Venta Rápida / Sin Cuenta)
+                        </span>
+                        <span className="text-[10px] text-gray-400">
+                          Para clientes presenciales sin registro de fidelidad
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setIsSearchingClient(true)}
-                      className="px-3 py-1 bg-[#f05454] hover:bg-[#e04545] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-1.5 bg-[#f05454] hover:bg-[#e04545] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
-                      <Search className="w-3 h-3" />
+                      <Search className="w-3.5 h-3.5" />
                       <span>Buscar Cliente con Cuenta</span>
                     </button>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1">
-                      Nombre para la comanda o recibo:
+                    <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
+                      Nombre del Cliente (Mostrador / Mesa / Comanda):
                     </label>
                     <input
                       type="text"
                       value={clienteNombre}
                       onChange={(e) => setClienteNombre(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
-                      placeholder="Ej. Cliente Mostrador / Mesa 3"
+                      className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                      placeholder="Ej. Juan Pérez / Carlos / Mesa 3"
                     />
+                    <p className="text-[10.5px] text-gray-400 mt-1">
+                      Nombre que saldrá en la comanda de preparación y recibo.
+                    </p>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 px-1">
-                  <span>¿El cliente quiere acumular racha o descuento?</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsClienteModalOpen(true)}
-                    className="text-[#f05454] font-bold hover:underline cursor-pointer"
-                  >
-                    + Registrar nuevo cliente
-                  </button>
                 </div>
               </div>
             )}
@@ -627,24 +633,53 @@ export function PosCheckoutModal({
 
             {/* Sub-formulario Efectivo */}
             {metodoPago === "efectivo" && (
-              <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-3.5 space-y-2">
-                <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
-                  ¿Con cuánto vas a pagar? <span className="font-normal text-gray-500">(opcional)</span>
-                </label>
+              <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
+                    Monto en efectivo recibido por el cliente <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-black text-[#16A34A] dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
+                    Pago requerido
+                  </span>
+                </div>
+
                 <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#86EFAC] dark:border-emerald-700 rounded-xl px-3.5 py-2 shadow-2xs">
                   <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
                   <input
                     type="number"
-                    min="0"
+                    min={finalTotal}
+                    required
                     value={efectivoPaga}
                     onChange={(e) => setEfectivoPaga(e.target.value)}
-                    placeholder="Ej: 50000"
+                    placeholder={`Mínimo: $${finalTotal.toLocaleString("es-CO")}`}
                     className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
                   />
                 </div>
-                {montoPagaNum >= total && (
+
+                {/* Botones de montos rápidos */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setEfectivoPaga(String(finalTotal))}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                  >
+                    Pago Exacto (${finalTotal.toLocaleString("es-CO")})
+                  </button>
+                  {[20000, 50000, 100000].filter(v => v > finalTotal).map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setEfectivoPaga(String(amt))}
+                      className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                    >
+                      ${amt.toLocaleString("es-CO")}
+                    </button>
+                  ))}
+                </div>
+
+                {montoPagaNum >= finalTotal && (
                   <div className="flex items-center justify-between text-xs font-black text-[#16A34A] dark:text-emerald-400 bg-white/80 dark:bg-gray-800/80 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    <span>💰 Cambio / Vueltos:</span>
+                    <span>💰 Cambio / Vueltos al cliente:</span>
                     <span>${vueltoEfectivo.toLocaleString("es-CO")}</span>
                   </div>
                 )}
@@ -838,14 +873,6 @@ export function PosCheckoutModal({
           </div>
         </div>
       </div>
-
-      {/* Modal Completo de Gestión de Cliente (Reutilizado) */}
-      <ClienteModal
-        isOpen={isClienteModalOpen}
-        onClose={() => setIsClienteModalOpen(false)}
-        onSave={handleSaveNewCliente}
-        zIndex="z-[70]"
-      />
     </div>
   );
 }

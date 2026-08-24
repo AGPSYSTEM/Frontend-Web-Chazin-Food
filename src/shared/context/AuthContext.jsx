@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/shared/api/apiClient";
 
 export const AuthContext = createContext(undefined);
@@ -18,6 +18,33 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const saved = localStorage.getItem("chazin_user");
+      const token = saved ? JSON.parse(saved).token : null;
+      if (!token) return null;
+
+      const profileData = await apiClient.get("/usuarios/perfil");
+      if (profileData) {
+        setUser((prev) => {
+          const merged = { ...prev, ...profileData, token: prev?.token || token };
+          localStorage.setItem("chazin_user", JSON.stringify(merged));
+          return merged;
+        });
+        return profileData;
+      }
+    } catch (err) {
+      // Silently fail if unauthenticated or network error
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (user?.token || localStorage.getItem("chazin_user")) {
+      refreshUser();
+    }
+  }, [refreshUser]);
 
   const login = async (correo, contraseña) => {
     try {
@@ -80,6 +107,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
       updateProfile,
+      refreshUser,
       isAuthenticated: !!user
     }}>
       {children}

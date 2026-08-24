@@ -176,7 +176,7 @@ function FichaTecnicaProductoCliente({ ficha, producto }) {
 }
 
 export function ClienteLanding() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const navigate = useNavigate();
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
@@ -616,28 +616,64 @@ export function ClienteLanding() {
   const comprasCiclo = fidelidadCliente.comprasCiclo !== undefined ? fidelidadCliente.comprasCiclo : (pedidosCount % 3);
   const comprasFaltantes = fidelidadCliente.comprasFaltantes !== undefined ? fidelidadCliente.comprasFaltantes : (3 - (comprasCiclo % 3));
   const siguienteNivel = fidelidadCliente.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
+
+  // Dynamic real-time calculation of remaining days in hero banner
+  const heroVenceObj = fidelidadCliente.fechaVencimientoNivel || fidelidadCliente.vence ? new Date(fidelidadCliente.fechaVencimientoNivel || fidelidadCliente.vence) : null;
+  let heroDiasRestantes = fidelidadCliente.diasRestantes !== undefined ? fidelidadCliente.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);
+  let heroEnGracia = Boolean(fidelidadCliente.enGracia);
+  let heroDiasGracia = fidelidadCliente.diasGraciaRestantes || 0;
+
+  if (tipoFidelidad !== "Nuevo" && heroVenceObj && !isNaN(heroVenceObj.getTime())) {
+    const diffMs = heroVenceObj.getTime() - Date.now();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays > 0) {
+      heroDiasRestantes = diffDays;
+      heroEnGracia = false;
+      heroDiasGracia = 0;
+    } else {
+      const diasExpirado = Math.abs(diffDays);
+      const limiteGracia = tipoFidelidad === "VIP" ? 15 : (tipoFidelidad === "Frecuente" ? 10 : 0);
+      if (limiteGracia > 0 && diasExpirado <= limiteGracia) {
+        heroEnGracia = true;
+        heroDiasGracia = Math.max(1, limiteGracia - diasExpirado);
+        heroDiasRestantes = 0;
+      } else {
+        heroDiasRestantes = 0;
+      }
+    }
+  }
+
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
   const vueltoEfectivo = Math.max(0, Number(checkoutEfectivoPaga || 0) - totalCheckout);
 
   const handleConfirmarPedido = async () => {
     if (checkoutTipoEntrega === "domicilio" && !checkoutDireccion.trim()) {
-      error("Dirección requerida", "Por favor ingresa la dirección de entrega");
+      error("Dirección requerida", "Por favor ingresa la dirección de entrega.");
       return;
     }
-    if (checkoutMetodoPago === "efectivo" && checkoutEfectivoPaga) {
-      if (Number(checkoutEfectivoPaga) < totalCheckout) {
-        error("Monto insuficiente", "El efectivo entregado es menor al total a pagar");
+
+    // Validación estricta de Pago Obligatorio (primero el pago antes de procesar el pedido)
+    if (checkoutMetodoPago === "efectivo") {
+      if (!checkoutEfectivoPaga || Number(checkoutEfectivoPaga) <= 0) {
+        error("Pago requerido", `Debes indicar el monto en efectivo con el que vas a pagar (debe ser igual o superior a $${totalCheckout.toLocaleString('es-CO')}).`);
         return;
       }
-    }
-    if (checkoutMetodoPago === "transferencia" && !checkoutTransferReferencia.trim()) {
-      error("Referencia requerida", "Ingresa el número de referencia de la transferencia");
-      return;
-    }
-    if (checkoutMetodoPago === "tarjeta" && !checkoutTarjetaNumero.trim()) {
-      error("Tarjeta requerida", "Ingresa el número de tarjeta");
-      return;
+      if (Number(checkoutEfectivoPaga) < totalCheckout) {
+        error("Monto insuficiente", `El efectivo entregado ($${Number(checkoutEfectivoPaga).toLocaleString('es-CO')}) es menor al total a pagar ($${totalCheckout.toLocaleString('es-CO')}).`);
+        return;
+      }
+    } else if (checkoutMetodoPago === "transferencia") {
+      if (!checkoutTransferReferencia.trim()) {
+        error("Comprobante requerido", "Debes ingresar el número de referencia del comprobante de transferencia para verificar el pago.");
+        return;
+      }
+    } else if (checkoutMetodoPago === "tarjeta") {
+      const cleanCard = checkoutTarjetaNumero.replace(/\s+/g, '');
+      if (!cleanCard || cleanCard.length < 15) {
+        error("Tarjeta requerida", "Ingresa los 16 dígitos de tu tarjeta para procesar el pago.");
+        return;
+      }
     }
 
     const confirmed = await confirmAction(
@@ -833,7 +869,10 @@ export function ClienteLanding() {
               {isAuthenticated ? (
                 <>
                   <button
-                    onClick={() => setShowPerfil(true)}
+                    onClick={() => {
+                      refreshUser?.();
+                      setShowPerfil(true);
+                    }}
                     className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                   >
                     <User className="w-5 h-5 text-[#f05454]" />
@@ -930,10 +969,10 @@ export function ClienteLanding() {
                       {discountPercent}% OFF activo
                     </span>
                   )}
-                  {fidelidadCliente.enGracia && (
+                  {heroEnGracia && (
                     <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      <span>Periodo de Gracia: {fidelidadCliente.diasGraciaRestantes || 0}d</span>
+                      <span>Periodo de Gracia: {heroDiasGracia}d</span>
                     </span>
                   )}
                 </div>
@@ -950,12 +989,12 @@ export function ClienteLanding() {
                         ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para renovar`
                         : `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para subir a ${siguienteNivel}`}
                   </span>
-                  {tipoFidelidad !== "Nuevo" && fidelidadCliente.diasRestantes !== undefined && !fidelidadCliente.enGracia && (
+                  {tipoFidelidad !== "Nuevo" && heroDiasRestantes !== null && !heroEnGracia && (
                     <>
                       <span className="text-gray-400">•</span>
                       <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium">
                         <Clock className="w-3 h-3 text-gray-400" />
-                        <span>Vigencia: {fidelidadCliente.diasRestantes}d restantes</span>
+                        <span>Vigencia: {heroDiasRestantes} {heroDiasRestantes === 1 ? 'día restante' : 'días restantes'}</span>
                       </span>
                     </>
                   )}
@@ -965,7 +1004,10 @@ export function ClienteLanding() {
 
             <button
               type="button"
-              onClick={() => setShowPerfil(true)}
+              onClick={() => {
+                refreshUser?.();
+                setShowPerfil(true);
+              }}
               className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -1696,23 +1738,53 @@ export function ClienteLanding() {
 
                 {/* Sub-formulario Efectivo */}
                 {checkoutMetodoPago === "efectivo" && (
-                  <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-4 space-y-2">
-                    <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
-                      ¿Con cuánto vas a pagar? <span className="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
-                    </label>
+                  <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
+                        ¿Con cuánto vas a pagar en efectivo? <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[10px] font-black text-[#16A34A] dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
+                        Pago requerido
+                      </span>
+                    </div>
+
                     <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#86EFAC] dark:border-emerald-700 rounded-2xl px-4 py-2.5 shadow-2xs">
                       <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
                       <input
                         type="number"
+                        min={totalCheckout}
+                        required
                         value={checkoutEfectivoPaga}
                         onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
-                        placeholder="Ej: 50000"
+                        placeholder={`Mínimo: $${totalCheckout.toLocaleString('es-CO')}`}
                         className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
                       />
                     </div>
+
+                    {/* Botones de montos rápidos */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setCheckoutEfectivoPaga(String(totalCheckout))}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                      >
+                        Pago Exacto (${totalCheckout.toLocaleString('es-CO')})
+                      </button>
+                      {[20000, 50000, 100000].filter(v => v > totalCheckout).map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setCheckoutEfectivoPaga(String(amt))}
+                          className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                        >
+                          ${amt.toLocaleString('es-CO')}
+                        </button>
+                      ))}
+                    </div>
+
                     {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
                       <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400 mt-1">
-                        💰 Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
+                        💰 Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
                       </p>
                     )}
                   </div>
