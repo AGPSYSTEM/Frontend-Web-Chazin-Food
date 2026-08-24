@@ -242,6 +242,19 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
 
         {/* Tabs */}
         <div className="flex border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <button
+            onClick={() => setTab("fidelidad")}
+            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${tab === "fidelidad" ? "text-[#f05454] border-b-2 border-[#f05454]" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+          >
+            <Crown className="w-3.5 h-3.5" /> Fidelidad
+          </button>
+          <button
+            onClick={() => setTab("editar")}
+            className={`flex-1 py-3 text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${tab === "editar" ? "text-[#f05454] border-b-2 border-[#f05454]" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+          >
+            <Edit2 className="w-3.5 h-3.5" /> Editar Datos
+          </button>
+        </div>
 
         {/* Body Content */}
         <div className="overflow-y-auto flex-1">
