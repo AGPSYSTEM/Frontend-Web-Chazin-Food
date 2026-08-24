@@ -837,7 +837,7 @@ export function CocineroDashboard() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5 items-start">
+          <div className="columns-1 md:columns-2 xl:columns-3 2xl:columns-4 gap-5 space-y-5 [column-fill:_balance]">
             {pedidosFiltrados.map((ped) => {
               const orderId = ped.id || ped.idVenta;
               const isListo = ped.estado === "Listo" || ped.estadoEntrega === "LISTO";
@@ -882,7 +882,7 @@ export function CocineroDashboard() {
               return (
                 <div
                   key={orderId}
-                  className={`flex flex-col rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative overflow-hidden h-auto ${
+                  className={`break-inside-avoid inline-block w-full rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative overflow-hidden mb-5 ${
                     isListo
                       ? "border-green-200 dark:border-green-900/60"
                       : isPreparando
