@@ -49,6 +49,25 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      const updated = await apiClient.put("/autenticacion/perfil", profileData);
+      if (updated) {
+        // Sanitize direccion if needed
+        if (updated.direccion && typeof updated.direccion === "string" && updated.direccion.trim().startsWith("{")) {
+          try { const d = JSON.parse(updated.direccion); updated.direccion = d.direccion || updated.direccion; } catch (e) { /* keep */ }
+        }
+        setUser(updated);
+        localStorage.setItem("chazin_user", JSON.stringify(updated));
+        return { success: true, user: updated };
+      }
+      return { success: false, message: "No se pudo actualizar el perfil" };
+    } catch (err) {
+      console.error("Error en updateProfile:", err);
+      return { success: false, message: err.message || "Error al actualizar el perfil" };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("chazin_user");
@@ -60,6 +79,7 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateProfile,
       isAuthenticated: !!user
     }}>
       {children}

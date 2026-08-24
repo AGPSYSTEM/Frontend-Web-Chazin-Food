@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { MiPerfilModal } from "@/shared/components/profile/MiPerfilModal";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import {
   Menu,
@@ -36,6 +37,7 @@ export function Layout() {
   const [produccionExpanded, setProduccionExpanded] = useState(false);
   const [ventasExpanded, setVentasExpanded] = useState(false);
   const [configExpanded, setConfigExpanded] = useState(false);
+  const [perfilOpen, setPerfilOpen] = useState(false);
   const [darkMode, toggleDarkMode] = useDarkMode();
   const location = useLocation();
   const navigate = useNavigate();
@@ -258,14 +260,13 @@ export function Layout() {
             {/* CUENTA */}
             <div className="mx-2 my-3 h-px bg-gray-100 dark:bg-gray-800" />
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
-            <Link
-              to="/configuracion/usuarios"
-              onClick={handleNavClick}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98]"
+            <button
+              onClick={() => { setPerfilOpen(true); }}
+              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-full text-left cursor-pointer"
             >
               <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
               <span className="font-medium">Perfil</span>
-            </Link>
+            </button>
             <button
               onClick={() => toggleDarkMode()}
               className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -451,14 +452,13 @@ export function Layout() {
           <div className="mx-2 my-3 h-px bg-gray-100 dark:bg-gray-800" />
           <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
 
-          <Link
-            to="/configuracion/usuarios"
-            onClick={handleNavClick}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98]"
+          <button
+            onClick={() => { setSidebarOpen(false); setPerfilOpen(true); }}
+            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-full text-left cursor-pointer"
           >
             <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
             <span className="font-medium">Perfil</span>
-          </Link>
+          </button>
 
           <button
             onClick={() => toggleDarkMode()}
@@ -513,6 +513,9 @@ export function Layout() {
 
         <Outlet />
       </main>
+
+      {/* Modal de perfil staff */}
+      <MiPerfilModal isOpen={perfilOpen} onClose={() => setPerfilOpen(false)} />
     </div>
   );
 }

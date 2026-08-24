@@ -7,10 +7,15 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
+import { ProductoResenasModal } from "../componentes/ProductoResenasModal";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import { StarRating } from "@/shared/components/ui/StarRating";
+import { apiClient } from "@/shared/api/apiClient";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import { categoriaProductosService } from "@/features/ventas/servicios/categoriaProductosService";
 import { productosService } from "@/features/ventas/servicios/productosService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { adicionesService } from "@/features/compras/servicios/adicionesService";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -75,57 +80,95 @@ const adicionesDisponibles = [
   { idAdicion: 8, nombre: "Sprite", precio: 3000, stockActual: 55, tipo: "Bebida", imagen: "🥤" }
 ];
 
-const fichasTecnicas = {
-  1: { ingredientes: ["Carne de res 150g", "Pan artesanal", "Lechuga", "Tomate", "Queso cheddar", "Salsas especiales"], peso: "350g", tamano: "Regular", calorias: "620 kcal" },
-  2: { ingredientes: ["Papas crinkle 200g", "Salchicha premium 100g", "Queso gratinado", "Salsas de la casa"], peso: "400g", tamano: "Grande", calorias: "720 kcal" },
-  3: { ingredientes: ["Salchicha premium", "Pan de perro", "Papa chip", "Queso", "Salsas especiales"], peso: "280g", tamano: "Regular", calorias: "540 kcal" },
-  4: { ingredientes: ["Pechuga de pollo broaster 200g", "Papas crinkle", "Ensalada fresca"], peso: "450g", tamano: "Grande", calorias: "680 kcal" },
-  5: { ingredientes: ["Gaseosa 350ml"], peso: "350ml", tamano: "Regular", calorias: "140 kcal" },
-  6: { ingredientes: ["2 Hamburguesas Especiales", "Salchipapa Grande", "Papas Crinkle", "4 Bebidas 350ml"], peso: "1.8kg", tamano: "Familiar", calorias: "2800 kcal" }
+const fichasTecnicasDefault = {
+  1: { ingredientes: ["Carne de res 150g", "Pan artesanal", "Lechuga", "Tomate", "Queso cheddar", "Salsas especiales"], peso: "350g", tamano: "Regular", calorias: "620 kcal", tiempoPreparacion: 15, rendimiento: "1 porción" },
+  2: { ingredientes: ["Papas crinkle 200g", "Salchicha premium 100g", "Queso gratinado", "Salsas de la casa"], peso: "400g", tamano: "Grande", calorias: "720 kcal", tiempoPreparacion: 12, rendimiento: "1 porción" },
+  3: { ingredientes: ["Salchicha premium", "Pan de perro", "Papa chip", "Queso", "Salsas especiales"], peso: "280g", tamano: "Regular", calorias: "540 kcal", tiempoPreparacion: 10, rendimiento: "1 porción" },
+  4: { ingredientes: ["Pechuga de pollo broaster 200g", "Papas crinkle", "Ensalada fresca"], peso: "450g", tamano: "Grande", calorias: "680 kcal", tiempoPreparacion: 20, rendimiento: "1 porción" },
+  5: { ingredientes: ["Gaseosa 350ml"], peso: "350ml", tamano: "Regular", calorias: "140 kcal", tiempoPreparacion: 2, rendimiento: "1 porción" },
+  6: { ingredientes: ["2 Hamburguesas Especiales", "Salchipapa Grande", "Papas Crinkle", "4 Bebidas 350ml"], peso: "1.8kg", tamano: "Familiar", calorias: "2800 kcal", tiempoPreparacion: 25, rendimiento: "Familiar" }
 };
 
-function FichaTecnicaProductoCliente({ ficha }) {
-  const [open, setOpen] = useState(false);
-  if (!ficha) return null;
+function FichaTecnicaProductoCliente({ ficha, producto }) {
+  const [open, setOpen] = useState(true);
+  if (!ficha && !producto) return null;
+
+  // Extract ingredients list from API format or default object
+  let listaIngredientes = [];
+  if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
+    listaIngredientes = ficha.detalles.map(d => {
+      const nombre = d.insumo?.nombre || d.nombreInsumo || `Insumo #${d.idInsumo}`;
+      const cant = d.cantidad ? ` (${d.cantidad} ${d.unidadMedida || d.insumo?.unidadMedida || 'und'})` : '';
+      return `${nombre}${cant}`;
+    });
+  } else if (ficha?.ingredientes && Array.isArray(ficha.ingredientes)) {
+    listaIngredientes = ficha.ingredientes;
+  } else if (producto?.descripcion) {
+    listaIngredientes = producto.descripcion.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  const tiempoPrep = ficha?.tiempoPreparacion || 15;
+  const rendimientoText = ficha?.rendimiento || ficha?.tamano || "1 porción";
+
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mt-3">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden mt-3 bg-gray-50/50 dark:bg-gray-800/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
       >
-        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 flex items-center gap-2">
           <FileText className="w-4 h-4 text-red-500" />
-          Ficha Técnica del Producto
+          Ingredientes y Preparación
         </span>
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
       </button>
+
       {open && (
         <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Peso</p>
-              <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{ficha.peso}</p>
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-red-50/80 dark:bg-red-950/30 rounded-xl p-2.5 text-center border border-red-100 dark:border-red-900/40">
+              <p className="text-[10px] uppercase font-bold text-red-600 dark:text-red-400 flex items-center justify-center gap-1">
+                <Clock className="w-3 h-3" /> Tiempo Estimado
+              </p>
+              <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-0.5">{tiempoPrep} minutos</p>
             </div>
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Tamaño</p>
-              <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{ficha.tamano}</p>
-            </div>
-            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Calorías</p>
-              <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{ficha.calorias}</p>
+            <div className="bg-amber-50/80 dark:bg-amber-950/30 rounded-xl p-2.5 text-center border border-amber-100 dark:border-amber-900/40">
+              <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">Rendimiento</p>
+              <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-0.5">{rendimientoText}</p>
             </div>
           </div>
+
+          {/* Ingredientes / Insumos */}
           <div>
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Ingredientes:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {ficha.ingredientes.map((ing, i) => (
-                <span key={i} className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded-full">
-                  {ing}
-                </span>
-              ))}
-            </div>
+            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-red-500" />
+              Insumos e Ingredientes ({listaIngredientes.length}):
+            </p>
+            {listaIngredientes.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {listaIngredientes.map((ing, i) => (
+                  <span
+                    key={i}
+                    className="text-xs font-medium bg-red-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-red-100 dark:border-gray-700 px-2.5 py-1 rounded-xl shadow-2xs"
+                  >
+                    🥗 {ing}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">Ingredientes frescos preparados al momento.</p>
+            )}
           </div>
+
+          {/* Procedimiento o especificaciones si existen */}
+          {ficha?.procedimiento && ficha.procedimiento !== "n/A" && (
+            <div className="pt-1">
+              <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">Preparación:</p>
+              <p className="text-xs text-gray-600 dark:text-gray-300 italic line-clamp-2">{ficha.procedimiento}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -167,20 +210,27 @@ export function ClienteLanding() {
   const [showPerfil, setShowPerfil] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [showResenasModal, setShowResenasModal] = useState(false);
+  const [productoParaResenas, setProductoParaResenas] = useState(null);
+  const [ratingsMap, setRatingsMap] = useState({});
 
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(false);
 
   const [categoriasList, setCategoriasList] = useState([]);
   const [productosList, setProductosList] = useState([]);
+  const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
+  const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
   // Fetch catalog categories & products dynamically from API
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
-        const [catsRes, prodsRes] = await Promise.allSettled([
+        const [catsRes, prodsRes, fichasRes, adicRes] = await Promise.allSettled([
           categoriaProductosService.getCategorias(),
-          productosService.getProductos()
+          productosService.getProductos(),
+          fichasTecnicasService.getFichas(),
+          adicionesService.getAdiciones()
         ]);
 
         if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value) && catsRes.value.length > 0) {
@@ -208,17 +258,45 @@ export function ClienteLanding() {
               id: p.id || p.idProducto,
               idProducto: p.idProducto || p.id,
               nombre: p.nombre,
-              precio: parseFloat(p.precio || 0),
-              categoria: p.idCategoriaProducto || p.categoria,
-              categoriaNombre: p.categoria,
-              imagen: p.imagen || "🍔",
-              descripcion: p.descripcion || "",
-              adiciones: p.adiciones || [],
+              precio: Number(p.precio) || 0,
+              categoria: p.categoria || (p.categoriaProducto ? p.categoriaProducto.nombre : ''),
+              idCategoriaProducto: p.idCategoriaProducto,
+              descripcion: p.descripcion,
+              imagen: p.imagen,
+              variantes: p.variantes || [],
               eventos: p.eventos || []
             }));
           setProductosList(apiProds);
+
+          // Fetch ratings
+          const pIds = apiProds.map(p => p.id || p.idProducto).join(',');
+          apiClient.get(`/resenas/ratings?ids=${pIds}`)
+            .then(res => { if (res) setRatingsMap(res); })
+            .catch(() => {});
         } else {
           setProductosList(productosDefault);
+        }
+
+        if (fichasRes.status === "fulfilled" && Array.isArray(fichasRes.value)) {
+          const fMap = { ...fichasTecnicasDefault };
+          fichasRes.value.forEach(f => {
+            if (f.idProducto) {
+              fMap[f.idProducto] = f;
+            }
+          });
+          setFichasMap(fMap);
+        }
+
+        if (adicRes.status === "fulfilled" && Array.isArray(adicRes.value) && adicRes.value.length > 0) {
+          const apiAdics = adicRes.value.map(a => ({
+            idAdicion: a.idAdicion || a.id,
+            nombre: a.nombre,
+            precio: parseFloat(a.precio || 0),
+            stockActual: a.stockActual || 50,
+            tipo: a.tipo || "Adición",
+            imagen: a.imagen || "🥫"
+          }));
+          setAdicionesList(apiAdics);
         }
       } catch (e) {
         console.warn("Error cargando catálogo dinámico en ClienteLanding:", e);
@@ -298,8 +376,6 @@ export function ClienteLanding() {
             estado: currentEstado
           });
         } else {
-          // The order was deleted from the backend DB / gestión de producción!
-          // Mark as Anulada so the client sees it as cancelled/anulado instead of disappearing
           localOrd.estado = 'Anulada';
           mergedPedidos.push({
             ...localOrd,
@@ -348,7 +424,6 @@ export function ClienteLanding() {
         }
       }
 
-      // Keep up to 50 items in local storage
       localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
       setPedidos(mergedPedidos);
     } catch (err) {
@@ -387,6 +462,7 @@ export function ClienteLanding() {
 
   const activeCategorias = categoriasList.length > 0 ? categoriasList : categoriasDefault;
   const activeProductos = productosList.length > 0 ? productosList : productosDefault;
+  const activeAdiciones = adicionesList.length > 0 ? adicionesList : adicionesDisponibles;
 
   const productosFiltrados = activeProductos.filter((p) => {
     const prodName = (p.nombre || "").toLowerCase();
@@ -411,15 +487,26 @@ export function ClienteLanding() {
     return matchCatId || matchCatName || matchSubcategory;
   });
 
-  const handleProductClick = (producto) => {
-    if (!isAuthenticated) {
-      setShowEmptyCartLoginModal(true);
-      return;
+  const handleProductClick = async (producto) => {
+    const prodId = producto.id || producto.idProducto;
+    let ficha = fichasMap[prodId] || fichasTecnicasDefault[prodId];
+    if (!ficha) {
+      try {
+        const fetchedFicha = await fichasTecnicasService.getFichaByProducto(prodId);
+        if (fetchedFicha) {
+          ficha = fetchedFicha;
+          setFichasMap(prev => ({ ...prev, [prodId]: fetchedFicha }));
+        }
+      } catch (e) {
+        console.warn("Ficha no encontrada para producto", prodId);
+      }
     }
+
     setProductoSeleccionado({
       producto,
       cantidad: 1,
-      adicionesSeleccionadas: []
+      adicionesSeleccionadas: [],
+      ficha: ficha || fichasTecnicasDefault[prodId] || null
     });
     setShowProductModal(true);
   };
@@ -469,28 +556,41 @@ export function ClienteLanding() {
 
   const handleAddToCart = () => {
     if (!productoSeleccionado) return;
+    const prod = productoSeleccionado.producto;
+    let basePrice = Number(prod.precio || 0);
+    const evtPrecio = prod.eventos?.find(e => e.tipoEvento === "Promoción Precio");
+    const evtDesc = prod.eventos?.find(e => e.tipoEvento === "Descuento");
+    if (evtPrecio) {
+      basePrice = Number(evtPrecio.nuevoPrecio);
+    } else if (evtDesc) {
+      basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
+    }
+
     addToCart({
-      id: productoSeleccionado.producto.id,
-      nombre: productoSeleccionado.producto.nombre,
-      precio: productoSeleccionado.producto.precio,
-      cantidad: productoSeleccionado.cantidad,
-      imagen: productoSeleccionado.producto.imagen,
-      adiciones: productoSeleccionado.adicionesSeleccionadas.map((a) => ({
-        ...a,
-        imagen: a.imagen || adicionesDisponibles.find((ad) => ad.idAdicion === a.idAdicion)?.imagen
+      id: prod.id || prod.idProducto,
+      nombre: prod.nombre,
+      precio: basePrice,
+      cantidad: productoSeleccionado.cantidad || 1,
+      imagen: prod.imagen,
+      adiciones: (productoSeleccionado.adicionesSeleccionadas || []).map((a) => ({
+        idAdicion: a.idAdicion,
+        nombre: a.nombre,
+        precio: Number(a.precio) || 0,
+        cantidad: Number(a.cantidad) || 1,
+        imagen: a.imagen || "🥫"
       }))
     });
     setShowProductModal(false);
     setProductoSeleccionado(null);
-    success("¡Producto agregado!", "El producto se agregó al carrito correctamente");
+    success("¡Producto agregado!", `${prod.nombre} se agregó a tu carrito`);
   };
 
   const handleAbrirCheckout = () => {
+    if (cart.length === 0) return;
     if (!isAuthenticated) {
-      navigate("/login");
+      setShowEmptyCartLoginModal(true);
       return;
     }
-    if (cart.length === 0) return;
     setCheckoutNombre(user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "");
     const rawDir = user?.direccion || "";
     let cleanDir = rawDir;
@@ -762,13 +862,7 @@ export function ClienteLanding() {
               )}
 
               <button
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    setShowEmptyCartLoginModal(true);
-                    return;
-                  }
-                  setShowCart(true);
-                }}
+                onClick={() => setShowCart(true)}
                 className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
@@ -974,18 +1068,66 @@ export function ClienteLanding() {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {productosFiltrados.map((producto) => (
-            <div key={producto.id} className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between">
+            <div
+              key={producto.id || producto.idProducto}
+              onClick={() => handleProductClick(producto)}
+              className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-1"
+            >
               <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative overflow-hidden">
                 {producto.imagen?.includes('/') || producto.imagen?.includes('.') ? (
-                  <img src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover" />
+                  <img src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                  <div className="text-7xl">{producto.imagen}</div>
+                  <div className="text-7xl group-hover:scale-110 transition-transform duration-300">{producto.imagen || "🍔"}</div>
                 )}
+                {/* Badge Ver detalles */}
+                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
+                  <FileText className="w-3 h-3" />
+                  <span>Ver detalles</span>
+                </div>
               </div>
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                 <div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100">{producto.nombre}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion}</p>
+                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-red-500 transition-colors">{producto.nombre}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion || "Platillo preparado con ingredientes frescos y de calidad."}</p>
+                  
+                  {/* Rating Stars Summary */}
+                  <div className="mt-2 flex items-center justify-between">
+                    {(() => {
+                      const pId = producto.id || producto.idProducto;
+                      const rInfo = ratingsMap[pId];
+                      if (rInfo && rInfo.total > 0) {
+                        return (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProductoParaResenas(producto);
+                              setShowResenasModal(true);
+                            }}
+                            className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
+                            title="Ver reseñas"
+                          >
+                            <StarRating value={rInfo.promedio} readonly size="xs" />
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
+                            <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProductoParaResenas(producto);
+                            setShowResenasModal(true);
+                          }}
+                          className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <Star className="w-3 h-3" />
+                          <span>Sin reseñas</span>
+                        </button>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-col">
@@ -1008,11 +1150,15 @@ export function ClienteLanding() {
                     )}
                   </div>
                   <button
-                    onClick={() => handleProductClick(producto)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleProductClick(producto);
+                    }}
                     className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
                   >
                     <ShoppingCart className="w-4 h-4" />
-                    Agregar al carrito
+                    Inspeccionar y Agregar
                   </button>
                 </div>
               </div>
@@ -1027,7 +1173,7 @@ export function ClienteLanding() {
           <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setShowProductModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1037,11 +1183,35 @@ export function ClienteLanding() {
                 {productoSeleccionado.producto.imagen?.includes('/') || productoSeleccionado.producto.imagen?.includes('.') ? (
                   <img src={productoSeleccionado.producto.imagen} alt={productoSeleccionado.producto.nombre} className="w-48 h-48 object-cover rounded-2xl shadow-md" />
                 ) : (
-                  <div className="text-6xl">{productoSeleccionado.producto.imagen}</div>
+                  <div className="text-6xl">{productoSeleccionado.producto.imagen || "🍔"}</div>
                 )}
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion || "Preparación fresca y artesanal."}</p>
+
+              {/* Reseñas Button in Modal */}
+              <div className="mt-2.5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductoParaResenas(productoSeleccionado.producto);
+                    setShowResenasModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer"
+                >
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>
+                    {(() => {
+                      const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
+                      const rInfo = ratingsMap[pId];
+                      return rInfo && rInfo.total > 0
+                        ? `${rInfo.promedio.toFixed(1)} ★ (${rInfo.total} reseñas)`
+                        : "Ver / Dejar Reseña";
+                    })()}
+                  </span>
+                </button>
+              </div>
+
               <div className="mt-2 flex flex-col items-center">
                 {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
                   <>
@@ -1063,7 +1233,7 @@ export function ClienteLanding() {
               </div>
             </div>
 
-            {/* Eventos */}
+            {/* Eventos si existen */}
             {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && (
               <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl p-3 border border-yellow-100 dark:border-yellow-900/30">
                 <p className="text-xs font-bold text-yellow-600 dark:text-yellow-500 mb-2 uppercase tracking-wider flex items-center gap-1"><Zap className="w-4 h-4"/> Eventos Activos</p>
@@ -1089,6 +1259,12 @@ export function ClienteLanding() {
               </div>
             )}
 
+            {/* Ficha técnica del producto (Ingredientes, tiempo, etc.) */}
+            <FichaTecnicaProductoCliente
+              ficha={productoSeleccionado.ficha || fichasMap[productoSeleccionado.producto.id] || fichasMap[productoSeleccionado.producto.idProducto] || fichasTecnicasDefault[productoSeleccionado.producto.id]}
+              producto={productoSeleccionado.producto}
+            />
+
             {/* Cantidad */}
             <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad:</span>
@@ -1096,7 +1272,7 @@ export function ClienteLanding() {
                 <button
                   type="button"
                   onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: Math.max(1, productoSeleccionado.cantidad - 1) })}
-                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200"
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 cursor-pointer active:scale-95"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
@@ -1104,7 +1280,7 @@ export function ClienteLanding() {
                 <button
                   type="button"
                   onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: productoSeleccionado.cantidad + 1 })}
-                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200"
+                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 cursor-pointer active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -1112,83 +1288,82 @@ export function ClienteLanding() {
             </div>
 
             {/* Adiciones */}
-            <div>
-              <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Adiciones disponibles:</p>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {adicionesDisponibles.map((ad) => {
-                  const selected = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === ad.idAdicion);
-                  return (
-                    <div
-                      key={ad.idAdicion}
-                      className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all ${
-                        selected
-                          ? "border-[#F05454] bg-red-50/60 dark:bg-red-950/30 shadow-xs"
-                          : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                      }`}
-                    >
+            {activeAdiciones.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Adiciones disponibles:</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {activeAdiciones.map((ad) => {
+                    const selected = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === ad.idAdicion);
+                    return (
                       <div
-                        onClick={() => handleAdicionToggle(ad)}
-                        className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
+                        key={ad.idAdicion}
+                        className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all ${
+                          selected
+                            ? "border-[#F05454] bg-red-50/60 dark:bg-red-950/30 shadow-xs"
+                            : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        }`}
                       >
-                        <span className="text-lg shrink-0">{ad.imagen}</span>
-                        <div className="min-w-0">
-                          <p className="text-gray-900 dark:text-gray-100 font-bold truncate">{ad.nombre}</p>
-                          <p className="text-[#F05454] dark:text-red-400 font-extrabold text-[11px]">
-                            +${Number(ad.precio).toLocaleString("es-CO")}
-                          </p>
+                        <div
+                          onClick={() => handleAdicionToggle(ad)}
+                          className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
+                        >
+                          <span className="text-lg shrink-0">{ad.imagen || "🥫"}</span>
+                          <div className="min-w-0">
+                            <p className="text-gray-900 dark:text-gray-100 font-bold truncate">{ad.nombre}</p>
+                            <p className="text-[#F05454] dark:text-red-400 font-extrabold text-[11px]">
+                              +${Number(ad.precio).toLocaleString("es-CO")}
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Stepper Sumar / Restar cuando está seleccionada */}
-                      {selected ? (
-                        <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-1 rounded-xl border border-red-200 dark:border-red-900/60 shadow-xs">
+                        {/* Stepper Sumar / Restar cuando está seleccionada */}
+                        {selected ? (
+                          <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-1 rounded-xl border border-red-200 dark:border-red-900/60 shadow-xs">
+                            <button
+                              type="button"
+                              onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, -1, e)}
+                              className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                              title="Restar cantidad"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="font-black text-gray-900 dark:text-gray-100 min-w-5 text-center text-xs">
+                              {selected.cantidad}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, 1, e)}
+                              className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                              title="Sumar cantidad"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, -1, e)}
-                            className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                            title="Restar cantidad"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="font-black text-gray-900 dark:text-gray-100 min-w-5 text-center text-xs">
-                            {selected.cantidad}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, 1, e)}
-                            className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                            title="Sumar cantidad"
+                            onClick={() => handleAdicionToggle(ad)}
+                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-[#F05454] hover:text-white text-gray-700 dark:text-gray-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                           >
                             <Plus className="w-3.5 h-3.5" />
+                            <span>Agregar</span>
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleAdicionToggle(ad)}
-                          className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-[#F05454] hover:text-white text-gray-700 dark:text-gray-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Agregar</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
-            {/* Ficha técnica collapse */}
-            <FichaTecnicaProductoCliente ficha={fichasTecnicas[productoSeleccionado.producto.id]} />
+            )}
 
             <button
               onClick={handleAddToCart}
-              className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShoppingCart className="w-4 h-4" />
               Agregar al carrito • ${(
                 ((() => {
-                  let basePrice = productoSeleccionado.producto.precio;
+                  let basePrice = Number(productoSeleccionado.producto.precio || 0);
                   const evtPrecio = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Promoción Precio");
                   const evtDesc = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Descuento");
                   if (evtPrecio) {
@@ -1198,8 +1373,8 @@ export function ClienteLanding() {
                   }
                   return basePrice;
                 })() +
-                  productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + a.precio * a.cantidad, 0)) *
-                productoSeleccionado.cantidad
+                  productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1), 0)) *
+                (productoSeleccionado.cantidad || 1)
               ).toLocaleString()}
             </button>
           </div>
@@ -1754,30 +1929,60 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* MODAL ALERTA INICIAR SESIÓN */}
+      {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR */}
       {showEmptyCartLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center space-y-4 border border-gray-100 dark:border-gray-800">
-            <div className="w-14 h-14 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto text-red-500">
-              <LogIn className="w-7 h-7" />
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-center space-y-4 border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-3xl flex items-center justify-center mx-auto text-red-500 shadow-inner">
+              <LogIn className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Inicia sesión para ordenar</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Para agregar productos a tu carrito y realizar pedidos necesitas una cuenta de cliente.</p>
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <h3 className="text-xl font-black text-gray-900 dark:text-gray-100">Inicia sesión para pagar</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+                Tus productos están seguros en el carrito. Para ingresar tu dirección de entrega y confirmar tu pedido, inicia sesión o crea una cuenta.
+              </p>
+            </div>
+
+            {/* Carrito preview simple */}
+            {cart.length > 0 && (
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-gray-300">
+                <span className="flex items-center gap-1.5">
+                  <ShoppingCart className="w-4 h-4 text-red-500" /> {getTotalItems()} productos en tu carrito
+                </span>
+                <span className="font-black text-red-600 dark:text-red-400">${clientSubtotal.toLocaleString('es-CO')}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2.5 pt-2">
               <button
-                onClick={() => setShowEmptyCartLoginModal(false)}
-                className="py-2.5 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-xl text-xs hover:bg-gray-200"
-              >
-                Cancelar
-              </button>
-              <button
+                type="button"
                 onClick={() => {
                   setShowEmptyCartLoginModal(false);
                   navigate("/login");
                 }}
-                className="py-2.5 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs shadow-md"
+                className="w-full py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                Iniciar Sesión
+                <LogIn className="w-4 h-4" />
+                <span>Iniciar Sesión</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmptyCartLoginModal(false);
+                  navigate("/login?tab=register");
+                }}
+                className="w-full py-3.5 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-sm transition-all cursor-pointer"
+              >
+                Crear Cuenta Nueva
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowEmptyCartLoginModal(false)}
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors py-1 cursor-pointer"
+              >
+                Seguir viendo el menú
               </button>
             </div>
           </div>
@@ -1790,6 +1995,22 @@ export function ClienteLanding() {
         onClose={() => setShowPerfil(false)}
         user={user}
         pedidos={pedidos}
+      />
+
+      {/* Modal Reseñas de Producto */}
+      <ProductoResenasModal
+        isOpen={showResenasModal}
+        onClose={() => {
+          setShowResenasModal(false);
+          // Refresh ratings
+          if (productosList.length > 0) {
+            const pIds = productosList.map(p => p.id || p.idProducto).join(',');
+            apiClient.get(`/resenas/ratings?ids=${pIds}`)
+              .then(res => { if (res) setRatingsMap(res); })
+              .catch(() => {});
+          }
+        }}
+        producto={productoParaResenas}
       />
     </div>
   );

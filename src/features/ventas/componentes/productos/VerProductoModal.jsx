@@ -1,10 +1,14 @@
-import { X, Package, PlusCircle, ChefHat, Zap } from "lucide-react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { StarRating } from "@/shared/components/ui/StarRating";
+import { apiClient } from "@/shared/api/apiClient";
 
 export function VerProductoModal({ isOpen, onClose, producto }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
+  const [resenasData, setResenasData] = useState({ promedio: 0, total: 0, resenas: [] });
+  const [loadingResenas, setLoadingResenas] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -17,14 +21,22 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (isOpen && producto?.id) {
+    if (isOpen && (producto?.id || producto?.idProducto)) {
+      const pId = producto.id || producto.idProducto;
       setLoadingFicha(true);
-      fichasTecnicasService.getFichaByProducto(producto.id)
+      fichasTecnicasService.getFichaByProducto(pId)
         .then(f => setFichaTecnica(f))
         .catch(err => console.error("Error cargando ficha", err))
         .finally(() => setLoadingFicha(false));
+
+      setLoadingResenas(true);
+      apiClient.get(`/resenas/producto/${pId}`)
+        .then(r => setResenasData(r || { promedio: 0, total: 0, resenas: [] }))
+        .catch(() => setResenasData({ promedio: 0, total: 0, resenas: [] }))
+        .finally(() => setLoadingResenas(false));
     } else {
       setFichaTecnica(null);
+      setResenasData({ promedio: 0, total: 0, resenas: [] });
     }
   }, [isOpen, producto]);
 
@@ -238,6 +250,50 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               </div>
             </div>
           )}
+
+          {/* Sección de Reseñas del Producto */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Reseñas y Calificaciones ({resenasData.total})
+                </h3>
+              </div>
+              {resenasData.total > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <StarRating value={resenasData.promedio} readonly size="sm" />
+                  <span className="text-xs font-black text-amber-600 dark:text-amber-400">{resenasData.promedio.toFixed(1)} / 5</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
+              {loadingResenas ? (
+                <p className="text-xs text-gray-400 text-center py-3">Cargando reseñas...</p>
+              ) : resenasData.resenas && resenasData.resenas.length > 0 ? (
+                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                  {resenasData.resenas.map((r) => (
+                    <div key={r.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-2xs space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{r.nombre}</span>
+                        <StarRating value={r.puntuacion} readonly size="xs" />
+                      </div>
+                      {r.comentario && (
+                        <p className="text-xs text-gray-600 dark:text-gray-300 italic">"{r.comentario}"</p>
+                      )}
+                      <p className="text-[10px] text-gray-400">{new Date(r.fecha).toLocaleDateString("es-CO")}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-400 py-3">
+                  <MessageSquare className="w-5 h-5 mb-1 opacity-50" />
+                  <p className="text-xs text-center">Este producto aún no tiene reseñas registradas.</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Footer Action */}
           <div className="flex justify-end pt-2">
