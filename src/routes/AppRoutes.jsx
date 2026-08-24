@@ -130,9 +130,12 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
-        {hasDashboard && <Route index element={<Dashboard />} />}
-        {!hasDashboard && defaultPath && (
+        {hasDashboard ? (
+          <Route index element={<Dashboard />} />
+        ) : defaultPath ? (
           <Route index element={<Navigate to={`/${defaultPath}`} replace />} />
+        ) : (
+          <Route index element={<Dashboard />} />
         )}
         {allowedRoutes.map(
           (route) =>
