@@ -17,10 +17,6 @@ import {
   FileText,
   Search,
   RefreshCw,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
   Flame,
   UtensilsCrossed,
   Timer,
@@ -276,43 +272,6 @@ function getOrderTimeDisplay(order, isListo = false) {
   return { text: `Hace ${minutes} min`, exactTime: formattedTime, level: "critical", isCompleted: false };
 }
 
-/**
- * Play a pleasant kitchen chime via Web Audio API
- */
-function playKitchenChime() {
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-
-    // Tone 1
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = "sine";
-    osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    gain1.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(ctx.currentTime);
-    osc1.stop(ctx.currentTime + 0.5);
-
-    // Tone 2
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-    gain2.gain.setValueAtTime(0.25, ctx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(ctx.currentTime + 0.15);
-    osc2.stop(ctx.currentTime + 0.7);
-  } catch (e) {
-    // AudioContext blocked by browser policy until user interaction
-  }
-}
-
 export function CocineroDashboard() {
   const { logout } = useAuth();
   const [darkMode, toggleDarkMode] = useDarkMode();
@@ -323,8 +282,6 @@ export function CocineroDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Interactive Checklist of prepared dishes per order { "orderId-itemIdx": boolean }
@@ -336,8 +293,6 @@ export function CocineroDashboard() {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modalRecetaData, setModalRecetaData] = useState(null);
   const [loadingReceta, setLoadingReceta] = useState(false);
-
-  const prevOrderCountRef = useRef(0);
 
   // Live Digital Clock (HH:MM:SS 12h format with AM/PM)
   useEffect(() => {
@@ -354,18 +309,6 @@ export function CocineroDashboard() {
 
         const data = await produccionService.getOrdenes();
         const list = Array.isArray(data) ? data : data?.data || [];
-
-        // Check if there are new pending orders to ring bell
-        const pendingCount = list.filter(
-          (p) =>
-            p.estadoAprobacion === "APROBADO" &&
-            (p.estado === "En Cola" || p.estado === "Pendiente" || p.estadoEntrega === "PENDIENTE")
-        ).length;
-
-        if (isSilent && soundEnabled && pendingCount > prevOrderCountRef.current && prevOrderCountRef.current > 0) {
-          playKitchenChime();
-        }
-        prevOrderCountRef.current = pendingCount;
         setPedidos(list);
       } catch (err) {
         if (!isSilent) {
@@ -379,7 +322,7 @@ export function CocineroDashboard() {
         setRefreshing(false);
       }
     },
-    [notifyError, soundEnabled]
+    [notifyError]
   );
 
   useEffect(() => {
@@ -389,19 +332,6 @@ export function CocineroDashboard() {
     }, 10000);
     return () => clearInterval(interval);
   }, [fetchPedidos]);
-
-  // Fullscreen handler
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-        setIsFullscreen(false);
-      }
-    }
-  };
 
   // Change order state
   const cambiarEstado = async (id, nuevoEstado, options = {}) => {
@@ -672,22 +602,6 @@ export function CocineroDashboard() {
               )}
             </div>
 
-            {/* Sound Chime Toggle */}
-            <button
-              onClick={() => {
-                setSoundEnabled(!soundEnabled);
-                if (!soundEnabled) playKitchenChime();
-              }}
-              className={`p-2 rounded-xl border transition cursor-pointer ${
-                soundEnabled
-                  ? "border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                  : "border-gray-200 dark:border-gray-700 text-gray-400 bg-gray-50 dark:bg-gray-800"
-              }`}
-              title={soundEnabled ? "Timbre de cocina activado" : "Timbre silenciado"}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-
             {/* Sync Refresh Button */}
             <button
               onClick={() => fetchPedidos(false)}
@@ -698,15 +612,6 @@ export function CocineroDashboard() {
               title="Actualizar comandas"
             >
               <RefreshCw className="w-4 h-4" />
-            </button>
-
-            {/* Fullscreen Toggle */}
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer hidden sm:flex"
-              title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa para cocina"}
-            >
-              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             </button>
 
             {/* Recetas / Fichas Técnicas link */}
