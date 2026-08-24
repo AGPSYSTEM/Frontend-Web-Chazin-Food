@@ -93,6 +93,24 @@ function cleanNote(text, productName = "") {
 }
 
 /**
+ * Format client name cleanly avoiding duplicate consecutive names/surnames
+ */
+function formatCleanClientName(name) {
+  if (!name || typeof name !== "string") return "Cliente Mostrador";
+  const words = name.trim().split(/\s+/);
+  const seen = new Set();
+  const cleanWords = [];
+  for (const w of words) {
+    const lower = w.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      cleanWords.push(w);
+    }
+  }
+  return cleanWords.join(" ") || name;
+}
+
+/**
  * Robustly parses an addition item (object or string) and extracts clean name and quantity
  */
 function parseAddition(ad) {
@@ -738,7 +756,7 @@ export function CocineroDashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setFiltroEstado(tab.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-2.5 whitespace-nowrap cursor-pointer select-none ${
                     active
                       ? "bg-[#F05454] text-white shadow-xs"
                       : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-750"
@@ -746,7 +764,7 @@ export function CocineroDashboard() {
                 >
                   <span>{tab.label}</span>
                   <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-black min-w-[20px] text-center ${
                       active
                         ? "bg-white/25 text-white"
                         : tab.count > 0 && tab.id === "Pendiente"
@@ -812,7 +830,7 @@ export function CocineroDashboard() {
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="mt-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-bold rounded-xl transition"
+                className="mt-4 px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-bold rounded-xl transition cursor-pointer"
               >
                 Limpiar búsqueda
               </button>
@@ -857,20 +875,19 @@ export function CocineroDashboard() {
                 badgeLabel = "En Mesa";
               }
 
-              const isExpanded = expandedTickets[orderId];
-              const toggleCollapse = () => setExpandedTickets(prev => ({...prev, [orderId]: !prev[orderId]}));
+              // By default, tickets are expanded so items are clearly readable in kitchen
+              const isExpanded = expandedTickets[orderId] !== false;
+              const toggleCollapse = () => setExpandedTickets(prev => ({...prev, [orderId]: isExpanded ? false : true}));
 
               return (
                 <div
                   key={orderId}
-                  className={`flex flex-col rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative ${
-                    isExpanded ? "h-[540px] overflow-hidden" : "h-auto"
-                  } ${
+                  className={`flex flex-col rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative overflow-hidden h-auto ${
                     isListo
                       ? "border-green-200 dark:border-green-900/60"
                       : isPreparando
-                      ? "border-blue-300 dark:border-blue-800/80 shadow-blue-500/5"
-                      : "border-amber-200 dark:border-amber-900/60"
+                      ? "border-blue-300 dark:border-blue-800/80 shadow-blue-500/5 ring-1 ring-blue-400/20"
+                      : "border-amber-200 dark:border-amber-900/60 ring-1 ring-amber-400/20"
                   }`}
                 >
                   {/* Top Status Accent Bar */}
@@ -887,8 +904,8 @@ export function CocineroDashboard() {
                   {/* ── Card Header ── */}
                   <div 
                     onClick={toggleCollapse}
-                    className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 shrink-0 space-y-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    title={isExpanded ? "Colapsar comanda" : "Expandir comanda"}
+                    className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40 shrink-0 space-y-2 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors"
+                    title={isExpanded ? "Clic para colapsar comanda" : "Clic para expandir comanda"}
                   >
                     {/* Row 1: Code, Type Badge & Status */}
                     <div className="flex items-center justify-between gap-2">
@@ -917,25 +934,25 @@ export function CocineroDashboard() {
                           )}
                           <span>{badgeLabel}</span>
                         </span>
-                        
-                        {/* Toggle Icon */}
-                        <div className="ml-auto text-gray-400">
-                          <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : "rotate-0"}`} />
-                        </div>
                       </div>
 
-                      {/* State Badge */}
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-black tracking-wide shrink-0 ${
-                          isListo
-                            ? "bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
-                            : isPreparando
-                            ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 animate-pulse"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                        }`}
-                      >
-                        {isListo ? "Listo" : isPreparando ? "En Preparación" : "En Cola"}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* State Badge */}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-black tracking-wide shrink-0 ${
+                            isListo
+                              ? "bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
+                              : isPreparando
+                              ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 animate-pulse"
+                              : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                          }`}
+                        >
+                          {isListo ? "Listo" : isPreparando ? "En Preparación" : "En Cola"}
+                        </span>
+
+                        {/* Toggle Icon */}
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : "rotate-0"}`} />
+                      </div>
                     </div>
 
                     {/* Row 2: Client name & Accurate 12h Time Display */}
@@ -943,11 +960,11 @@ export function CocineroDashboard() {
                       <div className="flex items-center gap-1.5 truncate max-w-[55%]">
                         <User className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                         <span className="truncate font-bold text-gray-700 dark:text-gray-300">
-                          {ped.cliente || ped.responsable || "Cliente Mostrador"}
+                          {formatCleanClientName(ped.cliente || ped.responsable)}
                         </span>
                       </div>
 
-                      {/* Accurate Time Pill (No absurd minutes for past dates) */}
+                      {/* Accurate Time Pill */}
                       <div
                         className={`px-2 py-0.5 rounded-md text-[11px] font-black flex items-center gap-1 border shrink-0 ${
                           timeInfo.isCompleted
@@ -967,7 +984,7 @@ export function CocineroDashboard() {
 
                     {/* Preparation Checklist Progress Bar */}
                     {totalItemsInOrder > 0 && (
-                      <div className="pt-1">
+                      <div className="pt-0.5">
                         <div className="flex items-center justify-between text-[10px] font-black text-gray-400 mb-1">
                           <span>
                             {isListo
@@ -1000,7 +1017,7 @@ export function CocineroDashboard() {
 
                   {/* ── Card Body (Scrollable Items List) ── */}
                   {isExpanded && (
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2.5 pr-2">
+                  <div className="p-4 space-y-2.5 max-h-72 overflow-y-auto flex-1">
                     {items.length === 0 ? (
                       <p className="text-xs text-gray-400 italic text-center py-6">Sin platillos desglosados en orden</p>
                     ) : (
