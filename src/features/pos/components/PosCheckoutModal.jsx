@@ -23,6 +23,7 @@ import {
 import { clientesService } from "@/features/ventas/servicios/clientesService";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function PosCheckoutModal({
   isOpen,
@@ -35,6 +36,7 @@ export function PosCheckoutModal({
   loading = false
 }) {
   const { user } = useAuth();
+  const { warning, error, info } = useNotifications();
   const safeCart = Array.isArray(cart) ? cart : [];
   const [clientesList, setClientesList] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState(null);
@@ -125,22 +127,34 @@ export function PosCheckoutModal({
     // Validaciones estrictas de Pago Obligatorio (primero el pago antes de entregar el producto)
     if (metodoPago === "efectivo") {
       if (!efectivoPaga || Number(efectivoPaga) <= 0) {
-        alert(`El pago es obligatorio. Debes ingresar el monto recibido en efectivo (mínimo $${finalTotal.toLocaleString("es-CO")}).`);
+        warning(
+          "Pago en efectivo obligatorio",
+          `Debes ingresar el monto recibido por el cliente (mínimo $${finalTotal.toLocaleString("es-CO")}).`
+        );
         return;
       }
       if (Number(efectivoPaga) < finalTotal) {
-        alert(`Monto insuficiente. El cliente debe pagar mínimo el total de la orden ($${finalTotal.toLocaleString("es-CO")}).`);
+        warning(
+          "Monto insuficiente",
+          `El cliente debe pagar mínimo el total de la orden ($${finalTotal.toLocaleString("es-CO")}).`
+        );
         return;
       }
     } else if (metodoPago === "tarjeta") {
       const cleanCard = tarjetaNumero.replace(/\s+/g, "");
       if (!cleanCard || cleanCard.length < 15) {
-        alert("Por favor ingresa los 16 dígitos de la tarjeta para registrar el pago.");
+        warning(
+          "Tarjeta incompleta",
+          "Por favor ingresa los 16 dígitos de la tarjeta para registrar el pago."
+        );
         return;
       }
     } else if (metodoPago === "transferencia") {
       if (!transferReferencia.trim()) {
-        alert("Por favor ingresa el número de referencia del comprobante de transferencia.");
+        warning(
+          "Comprobante requerido",
+          "Por favor ingresa el número de referencia del comprobante de transferencia."
+        );
         return;
       }
     }
