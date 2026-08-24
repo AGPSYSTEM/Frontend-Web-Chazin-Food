@@ -29,12 +29,16 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "sans-serif", background: "#f9fafb" }}>
-          <div style={{ maxWidth: "480px", background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", textAlign: "center" }}>
+          <div style={{ maxWidth: "600px", width: "100%", background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", textAlign: "center" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>🍔</div>
             <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", marginBottom: "8px" }}>Chazin Food</h2>
-            <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "24px" }}>
-              Hubo un detalle al cargar la aplicación. Haz clic abajo para restaurar la sesión y recargar.
+            <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
+              Detalle del error capturado:
             </p>
+            <div style={{ background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "12px", fontSize: "12px", textAlign: "left", overflowX: "auto", marginBottom: "20px", fontFamily: "monospace" }}>
+              <strong>{this.state.error?.toString()}</strong>
+              <pre style={{ marginTop: "8px", whiteSpace: "pre-wrap" }}>{this.state.error?.stack}</pre>
+            </div>
             <button
               onClick={this.handleReset}
               style={{ width: "100%", padding: "12px 24px", background: "#f05454", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
