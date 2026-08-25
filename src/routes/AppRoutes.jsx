@@ -16,6 +16,7 @@ import { Login } from "@/features/autenticacion/paginas/Login";
 import { ForgotPassword } from "@/features/autenticacion/paginas/ForgotPassword";
 import { ResetPassword } from "@/features/autenticacion/paginas/ResetPassword";
 import { ClienteLanding } from "@/features/cliente/paginas/ClienteLanding";
+import { ClientePerfil } from "@/features/cliente/paginas/ClientePerfil";
 import { CocineroDashboard } from "@/features/cocinero/paginas/CocineroDashboard";
 import { FichasTecnicas } from "@/features/fichas-tecnicas/paginas/FichasTecnicas";
 import { GestionProduccion } from "@/features/produccion/paginas/GestionProduccion";
@@ -62,11 +63,12 @@ export function AppRoutes() {
   const userRol = String(rawRol || "").toLowerCase().trim();
   const isCliente = userRol === "cliente" || user?.idRol === 4;
 
-  // ── Cliente: landing page ──
+  // ── Cliente: landing page & perfil ──
   if (isCliente) {
     return (
       <Routes>
         <Route path="/" element={<ClienteLanding />} />
+        <Route path="/perfil" element={<ClientePerfil />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

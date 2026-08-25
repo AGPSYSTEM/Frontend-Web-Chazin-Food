@@ -6,7 +6,6 @@ import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
-import { ClientePerfilModal } from "../componentes/ClientePerfilModal";
 import { ProductoResenasModal } from "../componentes/ProductoResenasModal";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -207,7 +206,6 @@ export function ClienteLanding() {
   const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
 
   const [showPedidos, setShowPedidos] = useState(false);
-  const [showPerfil, setShowPerfil] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [showResenasModal, setShowResenasModal] = useState(false);
@@ -869,10 +867,7 @@ export function ClienteLanding() {
               {isAuthenticated ? (
                 <>
                   <button
-                    onClick={() => {
-                      refreshUser?.();
-                      setShowPerfil(true);
-                    }}
+                    onClick={() => navigate("/perfil")}
                     className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                   >
                     <User className="w-5 h-5 text-[#f05454]" />
@@ -1004,10 +999,7 @@ export function ClienteLanding() {
 
             <button
               type="button"
-              onClick={() => {
-                refreshUser?.();
-                setShowPerfil(true);
-              }}
+              onClick={() => navigate("/perfil")}
               className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -2060,14 +2052,6 @@ export function ClienteLanding() {
           </div>
         </div>
       )}
-
-      {/* Modal Mi Perfil */}
-      <ClientePerfilModal
-        isOpen={showPerfil}
-        onClose={() => setShowPerfil(false)}
-        user={user}
-        pedidos={pedidos}
-      />
 
       {/* Modal Reseñas de Producto */}
       <ProductoResenasModal
