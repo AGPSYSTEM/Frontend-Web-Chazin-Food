@@ -177,7 +177,7 @@ function FichaTecnicaProductoCliente({ ficha, producto }) {
 export function ClienteLanding() {
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal } = useCart();
+  const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal, getProductQuantityInCart } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
   const { success, error, confirmAction, confirmLogout } = useNotifications();
 
@@ -218,6 +218,26 @@ export function ClienteLanding() {
   const [categoriasList, setCategoriasList] = useState([]);
   const [productosList, setProductosList] = useState([]);
   const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
+
+  // Manejador de flecha Atrás / Adelante del navegador (popstate) para cerrar modales sin salir de la página
+  useEffect(() => {
+    const handlePopState = () => {
+      if (showCheckout) {
+        setShowCheckout(false);
+      } else if (showCart) {
+        setShowCart(false);
+      } else if (showProductModal) {
+        setShowProductModal(false);
+      } else if (showPedidos) {
+        setShowPedidos(false);
+      } else if (showResenasModal) {
+        setShowResenasModal(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showCheckout, showCart, showProductModal, showPedidos, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
   // Fetch catalog categories & products dynamically from API
@@ -257,6 +277,7 @@ export function ClienteLanding() {
               idProducto: p.idProducto || p.id,
               nombre: p.nombre,
               precio: Number(p.precio) || 0,
+              stock: Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25)),
               categoria: p.categoria || (p.categoriaProducto ? p.categoriaProducto.nombre : ''),
               idCategoriaProducto: p.idCategoriaProducto,
               descripcion: p.descripcion,
@@ -564,11 +585,13 @@ export function ClienteLanding() {
       basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
     }
 
-    addToCart({
+    const itemToAdd = {
       id: prod.id || prod.idProducto,
+      idProducto: prod.idProducto || prod.id,
       nombre: prod.nombre,
       precio: basePrice,
       cantidad: productoSeleccionado.cantidad || 1,
+      stock: Number(prod.stock !== undefined ? prod.stock : (prod.stockActual !== undefined ? prod.stockActual : 25)),
       imagen: prod.imagen,
       adiciones: (productoSeleccionado.adicionesSeleccionadas || []).map((a) => ({
         idAdicion: a.idAdicion,
@@ -577,7 +600,14 @@ export function ClienteLanding() {
         cantidad: Number(a.cantidad) || 1,
         imagen: a.imagen || "🥫"
       }))
-    });
+    };
+
+    const res = addToCart(itemToAdd);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
+    }
+
     setShowProductModal(false);
     setProductoSeleccionado(null);
     success("¡Producto agregado!", `${prod.nombre} se agregó a tu carrito`);
@@ -603,6 +633,7 @@ export function ClienteLanding() {
     setCheckoutTransferReferencia("");
     setCheckoutTransferBanco("Bancolombia");
     setCheckoutTarjetaNumero("");
+    window.history.pushState({ modal: "checkout" }, "");
     setShowCheckout(true);
   };
 
@@ -651,14 +682,24 @@ export function ClienteLanding() {
       return;
     }
 
-    // Validación estricta de Pago Obligatorio (primero el pago antes de procesar el pedido)
+    // Validación estricta de Pago Obligatorio y Política de Efectivo / Cambio Máximo
     if (checkoutMetodoPago === "efectivo") {
-      if (!checkoutEfectivoPaga || Number(checkoutEfectivoPaga) <= 0) {
+      const montoEfectivo = Number(checkoutEfectivoPaga || 0);
+      if (!checkoutEfectivoPaga || montoEfectivo <= 0) {
         error("Pago requerido", `Debes indicar el monto en efectivo con el que vas a pagar (debe ser igual o superior a $${totalCheckout.toLocaleString('es-CO')}).`);
         return;
       }
-      if (Number(checkoutEfectivoPaga) < totalCheckout) {
-        error("Monto insuficiente", `El efectivo entregado ($${Number(checkoutEfectivoPaga).toLocaleString('es-CO')}) es menor al total a pagar ($${totalCheckout.toLocaleString('es-CO')}).`);
+      if (montoEfectivo < totalCheckout) {
+        error("Monto insuficiente", `El efectivo entregado ($${montoEfectivo.toLocaleString('es-CO')}) es menor al total a pagar ($${totalCheckout.toLocaleString('es-CO')}).`);
+        return;
+      }
+      const vuelto = montoEfectivo - totalCheckout;
+      const MAX_CAMBIO_PERMITIDO = 100000;
+      if (vuelto > MAX_CAMBIO_PERMITIDO) {
+        error(
+          "Límite de cambio excedido",
+          `Por seguridad de los domiciliarios y política de caja, el cambio máximo en efectivo es de $${MAX_CAMBIO_PERMITIDO.toLocaleString('es-CO')}. Tu vuelto sería de $${vuelto.toLocaleString('es-CO')}. Para montos mayores te sugerimos pagar vía Transferencia o Tarjeta.`
+        );
         return;
       }
     } else if (checkoutMetodoPago === "transferencia") {
@@ -1299,9 +1340,22 @@ export function ClienteLanding() {
               producto={productoSeleccionado.producto}
             />
 
-            {/* Cantidad */}
-            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-2xl">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad:</span>
+            {/* Cantidad con Control de Stock */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3.5 rounded-2xl">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-800 dark:text-gray-200">Cantidad:</span>
+                {(() => {
+                  const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
+                  const stockTot = Number(productoSeleccionado.producto.stock !== undefined ? productoSeleccionado.producto.stock : (productoSeleccionado.producto.stockActual !== undefined ? productoSeleccionado.producto.stockActual : 25));
+                  const inCart = getProductQuantityInCart(pId);
+                  const remaining = Math.max(0, stockTot - inCart);
+                  return (
+                    <span className={`text-[11px] font-bold ${remaining <= 5 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                      {remaining > 0 ? `Stock disponible: ${remaining} und.` : "Sin stock disponible"}
+                    </span>
+                  );
+                })()}
+              </div>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -1313,7 +1367,17 @@ export function ClienteLanding() {
                 <span className="font-bold text-gray-900 dark:text-gray-100 w-6 text-center">{productoSeleccionado.cantidad}</span>
                 <button
                   type="button"
-                  onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: productoSeleccionado.cantidad + 1 })}
+                  onClick={() => {
+                    const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
+                    const stockTot = Number(productoSeleccionado.producto.stock !== undefined ? productoSeleccionado.producto.stock : (productoSeleccionado.producto.stockActual !== undefined ? productoSeleccionado.producto.stockActual : 25));
+                    const inCart = getProductQuantityInCart(pId);
+                    const remaining = Math.max(0, stockTot - inCart);
+                    if (productoSeleccionado.cantidad < remaining) {
+                      setProductoSeleccionado({ ...productoSeleccionado, cantidad: productoSeleccionado.cantidad + 1 });
+                    } else {
+                      error("Límite de stock", `Solo hay ${stockTot} unidades en stock (tienes ${inCart} en el carrito).`);
+                    }
+                  }}
                   className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 cursor-pointer active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
@@ -1443,41 +1507,58 @@ export function ClienteLanding() {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {cart.map((item, index) => (
-                    <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
-                      <div className="text-3xl">{item.imagen}</div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">{item.nombre}</h4>
-                        {item.adiciones && item.adiciones.length > 0 && (
-                          <p className="text-xs text-gray-400">
-                            Adiciones: {item.adiciones.map(a => a.nombre).join(', ')}
-                          </p>
-                        )}
-                        <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-0.5">${item.precio.toLocaleString()}</p>
+                  {cart.map((item, index) => {
+                    const itemKey = item.cartItemId || `${item.id}-${index}`;
+                    const prodStock = Number(item.stock !== undefined ? item.stock : 25);
+                    const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
+
+                    return (
+                      <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                        <div className="text-3xl shrink-0">{item.imagen}</div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
+                          {item.adiciones && item.adiciones.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.adiciones.map((a, aIdx) => (
+                                <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold">
+                                  +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-1">${item.precio.toLocaleString("es-CO")}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
+                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
+                          <button
+                            onClick={() => {
+                              if (totalInCartForProd >= prodStock) {
+                                error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
+                              } else {
+                                updateQuantity(item.cartItemId || item.id, 1);
+                              }
+                            }}
+                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                          >
+                            +
+                          </button>
+                          <button
+                            onClick={() => removeFromCart(item.cartItemId || item.id)}
+                            className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
+                            title="Eliminar este producto"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold"
-                        >
-                          -
-                        </button>
-                        <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold"
-                        >
-                          +
-                        </button>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="p-1 text-gray-400 hover:text-red-500"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1753,7 +1834,7 @@ export function ClienteLanding() {
                       />
                     </div>
 
-                    {/* Botones de montos rápidos */}
+                    {/* Botones de montos rápidos con billetes reales en circulación */}
                     <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
                       <button
                         type="button"
@@ -1762,22 +1843,34 @@ export function ClienteLanding() {
                       >
                         Pago Exacto (${totalCheckout.toLocaleString('es-CO')})
                       </button>
-                      {[20000, 50000, 100000].filter(v => v > totalCheckout).map(amt => (
-                        <button
-                          key={amt}
-                          type="button"
-                          onClick={() => setCheckoutEfectivoPaga(String(amt))}
-                          className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                        >
-                          ${amt.toLocaleString('es-CO')}
-                        </button>
-                      ))}
+                      {[20000, 50000, 100000]
+                        .filter((v) => v > totalCheckout && v <= totalCheckout + 100000)
+                        .map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setCheckoutEfectivoPaga(String(amt))}
+                            className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                          >
+                            ${amt.toLocaleString('es-CO')}
+                          </button>
+                        ))}
                     </div>
 
                     {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
-                      <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400 mt-1">
-                        💰 Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
-                      </p>
+                      <div className="space-y-1.5 pt-1">
+                        <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400">
+                          💰 Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
+                        </p>
+                        {vueltoEfectivo > 100000 && (
+                          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-start gap-1.5">
+                            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                            <span>
+                              ⚠️ Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

@@ -90,9 +90,20 @@ export function usePOS({ initialClienteId = null } = {}) {
 
   const total = subtotal - descuento;
 
-  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1 }) {
+  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1, stock = null }) {
     setCart((prev) => {
+      const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === productoId);
+      const prodStock = Number(stock !== null ? stock : (prodMeta?.stock !== undefined ? prodMeta.stock : (prodMeta?.stockActual !== undefined ? prodMeta.stockActual : 9999)));
+
+      const totalInCart = prev
+        .filter((it) => it.productoId === productoId)
+        .reduce((sum, it) => sum + (it.cantidad || 1), 0);
+
       const qtyToAdd = Number(cantidad) > 0 ? Number(cantidad) : 1;
+      if (totalInCart + qtyToAdd > prodStock) {
+        return prev;
+      }
+
       const adicionIds = (adiciones || []).map((a) => (typeof a === "object" ? `${a.id || a.idAdicion}x${a.cantidad || 1}` : a)).slice();
       const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds);
       if (idx >= 0) {
@@ -100,12 +111,25 @@ export function usePOS({ initialClienteId = null } = {}) {
         newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + qtyToAdd };
         return newCart;
       }
-      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: qtyToAdd, observacion }];
+      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: qtyToAdd, observacion, stock: prodStock }];
     });
   }
 
   function increment(index) {
     setCart((prev) => {
+      if (!prev[index]) return prev;
+      const target = prev[index];
+      const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === target.productoId);
+      const prodStock = Number(target.stock !== undefined ? target.stock : (prodMeta?.stock !== undefined ? prodMeta.stock : 9999));
+
+      const totalInCart = prev
+        .filter((it) => it.productoId === target.productoId)
+        .reduce((sum, it) => sum + (it.cantidad || 1), 0);
+
+      if (totalInCart + 1 > prodStock) {
+        return prev;
+      }
+
       const next = [...prev];
       next[index] = { ...next[index], cantidad: (next[index].cantidad || 0) + 1 };
       return next;

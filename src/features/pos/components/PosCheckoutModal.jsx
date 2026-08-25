@@ -140,6 +140,15 @@ export function PosCheckoutModal({
         );
         return;
       }
+      const vuelto = Number(efectivoPaga) - finalTotal;
+      const MAX_CAMBIO_PERMITIDO = 100000;
+      if (vuelto > MAX_CAMBIO_PERMITIDO) {
+        warning(
+          "Límite de cambio de caja",
+          `Por políticas de arqueo y seguridad de caja, el cambio máximo permitido es de $${MAX_CAMBIO_PERMITIDO.toLocaleString("es-CO")}. El vuelto actual es de $${vuelto.toLocaleString("es-CO")}. Si el cliente paga con montos mayores, registra el cobro por Transferencia o Tarjeta.`
+        );
+        return;
+      }
     } else if (metodoPago === "tarjeta") {
       const cleanCard = tarjetaNumero.replace(/\s+/g, "");
       if (!cleanCard || cleanCard.length < 15) {
