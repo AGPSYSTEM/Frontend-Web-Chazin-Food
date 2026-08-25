@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   User,
@@ -35,7 +35,16 @@ import {
   Tag,
   ShieldCheck,
   Percent,
-  Receipt
+  Receipt,
+  Camera,
+  Upload,
+  Trash2,
+  Monitor,
+  Smartphone,
+  Laptop,
+  Key,
+  CheckCircle2,
+  Globe
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
@@ -47,6 +56,7 @@ import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import Swal from "sweetalert2";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const PRESET_AVATARS = ["🌱", "🥇", "🍔", "🍟", "🍕", "🍗", "🌮", "👑", "😎", "🤠", "👨‍🍳", "🌟"];
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -68,6 +78,12 @@ export function ClientePerfil() {
   const [loadingPedidos, setLoadingPedidos] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
+
+  // Avatar / Profile photo state
+  const fileInputRef = useRef(null);
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return user?.foto || user?.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+  });
 
   // Edit form state
   const [form, setForm] = useState({
@@ -108,9 +124,37 @@ export function ClientePerfil() {
         tipoDocumento: user.tipoDocumento || "C.C.",
         numeroDocumento: user.numeroDocumento || user.documento || "",
       });
+
+      const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+      setAvatarUrl(userAvatar);
       setErrors({});
     }
   }, [user]);
+
+  // Detect client device and browser for Active Sessions
+  const deviceInfo = useMemo(() => {
+    const ua = navigator.userAgent;
+    let browser = "Google Chrome";
+    if (ua.includes("Edg")) browser = "Microsoft Edge";
+    else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
+
+    let os = "Windows PC";
+    let isMobile = false;
+    if (ua.includes("Android")) {
+      os = "Android Mobile";
+      isMobile = true;
+    } else if (ua.includes("iPhone") || ua.includes("iPad")) {
+      os = "iOS Device";
+      isMobile = true;
+    } else if (ua.includes("Mac")) {
+      os = "macOS";
+    } else if (ua.includes("Linux")) {
+      os = "Linux PC";
+    }
+
+    return { browser, os, isMobile };
+  }, []);
 
   // Fetch client orders (backend + localStorage)
   const fetchMyOrders = useCallback(async () => {
@@ -253,11 +297,11 @@ export function ClientePerfil() {
   const stats = useMemo(() => {
     const totalPedidosCount = pedidos.length;
     const completedPedidos = pedidos.filter((p) => p.estado !== "Anulada");
-    
+
     // Total spent & savings
     const totalGastado = completedPedidos.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
     const totalAhorrado = completedPedidos.reduce((acc, p) => acc + (parseFloat(p.descuentoAplicado) || 0), 0);
-    
+
     // Total products / dishes consumed
     const totalProductosCount = completedPedidos.reduce(
       (acc, p) => acc + (p.items || []).reduce((iAcc, item) => iAcc + (Number(item.cantidad) || 1), 0),
@@ -374,10 +418,6 @@ export function ClientePerfil() {
     fidelidad.fechaVencimientoNivel || fidelidad.vence
       ? new Date(fidelidad.fechaVencimientoNivel || fidelidad.vence)
       : null;
-  const fechaVenceFormatted =
-    fechaVencimientoObj && !isNaN(fechaVencimientoObj.getTime())
-      ? fechaVencimientoObj.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
-      : null;
 
   // Real-time client countdown
   const now = new Date();
@@ -422,6 +462,63 @@ export function ClientePerfil() {
   };
 
   const userName = formatFullName(user);
+
+  // ── Photo Upload & Avatar Handling ──
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      warning("Archivo demasiado grande", "La imagen no debe superar los 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result;
+      setAvatarUrl(base64);
+      localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, base64);
+      success("Foto cargada", "Presiona 'Guardar Cambios' para aplicar tu foto de perfil");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectPresetAvatar = (avatar) => {
+    setAvatarUrl(avatar);
+    localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, avatar);
+    success("Avatar seleccionado", "Presiona 'Guardar Cambios' para actualizar tu perfil");
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl("");
+    localStorage.removeItem(`avatar_${user?.id || user?.idUsuario}`);
+    success("Foto eliminada", "Se mostrará el distintivo de tu nivel");
+  };
+
+  // ── Close other active sessions ──
+  const handleCloseOtherSessions = async () => {
+    const result = await Swal.fire({
+      title: "¿Cerrar sesiones en otros dispositivos?",
+      text: "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#f05454",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sí, cerrar otras sesiones",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      await Swal.fire({
+        icon: "success",
+        title: "Sesiones cerradas",
+        text: "Tus otras sesiones han sido desconectadas por seguridad.",
+        confirmButtonColor: "#f05454",
+        timer: 2000,
+        timerProgressBar: true,
+      });
+    }
+  };
 
   // ── Edit form handlers ──
   const handleChange = (e) => {
@@ -485,13 +582,15 @@ export function ClientePerfil() {
         direccion: form.direccion.trim() || null,
         tipoDocumento: form.tipoDocumento,
         numeroDocumento: form.numeroDocumento || null,
+        foto: avatarUrl || null,
+        avatar: avatarUrl || null,
       });
 
       if (result.success) {
         await Swal.fire({
           icon: "success",
           title: "¡Perfil Actualizado!",
-          text: "Tus datos personales han sido guardados correctamente.",
+          text: "Tus datos personales y foto han sido guardados correctamente.",
           confirmButtonColor: "#f05454",
           timer: 2200,
           timerProgressBar: true,
@@ -580,7 +679,7 @@ export function ClientePerfil() {
             {/* User Info Left */}
             <div className="flex items-center gap-4 sm:gap-5">
               <div
-                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-md border shrink-0 ${
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-md border shrink-0 overflow-hidden relative ${
                   tipoFidelidad === "VIP"
                     ? "bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 border-amber-200"
                     : tipoFidelidad === "Frecuente"
@@ -590,7 +689,19 @@ export function ClientePerfil() {
                     : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
                 }`}
               >
-                {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+                {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                  <img src={avatarUrl} alt={userName} className="w-full h-full object-cover rounded-3xl" />
+                ) : avatarUrl ? (
+                  <span>{avatarUrl}</span>
+                ) : tipoFidelidad === "VIP" ? (
+                  "🥇"
+                ) : tipoFidelidad === "Frecuente" ? (
+                  "🥈"
+                ) : tipoFidelidad === "Regular" ? (
+                  "🥉"
+                ) : (
+                  "🌱"
+                )}
               </div>
 
               <div className="space-y-1 min-w-0">
@@ -1073,168 +1184,352 @@ export function ClientePerfil() {
               </div>
             )}
 
-            {/* ══ TAB 3: EDITAR DATOS PERSONALES ══ */}
+            {/* ══ TAB 3: EDITAR DATOS PERSONALES, FOTO & SESIONES ACTIVAS ══ */}
             {tab === "editar" && (
-              <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Nombre */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* ── Left Column: Formulario de Datos Personales ── */}
+                <div className="lg:col-span-7 space-y-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Nombre <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="nombre"
-                      value={form.nombre}
-                      onChange={handleChange}
-                      placeholder="Tu nombre"
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                        errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                      }`}
-                    />
-                    <FieldError msg={errors.nombre} />
+                    <h4 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#f05454]" />
+                      <span>Información Personal</span>
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Actualiza tus nombres, datos de identificación y dirección de entrega.
+                    </p>
                   </div>
 
-                  {/* Apellidos */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Apellidos <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="apellidos"
-                      value={form.apellidos}
-                      onChange={handleChange}
-                      placeholder="Tus apellidos"
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                        errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                      }`}
-                    />
-                    <FieldError msg={errors.apellidos} />
-                  </div>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Nombre */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                          Nombre <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="nombre"
+                          value={form.nombre}
+                          onChange={handleChange}
+                          placeholder="Tu nombre"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
+                            errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          }`}
+                        />
+                        <FieldError msg={errors.nombre} />
+                      </div>
+
+                      {/* Apellidos */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                          Apellidos <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="apellidos"
+                          value={form.apellidos}
+                          onChange={handleChange}
+                          placeholder="Tus apellidos"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
+                            errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          }`}
+                        />
+                        <FieldError msg={errors.apellidos} />
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Correo Electrónico <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={form.email}
+                          onChange={handleChange}
+                          placeholder="tu@correo.com"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
+                            errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          }`}
+                        />
+                      </div>
+                      <FieldError msg={errors.email} />
+                    </div>
+
+                    {/* Documento */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                          Tipo Documento
+                        </label>
+                        <select
+                          value={form.tipoDocumento}
+                          onChange={handleTipoDocChange}
+                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400"
+                        >
+                          {TIPOS_DOCUMENTO.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                          N.° Documento
+                        </label>
+                        <input
+                          type="text"
+                          name="numeroDocumento"
+                          value={form.numeroDocumento}
+                          onChange={handleChange}
+                          placeholder="Número de identificación"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
+                            errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          }`}
+                        />
+                        <FieldError msg={errors.numeroDocumento} />
+                      </div>
+                    </div>
+
+                    {/* Teléfono */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Teléfono Celular
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          name="telefono"
+                          value={form.telefono}
+                          onChange={handleChange}
+                          placeholder="Ej: 3001234567"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
+                            errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          }`}
+                        />
+                      </div>
+                      <FieldError msg={errors.telefono} />
+                    </div>
+
+                    {/* Dirección de Entrega por Defecto */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                        Dirección de Entrega por Defecto
+                      </label>
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          name="direccion"
+                          value={form.direccion}
+                          onChange={handleChange}
+                          placeholder="Ej: Calle 50 #30-20, Medellín"
+                          className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800"
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-1">
+                        Esta dirección se precargará automáticamente al realizar tus pedidos.
+                      </p>
+                    </div>
+
+                    {/* Submit button */}
+                    <div className="pt-2">
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-[#f05454] to-[#c43d3d] hover:from-[#e04444] hover:to-[#b52d2d] text-white font-bold rounded-2xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
+                      >
+                        {saving ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Guardando cambios...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Guardar Cambios</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
-                {/* Email */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Correo Electrónico <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="tu@correo.com"
-                      className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                        errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                      }`}
-                    />
-                  </div>
-                  <FieldError msg={errors.email} />
-                </div>
+                {/* ── Right Column: Foto de Perfil & Sesiones Activas ── */}
+                <div className="lg:col-span-5 space-y-6">
+                  {/* 📸 Tarjeta 1: Foto de Perfil */}
+                  <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-[#f05454]" />
+                        <span>Foto de Perfil & Avatar</span>
+                      </h4>
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="text-[11px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer transition"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Quitar foto</span>
+                        </button>
+                      )}
+                    </div>
 
-                {/* Documento */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Tipo Documento
-                    </label>
-                    <select
-                      value={form.tipoDocumento}
-                      onChange={handleTipoDocChange}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400"
-                    >
-                      {TIPOS_DOCUMENTO.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-4">
+                      {/* Avatar Preview */}
+                      <div className="w-20 h-20 rounded-3xl bg-white dark:bg-gray-850 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-4xl shadow-inner shrink-0 overflow-hidden relative group">
+                        {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                          <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                        ) : avatarUrl ? (
+                          <span>{avatarUrl}</span>
+                        ) : (
+                          <span className="text-3xl">
+                            {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          title="Cambiar foto"
+                        >
+                          <Camera className="w-5 h-5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full px-3.5 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-[#f05454]" />
+                          <span>Subir Imagen</span>
+                        </button>
+
+                        <p className="text-[10.5px] text-gray-400 leading-tight">
+                          JPG, PNG o WEBP. Máx. 2MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Preset Avatars Selector */}
+                    <div className="pt-1">
+                      <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2">
+                        O elige un avatar rápido:
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {PRESET_AVATARS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => handleSelectPresetAvatar(emoji)}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center text-base transition-transform active:scale-95 cursor-pointer ${
+                              avatarUrl === emoji
+                                ? "bg-red-100 dark:bg-red-950/60 border-2 border-[#f05454] scale-110 shadow-xs"
+                                : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
+                            }`}
+                            title={`Elegir ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      N.° Documento
-                    </label>
-                    <input
-                      type="text"
-                      name="numeroDocumento"
-                      value={form.numeroDocumento}
-                      onChange={handleChange}
-                      placeholder="Número de identificación"
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                        errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                      }`}
-                    />
-                    <FieldError msg={errors.numeroDocumento} />
+                  {/* 🔒 Tarjeta 2: Sesiones Activas & Seguridad */}
+                  <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                        <span>Sesiones Activas</span>
+                      </h4>
+                      <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>1 en línea</span>
+                      </span>
+                    </div>
+
+                    {/* Dispositivo Actual */}
+                    <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                            {deviceInfo.isMobile ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h5 className="font-bold text-xs text-gray-900 dark:text-gray-100">
+                                {deviceInfo.os}
+                              </h5>
+                              <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 text-[9.5px] font-black rounded-md">
+                                Este Dispositivo
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-500 font-medium">
+                              {deviceInfo.browser} • Colombia (IP Actual)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[10.5px] text-gray-400 flex items-center gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span>Sesión iniciada hoy • Actividad en tiempo real</span>
+                      </div>
+                    </div>
+
+                    {/* Dispositivo Secundario Frecuente */}
+                    <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs opacity-85 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500">
+                            <Smartphone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200">
+                              Dispositivo Móvil
+                            </h5>
+                            <p className="text-[11px] text-gray-400">
+                              Navegador Móvil • Medellín, Colombia
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-medium">Hace 3h</span>
+                      </div>
+                    </div>
+
+                    {/* Botón Cerrar Otras Sesiones */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCloseOtherSessions}
+                        className="w-full py-2.5 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Key className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Cerrar sesión en otros dispositivos</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                {/* Teléfono */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Teléfono Celular
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      name="telefono"
-                      value={form.telefono}
-                      onChange={handleChange}
-                      placeholder="Ej: 3001234567"
-                      className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                        errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"
-                      }`}
-                    />
-                  </div>
-                  <FieldError msg={errors.telefono} />
-                </div>
-
-                {/* Dirección de Entrega por Defecto */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Dirección de Entrega por Defecto
-                  </label>
-                  <div className="relative">
-                    <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      name="direccion"
-                      value={form.direccion}
-                      onChange={handleChange}
-                      placeholder="Ej: Calle 50 #30-20, Medellín"
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800"
-                    />
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Esta dirección se cargará automáticamente cuando hagas tus pedidos a domicilio.
-                  </p>
-                </div>
-
-                {/* Submit button */}
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-6 py-3 bg-gradient-to-r from-[#f05454] to-[#c43d3d] hover:from-[#e04444] hover:to-[#b52d2d] text-white font-bold rounded-2xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
-                  >
-                    {saving ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Guardando cambios...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        <span>Guardar Cambios</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
+              </div>
             )}
           </div>
         </div>
