@@ -43,7 +43,6 @@ export function PosCheckoutModal({
   const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
-  const [clientFilter, setClientFilter] = useState("direct"); // "direct", "all", "fidelity", "with_account"
 
   const responsableNombre = user
     ? `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.nombre || "Vendedor"
@@ -90,26 +89,18 @@ export function PosCheckoutModal({
   const montoPagaNum = Number(efectivoPaga) || 0;
   const vueltoEfectivo = montoPagaNum >= finalTotal ? montoPagaNum - finalTotal : 0;
 
-  // Filtered clients list
-  const filteredClientes = clientesList.filter(c => {
-    const search = clientSearchTerm.toLowerCase().trim();
-    const fullName = `${c.nombre || ''} ${c.apellidos || ''}`.toLowerCase();
-    const phone = String(c.telefono || '').toLowerCase();
-    const email = String(c.email || '').toLowerCase();
-    const doc = String(c.documento || c.cedula || c.identificacion || '').toLowerCase();
+  // Direct search matching (cedula, telefono, nombre, email)
+  const filteredClientes = clientSearchTerm.trim()
+    ? clientesList.filter((c) => {
+        const search = clientSearchTerm.toLowerCase().trim();
+        const fullName = `${c.nombre || ""} ${c.apellidos || ""}`.toLowerCase();
+        const phone = String(c.telefono || "").toLowerCase();
+        const email = String(c.email || "").toLowerCase();
+        const doc = String(c.documento || c.cedula || c.identificacion || "").toLowerCase();
 
-    const matchSearch = !search || fullName.includes(search) || phone.includes(search) || email.includes(search) || doc.includes(search);
-    if (!matchSearch) return false;
-
-    if (clientFilter === "fidelity") {
-      const hasFidelity = c.tipo && c.tipo !== "Nuevo" && c.descuentoPorcentaje > 0;
-      return hasFidelity;
-    }
-    if (clientFilter === "with_account") {
-      return Boolean(c.tieneCuenta || c.idUsuario);
-    }
-    return true;
-  });
+        return fullName.includes(search) || phone.includes(search) || email.includes(search) || doc.includes(search);
+      })
+    : [];
 
   const handleSelectClient = (c) => {
     setSelectedCliente(c);
@@ -354,97 +345,36 @@ export function PosCheckoutModal({
                 </div>
 
                 {/* Input de Búsqueda Directa */}
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={clientSearchTerm}
-                      onChange={(e) => {
-                        setClientSearchTerm(e.target.value);
-                        if (clientFilter === "direct" && e.target.value.trim() !== "") {
-                          // keep in direct search mode
-                        }
-                      }}
-                      placeholder="Búsqueda directa por cédula, teléfono, nombre o email..."
-                      className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40"
-                      autoFocus
-                    />
-                    {clientSearchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => setClientSearchTerm("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Filtros Rápidos / Explorar Lista */}
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap pt-0.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => setClientFilter("direct")}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                          clientFilter === "direct"
-                            ? "bg-[#f05454] text-white shadow-2xs"
-                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        <Search className="w-3 h-3" />
-                        <span>Búsqueda Directa</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClientFilter("all")}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
-                          clientFilter === "all"
-                            ? "bg-[#f05454] text-white shadow-2xs"
-                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        Ver Todos ({clientesList.length})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClientFilter("with_account")}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                          clientFilter === "with_account"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                        <span>Cuentas Activas</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setClientFilter("fidelity")}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                          clientFilter === "fidelity"
-                            ? "bg-amber-500 text-white shadow-2xs"
-                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                        }`}
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>Con Fidelidad</span>
-                      </button>
-                    </div>
-                  </div>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={clientSearchTerm}
+                    onChange={(e) => setClientSearchTerm(e.target.value)}
+                    placeholder="Escribe cédula, teléfono o nombre del cliente..."
+                    className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40"
+                    autoFocus
+                  />
+                  {clientSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setClientSearchTerm("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer p-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
-                {/* Lista de Resultados / Direct Search View */}
+                {/* Lista de Resultados Directos */}
                 <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
-                  {clientFilter === "direct" && !clientSearchTerm.trim() ? (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-750/50 rounded-xl text-center space-y-1.5 border border-dashed border-gray-200 dark:border-gray-700">
-                      <Search className="w-5 h-5 text-gray-400 mx-auto" />
+                  {!clientSearchTerm.trim() ? (
+                    <div className="p-3.5 bg-gray-50 dark:bg-gray-750/50 rounded-xl text-center space-y-1 border border-dashed border-gray-200 dark:border-gray-700">
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                        Escribe el teléfono, cédula o nombre del cliente
+                        🔍 Búsqueda rápida por teléfono, cédula o nombre
                       </p>
                       <p className="text-[11px] text-gray-400">
-                        O haz clic en <span className="font-semibold text-[#f05454]">"Ver Todos"</span> para explorar la lista completa.
+                        Escribe para verificar si el cliente tiene cuenta activa y aplicar su descuento de fidelidad.
                       </p>
                     </div>
                   ) : filteredClientes.length === 0 ? (
