@@ -386,6 +386,10 @@ export function PosCheckoutModal({
                     filteredClientes.map((c) => {
                       const cId = c.id || c.idCliente;
                       const cNombre = `${c.nombre || ''} ${c.apellidos || ''}`.trim() || 'Cliente';
+                      const cTipo = c.tipo || 'Nuevo';
+                      const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
+                      const isCurrentlySelected = Boolean(selectedCliente && (selectedCliente.id || selectedCliente.idCliente) === cId);
+
                       const isInactive =
                         c.estado === 'Inactivo' ||
                         c.estado === 'INACTIVO' ||
