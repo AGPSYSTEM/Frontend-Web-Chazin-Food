@@ -386,10 +386,18 @@ export function PosCheckoutModal({
                     filteredClientes.map((c) => {
                       const cId = c.id || c.idCliente;
                       const cNombre = `${c.nombre || ''} ${c.apellidos || ''}`.trim() || 'Cliente';
-                      const cTipo = c.tipo || 'Nuevo';
-                      const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
-                      const isCurrentlySelected = selectedCliente && (selectedCliente.id || selectedCliente.idCliente) === cId;
-                      const hasActiveAccount = Boolean(c.tieneCuenta && (c.estado === 'Activo' || c.estado === 1 || c.estado === true || c.idUsuario));
+                      const isInactive =
+                        c.estado === 'Inactivo' ||
+                        c.estado === 'INACTIVO' ||
+                        c.estado === 0 ||
+                        c.estado === false ||
+                        c.usuario?.estado === 'Inactivo' ||
+                        c.usuario?.estado === 'INACTIVO' ||
+                        c.usuario?.estado === 0 ||
+                        c.usuario?.estado === false;
+
+                      const hasAccount = Boolean(c.idUsuario || c.usuario || c.tieneCuenta);
+                      const hasActiveAccount = hasAccount && !isInactive;
 
                       return (
                         <div
@@ -414,6 +422,11 @@ export function PosCheckoutModal({
                                   <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-black flex items-center gap-0.5 shrink-0">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span>Cuenta Activa</span>
+                                  </span>
+                                ) : hasAccount ? (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-[9.5px] font-black flex items-center gap-0.5 shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                    <span>Cuenta Inactiva</span>
                                   </span>
                                 ) : (
                                   <span className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9.5px] font-semibold shrink-0">
@@ -460,10 +473,42 @@ export function PosCheckoutModal({
                         <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
                           {selectedCliente.nombre} {selectedCliente.apellidos || ''}
                         </h5>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Cuenta Activa</span>
-                        </span>
+                        {(() => {
+                          const isSelInactive =
+                            selectedCliente.estado === 'Inactivo' ||
+                            selectedCliente.estado === 'INACTIVO' ||
+                            selectedCliente.estado === 0 ||
+                            selectedCliente.estado === false ||
+                            selectedCliente.usuario?.estado === 'Inactivo' ||
+                            selectedCliente.usuario?.estado === 'INACTIVO' ||
+                            selectedCliente.usuario?.estado === 0 ||
+                            selectedCliente.usuario?.estado === false;
+
+                          const selHasAccount = Boolean(selectedCliente.idUsuario || selectedCliente.usuario || selectedCliente.tieneCuenta);
+                          const selHasActive = selHasAccount && !isSelInactive;
+
+                          if (selHasActive) {
+                            return (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Cuenta Activa</span>
+                              </span>
+                            );
+                          }
+                          if (selHasAccount) {
+                            return (
+                              <span className="px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-[10px] font-black flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                <span>Cuenta Inactiva</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-bold">
+                              Sin Cuenta Web
+                            </span>
+                          );
+                        })()}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
                         {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
