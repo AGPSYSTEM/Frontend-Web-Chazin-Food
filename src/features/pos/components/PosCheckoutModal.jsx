@@ -43,7 +43,7 @@ export function PosCheckoutModal({
   const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
-  const [clientFilter, setClientFilter] = useState("all"); // "all", "fidelity", "with_account"
+  const [clientFilter, setClientFilter] = useState("direct"); // "direct", "all", "fidelity", "with_account"
 
   const responsableNombre = user
     ? `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.nombre || "Vendedor"
@@ -96,8 +96,9 @@ export function PosCheckoutModal({
     const fullName = `${c.nombre || ''} ${c.apellidos || ''}`.toLowerCase();
     const phone = String(c.telefono || '').toLowerCase();
     const email = String(c.email || '').toLowerCase();
+    const doc = String(c.documento || c.cedula || c.identificacion || '').toLowerCase();
 
-    const matchSearch = !search || fullName.includes(search) || phone.includes(search) || email.includes(search);
+    const matchSearch = !search || fullName.includes(search) || phone.includes(search) || email.includes(search) || doc.includes(search);
     if (!matchSearch) return false;
 
     if (clientFilter === "fidelity") {
@@ -352,71 +353,104 @@ export function PosCheckoutModal({
                   </button>
                 </div>
 
-                {/* Input de Búsqueda */}
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={clientSearchTerm}
-                    onChange={(e) => setClientSearchTerm(e.target.value)}
-                    placeholder="Buscar por nombre, teléfono o email..."
-                    className="w-full pl-9 pr-8 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
-                    autoFocus
-                  />
-                  {clientSearchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => setClientSearchTerm("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                {/* Input de Búsqueda Directa */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={clientSearchTerm}
+                      onChange={(e) => {
+                        setClientSearchTerm(e.target.value);
+                        if (clientFilter === "direct" && e.target.value.trim() !== "") {
+                          // keep in direct search mode
+                        }
+                      }}
+                      placeholder="Búsqueda directa por cédula, teléfono, nombre o email..."
+                      className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40"
+                      autoFocus
+                    />
+                    {clientSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setClientSearchTerm("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filtros Rápidos / Explorar Lista */}
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap pt-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setClientFilter("direct")}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                          clientFilter === "direct"
+                            ? "bg-[#f05454] text-white shadow-2xs"
+                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                        }`}
+                      >
+                        <Search className="w-3 h-3" />
+                        <span>Búsqueda Directa</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClientFilter("all")}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                          clientFilter === "all"
+                            ? "bg-[#f05454] text-white shadow-2xs"
+                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                        }`}
+                      >
+                        Ver Todos ({clientesList.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClientFilter("with_account")}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                          clientFilter === "with_account"
+                            ? "bg-emerald-600 text-white shadow-2xs"
+                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                        <span>Cuentas Activas</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setClientFilter("fidelity")}
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                          clientFilter === "fidelity"
+                            ? "bg-amber-500 text-white shadow-2xs"
+                            : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                        }`}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Con Fidelidad</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Filtros Rápidos */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setClientFilter("all")}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
-                      clientFilter === "all"
-                        ? "bg-[#f05454] text-white"
-                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                    }`}
-                  >
-                    Todos ({clientesList.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClientFilter("fidelity")}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                      clientFilter === "fidelity"
-                        ? "bg-amber-500 text-white"
-                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                    }`}
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Con Fidelidad</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setClientFilter("with_account")}
-                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
-                      clientFilter === "with_account"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-gray-100 dark:bg-gray-750 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                    }`}
-                  >
-                    Con Cuenta Activa
-                  </button>
-                </div>
-
-                {/* Lista de Resultados */}
-                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                  {filteredClientes.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-                      <p>No se encontraron clientes coincidentes.</p>
+                {/* Lista de Resultados / Direct Search View */}
+                <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                  {clientFilter === "direct" && !clientSearchTerm.trim() ? (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-750/50 rounded-xl text-center space-y-1.5 border border-dashed border-gray-200 dark:border-gray-700">
+                      <Search className="w-5 h-5 text-gray-400 mx-auto" />
+                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                        Escribe el teléfono, cédula o nombre del cliente
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        O haz clic en <span className="font-semibold text-[#f05454]">"Ver Todos"</span> para explorar la lista completa.
+                      </p>
+                    </div>
+                  ) : filteredClientes.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-750/50 rounded-xl">
+                      <p className="font-bold">No se encontraron clientes con esos datos.</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Verifica el número de teléfono, cédula o nombre ingresado.</p>
                     </div>
                   ) : (
                     filteredClientes.map((c) => {
@@ -425,6 +459,7 @@ export function PosCheckoutModal({
                       const cTipo = c.tipo || 'Nuevo';
                       const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
                       const isCurrentlySelected = selectedCliente && (selectedCliente.id || selectedCliente.idCliente) === cId;
+                      const hasActiveAccount = Boolean(c.tieneCuenta && (c.estado === 'Activo' || c.estado === 1 || c.estado === true || c.idUsuario));
 
                       return (
                         <div
@@ -432,20 +467,32 @@ export function PosCheckoutModal({
                           onClick={() => handleSelectClient(c)}
                           className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2.5 cursor-pointer group ${
                             isCurrentlySelected
-                              ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/30"
+                              ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/30 shadow-xs"
                               : "border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs font-black shrink-0 group-hover:bg-[#f05454] group-hover:text-white transition">
+                            <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center text-sm font-black shrink-0 group-hover:bg-[#f05454] group-hover:text-white transition">
                               {cTipo === "VIP" ? "🥇" : cTipo === "Frecuente" ? "🥈" : cTipo === "Regular" ? "🥉" : "👤"}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
-                                {cNombre}
-                              </p>
-                              <p className="text-[10.5px] text-gray-500 dark:text-gray-400 truncate">
-                                {c.telefono || c.email || "Cliente Registrado"}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                                  {cNombre}
+                                </p>
+                                {hasActiveAccount ? (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-black flex items-center gap-0.5 shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>Cuenta Activa</span>
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9.5px] font-semibold shrink-0">
+                                    Sin Cuenta Web
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10.5px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                {c.telefono ? `📞 ${c.telefono}` : ''} {c.email ? `• ✉️ ${c.email}` : ''} {!c.telefono && !c.email ? 'Cliente Registrado' : ''}
                               </p>
                             </div>
                           </div>
