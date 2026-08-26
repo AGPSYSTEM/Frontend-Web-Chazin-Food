@@ -80,6 +80,7 @@ export function ProductosTable({
               <th className="px-6 py-4">Producto / Código</th>
               <th className="px-6 py-4">Categoría</th>
               <th className="px-6 py-4">Precio Venta</th>
+              <th className="px-6 py-4">Stock Disponible</th>
               <th className="px-6 py-4">Estado</th>
               <th className="px-6 py-4 text-center">Acciones</th>
             </tr>
@@ -88,7 +89,7 @@ export function ProductosTable({
             {totalRecords === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-6 py-12 text-center text-gray-500 dark:text-gray-400"
                 >
                   <Utensils className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
@@ -137,6 +138,29 @@ export function ProductosTable({
                   </td>
                   <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
                     ${Number(p.precio || 0).toLocaleString("es-CO")}
+                  </td>
+                  <td className="px-6 py-4">
+                    {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
+                          Number(p.stockDisponible || p.stock) <= 5
+                            ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                            : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
+                        }`}
+                        title={p.hasFicha ? "Stock disponible calculado a partir de insumos en bodega" : "Stock disponible en catálogo"}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${Number(p.stockDisponible || p.stock) <= 5 ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                        <span>{p.stockDisponible !== undefined ? p.stockDisponible : p.stock} porciones</span>
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50"
+                        title="Insumos insuficientes para preparar este producto"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                        <span>Agotado (0)</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span
