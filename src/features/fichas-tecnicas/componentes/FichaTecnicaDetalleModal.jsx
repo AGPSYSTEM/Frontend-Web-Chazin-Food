@@ -8,14 +8,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  Printer,
   Edit2,
-  ChevronRight,
   ShieldAlert,
   Info,
   Check,
   Flame,
-  Scale
+  Scale,
+  ThermometerSnowflake,
+  ShieldCheck,
+  Sparkle
 } from "lucide-react";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 
@@ -53,7 +54,7 @@ export function FichaTecnicaDetalleModal({
 
       fetchPromise
         .then((res) => {
-          if (res && (res.idFichaTecnica || res.procedimiento || res.detalles || res.especificaciones)) {
+          if (res && (res.idFichaTecnica || res.procedimiento || res.detalles || res.especificaciones || res.caracteristicas)) {
             setFicha(res);
           } else {
             setFicha(null);
@@ -74,8 +75,9 @@ export function FichaTecnicaDetalleModal({
   const itemName = item.nombre || "Ficha Técnica";
   const itemCategoria =
     item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo");
+  const unidadMedida = item.unidadMedida || item.unidad || "und";
 
-  // Extract ingredients/insumos
+  // Data extraction
   const listaInsumos = ficha?.detalles || ficha?.insumos || [];
   const procedimientoText = ficha?.procedimiento || ficha?.descripcion || "";
   const pasos = procedimientoText
@@ -87,15 +89,11 @@ export function FichaTecnicaDetalleModal({
 
   const tiempoEstimado = ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : "10 - 15 min";
   const rendimientoText = ficha?.rendimiento || "1 porción";
-  const vidaUtilText = ficha?.vidaUtil || "Consumo inmediato";
+  const vidaUtilText = ficha?.vidaUtil || (isProducto ? "Consumo inmediato" : "Según lote y fecha de vencimiento");
   const almacenamientoText = ficha?.condicionesAlmacenamiento || "Conservar refrigerado o en lugar fresco y seco";
 
   const toggleCheck = (idx) => {
     setCheckedIngredients((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   return (
@@ -118,7 +116,7 @@ export function FichaTecnicaDetalleModal({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-100 text-[#F05454] dark:bg-rose-950/60 dark:text-rose-300">
-                {isProducto ? "Ficha de Producto" : "Ficha de Insumo"}
+                {isProducto ? "Ficha de Producto (Receta)" : "Ficha Técnica de Insumo / Materia Prima"}
               </span>
               <span className="text-xs text-gray-400 font-medium">• {itemCategoria}</span>
               {ficha ? (
@@ -127,7 +125,7 @@ export function FichaTecnicaDetalleModal({
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> Estandarizada
+                  <AlertCircle className="w-3 h-3" /> Estándar General
                 </span>
               )}
             </div>
@@ -140,22 +138,25 @@ export function FichaTecnicaDetalleModal({
         {loading ? (
           <div className="py-16 text-center space-y-3">
             <div className="w-8 h-8 border-3 border-[#F05454] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-gray-400 font-bold">Cargando ficha técnica y receta...</p>
+            <p className="text-xs text-gray-400 font-bold">Cargando ficha técnica...</p>
           </div>
-        ) : (
+        ) : isProducto ? (
+          /* ══════════════════════════════════════════════════════════
+             1. VISTA DE PRODUCTO (RECETA, INSUMOS, PASOS DE COCCIÓN)
+             ══════════════════════════════════════════════════════════ */
           <div className="space-y-6">
-            {/* Quick Metrics Bar */}
+            {/* Métricas rápidas de producto */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-[#F05454] uppercase tracking-wider flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" /> Tiempo
+                  <Clock className="w-3.5 h-3.5" /> Tiempo Cocina
                 </p>
                 <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-0.5">{tiempoEstimado}</p>
               </div>
 
               <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1">
-                  <Scale className="w-3.5 h-3.5" /> Porción
+                  <Scale className="w-3.5 h-3.5" /> Porción / Rendimiento
                 </p>
                 <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-0.5 truncate">{rendimientoText}</p>
               </div>
@@ -328,6 +329,97 @@ export function FichaTecnicaDetalleModal({
               )}
             </div>
           </div>
+        ) : (
+          /* ══════════════════════════════════════════════════════════
+             2. VISTA DE INSUMO (MATERIA PRIMA / CONTROL DE CALIDAD)
+             ══════════════════════════════════════════════════════════ */
+          <div className="space-y-6">
+            {/* Métricas clave para Materia Prima / Insumo */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
+                <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Vida Útil Estimada
+                </p>
+                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-1">
+                  {vidaUtilText}
+                </p>
+              </div>
+
+              <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
+                <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ThermometerSnowflake className="w-3.5 h-3.5" /> Almacenamiento & Frío
+                </p>
+                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-1">
+                  {almacenamientoText}
+                </p>
+              </div>
+
+              <div className="p-4 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 rounded-2xl">
+                <p className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5" /> Presentación / Unidad
+                </p>
+                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-1">
+                  Medida: {unidadMedida}
+                </p>
+              </div>
+            </div>
+
+            {/* Criterios de Calidad y Recepción */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-2">
+                <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>Especificaciones de Calidad y Recepción</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                  {ficha?.especificaciones || "Verificar estado óptimo, empaque sellado, ausencia de impurezas y fecha de vencimiento vigente al momento de recepción."}
+                </p>
+              </div>
+
+              <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-2">
+                <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkle className="w-4 h-4 text-amber-500" />
+                  <span>Características Organolépticas / Sensoriales</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                  {ficha?.caracteristicas || "Color característico natural, textura firme, olor fresco y agradable. Rechazar si presenta magulladuras o signos de descomposición."}
+                </p>
+              </div>
+
+              <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-2">
+                <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  <span>Información Nutricional & Composición</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                  {ficha?.informacionNutricional || "Materia prima fresca para uso directo o procesamiento en cocina según tablas de valor nutricional."}
+                </p>
+              </div>
+
+              <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-2">
+                <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                  <span>Observaciones & Control de Alérgenos</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                  {ficha?.observaciones || "Manipular con buenas prácticas de manufactura (BPM) y evitar contaminación cruzada con alérgenos."}
+                </p>
+              </div>
+            </div>
+
+            {/* Instrucciones de Manipulación, Lavado o Preparación si existen */}
+            {ficha?.procedimiento && (
+              <div className="p-5 bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-2">
+                <h4 className="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#F05454]" />
+                  <span>Instrucciones de Manipulación, Lavado o Porcionamiento</span>
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
+                  {ficha.procedimiento}
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Footer Actions */}
@@ -351,7 +443,7 @@ export function FichaTecnicaDetalleModal({
                 className="px-5 py-2.5 bg-[#F05454] hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
               >
                 <Edit2 className="w-3.5 h-3.5" />
-                <span>Editar Ficha Técnica</span>
+                <span>{isProducto ? "Editar Ficha de Producto" : "Editar Ficha de Insumo"}</span>
               </button>
             )}
           </div>
