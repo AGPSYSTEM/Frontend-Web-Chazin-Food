@@ -16,7 +16,8 @@ import {
   Scale,
   ThermometerSnowflake,
   ShieldCheck,
-  Sparkle
+  Sparkle,
+  HelpCircle
 } from "lucide-react";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 
@@ -54,14 +55,26 @@ export function FichaTecnicaDetalleModal({
 
       fetchPromise
         .then((res) => {
-          if (res && (res.idFichaTecnica || res.procedimiento || res.detalles || res.especificaciones || res.caracteristicas)) {
+          // Check if response has real data
+          if (
+            res &&
+            (res.idFichaTecnica ||
+              res.procedimiento ||
+              (Array.isArray(res.detalles) && res.detalles.length > 0) ||
+              (Array.isArray(res.insumos) && res.insumos.length > 0) ||
+              res.especificaciones ||
+              res.caracteristicas ||
+              res.condicionesAlmacenamiento ||
+              res.vidaUtil ||
+              res.informacionNutricional)
+          ) {
             setFicha(res);
           } else {
             setFicha(null);
           }
         })
         .catch((err) => {
-          console.warn("No se encontró ficha para el ítem:", err);
+          console.warn("No se encontró ficha técnica para el ítem:", err);
           setFicha(null);
         })
         .finally(() => setLoading(false));
@@ -77,9 +90,9 @@ export function FichaTecnicaDetalleModal({
     item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo");
   const unidadMedida = item.unidadMedida || item.unidad || "und";
 
-  // Data extraction
+  // Data extraction (strictly from DB, NO fallback dummy sentences)
   const listaInsumos = ficha?.detalles || ficha?.insumos || [];
-  const procedimientoText = ficha?.procedimiento || ficha?.descripcion || "";
+  const procedimientoText = (ficha?.procedimiento || ficha?.descripcion || "").trim();
   const pasos = procedimientoText
     ? procedimientoText
         .split("\n")
@@ -87,10 +100,10 @@ export function FichaTecnicaDetalleModal({
         .filter(Boolean)
     : [];
 
-  const tiempoEstimado = ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : "10 - 15 min";
-  const rendimientoText = ficha?.rendimiento || "1 porción";
-  const vidaUtilText = ficha?.vidaUtil || (isProducto ? "Consumo inmediato" : "Según lote y fecha de vencimiento");
-  const almacenamientoText = ficha?.condicionesAlmacenamiento || "Conservar refrigerado o en lugar fresco y seco";
+  const tiempoEstimado = ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : null;
+  const rendimientoText = ficha?.rendimiento || null;
+  const vidaUtilText = ficha?.vidaUtil || null;
+  const almacenamientoText = ficha?.condicionesAlmacenamiento || null;
 
   const toggleCheck = (idx) => {
     setCheckedIngredients((prev) => ({ ...prev, [idx]: !prev[idx] }));
@@ -116,16 +129,16 @@ export function FichaTecnicaDetalleModal({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-100 text-[#F05454] dark:bg-rose-950/60 dark:text-rose-300">
-                {isProducto ? "Ficha de Producto (Receta)" : "Ficha Técnica de Insumo / Materia Prima"}
+                {isProducto ? "Ficha de Producto" : "Ficha de Insumo / Materia Prima"}
               </span>
               <span className="text-xs text-gray-400 font-medium">• {itemCategoria}</span>
               {ficha ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Ficha Configurada
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> Estándar General
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Sin Ficha Registrada
                 </span>
               )}
             </div>
@@ -138,11 +151,41 @@ export function FichaTecnicaDetalleModal({
         {loading ? (
           <div className="py-16 text-center space-y-3">
             <div className="w-8 h-8 border-3 border-[#F05454] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-gray-400 font-bold">Cargando ficha técnica...</p>
+            <p className="text-xs text-gray-400 font-bold">Cargando datos desde la base de datos...</p>
+          </div>
+        ) : !ficha ? (
+          /* ══════════════════════════════════════════════════════════
+             ESTADO CUANDO NO HAY FICHA REGISTRADA (0 FALLBACKS FALSOS)
+             ══════════════════════════════════════════════════════════ */
+          <div className="py-10 px-6 text-center bg-gray-50 dark:bg-gray-800/40 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center mx-auto shadow-2xs">
+              <HelpCircle className="w-8 h-8" />
+            </div>
+            <div className="max-w-md mx-auto space-y-1.5">
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
+                No hay ficha técnica registrada
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                Este {isProducto ? "producto" : "insumo"} aún no tiene especificaciones, almacenamiento ni parámetros registrados en la base de datos.
+              </p>
+            </div>
+            {!readOnly && onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEdit(item);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Configurar Ficha Técnica Ahora</span>
+              </button>
+            )}
           </div>
         ) : isProducto ? (
           /* ══════════════════════════════════════════════════════════
-             1. VISTA DE PRODUCTO (RECETA, INSUMOS, PASOS DE COCCIÓN)
+             1. VISTA DE PRODUCTO (RECETA REAL, INSUMOS, PASOS)
              ══════════════════════════════════════════════════════════ */
           <div className="space-y-6">
             {/* Métricas rápidas de producto */}
@@ -151,21 +194,27 @@ export function FichaTecnicaDetalleModal({
                 <p className="text-[11px] font-bold text-[#F05454] uppercase tracking-wider flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" /> Tiempo Cocina
                 </p>
-                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-0.5">{tiempoEstimado}</p>
+                <p className={`text-base font-black mt-0.5 ${tiempoEstimado ? "text-gray-900 dark:text-gray-100" : "text-gray-400 italic text-xs"}`}>
+                  {tiempoEstimado || "Sin registrar"}
+                </p>
               </div>
 
               <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1">
-                  <Scale className="w-3.5 h-3.5" /> Porción / Rendimiento
+                  <Scale className="w-3.5 h-3.5" /> Porción
                 </p>
-                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-0.5 truncate">{rendimientoText}</p>
+                <p className={`text-base font-black mt-0.5 truncate ${rendimientoText ? "text-gray-900 dark:text-gray-100" : "text-gray-400 italic text-xs"}`}>
+                  {rendimientoText || "Sin registrar"}
+                </p>
               </div>
 
               <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5" /> Vida Útil
                 </p>
-                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-0.5 truncate">{vidaUtilText}</p>
+                <p className={`text-base font-black mt-0.5 truncate ${vidaUtilText ? "text-gray-900 dark:text-gray-100" : "text-gray-400 italic text-xs"}`}>
+                  {vidaUtilText || "Sin registrar"}
+                </p>
               </div>
 
               <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-2xl">
@@ -185,9 +234,11 @@ export function FichaTecnicaDetalleModal({
                   <Package className="w-4 h-4 text-[#F05454]" />
                   <span>Ingredientes & Insumos Requeridos ({listaInsumos.length})</span>
                 </h4>
-                <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
-                  Toca para marcar checklist
-                </span>
+                {listaInsumos.length > 0 && (
+                  <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
+                    Toca para marcar checklist
+                  </span>
+                )}
               </div>
 
               {listaInsumos.length > 0 ? (
@@ -238,7 +289,7 @@ export function FichaTecnicaDetalleModal({
                 </div>
               ) : (
                 <div className="py-4 text-center text-xs text-gray-400 italic">
-                  Ingredientes preparados al momento según receta estándar de cocina.
+                  No se han registrado insumos para esta receta.
                 </div>
               )}
             </div>
@@ -247,7 +298,7 @@ export function FichaTecnicaDetalleModal({
             <div className="bg-gray-50/80 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-3">
               <h4 className="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#F05454]" />
-                <span>Procedimiento de Preparación Paso a Paso</span>
+                <span>Procedimiento de Preparación</span>
               </h4>
 
               {pasos.length > 0 ? (
@@ -268,14 +319,14 @@ export function FichaTecnicaDetalleModal({
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 italic py-2">
-                  Preparar siguiendo los estándares de higiene, cocción y emplatado de Chazin Food.
+                  No se ha registrado procedimiento de preparación.
                 </p>
               )}
             </div>
 
             {/* Especificaciones y Almacenamiento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {ficha?.especificaciones && (
+              {ficha.especificaciones && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 text-blue-500" /> Especificaciones de Calidad
@@ -286,7 +337,7 @@ export function FichaTecnicaDetalleModal({
                 </div>
               )}
 
-              {ficha?.caracteristicas && (
+              {ficha.caracteristicas && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Características Sensoriales
@@ -297,7 +348,7 @@ export function FichaTecnicaDetalleModal({
                 </div>
               )}
 
-              {ficha?.informacionNutricional && (
+              {ficha.informacionNutricional && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Flame className="w-3.5 h-3.5 text-orange-500" /> Información Nutricional
@@ -308,16 +359,18 @@ export function FichaTecnicaDetalleModal({
                 </div>
               )}
 
-              <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
-                <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5 text-emerald-500" /> Almacenamiento & Conservación
-                </p>
-                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                  {almacenamientoText}
-                </p>
-              </div>
+              {almacenamientoText && (
+                <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
+                  <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-emerald-500" /> Almacenamiento & Conservación
+                  </p>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
+                    {almacenamientoText}
+                  </p>
+                </div>
+              )}
 
-              {ficha?.observaciones && (
+              {ficha.observaciones && (
                 <div className="col-span-full p-4 bg-amber-50/60 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 space-y-1">
                   <p className="text-[11px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Observaciones y Alérgenos
@@ -331,26 +384,26 @@ export function FichaTecnicaDetalleModal({
           </div>
         ) : (
           /* ══════════════════════════════════════════════════════════
-             2. VISTA DE INSUMO (MATERIA PRIMA / CONTROL DE CALIDAD)
+             2. VISTA DE INSUMO (MATERIA PRIMA REAL - 0 FALLBACKS)
              ══════════════════════════════════════════════════════════ */
           <div className="space-y-6">
             {/* Métricas clave para Materia Prima / Insumo */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Vida Útil Estimada
+                  <Sparkles className="w-3.5 h-3.5" /> Vida Útil
                 </p>
-                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-1">
-                  {vidaUtilText}
+                <p className={`text-base font-black mt-1 ${vidaUtilText ? "text-gray-900 dark:text-gray-100" : "text-gray-400 italic text-xs"}`}>
+                  {vidaUtilText || "Sin registrar"}
                 </p>
               </div>
 
               <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
                 <p className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <ThermometerSnowflake className="w-3.5 h-3.5" /> Almacenamiento & Frío
+                  <ThermometerSnowflake className="w-3.5 h-3.5" /> Almacenamiento
                 </p>
-                <p className="text-base font-black text-gray-900 dark:text-gray-100 mt-1">
-                  {almacenamientoText}
+                <p className={`text-base font-black mt-1 ${almacenamientoText ? "text-gray-900 dark:text-gray-100" : "text-gray-400 italic text-xs"}`}>
+                  {almacenamientoText || "Sin registrar"}
                 </p>
               </div>
 
@@ -364,15 +417,15 @@ export function FichaTecnicaDetalleModal({
               </div>
             </div>
 
-            {/* Criterios de Calidad y Recepción */}
+            {/* Criterios de Calidad y Recepción (Solo si existen datos reales) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-2">
                 <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   <span>Especificaciones de Calidad y Recepción</span>
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                  {ficha?.especificaciones || "Verificar estado óptimo, empaque sellado, ausencia de impurezas y fecha de vencimiento vigente al momento de recepción."}
+                <p className={`text-xs sm:text-sm leading-relaxed font-medium ${ficha.especificaciones ? "text-gray-700 dark:text-gray-300" : "text-gray-400 italic"}`}>
+                  {ficha.especificaciones || "Sin registrar"}
                 </p>
               </div>
 
@@ -381,8 +434,8 @@ export function FichaTecnicaDetalleModal({
                   <Sparkle className="w-4 h-4 text-amber-500" />
                   <span>Características Organolépticas / Sensoriales</span>
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                  {ficha?.caracteristicas || "Color característico natural, textura firme, olor fresco y agradable. Rechazar si presenta magulladuras o signos de descomposición."}
+                <p className={`text-xs sm:text-sm leading-relaxed font-medium ${ficha.caracteristicas ? "text-gray-700 dark:text-gray-300" : "text-gray-400 italic"}`}>
+                  {ficha.caracteristicas || "Sin registrar"}
                 </p>
               </div>
 
@@ -391,8 +444,8 @@ export function FichaTecnicaDetalleModal({
                   <Flame className="w-4 h-4 text-orange-500" />
                   <span>Información Nutricional & Composición</span>
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                  {ficha?.informacionNutricional || "Materia prima fresca para uso directo o procesamiento en cocina según tablas de valor nutricional."}
+                <p className={`text-xs sm:text-sm leading-relaxed font-medium ${ficha.informacionNutricional ? "text-gray-700 dark:text-gray-300" : "text-gray-400 italic"}`}>
+                  {ficha.informacionNutricional || "Sin registrar"}
                 </p>
               </div>
 
@@ -401,21 +454,21 @@ export function FichaTecnicaDetalleModal({
                   <AlertCircle className="w-4 h-4 text-amber-500" />
                   <span>Observaciones & Control de Alérgenos</span>
                 </h4>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                  {ficha?.observaciones || "Manipular con buenas prácticas de manufactura (BPM) y evitar contaminación cruzada con alérgenos."}
+                <p className={`text-xs sm:text-sm leading-relaxed font-medium ${ficha.observaciones ? "text-gray-700 dark:text-gray-300" : "text-gray-400 italic"}`}>
+                  {ficha.observaciones || "Sin registrar"}
                 </p>
               </div>
             </div>
 
             {/* Instrucciones de Manipulación, Lavado o Preparación si existen */}
-            {ficha?.procedimiento && (
+            {procedimientoText && (
               <div className="p-5 bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-2">
                 <h4 className="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="w-4 h-4 text-[#F05454]" />
                   <span>Instrucciones de Manipulación, Lavado o Porcionamiento</span>
                 </h4>
                 <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 font-medium leading-relaxed">
-                  {ficha.procedimiento}
+                  {procedimientoText}
                 </p>
               </div>
             )}
