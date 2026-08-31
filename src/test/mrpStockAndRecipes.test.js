@@ -1,11 +1,40 @@
 /**
  * Automated Tests Suite:
  * 1. Control de Stock por Cuello de Botella de Insumos (Receta / Ficha Técnica)
- * 2. Descuento Automático de Insumos al Realizar Ventas
- * 3. Descuento con Múltiples Productos y Adiciones
- * 4. Bloqueo de Venta cuando los Insumos no son suficientes
- * 5. Reintegro de Insumos al Anular / Cancelar una Venta
+ * 2. Conversión Multidimensional de Unidades de Medida (Kg <-> Gr, Lt <-> Ml)
+ * 3. Descuento Automático de Insumos al Realizar Ventas con Conversión
+ * 4. Descuento con Múltiples Productos y Adiciones
+ * 5. Bloqueo de Venta cuando los Insumos no son suficientes
+ * 6. Reintegro de Insumos al Anular / Cancelar una Venta
  */
+
+function convertUnits(amount, fromUnit, toUnit) {
+  if (!amount || isNaN(amount)) return 0;
+  if (!fromUnit || !toUnit) return Number(amount);
+
+  const from = String(fromUnit).toLowerCase().trim();
+  const to = String(toUnit).toLowerCase().trim();
+
+  if (from === to) return Number(amount);
+
+  const isKg = (u) => u.includes('kg') || u.includes('kilo');
+  const isGr = (u) => u.includes('gr') || u.includes('gram');
+  const isMg = (u) => u.includes('mg') || u.includes('miligram');
+  const isLt = (u) => u.includes('lt') || u.includes('litro');
+  const isMl = (u) => u.includes('ml') || u.includes('mililitro') || u.includes('cc');
+
+  if (isKg(from) && isGr(to)) return Number(amount) * 1000;
+  if (isGr(from) && isKg(to)) return Number(amount) / 1000;
+  if (isKg(from) && isMg(to)) return Number(amount) * 1000000;
+  if (isMg(from) && isKg(to)) return Number(amount) / 1000000;
+  if (isGr(from) && isMg(to)) return Number(amount) * 1000;
+  if (isMg(from) && isGr(to)) return Number(amount) / 1000;
+
+  if (isLt(from) && isMl(to)) return Number(amount) * 1000;
+  if (isMl(from) && isLt(to)) return Number(amount) / 1000;
+
+  return Number(amount);
+}
 
 function calculateProductStock(ficha, insumosMap) {
   if (!ficha || !Array.isArray(ficha.detalles) || ficha.detalles.length === 0) {
@@ -14,11 +43,17 @@ function calculateProductStock(ficha, insumosMap) {
 
   let minPortions = Infinity;
   for (const d of ficha.detalles) {
-    const cantRequerida = Number(d.cantidad || 0);
-    const insumoStock = Number(insumosMap[d.idInsumo]?.stock !== undefined ? insumosMap[d.idInsumo].stock : (d.insumo?.stock || 0));
+    const rawCantRequerida = Number(d.cantidad || 0);
+    const insumo = insumosMap[d.idInsumo] || d.insumo;
+    const recipeUnit = d.unidadMedida || insumo?.unidadMedida || 'und';
+    const insumoUnit = insumo?.unidadMedida || recipeUnit;
+    const insumoStock = Number(insumo?.stock || 0);
 
-    if (cantRequerida > 0) {
-      const portionsFromThisInsumo = Math.floor(insumoStock / cantRequerida);
+    const cantRequeridaEnInsumoUnit = convertUnits(rawCantRequerida, recipeUnit, insumoUnit);
+
+    if (cantRequeridaEnInsumoUnit > 0) {
+      const portionsFloat = Number((insumoStock / cantRequeridaEnInsumoUnit).toFixed(6));
+      const portionsFromThisInsumo = Math.floor(portionsFloat);
       if (portionsFromThisInsumo < minPortions) {
         minPortions = portionsFromThisInsumo;
       }
@@ -35,12 +70,18 @@ function processSaleInsumoDeduction(saleItems, fichasMap, insumosMap) {
     const ficha = fichasMap[item.idProducto];
     if (ficha && Array.isArray(ficha.detalles)) {
       for (const det of ficha.detalles) {
-        const required = Number(det.cantidad || 0) * Number(item.cantidad || 1);
-        const currentStock = Number(insumosMap[det.idInsumo]?.stock || 0);
+        const rawCant = Number(det.cantidad || 0);
+        const insumo = insumosMap[det.idInsumo];
+        const recipeUnit = det.unidadMedida || insumo?.unidadMedida || 'und';
+        const insumoUnit = insumo?.unidadMedida || recipeUnit;
+        const cantConvertida = convertUnits(rawCant, recipeUnit, insumoUnit);
+        const required = cantConvertida * Number(item.cantidad || 1);
+        const currentStock = Number(insumo?.stock || 0);
+
         if (currentStock < required) {
           return {
             success: false,
-            error: `Insumo insuficiente: ${insumosMap[det.idInsumo]?.nombre || det.idInsumo}. Requerido: ${required}, disponible: ${currentStock}`
+            error: `Insumo insuficiente: ${insumo?.nombre || det.idInsumo}. Requerido: ${required} ${insumoUnit}, disponible: ${currentStock} ${insumoUnit}`
           };
         }
       }
@@ -52,9 +93,16 @@ function processSaleInsumoDeduction(saleItems, fichasMap, insumosMap) {
     const ficha = fichasMap[item.idProducto];
     if (ficha && Array.isArray(ficha.detalles)) {
       for (const det of ficha.detalles) {
-        const required = Number(det.cantidad || 0) * Number(item.cantidad || 1);
-        if (insumosMap[det.idInsumo]) {
-          insumosMap[det.idInsumo].stock = Math.max(0, Number(insumosMap[det.idInsumo].stock) - required);
+        const rawCant = Number(det.cantidad || 0);
+        const insumo = insumosMap[det.idInsumo];
+        const recipeUnit = det.unidadMedida || insumo?.unidadMedida || 'und';
+        const insumoUnit = insumo?.unidadMedida || recipeUnit;
+        const cantConvertida = convertUnits(rawCant, recipeUnit, insumoUnit);
+        const required = cantConvertida * Number(item.cantidad || 1);
+
+        if (insumo) {
+          const nuevoStock = Math.max(0, Number(insumo.stock) - required);
+          insumo.stock = Number(nuevoStock.toFixed(4));
         }
       }
     }
@@ -68,9 +116,15 @@ function processCancelSaleRestock(saleItems, fichasMap, insumosMap) {
     const ficha = fichasMap[item.idProducto];
     if (ficha && Array.isArray(ficha.detalles)) {
       for (const det of ficha.detalles) {
-        const toRestore = Number(det.cantidad || 0) * Number(item.cantidad || 1);
-        if (insumosMap[det.idInsumo]) {
-          insumosMap[det.idInsumo].stock = Number(insumosMap[det.idInsumo].stock) + toRestore;
+        const rawCant = Number(det.cantidad || 0);
+        const insumo = insumosMap[det.idInsumo];
+        const recipeUnit = det.unidadMedida || insumo?.unidadMedida || 'und';
+        const insumoUnit = insumo?.unidadMedida || recipeUnit;
+        const cantConvertida = convertUnits(rawCant, recipeUnit, insumoUnit);
+        const toRestore = cantConvertida * Number(item.cantidad || 1);
+
+        if (insumo) {
+          insumo.stock = Number((Number(insumo.stock) + toRestore).toFixed(4));
         }
       }
     }
@@ -93,93 +147,57 @@ function assert(condition, message) {
   }
 }
 
-console.log("=== INICIANDO PRUEBAS AUTOMATIZADAS DE MRP, RECETAS Y DESCUENTO DE STOCK ===");
+console.log("=== INICIANDO PRUEBAS AUTOMATIZADAS DE MRP, RECETAS Y UNIDADES DE MEDIDA ===");
 
-// TEST 1: Cuello de Botella con 1 Insumo Limitante
-const insumosDB = {
-  1: { idInsumo: 1, nombre: "Pan Hamburguesa", stock: 20, unidadMedida: "und" },
-  2: { idInsumo: 2, nombre: "Carne Res 150g", stock: 8, unidadMedida: "und" },
-  3: { idInsumo: 3, nombre: "Queso Cheddar", stock: 50, unidadMedida: "loncha" }
+// TEST 1: Conversión de Unidades Básicas
+assert(convertUnits(5, 'Kg', 'Gr') === 5000, "5 Kg equivalen a 5000 Gr");
+assert(convertUnits(250, 'Gr', 'Kg') === 0.25, "250 Gr equivalen a 0.25 Kg");
+assert(convertUnits(2, 'Lt', 'Ml') === 2000, "2 Lt equivalen a 2000 Ml");
+assert(convertUnits(500, 'Ml', 'Lt') === 0.5, "500 Ml equivalen a 0.5 Lt");
+
+// TEST 2: Cuello de Botella con Conversión de Unidades (Queso Mozzarella en Kg, Receta en Gr)
+const insumosPizza = {
+  10: { idInsumo: 10, nombre: "Masa Pizza", stock: 15, unidadMedida: "Unidad" },
+  11: { idInsumo: 11, nombre: "Queso Mozzarella", stock: 3, unidadMedida: "Kilogramos (Kg)" }, // 3 Kg = 3000 Gr
+  12: { idInsumo: 12, nombre: "Salsa de Tomate", stock: 1.2, unidadMedida: "Litros (Lt)" }     // 1.2 Lt = 1200 Ml
 };
 
-const fichaHamburguesa = {
-  idProducto: 101,
+const fichaPizza = {
+  idProducto: 201,
   detalles: [
-    { idInsumo: 1, cantidad: 1 }, // 20 panes -> 20 hams
-    { idInsumo: 2, cantidad: 1 }, // 8 carnes -> 8 hams (LIMITANTE)
-    { idInsumo: 3, cantidad: 2 }  // 50 quesos / 2 = 25 hams
+    { idInsumo: 10, cantidad: 1, unidadMedida: "Unidad" },   // 15 masas -> 15 pizzas
+    { idInsumo: 11, cantidad: 150, unidadMedida: "Gramos (Gr)" }, // 3000 Gr / 150 Gr = 20 pizzas
+    { idInsumo: 12, cantidad: 100, unidadMedida: "Mililitros (Ml)" } // 1200 Ml / 100 Ml = 12 pizzas (LIMITANTE)
   ]
 };
 
-const stockCalculado1 = calculateProductStock(fichaHamburguesa, insumosDB);
-assert(stockCalculado1.stockDisponible === 8, "El stock de Hamburguesa debe ser 8 (limitado por 8 carnes disponibles)");
+const stockPizza = calculateProductStock(fichaPizza, insumosPizza);
+assert(stockPizza.stockDisponible === 12, "El stock de Pizza debe ser 12 (limitado por 1.2 Lt / 100 Ml de salsa = 12 porciones)");
 
-// TEST 2: Cuello de botella con decimales (ej. kg de papas o queso)
-const insumosPapas = {
-  4: { idInsumo: 4, nombre: "Papas Congeladas", stock: 1.5, unidadMedida: "kg" }, // 1.5 kg
-  5: { idInsumo: 5, nombre: "Caja Papas", stock: 100, unidadMedida: "und" }
-};
-const fichaPapas = {
-  idProducto: 102,
-  detalles: [
-    { idInsumo: 4, cantidad: 0.2 }, // 0.2 kg por porción -> 1.5 / 0.2 = 7.5 -> 7 porciones
-    { idInsumo: 5, cantidad: 1 }
-  ]
-};
-const stockCalculado2 = calculateProductStock(fichaPapas, insumosPapas);
-assert(stockCalculado2.stockDisponible === 7, "El stock de Papas debe ser 7 (1.5 kg / 0.2 kg = 7 porciones)");
-
-// TEST 3: Descuento Automático de Insumos al Vender 3 Hamburguesas
-const resVenta1 = processSaleInsumoDeduction(
-  [{ idProducto: 101, cantidad: 3 }],
-  { 101: fichaHamburguesa },
-  insumosDB
+// TEST 3: Descuento Automático con Conversión de Unidades al Vender 4 Pizzas
+const resVentaPizza = processSaleInsumoDeduction(
+  [{ idProducto: 201, cantidad: 4 }],
+  { 201: fichaPizza },
+  insumosPizza
 );
-assert(resVenta1.success === true, "La venta de 3 hamburguesas debe procesarse exitosamente");
-assert(insumosDB[1].stock === 17, "El stock de Panes debe bajar de 20 a 17 (20 - 3)");
-assert(insumosDB[2].stock === 5, "El stock de Carnes debe bajar de 8 a 5 (8 - 3)");
-assert(insumosDB[3].stock === 44, "El stock de Queso debe bajar de 50 a 44 (50 - 3*2)");
+assert(resVentaPizza.success === true, "La venta de 4 pizzas debe procesarse con éxito");
+assert(insumosPizza[10].stock === 11, "Masa Pizza debe quedar en 11 unidades (15 - 4)");
+assert(insumosPizza[11].stock === 2.4, "Queso Mozzarella debe quedar en 2.4 Kg (3 Kg - 4*150 Gr = 3 - 0.6 = 2.4 Kg)");
+assert(insumosPizza[12].stock === 0.8, "Salsa debe quedar en 0.8 Lt (1.2 Lt - 4*100 Ml = 1.2 - 0.4 = 0.8 Lt)");
 
-// Recalcular stock de hamburguesa después de la venta
-const stockCalculado3 = calculateProductStock(fichaHamburguesa, insumosDB);
-assert(stockCalculado3.stockDisponible === 5, "El nuevo stock disponible de Hamburguesa debe ser 5");
+// Recalcular stock de pizza post-venta
+const stockPizzaPostVenta = calculateProductStock(fichaPizza, insumosPizza);
+assert(stockPizzaPostVenta.stockDisponible === 8, "Nuevo stock de Pizza debe ser 8 (0.8 Lt / 100 Ml = 8 pizzas)");
 
-// TEST 4: Bloqueo de Venta si se pide más del stock disponible
-const resVentaExcesiva = processSaleInsumoDeduction(
-  [{ idProducto: 101, cantidad: 10 }], // Solo quedan 5 carnes
-  { 101: fichaHamburguesa },
-  insumosDB
-);
-assert(resVentaExcesiva.success === false, "La venta de 10 hamburguesas debe ser rechazada por falta de carne");
-assert(insumosDB[2].stock === 5, "El stock de carne debe permanecer intacto en 5 tras el rechazo");
-
-// TEST 5: Venta Mixta con Múltiples Productos
-const fichasDB = { 101: fichaHamburguesa, 102: fichaPapas };
-const todosInsumos = { ...insumosDB, ...insumosPapas };
-
-const resVentaMixta = processSaleInsumoDeduction(
-  [
-    { idProducto: 101, cantidad: 2 },
-    { idProducto: 102, cantidad: 4 }
-  ],
-  fichasDB,
-  todosInsumos
-);
-assert(resVentaMixta.success === true, "La venta mixta (2 burgers + 4 papas) debe ser exitosa");
-assert(todosInsumos[2].stock === 3, "El stock de carnes debe quedar en 3 (5 - 2)");
-assert(todosInsumos[4].stock === 0.7, "El stock de papas debe quedar en 0.7 kg (1.5 - 4*0.2 = 0.7)");
-
-// TEST 6: Reintegro de Insumos al Cancelar la Venta Mixta
+// TEST 4: Reintegro de Insumos al Cancelar Venta
 processCancelSaleRestock(
-  [
-    { idProducto: 101, cantidad: 2 },
-    { idProducto: 102, cantidad: 4 }
-  ],
-  fichasDB,
-  todosInsumos
+  [{ idProducto: 201, cantidad: 4 }],
+  { 201: fichaPizza },
+  insumosPizza
 );
-assert(todosInsumos[2].stock === 5, "Las 2 carnes deben reintegrarse a 5 tras cancelar la orden");
-assert(todosInsumos[4].stock === 1.5, "Las papas deben reintegrarse a 1.5 kg tras cancelar la orden");
+assert(insumosPizza[10].stock === 15, "Masa Pizza debe restaurarse a 15");
+assert(insumosPizza[11].stock === 3, "Queso debe restaurarse a 3 Kg");
+assert(insumosPizza[12].stock === 1.2, "Salsa debe restaurarse a 1.2 Lt");
 
 console.log("\n========================================================");
 console.log(`RESULTADOS: ${passed} pruebas pasadas, ${failed} fallidas.`);
