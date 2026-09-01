@@ -63,14 +63,29 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
     }
   }, [insumo, isOpen, categorias, proveedores]);
 
-  if (!isOpen) return null;
+  const getUnitShort = (u) => {
+    if (!u) return "und";
+    const s = String(u).toLowerCase();
+    if (s.includes("kg") || s.includes("kilo")) return "Kg";
+    if (s.includes("gr") || s.includes("gram")) return "Gr";
+    if (s.includes("lt") || s.includes("litr")) return "Lt";
+    if (s.includes("ml") || s.includes("mili") || s.includes("cc")) return "Ml";
+    if (s.includes("paq")) return "Paq";
+    if (s.includes("porc")) return "Porción";
+    return "Ud";
+  };
 
   const handleNumberInput = (field, val) => {
     if (val === "") {
       setForm((prev) => ({ ...prev, [field]: "" }));
       return;
     }
+    // Prevenir cualquier valor negativo
+    if (String(val).includes("-")) {
+      val = String(val).replace(/-/g, "");
+    }
     const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
+    const num = Math.max(0, parseFloat(sanitized) || 0);
     setForm((prev) => ({ ...prev, [field]: sanitized }));
   };
 
@@ -79,9 +94,9 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
     if (!form.nombre.trim()) return;
     onSave({
       ...form,
-      precioUnitario: form.precioUnitario === "" ? 0 : Number(form.precioUnitario),
-      stock: form.stock === "" ? 0 : Number(form.stock),
-      stockMinimo: form.stockMinimo === "" ? 0 : Number(form.stockMinimo),
+      precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
+      stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
+      stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
       fichaTecnica
     });
   };
@@ -108,6 +123,17 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Banner de Guía de Unidades y Stock */}
+            <div className="sm:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl p-3.5 flex items-start gap-3">
+              <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
+                ℹ️
+              </div>
+              <div className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">
+                <p className="font-semibold text-blue-950 dark:text-blue-100">Control de Inventario y Fórmulas:</p>
+                El stock nunca será negativo. Si compras en <strong>Kilogramos (Kg)</strong> o <strong>Litros (Lt)</strong>, en las Fichas Técnicas puedes usar porciones en <strong>Gramos (Gr)</strong> o <strong>Mililitros (Ml)</strong> y el sistema convertirá las proporciones automáticamente al vender.
+              </div>
+            </div>
+
             <div className="sm:col-span-2">
               <label className={labelCls}>Nombre del Insumo *</label>
               <input
@@ -116,7 +142,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                 className={inputCls}
-                placeholder="Ej. Carne Molida de Res"
+                placeholder="Ej. Queso Cheddar o Pan Hamburguesa"
               />
             </div>
 
@@ -175,54 +201,81 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
             </div>
 
             <div>
-              <label className={labelCls}>Unidad de Medida</label>
+              <label className={labelCls}>Unidad de Medida / Presentación</label>
               <select
                 value={form.unidadMedida}
                 onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
                 className={inputCls}
               >
-                <option value="Kg">Kilogramos (Kg)</option>
-                <option value="Gr">Gramos (Gr)</option>
-                <option value="Lt">Litros (Lt)</option>
-                <option value="Ml">Mililitros (Ml)</option>
-                <option value="Unidad">Unidad (Ud)</option>
-                <option value="Paquete">Paquete</option>
-                <option value="Porción">Porción</option>
+                <option value="Kg">Kilogramos (Kg) — Peso / Masa</option>
+                <option value="Gr">Gramos (Gr) — Peso / Masa</option>
+                <option value="Lt">Litros (Lt) — Volumen / Líquidos</option>
+                <option value="Ml">Mililitros (Ml) — Volumen / Líquidos</option>
+                <option value="Unidad">Unidad (Ud) — Conteo individual</option>
+                <option value="Paquete">Paquete — Presentación cerrada</option>
+                <option value="Porción">Porción — Ración individual</option>
               </select>
             </div>
 
             <div>
-              <label className={labelCls}>Precio Unitario ($)</label>
-              <NumberInput
-                min="0"
-                step="0.01"
-                value={form.precioUnitario}
-                onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                className={inputCls}
-                placeholder="0.00"
-              />
+              <label className={labelCls}>
+                Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""})
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                <NumberInput
+                  min="0"
+                  step="0.01"
+                  value={form.precioUnitario}
+                  onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
+                  className={`${inputCls} pl-8 pr-16`}
+                  placeholder="0.00"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
+                  / {getUnitShort(form.unidadMedida)}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Costo por cada {getUnitShort(form.unidadMedida)} comprado.</p>
             </div>
 
             <div>
-              <label className={labelCls}>Stock Inicial / Actual</label>
-              <NumberInput
-                min="0"
-                step="1"
-                value={form.stock}
-                onChange={(e) => handleNumberInput("stock", e.target.value)}
-                className={inputCls}
-              />
+              <label className={labelCls}>
+                Stock Inicial / Actual ({getUnitShort(form.unidadMedida)})
+              </label>
+              <div className="relative">
+                <NumberInput
+                  min="0"
+                  step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
+                  value={form.stock}
+                  onChange={(e) => handleNumberInput("stock", e.target.value)}
+                  className={`${inputCls} pr-16 font-semibold`}
+                  placeholder="0"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                  {getUnitShort(form.unidadMedida)}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Existencia física total en bodega (mínimo 0).</p>
             </div>
 
             <div>
-              <label className={labelCls}>Stock Mínimo Alerta</label>
-              <NumberInput
-                min="0"
-                step="1"
-                value={form.stockMinimo}
-                onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
-                className={inputCls}
-              />
+              <label className={labelCls}>
+                Stock Mínimo Alerta ({getUnitShort(form.unidadMedida)})
+              </label>
+              <div className="relative">
+                <NumberInput
+                  min="0"
+                  step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
+                  value={form.stockMinimo}
+                  onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
+                  className={`${inputCls} pr-16`}
+                  placeholder="5"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                  {getUnitShort(form.unidadMedida)}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">Alerta cuando las existencias sean ≤ {form.stockMinimo || 5} {getUnitShort(form.unidadMedida)}.</p>
             </div>
 
             <div>
