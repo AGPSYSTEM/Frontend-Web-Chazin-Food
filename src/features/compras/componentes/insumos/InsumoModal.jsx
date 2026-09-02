@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { X, Package } from "lucide-react";
-import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
@@ -25,7 +24,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
     descripcion: "",
     estado: "Activo"
   });
-  const [fichaTecnica, setFichaTecnica] = useState(null);
 
   useEffect(() => {
     if (insumo) {
@@ -44,7 +42,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         descripcion: insumo.descripcion || "",
         estado: insumo.estado === 1 || insumo.estado === "Activo" ? "Activo" : "Inactivo"
       });
-      setFichaTecnica(insumo.fichaTecnica || null);
     } else {
       setForm({
         nombre: "",
@@ -61,7 +58,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
         descripcion: "",
         estado: "Activo"
       });
-      setFichaTecnica(null);
     }
   }, [insumo, isOpen, categorias, proveedores]);
 
@@ -109,8 +105,7 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
       idProveedor: defaultProvId,
       precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
       stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
-      stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
-      fichaTecnica
+      stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo))
     });
   };
 
@@ -258,16 +253,16 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                   Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""})
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">$</span>
                   <NumberInput
                     min="0"
                     step="0.01"
                     value={form.precioUnitario}
                     onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                    className={`${inputCls} pl-8 pr-16`}
+                    className={`${inputCls} pl-8 pr-20`}
                     placeholder="0.00"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase">
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase pointer-events-none">
                     / {getUnitShort(form.unidadMedida)}
                   </span>
                 </div>
@@ -284,10 +279,10 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                     step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                     value={form.stock}
                     onChange={(e) => handleNumberInput("stock", e.target.value)}
-                    className={`${inputCls} pr-16 font-semibold`}
+                    className={`${inputCls} pr-20 font-semibold`}
                     placeholder="0"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 pointer-events-none">
                     {getUnitShort(form.unidadMedida)}
                   </span>
                 </div>
@@ -304,10 +299,10 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                     step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                     value={form.stockMinimo}
                     onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
-                    className={`${inputCls} pr-16`}
+                    className={`${inputCls} pr-20`}
                     placeholder="5"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                  <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 pointer-events-none">
                     {getUnitShort(form.unidadMedida)}
                   </span>
                 </div>
@@ -357,14 +352,6 @@ export function InsumoModal({ isOpen, onClose, onSave, insumo = null, categorias
                 />
               </div>
             </div>
-
-            {/* Section: Ficha Técnica */}
-            <FichaTecnicaInsumo
-              insumoId={insumo?.id || insumo?.idInsumo}
-              insumoName={form.nombre}
-              initialData={fichaTecnica}
-              onSave={(data) => setFichaTecnica(data)}
-            />
           </div>
 
           {/* Pinned Sticky Footer - ALWAYS VISIBLE */}

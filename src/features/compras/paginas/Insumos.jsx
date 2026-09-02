@@ -47,7 +47,7 @@ export function Insumos() {
 
   // Separate base insumos and prepared insumos
   const insumosBase = filteredInsumos.filter((i) => i.tipo !== "Preparado");
-  const insumosPreparados = insumos.filter((i) => i.tipo === "Preparado");
+  const insumosPreparados = filteredInsumos.filter((i) => i.tipo === "Preparado");
 
   const handleOpenTrazabilidad = () => {
     resetUnreadCount();
