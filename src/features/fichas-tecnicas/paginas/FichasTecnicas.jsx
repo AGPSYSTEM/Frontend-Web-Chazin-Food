@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, Search, ChevronLeft, Package, Utensils, Eye, Edit2, Sparkles, CheckCircle2 } from "lucide-react";
+import { FileText, Search, ChevronLeft, Package, Utensils, Eye, Edit2, Sparkles, CheckCircle2, FlaskConical } from "lucide-react";
 import { Link } from "react-router-dom";
 import { FichaTecnicaProducto } from "../componentes/FichaTecnicaProducto";
 import { FichaTecnicaInsumo } from "../componentes/FichaTecnicaInsumo";
@@ -8,9 +8,9 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 
 export function FichasTecnicas({ readOnly = false }) {
-  const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'insumos'
+  const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'preparados'
   const [productos, setProductos] = useState([]);
-  const [insumos, setInsumos] = useState([]);
+  const [preparados, setPreparados] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // States for modals and full edit page
@@ -18,39 +18,40 @@ export function FichasTecnicas({ readOnly = false }) {
   const [selectedEdit, setSelectedEdit] = useState(null);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [prodRes, insRes] = await Promise.allSettled([
-          productosService.getProductos(),
-          insumosService.getInsumos()
-        ]);
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [prodRes, prepRes] = await Promise.allSettled([
+        productosService.getProductos(),
+        insumosService.getInsumosPreparados()
+      ]);
 
-        if (prodRes.status === "fulfilled") {
-          const list = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
-          setProductos(list);
-        }
-
-        if (insRes.status === "fulfilled") {
-          const list = Array.isArray(insRes.value) ? insRes.value : insRes.value?.data || [];
-          setInsumos(list);
-        }
-      } catch (err) {
-        console.error("Error cargando catálogo para fichas técnicas:", err);
-      } finally {
-        setLoading(false);
+      if (prodRes.status === "fulfilled") {
+        const list = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
+        setProductos(list);
       }
+
+      if (prepRes.status === "fulfilled") {
+        const list = Array.isArray(prepRes.value) ? prepRes.value : prepRes.value?.data || [];
+        setPreparados(list);
+      }
+    } catch (err) {
+      console.error("Error cargando catálogo para fichas técnicas:", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
-  const currentList = activeTab === "productos" ? productos : insumos;
+  const currentList = activeTab === "productos" ? productos : preparados;
   const filtered = currentList.filter((item) => {
     const term = search.toLowerCase().trim();
     if (!term) return true;
     const nombre = (item.nombre || "").toLowerCase();
-    const cat = (item.categoria || item.categoriaNombre || item.categoria?.nombre || "").toLowerCase();
+    const cat = (item.categoria || item.categoriaNombre || item.categoria?.nombre || (activeTab === "productos" ? "Producto" : "Insumo Preparado")).toLowerCase();
     return nombre.includes(term) || cat.includes(term);
   });
 
@@ -61,10 +62,13 @@ export function FichasTecnicas({ readOnly = false }) {
       <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <button
-            onClick={() => setSelectedEdit(null)}
+            onClick={() => {
+              setSelectedEdit(null);
+              loadData();
+            }}
             className="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-400 hover:text-[#F05454] transition-colors cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" /> Volver al catálogo de {isProducto ? "productos" : "insumos"}
+            <ChevronLeft className="w-4 h-4" /> Volver al catálogo de {isProducto ? "productos" : "insumos preparados"}
           </button>
 
           <button
@@ -78,7 +82,7 @@ export function FichasTecnicas({ readOnly = false }) {
 
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-[#F05454] flex items-center justify-center font-bold text-xl shrink-0">
-            {isProducto ? <Utensils className="w-6 h-6" /> : <Package className="w-6 h-6" />}
+            {isProducto ? <Utensils className="w-6 h-6" /> : <FlaskConical className="w-6 h-6" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -88,7 +92,7 @@ export function FichasTecnicas({ readOnly = false }) {
               </span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedEdit.categoria || selectedEdit.categoriaNombre || selectedEdit.categoria?.nombre || (isProducto ? "Producto" : "Insumo")}
+              {selectedEdit.categoria || selectedEdit.categoriaNombre || selectedEdit.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado")}
             </p>
           </div>
         </div>
@@ -99,12 +103,14 @@ export function FichasTecnicas({ readOnly = false }) {
               productId={selectedEdit.id || selectedEdit.idProducto}
               productName={selectedEdit.nombre}
               readOnly={false}
+              onSave={() => loadData()}
             />
           ) : (
             <FichaTecnicaInsumo
               insumoId={selectedEdit.id || selectedEdit.idInsumo}
               insumoName={selectedEdit.nombre}
               readOnly={false}
+              onSave={() => loadData()}
             />
           )}
         </div>
@@ -142,7 +148,7 @@ export function FichasTecnicas({ readOnly = false }) {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {readOnly
               ? "Consulta los ingredientes, porciones y procedimientos de preparación paso a paso."
-              : "Administra especificaciones, ingredientes, rendimiento y conservación de productos e insumos."}
+              : "Administra especificaciones, ingredientes, rendimiento y conservación de productos e insumos preparados."}
           </p>
         </div>
       </div>
@@ -167,18 +173,18 @@ export function FichasTecnicas({ readOnly = false }) {
 
         <button
           onClick={() => {
-            setActiveTab("insumos");
+            setActiveTab("preparados");
             setSelectedDetalle(null);
             setSelectedEdit(null);
           }}
           className={`flex items-center gap-2 pb-3 text-sm font-semibold transition-colors relative cursor-pointer ${
-            activeTab === "insumos"
+            activeTab === "preparados"
               ? "text-[#F05454] border-b-2 border-[#F05454]"
               : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
           }`}
         >
-          <Package className="w-4 h-4" />
-          <span>Fichas de Insumos ({insumos.length})</span>
+          <FlaskConical className="w-4 h-4" />
+          <span>Fichas de Insumos Preparados ({preparados.length})</span>
         </button>
       </div>
 
@@ -188,7 +194,7 @@ export function FichasTecnicas({ readOnly = false }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Buscar ${activeTab === "productos" ? "producto" : "insumo"} o categoría...`}
+          placeholder={`Buscar ${activeTab === "productos" ? "producto" : "insumo preparado"} o categoría...`}
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors outline-none"
         />
       </div>
@@ -203,7 +209,7 @@ export function FichasTecnicas({ readOnly = false }) {
           {filtered.map((item) => {
             const isProducto = activeTab === "productos";
             const itemId = item.id || item.idProducto || item.idInsumo;
-            const categoriaName = item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo");
+            const categoriaName = item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado");
             
             return (
               <div
@@ -213,7 +219,7 @@ export function FichasTecnicas({ readOnly = false }) {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-[#F05454] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    {isProducto ? <Utensils className="w-6 h-6" /> : <Package className="w-6 h-6" />}
+                    {isProducto ? <Utensils className="w-6 h-6" /> : <FlaskConical className="w-6 h-6" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-[#F05454] transition-colors">
@@ -262,7 +268,7 @@ export function FichasTecnicas({ readOnly = false }) {
 
           {filtered.length === 0 && (
             <div className="col-span-full text-center py-16 text-sm text-gray-500 dark:text-gray-400 font-medium">
-              No se encontraron {activeTab === "productos" ? "productos" : "insumos"} en la base de datos.
+              No se encontraron {activeTab === "productos" ? "productos" : "insumos preparados"} en la base de datos.
             </div>
           )}
         </div>

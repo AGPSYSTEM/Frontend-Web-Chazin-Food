@@ -96,12 +96,29 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setInsumos((prev) =>
       prev.map((item, i) => {
         if (i === idx) {
-          const nuevaCant = Math.max(0.1, Number((Number(item.cantidad || 0) + delta).toFixed(2)));
+          const current = Math.floor(Number(item.cantidad) || 1);
+          const nuevaCant = Math.max(1, current + delta);
           return { ...item, cantidad: nuevaCant };
         }
         return item;
       })
     );
+  };
+
+  const handleTiempoChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    if (raw === '') {
+      setTiempoPreparacion('');
+      return;
+    }
+    const num = Math.max(1, parseInt(raw, 10));
+    setTiempoPreparacion(String(num));
+  };
+
+  const handleTiempoBlur = () => {
+    if (tiempoPreparacion === '' || Number(tiempoPreparacion) < 1) {
+      setTiempoPreparacion('1');
+    }
   };
 
   const actualizarUnidad = (idx, unidadMedida) => {
@@ -360,26 +377,36 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
-                              onClick={() => actualizarCantidad(idx, -0.5)}
-                              className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200"
+                              onClick={() => actualizarCantidad(idx, -1)}
+                              disabled={Number(item.cantidad) <= 1}
+                              className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                             >
                               <Minus className="w-3 h-3 text-gray-600 dark:text-gray-300" />
                             </button>
                             <input
-                              type="number"
-                              step="0.1"
-                              min="0.1"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={item.cantidad}
+                              onKeyDown={(e) => {
+                                if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+                                  e.preventDefault();
+                                }
+                              }}
                               onChange={(e) => {
-                                const val = parseFloat(e.target.value) || 0.1;
+                                const sanitized = String(e.target.value).replace(/[^0-9]/g, '');
+                                const val = sanitized === '' ? '' : Math.max(1, parseInt(sanitized, 10));
                                 setInsumos(prev => prev.map((x, i) => i === idx ? { ...x, cantidad: val } : x));
                               }}
-                              className="w-16 text-center font-semibold border border-gray-200 dark:border-gray-700 rounded py-1 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100"
+                              onBlur={() => {
+                                setInsumos(prev => prev.map((x, i) => i === idx ? { ...x, cantidad: Math.max(1, parseInt(x.cantidad, 10) || 1) } : x));
+                              }}
+                              className="w-16 text-center font-semibold border border-gray-200 dark:border-gray-700 rounded py-1 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-[#F05454]"
                             />
                             <button
                               type="button"
-                              onClick={() => actualizarCantidad(idx, 0.5)}
-                              className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200"
+                              onClick={() => actualizarCantidad(idx, 1)}
+                              className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 cursor-pointer"
                             >
                               <Plus className="w-3 h-3 text-gray-600 dark:text-gray-300" />
                             </button>
@@ -404,7 +431,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                           <button
                             type="button"
                             onClick={() => quitarInsumo(idx)}
-                            className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                            className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -439,21 +466,21 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Tiempo de Preparación (min){requiredMark}</label>
-              <NumberInput
-                min="0"
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 required
                 value={tiempoPreparacion}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "") {
-                    setTiempoPreparacion("");
-                    return;
+                onKeyDown={(e) => {
+                  if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+                    e.preventDefault();
                   }
-                  const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
-                  setTiempoPreparacion(sanitized);
                 }}
+                onChange={handleTiempoChange}
+                onBlur={handleTiempoBlur}
+                placeholder="Ej. 15"
                 className={inputCls}
-                placeholder="Ej: 15"
               />
             </div>
             <div>
