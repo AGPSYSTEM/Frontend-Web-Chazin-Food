@@ -34,6 +34,7 @@ import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { produccionService } from "@/features/produccion/servicios/produccionService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import LoadingSpinner from "@/shared/components/ui/LoadingSpinner";
 
 /**
  * Clean human notes from JSON artifacts, redundant additions summaries, or duplicate product names
@@ -283,6 +284,7 @@ export function CocineroDashboard() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showTestSpinner, setShowTestSpinner] = useState(false);
 
   // Interactive Checklist of prepared dishes per order { "orderId-itemIdx": boolean }
   const [checkedItems, setCheckedItems] = useState({});
@@ -622,6 +624,17 @@ export function CocineroDashboard() {
               <BookOpen className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Recetario</span>
             </Link>
+
+            {/* Test Spinner Button */}
+            <button
+              onClick={() => {
+                setShowTestSpinner(true);
+                setTimeout(() => setShowTestSpinner(false), 3000);
+              }}
+              className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition cursor-pointer hidden sm:flex"
+            >
+              Ver Logo Animado
+            </button>
 
             {/* Dark Mode Toggle */}
             <button
@@ -1231,6 +1244,8 @@ export function CocineroDashboard() {
           </div>
         </div>
       )}
+      
+      {showTestSpinner && <LoadingSpinner fullScreen={true} text="Cargando con el logo..." />}
     </div>
   );
 }
