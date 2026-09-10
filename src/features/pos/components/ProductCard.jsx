@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Minus, Check, ChevronDown, ChevronUp, Layers, ImageIcon } from "lucide-react";
+import { Plus, Minus, Check, ChevronDown, ChevronUp, Layers, Sliders, Sparkles, FileText } from "lucide-react";
 import { getAdditionEmoji, getProductEmoji } from "@/shared/utils/foodEmojiUtils";
 
-export function ProductCard({ producto, onAdd }) {
+export function ProductCard({ producto, onAdd, onCustomize }) {
   const [showAdditions, setShowAdditions] = useState(false);
   const [selectedAdditions, setSelectedAdditions] = useState([]); // [{ id, nombre, precio, cantidad, imagen }]
   const [quantity, setQuantity] = useState(1);
@@ -81,12 +81,22 @@ export function ProductCard({ producto, onAdd }) {
     setShowAdditions(false);
   };
 
+  const handleOpenCustomize = () => {
+    if (onCustomize) {
+      onCustomize(producto);
+    }
+  };
+
   const productImage = producto.imagen || producto.imagenUrl || producto.urlImagen || producto.foto || producto.img;
 
   return (
     <article className="group rounded-[24px] border border-[#e5e9ef] dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs hover:shadow-md transition-all flex flex-col justify-between h-full overflow-hidden">
-      {/* ── Spacious Product Image Space ── */}
-      <div className="relative flex h-36 sm:h-40 w-full items-center justify-center bg-gradient-to-br from-red-500/10 via-rose-500/5 to-amber-500/10 dark:from-red-950/40 dark:to-gray-850 shrink-0 overflow-hidden border-b border-gray-100 dark:border-gray-800/80">
+      {/* ── Spacious Product Image Space (Clickable to customize) ── */}
+      <div
+        onClick={handleOpenCustomize}
+        className="relative flex h-36 sm:h-40 w-full items-center justify-center bg-gray-100 dark:bg-gray-800 shrink-0 overflow-hidden border-b border-gray-100 dark:border-gray-800/80 cursor-pointer"
+        title="Clic para ver detalles, personalizar y ficha técnica"
+      >
         {productImage && !imageError ? (
           <img
             src={productImage}
@@ -101,6 +111,14 @@ export function ProductCard({ producto, onAdd }) {
             </div>
           </div>
         )}
+
+        {/* Hover quick pill */}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md text-gray-900 dark:text-gray-100 text-[11px] font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+            <Sliders className="w-3.5 h-3.5 text-[#f05454]" />
+            <span>Personalizar</span>
+          </span>
+        </div>
 
         {/* Additions count badge */}
         {adiciones.length > 0 && (
@@ -121,8 +139,12 @@ export function ProductCard({ producto, onAdd }) {
       {/* ── Card Body ── */}
       <div className="p-3.5 sm:p-4 flex flex-col justify-between flex-1 text-center transition-colors">
         <div className="flex flex-col items-center">
-          {/* Title */}
-          <div className="min-h-[38px] flex items-center justify-center text-center w-full px-1">
+          {/* Title (clickable to customize) */}
+          <div
+            onClick={handleOpenCustomize}
+            className="min-h-[38px] flex items-center justify-center text-center w-full px-1 cursor-pointer hover:text-[#f05454] transition-colors"
+            title="Clic para personalizar y ver ficha técnica"
+          >
             <h3 className="text-xs sm:text-sm font-black text-[#1f2d3d] dark:text-gray-100 leading-snug line-clamp-2">
               {producto.nombre}
             </h3>
@@ -279,15 +301,28 @@ export function ProductCard({ producto, onAdd }) {
             </div>
           </div>
 
-          {/* Action Button */}
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#f05454] hover:bg-[#d94444] py-2.5 px-3 text-xs font-black text-white shadow-xs transition-all cursor-pointer active:scale-[0.98]"
-          >
-            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>{quantity > 1 ? `Agregar (${quantity})` : "Agregar al Carrito"}</span>
-          </button>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-1.5 w-full">
+            <button
+              type="button"
+              onClick={handleOpenCustomize}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 py-2.5 px-2 text-[11px] font-black text-gray-700 dark:text-gray-200 shadow-2xs transition-all cursor-pointer active:scale-95 border border-gray-200/70 dark:border-gray-700"
+              title="Personalizar ingredientes, adiciones y ficha técnica"
+            >
+              <Sliders className="h-3.5 w-3.5 text-[#f05454]" />
+              <span>Personalizar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="inline-flex items-center justify-center gap-1 rounded-xl bg-[#f05454] hover:bg-[#d94444] py-2.5 px-2 text-[11px] font-black text-white shadow-xs transition-all cursor-pointer active:scale-95"
+              title="Agregar rápido al carrito"
+            >
+              <Plus className="h-3.5 w-3.5 stroke-[3]" />
+              <span>{quantity > 1 ? `Agregar (${quantity})` : "Agregar"}</span>
+            </button>
+          </div>
         </div>
       </div>
     </article>

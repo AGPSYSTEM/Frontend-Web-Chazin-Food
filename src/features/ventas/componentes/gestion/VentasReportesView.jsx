@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { Download } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -141,20 +142,30 @@ export function VentasReportesView({ ventas = [] }) {
   }, [ventas]);
 
   const handleExport = () => {
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      `Reporte de Ventas General\n` +
-      `Ingresos Totales,${reportData.resumen[0].value}\n` +
-      `Total Pedidos,${reportData.resumen[1].value}\n` +
-      `Ticket Promedio,${reportData.resumen[5].value}\n`;
+    const data = [
+      ["Reporte General de Ventas - Chazin Food"],
+      ["Generado el", new Date().toLocaleString("es-CO")],
+      [],
+      ["Métrica / Indicador", "Valor"],
+      ...reportData.resumen.map((r) => [r.label, r.value]),
+      [],
+      ["Productos Más Vendidos"],
+      ["Producto", "Cantidad Vendida"],
+      ...reportData.productosMasVendidos.map((p) => [p.name, p.ventas]),
+      [],
+      ["Distribución por Método de Pago"],
+      ["Método", "Porcentaje (%)"],
+      ...reportData.metodosPago.map((m) => [m.name, `${m.value}%`])
+    ];
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `reporte_ventas_general.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    worksheet["!cols"] = [{ wch: 32 }, { wch: 26 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Ventas");
+    XLSX.writeFile(
+      workbook,
+      `Reporte_Ventas_General_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   const productColors = ["#10B981", "#34D399", "#6EE7B7", "#A7F3D0", "#D1FAE5"];

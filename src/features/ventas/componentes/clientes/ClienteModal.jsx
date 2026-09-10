@@ -344,6 +344,25 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, zIndex =
               </div>
             </div>
 
+            {cliente && cliente.fidelidad && form.tipo !== "Nuevo" && (
+              <div className="mt-2 p-2.5 bg-white/70 dark:bg-gray-800/70 rounded-xl border border-amber-200/50 dark:border-amber-800/40 text-[11px] space-y-1">
+                <div className="flex items-center justify-between text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Vigencia de Nivel:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">
+                    {cliente.fidelidad.enGracia
+                      ? `⚠️ En Gracia: ${cliente.fidelidad.diasGraciaRestantes || 0} días restantes`
+                      : `⏱️ ${cliente.fidelidad.diasRestantes !== null && cliente.fidelidad.diasRestantes !== undefined ? cliente.fidelidad.diasRestantes : 30} días restantes`}
+                  </span>
+                </div>
+                {cliente.fidelidad.fechaVencimientoNivel && (
+                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                    <span>Fecha de Renovación / Vencimiento:</span>
+                    <span className="font-bold">{new Date(cliente.fidelidad.fechaVencimientoNivel).toLocaleDateString('es-CO')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="text-[10.5px] text-gray-500 dark:text-gray-400">
               💡 El sistema actualiza el nivel automáticamente con las compras del cliente: Regular (3 compras, 1 mes), Frecuente (1 mes + 10d gracia), VIP (1 mes + 15d gracia).
             </p>

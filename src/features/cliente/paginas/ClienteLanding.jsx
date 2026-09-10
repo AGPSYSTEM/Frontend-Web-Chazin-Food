@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -16,6 +16,8 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { wompiService } from "@/features/ventas/servicios/wompiService";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import { getProductEmoji } from "@/shared/utils/foodEmojiUtils";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -45,52 +47,164 @@ const getCategoryMeta = (nombre) => {
   if (key.includes("bebida") || key.includes("gaseosa") || key.includes("jugo") || key.includes("refresco")) return { icon: "🥤", color: "from-blue-400 to-blue-600" };
   if (key.includes("postre") || key.includes("torta") || key.includes("pastel")) return { icon: "🍰", color: "from-pink-400 to-rose-500" };
   if (key.includes("helado")) return { icon: "🍦", color: "from-indigo-400 to-purple-500" };
-  if (key.includes("acompa") || key.includes("ensalada")) return { icon: "🥗", color: "from-green-400 to-green-600" };
+  if (key.includes("acompa")) return { icon: "🍟", color: "from-amber-400 to-orange-500" };
+  if (key.includes("ensalada")) return { icon: "🥗", color: "from-green-400 to-green-600" };
   if (key.includes("entrada") || key.includes("snack") || key.includes("taco")) return { icon: "🌮", color: "from-emerald-400 to-teal-500" };
   return defaultCategoryIcons[key] || { icon: "🍽️", color: "from-red-400 to-red-600" };
 };
 
 const categoriasDefault = [
-  { id: 1, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
-  { id: 2, nombre: "Salchipapas", icon: "🍟", color: "from-yellow-500 to-amber-600" },
-  { id: 3, nombre: "Perros Calientes", icon: "🌭", color: "from-orange-400 to-red-500" },
-  { id: 4, nombre: "Pollo", icon: "🍗", color: "from-amber-500 to-orange-600" },
-  { id: 5, nombre: "Bebidas", icon: "🥤", color: "from-blue-400 to-blue-600" },
-  { id: 6, nombre: "Acompañamientos", icon: "🥗", color: "from-green-400 to-green-600" },
-  { id: 8, nombre: "Combos", icon: "🍱", color: "from-purple-400 to-purple-600" }
+  { id: 1, nombre: "Perros Calientes", icon: "🌭", color: "from-orange-400 to-red-500" },
+  { id: 2, nombre: "Combos", icon: "🍱", color: "from-purple-400 to-purple-600" },
+  { id: 3, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
+  { id: 4, nombre: "Bebidas", icon: "🥤", color: "from-blue-400 to-blue-600" },
+  { id: 5, nombre: "Salchipapas Gourmet", icon: "🍟", color: "from-yellow-500 to-amber-600" },
+  { id: 6, nombre: "Acompañamientos", icon: "🍟", color: "from-amber-400 to-orange-600" }
 ];
 
 const productosDefault = [
-  { id: 1, nombre: "Hamburguesa Especial", precio: 15000, categoria: 1, imagen: "🍔", descripcion: "Doble carne, queso, lechuga, tomate y salsas", stock: 25 },
-  { id: 2, nombre: "Salchipapa Grande", precio: 12000, categoria: 2, imagen: "🍟", descripcion: "Papas fritas con salchicha y salsas", stock: 30 },
-  { id: 3, nombre: "Perro Caliente Especial", precio: 10000, categoria: 3, imagen: "🌭", descripcion: "Hot dog con salsas y papa chip", stock: 20 },
-  { id: 4, nombre: "Pollo Broaster", precio: 18000, categoria: 4, imagen: "🍗", descripcion: "Porción de pollo con papas", stock: 15 },
-  { id: 5, nombre: "Coca Cola", precio: 3000, categoria: 5, imagen: "🥤", descripcion: "Gaseosa 350ml", stock: 60 },
-  { id: 6, nombre: "Combo Familiar", precio: 45000, categoria: 8, imagen: "🍱", descripcion: "2 hamburguesas, salchipapa y bebidas", stock: 12 }
+  { id: 10, idProducto: 10, nombre: "Hamburguesa Clásica Chazin", precio: 18000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Pan brioche artesanal, carne 80/20, tocineta ahumada, queso cheddar, tomate, lechuga y salsas", stock: 25 },
+  { id: 11, idProducto: 11, nombre: "Hamburguesa Doble Carne & Tocineta", precio: 25000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Pan brioche, doble carne 80/20, doble tocineta ahumada, queso cheddar y cebolla blanca", stock: 20 },
+  { id: 12, idProducto: 12, nombre: "Hamburguesa Pollo Crispy Gourmet", precio: 21000, categoria: 3, idCategoriaProducto: 3, imagen: "🍗", descripcion: "Pan brioche, pechuga de pollo crispy, queso mozzarella, lechuga, tomate y salsas", stock: 18 },
+  { id: 13, idProducto: 13, nombre: "Perro Caliente Especial Americano", precio: 14000, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Pan perro, salchicha americana, tocineta crujiente, queso mozzarella y ripio", stock: 22 },
+  { id: 14, idProducto: 14, nombre: "Perro Suizo Chazin", precio: 17000, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Pan perro, salchicha suiza ahumada, tocineta, queso mozzarella y cebolla blanca", stock: 20 },
+  { id: 15, idProducto: 15, nombre: "Salchipapa Salvaje Gourmet", precio: 23000, categoria: 5, idCategoriaProducto: 5, imagen: "🍟", descripcion: "Papas francesas doradas, salchicha americana, salchicha suiza, tocineta y queso", stock: 25 },
+  { id: 16, idProducto: 16, nombre: "Combo Pareja Chazin", precio: 38000, categoria: 2, idCategoriaProducto: 2, imagen: "🍱", descripcion: "2 hamburguesas clásicas con queso cheddar, papas a la francesa y 2 Coca-Cola 400ml", stock: 15 },
+  { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, categoria: 4, idCategoriaProducto: 4, imagen: "🥤", descripcion: "Gaseosa Coca-Cola sabor original 400ml fría", stock: 60 },
+  { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, categoria: 4, idCategoriaProducto: 4, imagen: "🍎", descripcion: "Gaseosa sabor manzana Postobón 400ml refrescante", stock: 45 },
+  { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "💧", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
 ];
 
 const adicionesDisponibles = [
-  { idAdicion: 1, nombre: "Salsa BBQ", precio: 1000, stockActual: 50, tipo: "Salsa", imagen: "🥫" },
-  { idAdicion: 2, nombre: "Salsa de Ajo", precio: 1000, stockActual: 45, tipo: "Salsa", imagen: "🧄" },
-  { idAdicion: 3, nombre: "Salsa Picante", precio: 1000, stockActual: 40, tipo: "Salsa", imagen: "🌶️" },
-  { idAdicion: 4, nombre: "Queso Extra", precio: 2000, stockActual: 30, tipo: "Ingrediente", imagen: "🧀" },
-  { idAdicion: 5, nombre: "Tocineta", precio: 3000, stockActual: 25, tipo: "Ingrediente", imagen: "🥓" },
-  { idAdicion: 6, nombre: "Papas Fritas", precio: 5000, stockActual: 35, tipo: "Acompañamiento", imagen: "🍟" },
-  { idAdicion: 7, nombre: "Coca Cola", precio: 3000, stockActual: 60, tipo: "Bebida", imagen: "🥤" },
-  { idAdicion: 8, nombre: "Sprite", precio: 3000, stockActual: 55, tipo: "Bebida", imagen: "🥤" }
+  { idAdicion: 3, idInsumo: 18, nombre: "Extra Tocineta Ahumada (2 tiras)", precio: 3500, stockActual: 30, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1528607929212-2636ec44253e?w=500&auto=format&fit=crop&q=80" },
+  { idAdicion: 4, idInsumo: 19, nombre: "Extra Queso Cheddar (2 lonchas)", precio: 2500, stockActual: 35, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=500&auto=format&fit=crop&q=80" },
+  { idAdicion: 5, idInsumo: 21, nombre: "Porción Papas a la Francesa (150g)", precio: 5000, stockActual: 40, tipo: "Acompañamiento", imagen: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=80" },
+  { idAdicion: 6, idInsumo: 24, nombre: "Porción Cebolla Caramelizada (50g)", precio: 2000, stockActual: 25, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=500&auto=format&fit=crop&q=80" },
+  { idAdicion: 7, idInsumo: 25, nombre: "Jalapeños Picantes Extra (40g)", precio: 2000, stockActual: 30, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=80" },
+  { idAdicion: 8, idInsumo: 26, nombre: "Salsa Chazin Especial Adicional", precio: 1500, stockActual: 50, tipo: "Salsa", imagen: "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=500&auto=format&fit=crop&q=80" }
 ];
 
+export const getAdicionImage = (ad) => {
+  if (!ad) return "https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80";
+  if (typeof ad.imagen === "string" && ad.imagen.startsWith("http")) {
+    return ad.imagen;
+  }
+  const name = String(ad.nombre || "").toLowerCase();
+  if (name.includes("tocineta") || name.includes("bacon")) {
+    return "https://images.unsplash.com/photo-1528607929212-2636ec44253e?w=500&auto=format&fit=crop&q=80";
+  }
+  if (name.includes("queso") || name.includes("cheddar")) {
+    return "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=500&auto=format&fit=crop&q=80";
+  }
+  if (name.includes("papa") || name.includes("francesa")) {
+    return "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=80";
+  }
+  if (name.includes("cebolla")) {
+    return "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=500&auto=format&fit=crop&q=80";
+  }
+  if (name.includes("jalapeño") || name.includes("jalapeno") || name.includes("picante")) {
+    return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=80";
+  }
+  if (name.includes("salsa")) {
+    return "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=500&auto=format&fit=crop&q=80";
+  }
+  return "https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80";
+};
+
 const fichasTecnicasDefault = {
-  1: { ingredientes: ["Carne de res 150g", "Pan artesanal", "Lechuga", "Tomate", "Queso cheddar", "Salsas especiales"], peso: "350g", tamano: "Regular", calorias: "620 kcal", tiempoPreparacion: 15, rendimiento: "1 porción" },
-  2: { ingredientes: ["Papas crinkle 200g", "Salchicha premium 100g", "Queso gratinado", "Salsas de la casa"], peso: "400g", tamano: "Grande", calorias: "720 kcal", tiempoPreparacion: 12, rendimiento: "1 porción" },
-  3: { ingredientes: ["Salchicha premium", "Pan de perro", "Papa chip", "Queso", "Salsas especiales"], peso: "280g", tamano: "Regular", calorias: "540 kcal", tiempoPreparacion: 10, rendimiento: "1 porción" },
-  4: { ingredientes: ["Pechuga de pollo broaster 200g", "Papas crinkle", "Ensalada fresca"], peso: "450g", tamano: "Grande", calorias: "680 kcal", tiempoPreparacion: 20, rendimiento: "1 porción" },
-  5: { ingredientes: ["Gaseosa 350ml"], peso: "350ml", tamano: "Regular", calorias: "140 kcal", tiempoPreparacion: 2, rendimiento: "1 porción" },
-  6: { ingredientes: ["2 Hamburguesas Especiales", "Salchipapa Grande", "Papas Crinkle", "4 Bebidas 350ml"], peso: "1.8kg", tamano: "Familiar", calorias: "2800 kcal", tiempoPreparacion: 25, rendimiento: "Familiar" }
+  1: { ingredientes: ["Pan Brioche Artesanal", "Carne de Res 80/20 (150g)", "Tocineta Ahumada", "Queso Cheddar", "Lechuga Batavia", "Tomate Chonto", "Salsas de la Casa"], peso: "350g", tamano: "Regular", calorias: "~650 kcal", tiempoPreparacion: 10, rendimiento: "1 porción (350g)" },
+  2: { ingredientes: ["Pan Brioche Artesanal", "Doble Carne de Res 80/20 (300g)", "Doble Tocineta Ahumada", "Doble Queso Cheddar", "Cebolla Caramelizada", "Salsas de la Casa"], peso: "540g", tamano: "Doble Grande", calorias: "~980 kcal", tiempoPreparacion: 12, rendimiento: "1 porción grande (540g)" },
+  3: { ingredientes: ["Pan Brioche Artesanal", "Pechuga de Pollo Crispy Apanada", "Queso Mozzarella", "Lechuga Batavia", "Tomate Chonto", "Salsa Especial Tártara"], peso: "380g", tamano: "Regular", calorias: "~720 kcal", tiempoPreparacion: 11, rendimiento: "1 porción (380g)" },
+  4: { ingredientes: ["Pan Perro Americano", "Salchicha Americana Premium", "Tocineta Ahumada", "Queso Mozzarella Rallado", "Ripio de Papa", "Salsas de la Casa"], peso: "290g", tamano: "Regular", calorias: "~540 kcal", tiempoPreparacion: 8, rendimiento: "1 porción (290g)" },
+  5: { ingredientes: ["Pan Perro Americano", "Salchicha Suiza Ahumada", "Tocineta Ahumada", "Queso Mozzarella Fundido", "Cebolla Blanca Picada", "Ripio de Papa"], peso: "340g", tamano: "Especial", calorias: "~680 kcal", tiempoPreparacion: 9, rendimiento: "1 porción (340g)" },
+  6: { ingredientes: ["Papas a la Francesa", "Salchicha Americana Picada", "Salchicha Suiza", "Tocineta Crujiente", "Queso Mozzarella Fundido", "Salsas Chazin"], peso: "560g", tamano: "Generosa", calorias: "~890 kcal", tiempoPreparacion: 12, rendimiento: "1 porción generosa (560g)" },
+  7: { ingredientes: ["2 Hamburguesas Clásicas Chazin", "Porción Papas Francesas Grandes", "2 Gaseosas Coca-Cola 400ml"], peso: "1.6 kg", tamano: "Combo Pareja", calorias: "~1800 kcal", tiempoPreparacion: 14, rendimiento: "2 personas (1.6 kg combo)" },
+  8: { ingredientes: ["Agua Carbonatada", "Jarabe de Maíz", "Caramelo Clase IV", "Cafeína"], peso: "400ml", tamano: "Individual", calorias: "170 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  9: { ingredientes: ["Agua Carbonatada", "Saborizante Manzana Postobón", "Azúcar", "Colorantes"], peso: "400ml", tamano: "Individual", calorias: "160 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  10: { ingredientes: ["Agua Manantial Cristal 100% Pura Sin Gas"], peso: "600ml", tamano: "Individual", calorias: "0 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (600ml)" },
+  11: { ingredientes: ["Agua Carbonatada", "Azúcar", "Cafeína", "Extracto de Nuez de Cola"], peso: "400ml", tamano: "Individual", calorias: "165 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  12: { ingredientes: ["Agua Carbonatada", "Sabor Kola Colombiana", "Azúcar"], peso: "400ml", tamano: "Individual", calorias: "170 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  13: { ingredientes: ["Agua Carbonatada", "Sabor Lima-Limón Natural", "Azúcar"], peso: "400ml", tamano: "Individual", calorias: "155 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  14: { ingredientes: ["Agua Carbonatada", "Jugo de Toronja", "Azúcar", "Acidulante"], peso: "400ml", tamano: "Individual", calorias: "160 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  15: { ingredientes: ["Papas Seleccionadas Cortadas a la Francesa", "Sal Marina", "Aceite Vegetal"], peso: "150g", tamano: "Porción", calorias: "380 kcal", tiempoPreparacion: 6, rendimiento: "1 porción (150g)" },
+  16: { ingredientes: ["Agua Carbonatada", "Color Caramelo IV", "Aspartamo", "Acesulfamo K"], peso: "400ml", tamano: "Individual", calorias: "0 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
+  17: { ingredientes: ["Papas Corral Rústicas Gruesas", "Sal Marina", "Especias"], peso: "220g", tamano: "Grande", calorias: "450 kcal", tiempoPreparacion: 7, rendimiento: "1 porción grande (220g)" },
+  18: { ingredientes: ["Papas Corral Rústicas Medianas", "Sal Marina"], peso: "150g", tamano: "Mediana", calorias: "310 kcal", tiempoPreparacion: 6, rendimiento: "1 porción mediana (150g)" },
+  19: { ingredientes: ["Papas Rústicas en Casco con Piel", "Sal y Pimienta"], peso: "240g", tamano: "Grande", calorias: "420 kcal", tiempoPreparacion: 7, rendimiento: "1 porción grande (240g)" },
+  20: { ingredientes: ["Papas Rústicas en Casco con Piel", "Sal"], peso: "160g", tamano: "Mediana", calorias: "290 kcal", tiempoPreparacion: 6, rendimiento: "1 porción mediana (160g)" },
+  21: { ingredientes: ["Papa Natural Entera Cortada en Espiral", "Páprika", "Sal de Ajo"], peso: "200g", tamano: "Brocheta", calorias: "380 kcal", tiempoPreparacion: 8, rendimiento: "1 porción espiral (200g)" },
+  22: { ingredientes: ["Papas Francesas Crujientes", "Chili con Carne Casero", "Queso Cheddar Fundido"], peso: "320g", tamano: "Cargada", calorias: "680 kcal", tiempoPreparacion: 8, rendimiento: "1 canastilla cargada (320g)" },
+  23: { ingredientes: ["Papas Francesas con Chili y Queso Cheddar", "Gaseosa 400ml"], peso: "720g (combo)", tamano: "Combo", calorias: "820 kcal", tiempoPreparacion: 8, rendimiento: "1 combo individual completo" },
+  24: { ingredientes: ["Papas Francesas Crujientes", "Tocineta Ahumada Picada", "Queso Cheddar Fundido"], peso: "300g", tamano: "Cargada", calorias: "690 kcal", tiempoPreparacion: 7, rendimiento: "1 canastilla cargada (300g)" },
+  25: { ingredientes: ["Papas Francesas con Tocineta y Cheddar", "Gaseosa 400ml"], peso: "700g (combo)", tamano: "Combo", calorias: "830 kcal", tiempoPreparacion: 7, rendimiento: "1 combo individual completo" },
+  26: { ingredientes: ["Pan Brioche Artesanal Sellado", "Carne Angus Premium 200g", "Queso Brie Fundido", "Reducción de Champiñones al Tartufo", "Cebolla Caramelizada"], peso: "430g", tamano: "Gourmet Especial", calorias: "~790 kcal", tiempoPreparacion: 12, rendimiento: "1 hamburguesa gourmet (430g)" }
+};
+
+export const isDrinkProduct = (item) => {
+  if (!item) return false;
+  const catId = item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria;
+  if (catId === 4 || catId === "4") return true;
+  const name = String(item.nombre || "").toLowerCase();
+  const catName = String(item.categoriaNombre || item.categoria?.nombre || (typeof item.categoria === "string" ? item.categoria : "") || "").toLowerCase();
+  const tipo = String(item.tipo || "").toLowerCase();
+  return (
+    tipo === "bebida" ||
+    catName.includes("bebida") ||
+    catName.includes("gaseosa") ||
+    catName.includes("refresco") ||
+    name.includes("gaseosa") ||
+    name.includes("coca-cola") ||
+    name.includes("coca cola") ||
+    name.includes("postobón") ||
+    name.includes("postobon") ||
+    name.includes("pepsi") ||
+    name.includes("colombiana") ||
+    name.includes("sprite") ||
+    name.includes("cuatro") ||
+    name.includes("agua cristal") ||
+    name.includes("cristal sin gas") ||
+    name.includes("h2oh") ||
+    name.includes("mr tea") ||
+    name.includes("jugo") ||
+    name.includes("hit")
+  );
+};
+
+// Los complementos de la orden se cargan 100% en vivo desde la base de datos MySQL (activeProductos)
+export const COMPLEMENTOS_ORDEN = [];
+
+export const getIngredientesPersonalizables = (producto, ficha) => {
+  if (!producto || isDrinkProduct(producto)) return [];
+
+  const CANDIDATOS_BASE = [
+    { id: "cebolla", nombre: "Cebolla", icono: "🧅", aliases: ["cebolla", "onion"] },
+    { id: "salsas", nombre: "Salsas de la casa", icono: "🥫", aliases: ["salsa", "salsas", "sauce"] },
+    { id: "tomate", nombre: "Tomate", icono: "🍅", aliases: ["tomate", "tomato"] },
+    { id: "lechuga", nombre: "Lechuga", icono: "🥬", aliases: ["lechuga", "lettuce"] },
+    { id: "queso", nombre: "Queso", icono: "🧀", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
+    { id: "tocineta", nombre: "Tocineta", icono: "🥓", aliases: ["tocineta", "tocino", "bacon"] },
+    { id: "ripio", nombre: "Ripio de papa", icono: "🍟", aliases: ["ripio", "papas ripio", "chips"] },
+    { id: "jalapenos", nombre: "Jalapeños", icono: "🌶️", aliases: ["jalapeño", "jalapeno", "picante"] }
+  ];
+
+  let allIngStrings = [];
+  if (ficha?.detalles && Array.isArray(ficha.detalles)) {
+    allIngStrings.push(...ficha.detalles.map(d => String(d.insumo?.nombre || d.nombreInsumo || "").toLowerCase()));
+  }
+  if (ficha?.ingredientes && Array.isArray(ficha.ingredientes)) {
+    allIngStrings.push(...ficha.ingredientes.map(s => String(s).toLowerCase()));
+  }
+  if (producto?.descripcion) {
+    allIngStrings.push(String(producto.descripcion).toLowerCase());
+  }
+  const combinedText = allIngStrings.join(" ");
+
+  // Filtrado estricto: solo ingredientes que realmente forman parte de este producto
+  return CANDIDATOS_BASE.filter(c => c.aliases.some(alias => combinedText.includes(alias)));
 };
 
 function FichaTecnicaProductoCliente({ ficha, producto }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   if (!ficha && !producto) return null;
 
   // Extract ingredients list from API format or default object
@@ -210,6 +324,7 @@ export function ClienteLanding() {
   const [showPedidos, setShowPedidos] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [modalInitialTab, setModalInitialTab] = useState("personalizar");
   const [showResenasModal, setShowResenasModal] = useState(false);
   const [productoParaResenas, setProductoParaResenas] = useState(null);
   const [ratingsMap, setRatingsMap] = useState({});
@@ -241,6 +356,35 @@ export function ClienteLanding() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [showCheckout, showCart, showProductModal, showPedidos, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
+
+  // Ref y desplazamiento suave para carrusel 'Complementa tu orden' en Carrito
+  const complementosRef = useRef(null);
+  const scrollComplementos = (direction) => {
+    if (complementosRef.current) {
+      const scrollAmount = direction === "left" ? -170 : 170;
+      complementosRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const handleAddComplemento = (item) => {
+    const res = addToCart({
+      id: item.idVariante || item.id || item.idProducto,
+      idProducto: item.idProducto || item.id,
+      idVariante: item.idVariante || item.id || item.idProducto,
+      nombre: item.nombre,
+      precio: Number(item.precio),
+      cantidad: 1,
+      stock: Number(item.stock !== undefined ? item.stock : 30),
+      imagen: item.imagen,
+      adiciones: [],
+      personalizaciones: []
+    });
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay más unidades disponibles.");
+    } else {
+      success("¡Antojo agregado!", `${item.nombre} se sumó a tu orden.`);
+    }
+  };
 
   // Detectar retorno desde Wompi (si se completó pago vía checkout web directo)
   useEffect(() => {
@@ -285,7 +429,8 @@ export function ClienteLanding() {
 
         if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value) && catsRes.value.length > 0) {
           const apiCats = catsRes.value
-            .filter(c => c.estado === 'Activo' || c.estado === 1 || c.estado === undefined)
+            .filter(c => (c.estado === 'Activo' || c.estado === 1 || c.estado === undefined))
+            .filter(c => !['ssss', 'fghjk', 'dfg', 'test', '1', '3', '4', '5', '6', '7'].includes(c.nombre?.trim()?.toLowerCase?.()) && !c.nombre?.startsWith('__SISTEMA'))
             .map(c => {
               const meta = getCategoryMeta(c.nombre);
               return {
@@ -296,7 +441,7 @@ export function ClienteLanding() {
                 color: meta.color
               };
             });
-          setCategoriasList(apiCats);
+          setCategoriasList(apiCats.length > 0 ? apiCats : categoriasDefault);
         } else {
           setCategoriasList(categoriasDefault);
         }
@@ -345,7 +490,8 @@ export function ClienteLanding() {
             precio: parseFloat(a.precio || 0),
             stockActual: a.stockActual || 50,
             tipo: a.tipo || "Adición",
-            imagen: a.imagen || "🥫"
+            estado: a.estado !== undefined ? a.estado : 1,
+            imagen: (a.imagen && typeof a.imagen === "string" && a.imagen.startsWith("http")) ? a.imagen : getAdicionImage(a)
           }));
           setAdicionesList(apiAdics);
         }
@@ -515,6 +661,250 @@ export function ClienteLanding() {
   const activeProductos = productosList.length > 0 ? productosList : productosDefault;
   const activeAdiciones = adicionesList.length > 0 ? adicionesList : adicionesDisponibles;
 
+  // Filtrado estricto para que las adiciones sean toppings de comida reales, activos y sin duplicados
+  const foodAdiciones = activeAdiciones.filter(ad =>
+    !isDrinkProduct(ad) &&
+    ad.idAdicion !== 1 &&
+    ad.idAdicion !== 2 &&
+    (ad.estado === undefined || ad.estado === 1 || ad.estado === true || ad.estado === "1")
+  );
+
+  // Las 3 bebidas oficiales listas para acompañar
+  const fallbackBebidas = [
+    { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: "🥤", stock: 60 },
+    { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, imagen: "🍎", stock: 45 },
+    { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: "💧", stock: 50 }
+  ];
+  const bebidasDisponibles = (() => {
+    const list = activeProductos.filter(p => isDrinkProduct(p));
+    return list.length > 0 ? list : fallbackBebidas;
+  })();
+
+  // ═══ Complementos INTELIGENTES: recomienda según lo que ya hay en el carrito ═══
+  // Categorías consideradas "plato principal" (NO se sugieren como complemento)
+  const CATEGORIAS_PLATO_PRINCIPAL = ["hamburguesas", "perros calientes", "combos"];
+
+  const complementosOrden = useMemo(() => {
+    // IDs de productos ya en el carrito para no duplicar sugerencias
+    const cartProductIds = new Set(cart.map(item => item.idProducto || item.id));
+
+    // Detectar qué tipo de productos ya tiene el carrito
+    const cartHasDrink = cart.some(item => isDrinkProduct(item));
+    const cartHasSide = cart.some(item => {
+      const n = (item.nombre || "").toLowerCase();
+      return n.includes("papas") || n.includes("porción") || n.includes("porcion") || n.includes("salchipapa");
+    });
+
+    // Helper: determinar si un producto es "plato principal"
+    const isPlatoPrincipal = (p) => {
+      const catName = String(p.categoriaNombre || p.categoria || "").toLowerCase().trim();
+      const prodName = (p.nombre || "").toLowerCase();
+      return CATEGORIAS_PLATO_PRINCIPAL.some(cp =>
+        catName.includes(cp) || prodName.includes("hamburguesa") || prodName.includes("perro caliente") || prodName.includes("perro suizo") || prodName.includes("combo")
+      );
+    };
+
+    // Helper: generar badge inteligente
+    const getBadge = (p) => {
+      const n = (p.nombre || "").toLowerCase();
+      if (n.includes("coca-cola") || n.includes("coca cola")) return "Más Vendido";
+      if (n.includes("colombiana")) return "La Nuestra";
+      if (n.includes("manzana")) return "Tradicional";
+      if (n.includes("pepsi")) return "Pepsi";
+      if (n.includes("sprite")) return "Lima-Limón";
+      if (n.includes("cuatro") || n.includes("quatro")) return "Toronja";
+      if (n.includes("cristal") || n.includes("agua")) return "100% Pura";
+      if (n.includes("malteada") || n.includes("milkshake")) return "Cremoso";
+      if (n.includes("jugo") || n.includes("hit")) return "Natural";
+      if (n.includes("papas")) return "Favorito";
+      if (n.includes("salchipapa")) return "Para Picar";
+      if (n.includes("nugget")) return "Crunchy";
+      if (n.includes("postre") || n.includes("brownie") || n.includes("torta") || n.includes("helado")) return "Dulce";
+      if (n.includes("arepa") || n.includes("empanada") || n.includes("dedito")) return "Entrada";
+      if (isDrinkProduct(p)) return "Refrescante";
+      return "Complemento";
+    };
+
+    // Helper: generar descripción corta inteligente
+    const getDescripcion = (p) => {
+      if (p.descripcion && p.descripcion.length <= 40) return p.descripcion;
+      const n = (p.nombre || "").toLowerCase();
+      if (isDrinkProduct(p)) return "Bebida personal bien fría";
+      if (n.includes("papas")) return "Crocantes y doradas";
+      if (n.includes("salchipapa")) return "Para compartir";
+      if (n.includes("nugget")) return "Crujientes y jugosos";
+      if (n.includes("postre") || n.includes("brownie") || n.includes("helado")) return "Para el antojo dulce";
+      if (n.includes("arepa") || n.includes("empanada")) return "Entrada rápida";
+      return p.descripcion || "Complemento ideal";
+    };
+
+    // Helper: generar tamaño/label secundario
+    const getTamano = (p) => {
+      const n = (p.nombre || "").toLowerCase();
+      if (isDrinkProduct(p)) return "400 ml";
+      if (n.includes("150g")) return "150g";
+      if (n.includes("porción") || n.includes("porcion")) return "1 porción";
+      return "";
+    };
+
+    // Helper: convertir producto a objeto de complemento
+    const toComplemento = (p) => {
+      const firstVar = Array.isArray(p.variantes) && p.variantes.length > 0 ? p.variantes[0] : null;
+      const pId = p.idProducto || p.id;
+      return {
+        id: p.id || p.idProducto,
+        idProducto: pId,
+        idVariante: firstVar?.idVariante || p.id || pId,
+        nombre: p.nombre,
+        descripcion: getDescripcion(p),
+        tamano: getTamano(p),
+        precio: Number(p.precio),
+        badge: getBadge(p),
+        imagen: p.imagen,
+        stock: Number(p.stock !== undefined ? p.stock : 30)
+      };
+    };
+
+    // ── Separar productos candidatos (todo lo que NO sea plato principal) ──
+    const candidatos = activeProductos.filter(p => {
+      const pId = p.idProducto || p.id;
+      // Excluir productos ya en el carrito
+      if (cartProductIds.has(pId)) return false;
+      // Excluir platos principales
+      if (isPlatoPrincipal(p)) return false;
+      return true;
+    });
+
+    // Separar en: bebidas, entradas/sides, otros
+    const bebidas = candidatos.filter(p => isDrinkProduct(p));
+    const entradas = candidatos.filter(p => {
+      if (isDrinkProduct(p)) return false;
+      const n = (p.nombre || "").toLowerCase();
+      return n.includes("papas") || n.includes("porción") || n.includes("porcion") || n.includes("salchipapa") ||
+             n.includes("nugget") || n.includes("arepa") || n.includes("empanada") || n.includes("dedito");
+    });
+    const otros = candidatos.filter(p => !isDrinkProduct(p) && !entradas.includes(p));
+
+    // ── Orden inteligente según contexto del carrito ──
+    const ordenados = [];
+
+    if (!cartHasDrink) {
+      // Si NO tiene bebida: bebidas primero (sugerir que agregue una)
+      // Priorizar Coca-Cola como primera opción
+      const cocaCola = bebidas.find(b => (b.nombre || "").toLowerCase().includes("coca-cola"));
+      if (cocaCola) ordenados.push(toComplemento(cocaCola));
+      bebidas.filter(b => b !== cocaCola).forEach(b => ordenados.push(toComplemento(b)));
+      entradas.forEach(e => ordenados.push(toComplemento(e)));
+      otros.forEach(o => ordenados.push(toComplemento(o)));
+    } else if (!cartHasSide) {
+      // Si tiene bebida pero NO tiene acompañamiento: entradas primero
+      entradas.forEach(e => ordenados.push(toComplemento(e)));
+      otros.forEach(o => ordenados.push(toComplemento(o)));
+      bebidas.forEach(b => ordenados.push(toComplemento(b)));
+    } else {
+      // Ya tiene bebida y acompañamiento: mostrar lo que quede (otros, bebidas extra, entradas extra)
+      otros.forEach(o => ordenados.push(toComplemento(o)));
+      entradas.forEach(e => ordenados.push(toComplemento(e)));
+      bebidas.forEach(b => ordenados.push(toComplemento(b)));
+    }
+
+    return ordenados;
+  }, [activeProductos, cart]);
+
+  // Live ticker for real-time countdown
+  const [currentLiveTime, setCurrentLiveTime] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentLiveTime(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper ultra-preciso de Evento Activo (Burger Fest / Drops / Promos con Vigencia en Tiempo Real)
+  const getActiveEvent = (producto) => {
+    if (!producto) return null;
+    const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
+    if (eventos.length === 0) return null;
+
+    const now = new Date(currentLiveTime);
+
+    // Filter events that are active and not expired
+    const validEvents = eventos.filter((e) => {
+      if (e.estado !== 1 && e.estado !== "Activo") return false;
+      if (e.fechaFin) {
+        const finDate = new Date(`${e.fechaFin}T23:59:59`);
+        if (now > finDate) return false;
+      }
+      if (e.fechaInicio) {
+        const inicioDate = new Date(`${e.fechaInicio}T00:00:00`);
+        if (now < inicioDate) return false;
+      }
+      return true;
+    });
+
+    if (validEvents.length === 0) return null;
+    const evt = validEvents[0];
+
+    const regularPrice = Number(producto.precio || 0);
+    let eventPrice = regularPrice;
+    if (evt.nuevoPrecio && Number(evt.nuevoPrecio) > 0) {
+      eventPrice = Number(evt.nuevoPrecio);
+    } else if (evt.descuento && Number(evt.descuento) > 0) {
+      eventPrice = regularPrice * (1 - Number(evt.descuento) / 100);
+    }
+
+    const savings = Math.max(0, regularPrice - eventPrice);
+    const discountPercent = regularPrice > 0 && savings > 0 
+      ? Math.round((savings / regularPrice) * 100) 
+      : (evt.descuento ? Math.round(Number(evt.descuento)) : 0);
+
+    let formattedDate = "";
+    let diasRestantes = null;
+    let horasRestantes = null;
+    let urgente = false;
+    let countdownLabel = "";
+
+    if (evt.fechaFin) {
+      try {
+        const parts = String(evt.fechaFin).split('T')[0].split('-');
+        if (parts.length === 3) {
+          const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+          const monthName = months[parseInt(parts[1], 10) - 1] || parts[1];
+          formattedDate = `${parseInt(parts[2], 10)} de ${monthName}`;
+        }
+        const finDate = new Date(`${evt.fechaFin}T23:59:59`);
+        const ms = finDate.getTime() - now.getTime();
+        diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
+        horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+        urgente = diasRestantes <= 3;
+        countdownLabel = diasRestantes === 1
+          ? `¡Último día! (${horasRestantes}h)`
+          : diasRestantes === 0
+          ? `¡Termina hoy!`
+          : `Quedan ${diasRestantes} días`;
+      } catch (e) {}
+    }
+
+    return {
+      ...evt,
+      nombre: evt.nombreEvento || evt.nombre || "Edición Especial",
+      regularPrice,
+      eventPrice,
+      savings,
+      discountPercent,
+      formattedDate,
+      tipo: evt.tipoEvento || "EDICION_LIMITADA",
+      vigencia: {
+        diasRestantes,
+        horasRestantes,
+        urgente,
+        label: countdownLabel || (formattedDate ? `Hasta ${formattedDate}` : "Tiempo Limitado")
+      }
+    };
+  };
+
+  const eventProductsCount = useMemo(() => {
+    return activeProductos.filter(p => Boolean(getActiveEvent(p))).length;
+  }, [activeProductos]);
+
   const productosFiltrados = activeProductos.filter((p) => {
     const prodName = (p.nombre || "").toLowerCase();
     const prodDesc = (p.descripcion || "").toLowerCase();
@@ -522,6 +912,10 @@ export function ClienteLanding() {
     if (!matchSearch) return false;
 
     if (!selectedCategoria) return true;
+
+    if (selectedCategoria === "eventos") {
+      return Boolean(getActiveEvent(p));
+    }
 
     const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
     const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
@@ -557,9 +951,88 @@ export function ClienteLanding() {
       producto,
       cantidad: 1,
       adicionesSeleccionadas: [],
+      bebidasSeleccionadas: [],
+      ingredientesRemovidos: [],
       ficha: ficha || fichasTecnicasDefault[prodId] || null
     });
     setShowProductModal(true);
+  };
+
+  const handleToggleRemoverIngrediente = (nombreIngrediente) => {
+    if (!productoSeleccionado) return;
+    const currentRemovidos = productoSeleccionado.ingredientesRemovidos || [];
+    const isRemoved = currentRemovidos.includes(nombreIngrediente);
+    const updated = isRemoved
+      ? currentRemovidos.filter(n => n !== nombreIngrediente)
+      : [...currentRemovidos, nombreIngrediente];
+
+    setProductoSeleccionado({
+      ...productoSeleccionado,
+      ingredientesRemovidos: updated
+    });
+  };
+
+  const handleBebidaToggle = (bebida) => {
+    if (!productoSeleccionado) return;
+    const bebId = bebida.id || bebida.idProducto;
+    const currentBebidas = productoSeleccionado.bebidasSeleccionadas || [];
+    const exists = currentBebidas.find(b => (b.id || b.idProducto) === bebId);
+
+    if (exists) {
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        bebidasSeleccionadas: currentBebidas.filter(b => (b.id || b.idProducto) !== bebId)
+      });
+    } else {
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        bebidasSeleccionadas: [
+          ...currentBebidas,
+          {
+            id: bebId,
+            idProducto: bebId,
+            nombre: bebida.nombre,
+            precio: Number(bebida.precio || 0),
+            cantidad: 1,
+            imagen: bebida.imagen || "🥤",
+            stock: Number(bebida.stock !== undefined ? bebida.stock : (bebida.stockActual !== undefined ? bebida.stockActual : 30))
+          }
+        ]
+      });
+    }
+  };
+
+  const handleBebidaQuantityChange = (bebId, delta, e) => {
+    if (e) e.stopPropagation();
+    if (!productoSeleccionado) return;
+    const currentBebidas = productoSeleccionado.bebidasSeleccionadas || [];
+    const existing = currentBebidas.find(b => (b.id || b.idProducto) === bebId);
+    if (!existing) return;
+
+    if (existing.cantidad + delta <= 0) {
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        bebidasSeleccionadas: currentBebidas.filter(b => (b.id || b.idProducto) !== bebId)
+      });
+    } else {
+      const stockTot = Number(existing.stock !== undefined ? existing.stock : 30);
+      const inCart = getProductQuantityInCart(bebId);
+      const maxAvailable = Math.max(0, stockTot - inCart);
+      if (delta > 0 && existing.cantidad >= maxAvailable) {
+        error("Stock insuficiente", `Solo hay ${stockTot} unidades disponibles de ${existing.nombre}.`);
+        return;
+      }
+
+      setProductoSeleccionado({
+        ...productoSeleccionado,
+        bebidasSeleccionadas: currentBebidas.map(b => {
+          if ((b.id || b.idProducto) === bebId) {
+            return { ...b, cantidad: b.cantidad + delta };
+          }
+          return b;
+        })
+      });
+    }
   };
 
   const handleAdicionToggle = (adicion) => {
@@ -617,6 +1090,10 @@ export function ClienteLanding() {
       basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
     }
 
+    const removidos = productoSeleccionado.ingredientesRemovidos || [];
+    const personalizacionesList = removidos.map(r => `Sin ${r.toLowerCase()}`);
+    const personalizacionesStr = personalizacionesList.join(", ");
+
     const itemToAdd = {
       id: prod.id || prod.idProducto,
       idProducto: prod.idProducto || prod.id,
@@ -625,6 +1102,9 @@ export function ClienteLanding() {
       cantidad: productoSeleccionado.cantidad || 1,
       stock: Number(prod.stock !== undefined ? prod.stock : (prod.stockActual !== undefined ? prod.stockActual : 25)),
       imagen: prod.imagen,
+      personalizaciones: personalizacionesList,
+      observaciones: personalizacionesStr,
+      observacion: personalizacionesStr,
       adiciones: (productoSeleccionado.adicionesSeleccionadas || []).map((a) => ({
         idAdicion: a.idAdicion,
         nombre: a.nombre,
@@ -640,9 +1120,105 @@ export function ClienteLanding() {
       return;
     }
 
+    // Agregar al carrito cualquier bebida seleccionada como producto independiente
+    const bebidasToAdd = productoSeleccionado.bebidasSeleccionadas || [];
+    let bebidasCount = 0;
+    for (const b of bebidasToAdd) {
+      const bRes = addToCart({
+        id: b.id || b.idProducto,
+        idProducto: b.idProducto || b.id,
+        nombre: b.nombre,
+        precio: Number(b.precio),
+        cantidad: Number(b.cantidad) || 1,
+        stock: Number(b.stock !== undefined ? b.stock : 30),
+        imagen: b.imagen || "🥤",
+        adiciones: []
+      });
+      if (!bRes || bRes.success !== false) {
+        bebidasCount += (Number(b.cantidad) || 1);
+      }
+    }
+
     setShowProductModal(false);
     setProductoSeleccionado(null);
-    success("¡Producto agregado!", `${prod.nombre} se agregó a tu carrito`);
+    const msg = bebidasCount > 0
+      ? `${prod.nombre} y ${bebidasCount} bebida(s) agregadas a tu carrito`
+      : `${prod.nombre} se agregó a tu carrito`;
+    success("¡Producto agregado!", msg);
+  };
+
+  const handleClientModalConfirm = ({
+    producto,
+    cantidad,
+    adiciones,
+    bebidas,
+    personalizaciones,
+    observacion,
+    sabor
+  }) => {
+    let basePrice = Number(producto.precio || 0);
+    const evtPrecio = producto.eventos?.find(e => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
+    const evtDesc = producto.eventos?.find(e => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
+    if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
+      basePrice = Number(evtPrecio.nuevoPrecio);
+    } else if (evtDesc && Number(evtDesc.descuento) > 0) {
+      basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
+    }
+
+    const isDrink = isDrinkProduct(producto);
+    const finalProdName = producto.nombrePersonalizado || (sabor ? `${producto.nombre} (${sabor})` : (producto.saborSeleccionado ? `${producto.nombre} (${producto.saborSeleccionado})` : producto.nombre));
+
+    const itemToAdd = {
+      id: producto.id || producto.idProducto,
+      idProducto: producto.idProducto || producto.id,
+      nombre: finalProdName,
+      precio: basePrice,
+      cantidad: Number(cantidad) || 1,
+      stock: Number(producto.stock !== undefined ? producto.stock : 25),
+      imagen: producto.imagen,
+      personalizaciones: personalizaciones || [],
+      observaciones: observacion || "",
+      observacion: observacion || "",
+      adiciones: (isDrink ? [] : (adiciones || [])).map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio) || 0,
+        cantidad: Number(a.cantidad) || 1,
+        imagen: a.imagen || ""
+      }))
+    };
+
+    const res = addToCart(itemToAdd);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
+    }
+
+    let bebidasCount = 0;
+    if (!isDrink && Array.isArray(bebidas)) {
+      for (const b of bebidas) {
+        const bRes = addToCart({
+          id: b.id || b.idProducto,
+          idProducto: b.idProducto || b.id,
+          nombre: b.nombre,
+          precio: Number(b.precio),
+          cantidad: Number(b.cantidad) || 1,
+          stock: Number(b.stock !== undefined ? b.stock : 30),
+          imagen: b.imagen || "🥤",
+          adiciones: []
+        });
+        if (!bRes || bRes.success !== false) {
+          bebidasCount += (Number(b.cantidad) || 1);
+        }
+      }
+    }
+
+    setShowProductModal(false);
+    setProductoSeleccionado(null);
+    const msg = bebidasCount > 0
+      ? `${finalProdName} y ${bebidasCount} bebida(s) agregadas a tu carrito`
+      : `${finalProdName} se agregó a tu carrito`;
+    success("¡Producto agregado!", msg);
   };
 
   const handleAbrirCheckout = () => {
@@ -811,19 +1387,39 @@ export function ClienteLanding() {
         // Ocultar modal propio para que el modal oficial de Wompi sea 100% visible sin conflicto de z-index
         setShowCheckout(false);
 
-        // 2. Abrir el Widget oficial de Wompi
-        const transaction = await wompiService.abrirWidget({
-          referencia: intencion.referencia,
-          montoEnCentavos: intencion.montoEnCentavos,
-          moneda: intencion.moneda,
-          firma: intencion.firma,
-          publicKey: intencion.publicKey,
-          customerData: {
-            email: user?.email || "",
-            nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
-            telefono: user?.telefono || ""
+        // 2. Abrir el Widget oficial de Wompi (con fallback a Checkout Web si el widget es bloqueado)
+        let transaction = null;
+        try {
+          transaction = await wompiService.abrirWidget({
+            referencia: intencion.referencia,
+            montoEnCentavos: intencion.montoEnCentavos,
+            moneda: intencion.moneda,
+            firma: intencion.firma,
+            publicKey: intencion.publicKey,
+            customerData: {
+              email: user?.email || "",
+              nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
+              telefono: user?.telefono || ""
+            }
+          });
+        } catch (widgetErr) {
+          console.warn("Widget embebido no disponible o bloqueado por navegador, activando Checkout Web:", widgetErr);
+          const directUrl = wompiService.generarUrlDirecta({
+            referencia: intencion.referencia,
+            montoEnCentavos: intencion.montoEnCentavos,
+            moneda: intencion.moneda,
+            firma: intencion.firma,
+            publicKey: intencion.publicKey
+          });
+          const win = window.open(directUrl, "_blank");
+          if (win) {
+            success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
+            clearCart();
+            setShowCart(false);
+            return;
           }
-        });
+          throw widgetErr;
+        }
 
         // 3. Evaluar resultado retornado por Wompi
         if (transaction && transaction.id) {
@@ -1002,7 +1598,6 @@ export function ClienteLanding() {
       clearCart();
       setShowCart(false);
       setShowPedidos(false);
-      setShowPerfil(false);
       setShowProductModal(false);
       success("Sesión cerrada", "Has salido del sistema correctamente");
       navigate("/");
@@ -1266,6 +1861,30 @@ export function ClienteLanding() {
               <p className="text-xs font-semibold truncate w-full">Todos</p>
             </button>
 
+            {/* Quick Filter Pill: Edición Especial / Eventos */}
+            {eventProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategoria("eventos")}
+                style={{ scrollSnapAlign: "start" }}
+                className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
+                  selectedCategoria === "eventos"
+                    ? "bg-gradient-to-r from-purple-600 via-rose-600 to-amber-500 text-white shadow-lg shadow-purple-500/30 scale-105 font-bold"
+                    : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-purple-300/60 dark:border-purple-600/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 shadow-xs"
+                }`}
+              >
+                <div className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                  {eventProductsCount} DROP
+                </div>
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-purple-500/20 dark:bg-purple-900/40 shadow-xs text-2xl">
+                  🔥
+                </div>
+                <p className="text-xs font-black truncate w-full" style={selectedCategoria === "eventos" ? { color: '#fff' } : { color: '#a855f7' }}>
+                  Edición Evento
+                </p>
+              </button>
+            )}
+
             {activeCategorias.map((cat) => {
               const isSelected = selectedCategoria === cat.id || selectedCategoria === cat.idCategoriaProducto;
               return (
@@ -1309,86 +1928,209 @@ export function ClienteLanding() {
 
       {/* Productos */}
       <div className="w-full px-4 sm:px-6 lg:px-8 pb-16">
-        <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          {selectedCategoria ? activeCategorias.find((c) => (c.id === selectedCategoria || c.idCategoriaProducto === selectedCategoria))?.nombre : "Menú Principal"}
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+              {selectedCategoria === "eventos" ? (
+                <>
+                  <span>🔥 Edición Especial & Eventos Gastronómicos</span>
+                  <span className="text-xs font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    Tiempo Limitado
+                  </span>
+                </>
+              ) : selectedCategoria ? (
+                activeCategorias.find((c) => (c.id === selectedCategoria || c.idCategoriaProducto === selectedCategoria))?.nombre
+              ) : (
+                "Menú Principal"
+              )}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {selectedCategoria === "eventos"
+                ? "Platillos conmemorativos de edición limitada, recetas exclusivas y ahorros directos del festival"
+                : "Preparados al instante con los ingredientes más frescos"}
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {productosFiltrados.map((producto) => (
-            <div
-              key={producto.id || producto.idProducto}
-              onClick={() => handleProductClick(producto)}
-              className="bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-xl transition-all border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-1"
-            >
-              <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative overflow-hidden">
-                {producto.imagen?.includes('/') || producto.imagen?.includes('.') ? (
-                  <img src={producto.imagen} alt={producto.nombre} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <div className="text-7xl group-hover:scale-110 transition-transform duration-300">{producto.imagen || "🍔"}</div>
+          {productosFiltrados.map((producto) => {
+            const hasRealImage = producto.imagen && (producto.imagen.includes('/') || producto.imagen.includes('.'));
+            const activeEvent = getActiveEvent(producto);
+            return (
+              <div
+                key={producto.id || producto.idProducto}
+                onClick={() => {
+                  setModalInitialTab("personalizar");
+                  handleProductClick(producto);
+                }}
+                className={`bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
+                  activeEvent
+                    ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-amber-400/30"
+                    : "border border-gray-100 dark:border-gray-800"
+                }`}
+              >
+                {/* ═══ FAST FOOD EVENT BANNER (BURGER FEST / EDICIÓN LIMITADA) ═══ */}
+                {activeEvent && (
+                  <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse shrink-0" />
+                      <span className="truncate max-w-[170px] sm:max-w-[210px]">{activeEvent.nombre}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-amber-200 shrink-0">
+                      <Clock className="w-3 h-3" />
+                      <span className={activeEvent.vigencia?.urgente ? "animate-pulse font-black text-amber-300" : ""}>
+                        {activeEvent.vigencia?.label ? activeEvent.vigencia.label : (activeEvent.formattedDate ? `Hasta ${activeEvent.formattedDate}` : "Limitado")}
+                      </span>
+                    </div>
+                  </div>
                 )}
-                {/* Badge Ver detalles */}
-                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
-                  <FileText className="w-3 h-3" />
-                  <span>Ver detalles</span>
-                </div>
-              </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-red-500 transition-colors">{producto.nombre}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion || "Platillo preparado con ingredientes frescos y de calidad."}</p>
-                  
-                  {/* Rating Stars Summary */}
-                  <div className="mt-2 flex items-center justify-between">
-                    {(() => {
-                      const pId = producto.id || producto.idProducto;
-                      const rInfo = ratingsMap[pId];
-                      if (rInfo && rInfo.total > 0) {
-                        return (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProductoParaResenas(producto);
-                              setShowResenasModal(true);
-                            }}
-                            className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
-                            title="Ver reseñas"
-                          >
-                            <StarRating value={rInfo.promedio} readonly size="xs" />
-                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
-                            <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProductoParaResenas(producto);
-                            setShowResenasModal(true);
-                          }}
-                          className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <Star className="w-3 h-3" />
-                          <span>Sin reseñas</span>
-                        </button>
-                      );
-                    })()}
+
+                {/* ═══ ESCENARIO GOURMET AMBIENTAL DUAL-LAYER (ENCUADRE 100% PERFECTO & SOMBRA 3D) ═══ */}
+                <div className="relative h-48 sm:h-52 w-full bg-gray-950 flex items-center justify-center overflow-hidden border-b border-gray-100 dark:border-gray-800/80">
+                  {/* Capa 1: Glow ambiental difuminado con los colores vivos de la comida */}
+                  {hasRealImage ? (
+                    <>
+                      <img
+                        src={producto.imagen}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-35 dark:opacity-45 saturate-200 pointer-events-none"
+                      />
+                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/15 via-red-500/10 to-transparent pointer-events-none" />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-950/30 via-red-950/40 to-gray-950" />
+                  )}
+
+                  {/* Capa 2: Comida centrada en primer plano (100% visible, sin cortes, con sombra 3D flotante) */}
+                  <div className="relative z-10 w-full h-full flex items-center justify-center p-3">
+                    {hasRealImage ? (
+                      <img
+                        src={producto.imagen}
+                        alt={producto.nombre}
+                        className="max-h-[145px] sm:max-h-[155px] w-auto max-w-[88%] object-contain drop-shadow-[0_16px_22px_rgba(0,0,0,0.6)] group-hover:scale-108 transition-transform duration-500 ease-out select-none"
+                      />
+                    ) : (
+                      <div className="text-7xl group-hover:scale-110 transition-transform duration-300 select-none drop-shadow-xl">
+                        {getProductEmoji(producto.nombre)}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Viñeta sutil inferior */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Badges superiores: Categoría a la izquierda, Personalizar a la derecha */}
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5">
+                    {activeEvent ? (
+                      <span className="bg-gradient-to-r from-purple-600 to-rose-600 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1 border border-white/20">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                        {activeEvent.tipo === "Descuento"
+                          ? `-${activeEvent.discountPercent}% OFF`
+                          : activeEvent.tipo === "Promoción Precio"
+                          ? "Precio Promo"
+                          : activeEvent.tipo === "Añadir Insumos"
+                          ? "+ Toppings Gratis"
+                          : activeEvent.tipo === "COMBO_ESPECIAL"
+                          ? "Combo Festivo"
+                          : activeEvent.tipo === "PROMOCION_2X1"
+                          ? "Promo 2x1"
+                          : "Edición Especial"}
+                      </span>
+                    ) : producto.categoria ? (
+                      <span className="bg-black/60 backdrop-blur-md text-white border border-white/20 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                        {producto.categoria}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-md text-white border border-white/20 text-[10.5px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 opacity-90 group-hover:opacity-100 group-hover:bg-[#f05454] transition-all shadow-md">
+                    <Sliders className="w-3 h-3 text-[#f05454] group-hover:text-white" />
+                    <span>Personalizar</span>
                   </div>
                 </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors line-clamp-1">
+                      {producto.nombre}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                      {producto.descripcion || "Platillo gourmet preparado con ingredientes frescos de primera calidad."}
+                    </p>
+                    
+                    {/* Rating Stars Summary */}
+                    <div className="mt-2.5 flex items-center justify-between">
+                      {(() => {
+                        const pId = producto.id || producto.idProducto;
+                        const rInfo = ratingsMap[pId];
+                        if (rInfo && rInfo.total > 0) {
+                          return (
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalInitialTab("resenas");
+                                handleProductClick(producto);
+                              }}
+                              className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer group/rate"
+                              title="Ver opiniones y calificaciones de comensales"
+                            >
+                              <StarRating value={rInfo.promedio} readonly size="xs" />
+                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
+                              <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold opacity-0 group-hover/rate:opacity-100 transition-opacity">
+                                • Calificar
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalInitialTab("resenas");
+                              handleProductClick(producto);
+                            }}
+                            className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                            <span>Sin reseñas • Calificar</span>
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-col">
-                    {producto.eventos && producto.eventos.length > 0 && producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                    {activeEvent ? (
                       <>
-                        <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
-                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Zap className="w-4 h-4" />
-                          ${(() => {
-                            const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
-                            if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
-                            const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
-                            if (evtDesc) return (producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
-                            return producto.precio.toLocaleString();
-                          })()}
+                        {activeEvent.tipo === "Añadir Insumos" ? (
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide border border-emerald-300 dark:border-emerald-700/60 flex items-center gap-0.5">
+                              🎁 Toppings Extra Gratis
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 dark:text-gray-500 line-through font-semibold">
+                              ${activeEvent.regularPrice.toLocaleString()}
+                            </span>
+                            {activeEvent.discountPercent > 0 && (
+                              <span className="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide border border-emerald-300 dark:border-emerald-700/60 flex items-center gap-0.5">
+                                <Zap className="w-3 h-3 fill-emerald-500" />
+                                {activeEvent.discountPercent}% OFF
+                              </span>
+                            )}
+                            {activeEvent.savings > 0 && (
+                              <span className="text-[10.5px] font-extrabold text-amber-600 dark:text-amber-400">
+                                Ahorras ${activeEvent.savings.toLocaleString('es-CO')}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <span className="text-2xl font-black bg-gradient-to-r from-purple-600 via-red-600 to-amber-600 bg-clip-text text-transparent">
+                          ${activeEvent.eventPrice.toLocaleString()}
                         </span>
                       </>
                     ) : (
@@ -1401,273 +2143,92 @@ export function ClienteLanding() {
                       e.stopPropagation();
                       handleProductClick(producto);
                     }}
-                    className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
+                    className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md active:scale-[0.98] ${
+                      activeEvent
+                        ? "bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-700 hover:to-red-700 shadow-purple-600/25"
+                        : "bg-red-500 hover:bg-red-600"
+                    }`}
                   >
-                    <ShoppingCart className="w-4 h-4" />
-                    Inspeccionar y Agregar
+                    {activeEvent ? (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        Aprovechar Edición Especial
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4" />
+                        Inspeccionar y Agregar
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
 
-      {/* MODAL DETALLE DE PRODUCTO */}
-      {showProductModal && productoSeleccionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowProductModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 z-10 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center pt-2">
-              <div className="flex justify-center mb-4 mt-2">
-                {productoSeleccionado.producto.imagen?.includes('/') || productoSeleccionado.producto.imagen?.includes('.') ? (
-                  <img src={productoSeleccionado.producto.imagen} alt={productoSeleccionado.producto.nombre} className="w-48 h-48 object-cover rounded-2xl shadow-md" />
-                ) : (
-                  <div className="text-6xl">{productoSeleccionado.producto.imagen || "🍔"}</div>
-                )}
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{productoSeleccionado.producto.nombre}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{productoSeleccionado.producto.descripcion || "Preparación fresca y artesanal."}</p>
-
-              {/* Reseñas Button in Modal */}
-              <div className="mt-2.5 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProductoParaResenas(productoSeleccionado.producto);
-                    setShowResenasModal(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-full text-xs font-bold transition shadow-2xs cursor-pointer"
-                >
-                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span>
-                    {(() => {
-                      const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
-                      const rInfo = ratingsMap[pId];
-                      return rInfo && rInfo.total > 0
-                        ? `${rInfo.promedio.toFixed(1)} ★ (${rInfo.total} reseñas)`
-                        : "Ver / Dejar Reseña";
-                    })()}
-                  </span>
-                </button>
-              </div>
-
-              <div className="mt-2 flex flex-col items-center">
-                {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
-                  <>
-                    <span className="text-sm text-gray-400 line-through">${productoSeleccionado.producto.precio.toLocaleString()}</span>
-                    <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <Zap className="w-5 h-5" />
-                      ${(() => {
-                        const evtPrecio = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
-                        if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
-                        const evtDesc = productoSeleccionado.producto.eventos.find(e => e.tipoEvento === "Descuento");
-                        if (evtDesc) return (productoSeleccionado.producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
-                        return productoSeleccionado.producto.precio.toLocaleString();
-                      })()}
-                    </span>
-                  </>
-                ) : (
-                  <p className="text-xl font-extrabold text-red-600 dark:text-red-400">${productoSeleccionado.producto.precio.toLocaleString()}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Eventos si existen */}
-            {productoSeleccionado.producto.eventos && productoSeleccionado.producto.eventos.length > 0 && (
-              <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl p-3 border border-yellow-100 dark:border-yellow-900/30">
-                <p className="text-xs font-bold text-yellow-600 dark:text-yellow-500 mb-2 uppercase tracking-wider flex items-center gap-1"><Zap className="w-4 h-4"/> Eventos Activos</p>
-                <div className="space-y-2">
-                  {productoSeleccionado.producto.eventos.map((evt, i) => (
-                    <div key={i} className="text-xs flex flex-col gap-0.5">
-                      <span className="font-bold text-gray-800 dark:text-gray-200">{evt.nombreEvento || evt.nombre}</span>
-                      {evt.tipoEvento === "Descuento" && (
-                        <span className="text-emerald-600 font-semibold">-{Number(evt.descuento)}% de descuento</span>
-                      )}
-                      {evt.tipoEvento === "Promoción Precio" && (
-                        <span className="text-purple-600 font-semibold">Precio promocional: ${Number(evt.nuevoPrecio).toLocaleString()}</span>
-                      )}
-                      {evt.tipoEvento === "Añadir Insumos" && (
-                        <span className="text-blue-600 font-semibold">
-                          {evt.accionInsumo === "Quitar" ? "Insumos removidos" : "Insumos extra incluidos"}
-                        </span>
-                      )}
-                      <p className="text-gray-500 dark:text-gray-400">{evt.descripcion}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Ficha técnica del producto (Ingredientes, tiempo, etc.) */}
-            <FichaTecnicaProductoCliente
-              ficha={productoSeleccionado.ficha || fichasMap[productoSeleccionado.producto.id] || fichasMap[productoSeleccionado.producto.idProducto] || fichasTecnicasDefault[productoSeleccionado.producto.id]}
-              producto={productoSeleccionado.producto}
-            />
-
-            {/* Cantidad con Control de Stock */}
-            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3.5 rounded-2xl">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-gray-800 dark:text-gray-200">Cantidad:</span>
-                {(() => {
-                  const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
-                  const stockTot = Number(productoSeleccionado.producto.stock !== undefined ? productoSeleccionado.producto.stock : (productoSeleccionado.producto.stockActual !== undefined ? productoSeleccionado.producto.stockActual : 25));
-                  const inCart = getProductQuantityInCart(pId);
-                  const remaining = Math.max(0, stockTot - inCart);
-                  return (
-                    <span className={`text-[11px] font-bold ${remaining <= 5 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                      {remaining > 0 ? `Stock disponible: ${remaining} und.` : "Sin stock disponible"}
-                    </span>
-                  );
-                })()}
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setProductoSeleccionado({ ...productoSeleccionado, cantidad: Math.max(1, productoSeleccionado.cantidad - 1) })}
-                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 cursor-pointer active:scale-95"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="font-bold text-gray-900 dark:text-gray-100 w-6 text-center">{productoSeleccionado.cantidad}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const pId = productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto;
-                    const stockTot = Number(productoSeleccionado.producto.stock !== undefined ? productoSeleccionado.producto.stock : (productoSeleccionado.producto.stockActual !== undefined ? productoSeleccionado.producto.stockActual : 25));
-                    const inCart = getProductQuantityInCart(pId);
-                    const remaining = Math.max(0, stockTot - inCart);
-                    if (productoSeleccionado.cantidad < remaining) {
-                      setProductoSeleccionado({ ...productoSeleccionado, cantidad: productoSeleccionado.cantidad + 1 });
-                    } else {
-                      error("Límite de stock", `Solo hay ${stockTot} unidades en stock (tienes ${inCart} en el carrito).`);
-                    }
-                  }}
-                  className="w-8 h-8 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 cursor-pointer active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Adiciones */}
-            {activeAdiciones.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Adiciones disponibles:</p>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {activeAdiciones.map((ad) => {
-                    const selected = productoSeleccionado.adicionesSeleccionadas.find((a) => a.idAdicion === ad.idAdicion);
-                    return (
-                      <div
-                        key={ad.idAdicion}
-                        className={`p-2.5 rounded-2xl border text-xs flex items-center justify-between transition-all ${
-                          selected
-                            ? "border-[#F05454] bg-red-50/60 dark:bg-red-950/30 shadow-xs"
-                            : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        }`}
-                      >
-                        <div
-                          onClick={() => handleAdicionToggle(ad)}
-                          className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
-                        >
-                          <span className="text-lg shrink-0">{ad.imagen || "🥫"}</span>
-                          <div className="min-w-0">
-                            <p className="text-gray-900 dark:text-gray-100 font-bold truncate">{ad.nombre}</p>
-                            <p className="text-[#F05454] dark:text-red-400 font-extrabold text-[11px]">
-                              +${Number(ad.precio).toLocaleString("es-CO")}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Stepper Sumar / Restar cuando está seleccionada */}
-                        {selected ? (
-                          <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2 py-1 rounded-xl border border-red-200 dark:border-red-900/60 shadow-xs">
-                            <button
-                              type="button"
-                              onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, -1, e)}
-                              className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                              title="Restar cantidad"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="font-black text-gray-900 dark:text-gray-100 min-w-5 text-center text-xs">
-                              {selected.cantidad}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleAdicionQuantityChange(ad.idAdicion, 1, e)}
-                              className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/40 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
-                              title="Sumar cantidad"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleAdicionToggle(ad)}
-                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-[#F05454] hover:text-white text-gray-700 dark:text-gray-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Agregar</span>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={handleAddToCart}
-              className="w-full py-3.5 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Agregar al carrito • ${(
-                ((() => {
-                  let basePrice = Number(productoSeleccionado.producto.precio || 0);
-                  const evtPrecio = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Promoción Precio");
-                  const evtDesc = productoSeleccionado.producto.eventos?.find(e => e.tipoEvento === "Descuento");
-                  if (evtPrecio) {
-                    basePrice = Number(evtPrecio.nuevoPrecio);
-                  } else if (evtDesc) {
-                    basePrice = basePrice * (1 - Number(evtDesc.descuento)/100);
-                  }
-                  return basePrice;
-                })() +
-                  productoSeleccionado.adicionesSeleccionadas.reduce((s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1), 0)) *
-                (productoSeleccionado.cantidad || 1)
-              ).toLocaleString()}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ═══ MASTER FAST FOOD PRODUCT CUSTOMIZATION MODAL (EL MEJOR MODAL DEL MERCADO) ═══ */}
+      <FastFoodProductModal
+        isOpen={Boolean(showProductModal && productoSeleccionado)}
+        onClose={() => {
+          setShowProductModal(false);
+          setProductoSeleccionado(null);
+        }}
+        producto={productoSeleccionado?.producto}
+        ficha={
+          productoSeleccionado?.ficha ||
+          (productoSeleccionado?.producto &&
+            (fichasMap[productoSeleccionado.producto.id] ||
+              fichasMap[productoSeleccionado.producto.idProducto] ||
+              fichasTecnicasDefault[productoSeleccionado.producto.id]))
+        }
+        allAdiciones={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+        allBebidas={bebidasDisponibles}
+        ratingsInfo={
+          productoSeleccionado?.producto
+            ? ratingsMap[productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto]
+            : null
+        }
+        onOpenResenas={() => {
+          if (productoSeleccionado?.producto) {
+            setProductoParaResenas(productoSeleccionado.producto);
+            setShowResenasModal(true);
+          }
+        }}
+        onConfirm={handleClientModalConfirm}
+        mode="cliente"
+        initialTab={modalInitialTab}
+      />
 
       {/* MODAL CARRITO */}
       {showCart && (
         <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-md h-full p-6 shadow-2xl flex flex-col justify-between border-l border-gray-100 dark:border-gray-800 animate-in slide-in-from-right duration-300">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-6 h-6 text-red-500" />
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tu Carrito de Compras</h3>
-                </div>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md h-full p-5 sm:p-6 shadow-2xl flex flex-col justify-between border-l border-gray-100 dark:border-gray-800 animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-red-500" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tu Carrito de Compras</h3>
+                {cart.length > 0 && (
+                  <span className="text-[11px] bg-red-100 dark:bg-red-950/60 text-[#f05454] dark:text-red-400 font-black px-2 py-0.5 rounded-full">
+                    {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0)} items
+                  </span>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCart(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
+                title="Cerrar carrito"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
+            {/* Scrollable Center Body: Items List + Complementa tu Orden */}
+            <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1 scrollbar-thin">
               {cart.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
                   <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto text-red-500">
@@ -1677,79 +2238,179 @@ export function ClienteLanding() {
                   <p className="text-xs text-gray-400">Agrega deliciosos productos de nuestro menú</p>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {cart.map((item, index) => {
-                    const itemKey = item.cartItemId || `${item.id}-${index}`;
-                    const prodStock = Number(item.stock !== undefined ? item.stock : 25);
-                    const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
+                <>
+                  {/* Cart Items */}
+                  <div className="space-y-2.5">
+                    {cart.map((item, index) => {
+                      const itemKey = item.cartItemId || `${item.id}-${index}`;
+                      const prodStock = Number(item.stock !== undefined ? item.stock : 25);
+                      const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
 
-                    return (
-                      <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3">
-                        <div className="text-3xl shrink-0">{item.imagen}</div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
-                          {item.adiciones && item.adiciones.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {item.adiciones.map((a, aIdx) => (
-                                <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold">
-                                  +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
-                                </span>
-                              ))}
-                            </div>
+                      return (
+                        <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
+                          {item.imagen && typeof item.imagen === "string" && item.imagen.startsWith("http") ? (
+                            <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700" />
+                          ) : (
+                            <div className="text-3xl shrink-0">{item.imagen || "🍔"}</div>
                           )}
-                          <p className="text-xs font-bold text-red-600 dark:text-red-400 mt-1">${item.precio.toLocaleString("es-CO")}</p>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
+                            {item.adiciones && item.adiciones.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.adiciones.map((a, aIdx) => (
+                                  <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                    <img src={getAdicionImage(a)} alt="" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
+                                    +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {item.personalizaciones && item.personalizaciones.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.personalizaciones.map((p, pIdx) => (
+                                  <span key={pIdx} className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
+                                    🚫 {p}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-xs font-black text-red-600 dark:text-red-400 mt-1">${Number(item.precio).toLocaleString("es-CO")}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
+                              className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                            >
+                              -
+                            </button>
+                            <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
+                            <button
+                              onClick={() => {
+                                if (totalInCartForProd >= prodStock) {
+                                  error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
+                                } else {
+                                  updateQuantity(item.cartItemId || item.id, 1);
+                                }
+                              }}
+                              className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                            >
+                              +
+                            </button>
+                            <button
+                              onClick={() => removeFromCart(item.cartItemId || item.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
+                              title="Eliminar este producto"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
-                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                          >
-                            -
-                          </button>
-                          <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
-                          <button
-                            onClick={() => {
-                              if (totalInCartForProd >= prodStock) {
-                                error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
-                              } else {
-                                updateQuantity(item.cartItemId || item.id, 1);
-                              }
-                            }}
-                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                          >
-                            +
-                          </button>
-                          <button
-                            onClick={() => removeFromCart(item.cartItemId || item.id)}
-                            className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
-                            title="Eliminar este producto"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ══════ ¿TIENES UN ANTOJO? COMPLEMENTA TU ORDEN (ESTILO EL CORRAL) ══════ */}
+                  <div className="bg-gradient-to-br from-[#3b0c10] via-[#2d080c] to-[#1c0406] rounded-3xl p-3.5 sm:p-4 text-white shadow-xl border border-red-950/80 relative overflow-hidden mt-2">
+                    {/* Encabezado con flechas de navegación */}
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div>
+                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 block">
+                          ¿Tienes un antojo?
+                        </span>
+                        <h4 className="text-sm sm:text-base font-black text-white leading-tight">
+                          Complementa tu orden
+                        </h4>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => scrollComplementos("left")}
+                          className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
+                          title="Anterior complemento"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => scrollComplementos("right")}
+                          className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
+                          title="Siguiente complemento"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Carrusel horizontal suave */}
+                    <div
+                      ref={complementosRef}
+                      className="flex items-stretch gap-3 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory"
+                    >
+                      {complementosOrden.map((comp) => (
+                        <div
+                          key={comp.id}
+                          className="w-32 sm:w-36 shrink-0 bg-white dark:bg-gray-800 rounded-2xl p-2.5 shadow-md flex flex-col justify-between text-gray-900 dark:text-gray-100 snap-start border border-gray-100 dark:border-gray-700/60 group hover:shadow-xl transition-all"
+                        >
+                          <div className="relative w-full h-20 sm:h-22 rounded-xl bg-gray-50 dark:bg-gray-900/80 overflow-hidden flex items-center justify-center mb-1.5">
+                            <img
+                              src={comp.imagen}
+                              alt={comp.nombre}
+                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 select-none"
+                            />
+                            {comp.badge && (
+                              <span className="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-white text-[8.5px] font-black px-1.5 py-0.2 rounded-md">
+                                {comp.badge}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0 mb-2">
+                            <p className="font-black text-xs text-gray-800 dark:text-gray-100 line-clamp-1 leading-snug">
+                              {comp.nombre}
+                            </p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                              {comp.tamano || comp.descripcion}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-750">
+                            <span className="text-xs font-black text-gray-900 dark:text-gray-100">
+                              ${Number(comp.precio).toLocaleString("es-CO")}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleAddComplemento(comp)}
+                              className="w-7 h-7 rounded-full bg-[#f05454] hover:bg-[#d94444] text-white flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
+                              title={`Agregar ${comp.nombre} al pedido`}
+                            >
+                              <Plus className="w-4 h-4 stroke-[3]" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
             {cart.length > 0 && (
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-4">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3 shrink-0">
                 <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100">
                   <span>Total Pedido:</span>
-                  <span className="text-red-600 dark:text-red-400 text-xl">${clientSubtotal.toLocaleString()}</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${clientSubtotal.toLocaleString()}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={clearCart}
-                    className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-2xl text-xs hover:bg-gray-200"
+                    className="py-3 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-2xl text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition cursor-pointer"
                   >
                     Vaciar Carrito
                   </button>
                   <button
                     onClick={handleAbrirCheckout}
-                    className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl text-xs shadow-md"
+                    className="py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl text-xs shadow-md active:scale-[0.98] transition cursor-pointer"
                   >
                     Proceder al Pago
                   </button>

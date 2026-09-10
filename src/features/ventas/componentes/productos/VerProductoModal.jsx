@@ -44,11 +44,23 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
 
   // Cálculos para datos del producto
   const precioVenta = Number(producto.precio || 0);
-  const costoProduccion = precioVenta * 0.55;
-  const margenGanancia = precioVenta - costoProduccion;
-  const margenPorcentaje = precioVenta > 0 ? Math.round((margenGanancia / precioVenta) * 100) : 0;
   
-  const totalVendidos = producto.ventas || 245;
+  // Costo real calculado a partir de la suma de insumos de la ficha técnica
+  const costoRealCalculado = fichaTecnica?.detalles?.length > 0
+    ? fichaTecnica.detalles.reduce((acc, d) => {
+        const cant = Number(d.cantidad || 0);
+        const precioUnit = Number(d.precioUnitario || d.insumo?.precioUnitario || 0);
+        return acc + (cant * precioUnit);
+      }, 0)
+    : 0;
+
+  const costoProduccion = Math.round(costoRealCalculado);
+  const margenGanancia = precioVenta > costoProduccion ? precioVenta - costoProduccion : 0;
+  const margenPorcentaje = precioVenta > 0 && costoProduccion > 0
+    ? Math.round((margenGanancia / precioVenta) * 100)
+    : 0;
+  
+  const totalVendidos = Number(producto.ventas ?? producto.totalVendidos ?? 0);
   const totalIngresos = totalVendidos * precioVenta;
 
   const isDisponible = producto.estado !== "Inactivo" && producto.estado !== 0;
@@ -64,16 +76,17 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
     >
       <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden relative max-h-[92vh] border border-gray-100 dark:border-gray-800">
         
-        {/* Top Header Section (Red Banner) */}
-        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-500 w-full h-56 relative flex flex-col items-center justify-center shrink-0 shadow-inner">
+        {/* Top Showcase Header */}
+        <div className="relative w-full bg-gradient-to-b from-gray-50/90 via-gray-100/40 to-white dark:from-gray-800/60 dark:via-gray-850 dark:to-gray-900 p-6 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-800 shrink-0">
           
           {/* Badge Disponible */}
-          <div className="absolute top-5 left-5 z-20">
-            <span className={`px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm ${
+          <div className="absolute top-4 left-4 z-20">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-xs border ${
               isDisponible 
-                ? "bg-white text-emerald-600 dark:bg-gray-900 dark:text-emerald-400" 
-                : "bg-white text-rose-600 dark:bg-gray-900 dark:text-rose-400"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" 
+                : "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
             }`}>
+              <span className={`w-2 h-2 rounded-full ${isDisponible ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
               {isDisponible ? "Disponible" : "Inactivo"}
             </span>
           </div>
@@ -83,21 +96,25 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
             type="button"
             onClick={onClose}
             aria-label="Cerrar detalle"
-            className="absolute top-5 right-5 p-2.5 bg-white/95 dark:bg-gray-900/95 hover:bg-white dark:hover:bg-gray-900 text-gray-700 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 rounded-full shadow-lg transition-all z-30 flex items-center justify-center active:scale-95 cursor-pointer"
+            className="absolute top-4 right-4 p-2 bg-white/90 dark:bg-gray-800/90 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full shadow-xs border border-gray-200/80 dark:border-gray-700 transition-all z-30 cursor-pointer active:scale-95"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* Central Image or Emoji */}
-          <div className="w-28 h-28 flex items-center justify-center">
+          {/* Product Image Frame */}
+          <div className="mt-3 w-48 h-48 sm:w-56 sm:h-56 rounded-3xl bg-white dark:bg-gray-800/90 p-3 shadow-md border border-gray-200/80 dark:border-gray-700/80 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-[1.02]">
             {producto.imagen ? (
-              <img
-                src={producto.imagen}
-                alt={producto.nombre}
-                className="w-full h-full object-contain filter drop-shadow-xl"
-              />
+              (producto.imagen.startsWith("http") || producto.imagen.startsWith("/")) ? (
+                <img
+                  src={producto.imagen}
+                  alt={producto.nombre}
+                  className="w-full h-full object-contain rounded-2xl"
+                />
+              ) : (
+                <span className="text-7xl">{producto.imagen}</span>
+              )
             ) : (
-              <span className="text-7xl drop-shadow-xl">🍔</span>
+              <span className="text-7xl">🍔</span>
             )}
           </div>
         </div>
@@ -111,7 +128,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100">
                 {producto.nombre}
               </h2>
-              <span className="px-3 py-1 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-full text-xs font-bold shrink-0">
+              <span className="px-3.5 py-1 bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-400 border border-red-200/60 dark:border-red-900/50 rounded-full text-xs font-bold shrink-0">
                 {producto.categoria || "General"}
               </span>
             </div>
@@ -123,34 +140,34 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Precio de Venta */}
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Precio Venta</p>
+            <div className="bg-emerald-50/60 dark:bg-emerald-950/20 rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-400 mb-1">Precio Venta</p>
               <p className="text-lg font-black text-gray-900 dark:text-gray-100">
                 ${precioVenta.toLocaleString("es-CO")}
               </p>
             </div>
 
             {/* Costo de Producción */}
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Costo Estimado</p>
+            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-200/80 dark:border-gray-700/50">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 mb-1">Costo Estimado</p>
               <p className="text-lg font-black text-gray-900 dark:text-gray-100">
-                ${costoProduccion.toLocaleString("es-CO")}
+                {costoProduccion > 0 ? `$${costoProduccion.toLocaleString("es-CO")}` : (loadingFicha ? "Calculando..." : "Sin costeo")}
               </p>
             </div>
 
             {/* Margen de Ganancia */}
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Margen Ganancia</p>
-              <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                {margenPorcentaje}%
+            <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-900/30">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Margen Ganancia</p>
+              <p className="text-lg font-black text-blue-600 dark:text-blue-400">
+                {costoProduccion > 0 ? `${margenPorcentaje}%` : "—"}
               </p>
             </div>
 
             {/* Total Vendidos */}
-            <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Total Vendidos</p>
+            <div className="bg-purple-50/60 dark:bg-purple-950/20 rounded-2xl p-3.5 border border-purple-100 dark:border-purple-900/30">
+              <p className="text-[11px] uppercase tracking-wider font-bold text-purple-700 dark:text-purple-400 mb-1">Total Vendidos</p>
               <p className="text-lg font-black text-gray-900 dark:text-gray-100">
-                {totalVendidos.toLocaleString("es-CO")}
+                {totalVendidos.toLocaleString("es-CO")} {totalVendidos === 1 ? "unidad" : "unidades"}
               </p>
             </div>
           </div>

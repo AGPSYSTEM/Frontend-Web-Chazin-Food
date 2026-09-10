@@ -4,6 +4,7 @@ import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -82,7 +83,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.nombre.trim() || uploading) return;
+    if (uploading) return;
+    if (!form.nombre || !form.nombre.trim()) {
+      alert("Por favor ingresa el nombre del producto");
+      return;
+    }
+    if (form.precio === "" || form.precio === null || isNaN(Number(form.precio)) || Number(form.precio) < 0) {
+      alert("Por favor ingresa un precio de venta válido");
+      return;
+    }
     const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
     onSave({
       ...form,
@@ -96,25 +105,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("image", file);
-
     try {
       setUploading(true);
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-      const res = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setForm({ ...form, imagen: data.url });
-      } else {
-        alert(data.message || "Error al subir la imagen");
-      }
+      const url = await uploadImageToCloudinary(file);
+      setForm((prev) => ({ ...prev, imagen: url }));
     } catch (err) {
-      console.error(err);
-      alert("Error de conexión al subir la imagen");
+      console.error("Error en handleImageUpload:", err);
+      alert(err.message || "Error al subir la imagen a Cloudinary");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -150,7 +147,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Nombre del Producto</label>

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles, UploadCloud, Loader2 } from "lucide-react";
 import { adicionesService } from "../../servicios/adicionesService";
 import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
   const toast = useToast();
@@ -22,6 +23,8 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -85,6 +88,24 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
         console.error(err);
         toast.error("Error", err.message || "Error al eliminar la adición");
       }
+    }
+  };
+
+  const handleCloudinaryUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const url = await uploadImageToCloudinary(file);
+      setFormData((prev) => ({ ...prev, imagen: url }));
+      toast.success("Imagen subida", "La imagen se subió a Cloudinary con éxito.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al subir imagen", err.message || "No se pudo subir la imagen a Cloudinary.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -225,13 +246,46 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     </div>
 
                     <div className="flex-1 w-full space-y-2">
-                      <input
-                        type="text"
-                        value={formData.imagen}
-                        onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
-                        placeholder="Ej. 🥓 o https://..."
-                      />
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={formData.imagen}
+                          onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                          placeholder="Pega URL directa de imagen (.jpg, .png) o emoji..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                          title="Subir archivo directo a Cloudinary"
+                        >
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-4 h-4" />
+                          )}
+                          <span>{uploading ? "Subiendo..." : "Subir a Cloudinary"}</span>
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCloudinaryUpload}
+                        />
+                        {formData.imagen && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, imagen: "" })}
+                            className="px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer shrink-0"
+                            title="Limpiar imagen"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
 
                       {/* Quick Food Emoji Palette */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">

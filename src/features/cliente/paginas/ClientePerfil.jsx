@@ -50,6 +50,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
@@ -419,8 +420,14 @@ export function ClientePerfil() {
       ? new Date(fidelidad.fechaVencimientoNivel || fidelidad.vence)
       : null;
 
-  // Real-time client countdown
-  const now = new Date();
+  // Real-time client countdown ticker
+  const [currentTick, setCurrentTick] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTick(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const now = new Date(currentTick);
   let diasRestantes = diasRestantesRaw;
   let enGraciaActivo = enGracia;
   let diasGraciaRestantes = diasGraciaRestantesRaw;
@@ -464,23 +471,20 @@ export function ClientePerfil() {
   const userName = formatFullName(user);
 
   // ── Photo Upload & Avatar Handling ──
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      warning("Archivo demasiado grande", "La imagen no debe superar los 2MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result;
-      setAvatarUrl(base64);
-      localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, base64);
+    try {
+      info("Subiendo foto...", "Subiendo tu foto a Cloudinary...");
+      const url = await uploadImageToCloudinary(file);
+      setAvatarUrl(url);
+      localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, url);
       success("Foto cargada", "Presiona 'Guardar Cambios' para aplicar tu foto de perfil");
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Error al subir avatar a Cloudinary:", err);
+      error("Error al subir foto", err.message || "No se pudo subir la foto de perfil");
+    }
   };
 
   const handleSelectPresetAvatar = (avatar) => {
@@ -767,22 +771,48 @@ export function ClientePerfil() {
                   })}
                 </div>
 
-                {/* Expiration or Grace Info */}
+                {/* Expiration, Grace & Real-Time Countdown Progress Bar */}
                 {tipoFidelidad !== "Nuevo" && (
-                  <div className="pt-1 text-[11px]">
+                  <div className="pt-2 space-y-2">
                     {enGraciaActivo ? (
-                      <div className="text-amber-800 dark:text-amber-300 font-bold flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span>
-                          Gracia: <span className="underline">{diasGraciaRestantes} días restantes</span> para reactivar
-                        </span>
+                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200">
+                        <div className="flex items-center justify-between text-xs font-black">
+                          <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                            <AlertTriangle className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                            <span>Periodo de Gracia Activo</span>
+                          </span>
+                          <span className="bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-md font-black">
+                            {diasGraciaRestantes} días restantes
+                          </span>
+                        </div>
+                        <p className="text-[10.5px] text-amber-700 dark:text-amber-300/90 mt-1">
+                          Realiza 1 compra antes de que finalicen tus días de gracia para reactivar tu nivel {tipoFidelidad} sin descender.
+                        </p>
                       </div>
                     ) : (
-                      <div className="text-gray-500 dark:text-gray-400 font-medium flex items-center justify-between">
-                        <span>Vigencia de nivel:</span>
-                        <span className="text-[#f05454] font-black">
-                          {diasRestantes !== null ? `${diasRestantes} días restantes` : "1 mes"}
-                        </span>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-[#f05454]" />
+                            <span>Vigencia del Nivel (Ciclo 30 días):</span>
+                          </span>
+                          <span className="text-[#f05454] font-black">
+                            {diasRestantes !== null ? `${diasRestantes} de 30 días restantes` : "30 días restantes"}
+                          </span>
+                        </div>
+                        {/* Progress Bar for the 30-day cycle */}
+                        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-[#f05454] rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(100, Math.max(5, ((diasRestantes !== null ? diasRestantes : 30) / 30) * 100))}%` }}
+                          />
+                        </div>
+                        {fechaVencimientoObj && (
+                          <div className="flex items-center justify-between text-[10px] text-gray-400">
+                            <span>Fecha de Renovación:</span>
+                            <span className="font-bold">{fechaVencimientoObj.toLocaleDateString("es-CO")}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

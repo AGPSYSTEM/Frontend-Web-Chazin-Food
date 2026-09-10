@@ -118,15 +118,26 @@ export function Cart({
 
                 <div className="text-right text-xs font-black text-[#1f2d3d] dark:text-gray-100">
                   ${Number(
-                    ((Number(it.precio) || 0) + (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0)) *
+                    ((Number(it.precio) || 0) +
+                      (it.adiciones || []).reduce(
+                        (s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1),
+                        0
+                      )) *
                       (it.cantidad || 1)
                   ).toLocaleString("es-CO")}
                 </div>
               </div>
 
+              {it.observacion && (
+                <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <span>👨‍🍳</span>
+                  <span className="truncate">{it.observacion}</span>
+                </div>
+              )}
+
               <div className="mt-2">
                 <input
-                  placeholder="Observaciones..."
+                  placeholder="Instrucción de cocina..."
                   className="w-full rounded-lg border border-[#e2e8f0] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 px-2.5 py-1 text-xs text-[#29384d] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-[#f05454]"
                   value={it.observacion || ""}
                   onChange={(e) => setItemObservacion(idx, e.target.value)}

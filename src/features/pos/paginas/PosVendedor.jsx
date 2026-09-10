@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
 import PosCheckoutModal from "../components/PosCheckoutModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useToast } from "@/shared/context/ToastContext";
 
 const categoryIcons = {
@@ -54,6 +57,111 @@ export default function PosVendedor() {
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [customizingFicha, setCustomizingFicha] = useState(null);
+  const [allAdiciones, setAllAdiciones] = useState([]);
+  const [fichasCache, setFichasCache] = useState({});
+
+  useEffect(() => {
+    adicionesService
+      .getAdiciones()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setAllAdiciones(
+            res.filter(
+              (a) => a.estado === 1 || a.estado === "Activo" || a.estado === undefined
+            )
+          );
+        }
+      })
+      .catch((err) => console.warn("Error cargando adiciones en POS:", err));
+  }, []);
+
+  const allBebidas = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+      const name = String(p.nombre || "").toLowerCase();
+      return (
+        cat.includes("bebida") ||
+        cat.includes("gaseos") ||
+        cat.includes("refresco") ||
+        name.includes("gaseosa") ||
+        name.includes("agua")
+      );
+    });
+  }, [productos]);
+
+  const handleOpenCustomize = async (producto) => {
+    setCustomizingProduct(producto);
+    const prodId = producto.id || producto.idProducto;
+    if (fichasCache[prodId]) {
+      setCustomizingFicha(fichasCache[prodId]);
+      return;
+    }
+
+    try {
+      const f = await fichasTecnicasService.getFichaByProducto(prodId);
+      if (f) {
+        setFichasCache((prev) => ({ ...prev, [prodId]: f }));
+        setCustomizingFicha(f);
+      } else {
+        setCustomizingFicha(null);
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar ficha técnica para producto:", prodId);
+      setCustomizingFicha(null);
+    }
+  };
+
+  const handleModalConfirm = ({
+    producto,
+    cantidad,
+    adiciones,
+    bebidas,
+    observacion
+  }) => {
+    const displayName = producto.nombrePersonalizado || producto.nombre;
+    addProduct({
+      productoId: producto.id || producto.idProducto,
+      varianteId: producto.id || producto.idProducto,
+      nombre: displayName,
+      precio: producto.precio,
+      adiciones: (adiciones || []).map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        id: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio || 0),
+        cantidad: Number(a.cantidad || 1),
+        imagen: a.imagen || ""
+      })),
+      observacion,
+      cantidad: Number(cantidad) || 1,
+      stock: producto.stock
+    });
+
+    if (Array.isArray(bebidas) && bebidas.length > 0) {
+      for (const b of bebidas) {
+        addProduct({
+          productoId: b.id || b.idProducto,
+          varianteId: b.id || b.idProducto,
+          nombre: b.nombre,
+          precio: Number(b.precio || 0),
+          adiciones: [],
+          observacion: `Acompañante de ${displayName}`,
+          cantidad: Number(b.cantidad || 1),
+          stock: b.stock
+        });
+      }
+    }
+
+    setCustomizingProduct(null);
+    setCustomizingFicha(null);
+    toast.success(
+      "¡Producto configurado!",
+      `${displayName} agregado al pedido con éxito.`
+    );
+  };
+
   const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
 
   const handleConfirmCheckout = async (checkoutData) => {
@@ -249,6 +357,7 @@ export default function PosVendedor() {
                     onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
                       addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
                     }
+                    onCustomize={handleOpenCustomize}
                   />
                 ))}
               </div>
@@ -346,6 +455,21 @@ export default function PosVendedor() {
         total={total}
         onConfirm={handleConfirmCheckout}
         loading={loading}
+      />
+
+      {/* Fast Food Product Customization Modal (Mise en place, Adiciones, Ficha Técnica) */}
+      <FastFoodProductModal
+        isOpen={Boolean(customizingProduct)}
+        onClose={() => {
+          setCustomizingProduct(null);
+          setCustomizingFicha(null);
+        }}
+        producto={customizingProduct}
+        ficha={customizingFicha}
+        allAdiciones={allAdiciones}
+        allBebidas={allBebidas}
+        onConfirm={handleModalConfirm}
+        mode="pos"
       />
     </div>
   );

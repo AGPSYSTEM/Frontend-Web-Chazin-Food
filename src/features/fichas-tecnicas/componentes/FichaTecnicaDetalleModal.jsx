@@ -32,7 +32,6 @@ export function FichaTecnicaDetalleModal({
 }) {
   const [ficha, setFicha] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [checkedIngredients, setCheckedIngredients] = useState({});
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -48,7 +47,6 @@ export function FichaTecnicaDetalleModal({
     if (isOpen && item) {
       const id = item.id || item.idProducto || item.idInsumo;
       setLoading(true);
-      setCheckedIngredients({});
 
       const fetchPromise = isProducto
         ? fichasTecnicasService.getFichaByProducto(id)
@@ -104,10 +102,6 @@ export function FichaTecnicaDetalleModal({
   const rendimientoText = ficha?.rendimiento || null;
   const vidaUtilText = ficha?.vidaUtil || null;
   const almacenamientoText = ficha?.condicionesAlmacenamiento || null;
-
-  const toggleCheck = (idx) => {
-    setCheckedIngredients((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -244,40 +238,19 @@ export function FichaTecnicaDetalleModal({
                       `Insumo #${det.idInsumo || det.id || idx + 1}`;
                     const cant = det.cantidad ?? 1;
                     const unidad = det.unidadMedida || det.insumo?.unidadMedida || "und";
-                    const isChecked = !!checkedIngredients[idx];
-
                     return (
                       <div
                         key={idx}
-                        onClick={() => toggleCheck(idx)}
-                        className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer select-none ${
-                          isChecked
-                            ? "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/80 opacity-75"
-                            : "bg-white dark:bg-gray-800 border-gray-200/80 dark:border-gray-700/80 hover:border-rose-200 shadow-2xs"
-                        }`}
+                        className="p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-800 flex items-center justify-between gap-3 shadow-2xs transition-colors hover:border-gray-300 dark:hover:border-gray-600"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div
-                            className={`w-5 h-5 rounded-md flex items-center justify-center text-xs shrink-0 transition-colors ${
-                              isChecked
-                                ? "bg-emerald-500 text-white"
-                                : "border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-750"
-                            }`}
-                          >
-                            {isChecked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </div>
-                          <span
-                            className={`text-xs font-bold truncate ${
-                              isChecked
-                                ? "line-through text-gray-400 dark:text-gray-500"
-                                : "text-gray-900 dark:text-gray-100"
-                            }`}
-                          >
+                          <span className="w-2 h-2 rounded-full bg-[#F05454] shrink-0" />
+                          <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
                             {insName}
                           </span>
                         </div>
 
-                        <span className="font-black text-xs text-[#F05454] dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded-lg shrink-0">
+                        <span className="font-black text-xs text-[#F05454] dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 rounded-lg shrink-0">
                           {cant} {unidad}
                         </span>
                       </div>

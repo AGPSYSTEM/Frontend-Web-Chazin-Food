@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UtensilsCrossed, UploadCloud, Loader2 } from "lucide-react";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -40,25 +41,13 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("image", file);
-
     try {
       setUploading(true);
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-      const res = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIcon(data.url);
-      } else {
-        alert(data.message || "Error al subir la imagen");
-      }
+      const url = await uploadImageToCloudinary(file);
+      setIcon(url);
     } catch (err) {
-      console.error(err);
-      alert("Error de conexión al subir la imagen");
+      console.error("Error en handleImageUpload:", err);
+      alert(err.message || "Error al subir la imagen a Cloudinary");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
