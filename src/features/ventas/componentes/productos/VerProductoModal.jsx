@@ -1,4 +1,4 @@
-import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare } from "lucide-react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { StarRating } from "@/shared/components/ui/StarRating";
@@ -228,6 +228,40 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               </div>
             </div>
           </div>
+
+          {/* Variantes y Presentaciones */}
+          {Array.isArray(producto.variantes) && producto.variantes.length > 1 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-orange-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Variantes y Presentaciones ({producto.variantes.length})
+                </h3>
+              </div>
+              <div className="bg-orange-50/40 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-900/30">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {producto.variantes.map((v, i) => (
+                    <div
+                      key={v.idVariante || v.id || i}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-orange-150 dark:border-orange-900/40 shadow-2xs text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-bold text-[10px] flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">
+                          {v.nombre}
+                        </span>
+                      </div>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        ${Number(v.precio || 0).toLocaleString("es-CO")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Eventos / Descuentos Activos */}
           {eventosActivos.length > 0 && (

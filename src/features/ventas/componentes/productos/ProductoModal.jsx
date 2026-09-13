@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Utensils, UploadCloud, Loader2 } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -22,6 +22,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     estado: "Activo",
     adiciones: []
   });
+  const [variantes, setVariantes] = useState([]);
   const [todasAdiciones, setTodasAdiciones] = useState([]);
   const [todasBebidas, setTodasBebidas] = useState([]);
   const [configCombo, setConfigCombo] = useState({
@@ -81,7 +82,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         nombre: producto.nombre || "",
         idCategoriaProducto: producto.idCategoriaProducto || producto.categoriaId || selectedCat?.id || selectedCat?.idCategoriaProducto || null,
         categoria: producto.categoria || (selectedCat?.nombre || (categorias[0]?.nombre || "")),
-        precio: producto.precio || "",
+        precio: producto.precio !== undefined ? producto.precio : "",
         descripcion: producto.descripcion || "",
         imagen: producto.imagen || "",
         estado: producto.estado || "Activo",
@@ -102,6 +103,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         cantidadBebidas: defaultCant,
         bebidasPermitidas: []
       });
+
+      // Inicializar variantes existentes o crear una por defecto basada en el producto
+      const rawVars = Array.isArray(producto.variantes) && producto.variantes.length > 0
+        ? producto.variantes
+        : [];
+      
+      if (rawVars.length > 0) {
+        setVariantes(rawVars.map((v) => ({
+          idVariante: v.idVariante || v.id || null,
+          nombre: v.nombre || "",
+          precio: v.precio !== undefined ? v.precio : (producto.precio || "")
+        })));
+      } else {
+        setVariantes([
+          {
+            idVariante: null,
+            nombre: producto.nombre ? `${producto.nombre} - Estándar` : "Estándar",
+            precio: producto.precio !== undefined ? producto.precio : ""
+          }
+        ]);
+      }
     } else {
       const firstCat = categorias[0]?.nombre || "";
       const isFirstCombo = firstCat.toLowerCase().includes("combo");
@@ -121,6 +143,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         cantidadBebidas: 1,
         bebidasPermitidas: []
       });
+      setVariantes([
+        {
+          idVariante: null,
+          nombre: "Estándar",
+          precio: ""
+        }
+      ]);
     }
   }, [producto, isOpen, categorias]);
 
@@ -133,6 +162,53 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       nuevasAdiciones = [...form.adiciones, adicion];
     }
     setForm({ ...form, adiciones: nuevasAdiciones });
+  };
+
+  // Administrador de variantes y presentaciones
+  const handleAddVariante = () => {
+    setVariantes((prev) => [
+      ...prev,
+      {
+        idVariante: null,
+        nombre: "",
+        precio: form.precio !== "" ? form.precio : ""
+      }
+    ]);
+  };
+
+  const handleUpdateVariante = (index, field, value) => {
+    setVariantes((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      // Mantener sincronizado el precio base del formulario con la primera variante
+      if (field === "precio" && index === 0) {
+        setForm((f) => ({ ...f, precio: value }));
+      }
+      return updated;
+    });
+  };
+
+  const handleRemoveVariante = (index) => {
+    if (variantes.length <= 1) return;
+    setVariantes((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (index === 0 && updated.length > 0) {
+        setForm((f) => ({ ...f, precio: updated[0].precio }));
+      }
+      return updated;
+    });
+  };
+
+  const handleMainPriceChange = (newPrice) => {
+    setForm((f) => ({ ...f, precio: newPrice }));
+    setVariantes((prev) => {
+      if (prev.length === 0) {
+        return [{ idVariante: null, nombre: "Estándar", precio: newPrice }];
+      }
+      const updated = [...prev];
+      updated[0] = { ...updated[0], precio: newPrice };
+      return updated;
+    });
   };
 
   if (!isOpen) return null;
@@ -149,6 +225,24 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       return;
     }
 
+    // Validar variantes
+    if (variantes.length === 0) {
+      alert("El producto debe tener al menos una variante o presentación registrada");
+      return;
+    }
+
+    for (let i = 0; i < variantes.length; i++) {
+      const v = variantes[i];
+      if (!v.nombre || !v.nombre.trim()) {
+        alert(`Por favor escribe el nombre de la variante o presentación #${i + 1} (ej. "Original 400ml" o "Estándar")`);
+        return;
+      }
+      if (v.precio === "" || v.precio === null || isNaN(Number(v.precio)) || Number(v.precio) < 0) {
+        alert(`Por favor ingresa un precio válido para la variante "${v.nombre}"`);
+        return;
+      }
+    }
+
     try {
       setUploading(true);
       let finalImageUrl = form.imagen;
@@ -159,11 +253,18 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
 
       const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
+      const basePrice = Number(variantes[0]?.precio !== undefined && variantes[0]?.precio !== "" ? variantes[0].precio : form.precio) || 0;
+
       await onSave({
         ...form,
         imagen: finalImageUrl,
         idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
-        precio: Number(form.precio) || 0,
+        precio: basePrice,
+        variantes: variantes.map((v) => ({
+          idVariante: v.idVariante || null,
+          nombre: v.nombre.trim(),
+          precio: Number(v.precio) >= 0 ? Number(v.precio) : basePrice
+        })),
         configuracionCombo: configCombo.esCombo
           ? {
               esCombo: true,
@@ -286,15 +387,129 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             <div>
-              <label className={labelCls}>Precio de Venta ($ COP)</label>
+              <label className={labelCls}>Precio de Venta Base ($ COP)</label>
               <NumberInput
                 required
                 min="0"
                 value={form.precio}
-                onChange={(e) => setForm({ ...form, precio: e.target.value })}
+                onChange={(e) => handleMainPriceChange(e.target.value)}
                 className={inputCls}
                 placeholder="Ej. 25000"
               />
+            </div>
+
+            <div>
+              <label className={labelCls}>Estado</label>
+              <select
+                value={form.estado}
+                onChange={(e) => setForm({ ...form, estado: e.target.value })}
+                className={inputCls}
+              >
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+
+            {/* Sección de Variantes y Presentaciones */}
+            <div className="sm:col-span-2 border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10 rounded-2xl p-4 sm:p-5 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0 shadow-2xs">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        Variantes y Presentaciones del Producto
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                        {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Personaliza sabores (ej. Original, Sin Azúcar) o tamaños (ej. 400ml, 1.5L, Personal) y sus precios.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddVariante}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-[#F05454] border border-[#F05454]/30 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Agregar Variante
+                </button>
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {variantes.map((v, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-col sm:flex-row sm:items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700/80 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                      {idx === 0 && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          Base
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={v.nombre}
+                        onChange={(e) => handleUpdateVariante(idx, "nombre", e.target.value)}
+                        placeholder={idx === 0 ? "Nombre presentación base (ej. Sabor Original 400ml)" : "Ej. Sin Azúcar / Light 400ml"}
+                        className="w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
+                      />
+                    </div>
+
+                    <div className="w-full sm:w-36 shrink-0">
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
+                        <NumberInput
+                          min="0"
+                          value={v.precio}
+                          onChange={(e) => handleUpdateVariante(idx, "precio", e.target.value)}
+                          placeholder="Precio"
+                          className="w-full pl-6 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex justify-end">
+                      {variantes.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveVariante(idx)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
+                          title="Eliminar variante"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="w-7 h-7 flex items-center justify-center text-gray-300 dark:text-gray-600 text-xs" title="Debe existir al menos 1 presentación">
+                          —
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-orange-100 dark:border-orange-950">
+                <span className="text-orange-500">💡</span>
+                <span>
+                  {variantes.length > 1
+                    ? "Tus clientes verán automáticamente estas opciones para elegir su sabor o tamaño favorito al ordenar en la carta."
+                    : "Si tu producto tiene diferentes sabores (ej. Coca-Cola Original y Sin Azúcar) o tamaños, haz clic en \"Agregar Variante\"."}
+                </span>
+              </div>
             </div>
 
             <div className="sm:col-span-2">
@@ -355,18 +570,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 className={inputCls}
                 placeholder="Descripción del platillo e ingredientes principales..."
               />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Estado</label>
-              <select
-                value={form.estado}
-                onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                className={inputCls}
-              >
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
-              </select>
             </div>
 
             {/* Configuración de Combo y Bebidas Incluidas */}
