@@ -24,24 +24,17 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
   const fileInputRef = useRef(null);
-  const sessionUploadsRef = useRef(new Set());
-
-  const cleanupSessionUploads = () => {
-    sessionUploadsRef.current.forEach((url) => {
-      deleteImageFromCloudinary(url);
-    });
-    sessionUploadsRef.current.clear();
-  };
 
   const handleCloseModal = () => {
-    cleanupSessionUploads();
+    setFileToUpload(null);
     onClose();
   };
 
   useEffect(() => {
     if (isOpen) {
-      cleanupSessionUploads();
+      setFileToUpload(null);
       loadAdiciones();
     }
   }, [isOpen]);
@@ -60,7 +53,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleCreateNew = () => {
-    cleanupSessionUploads();
+    setFileToUpload(null);
     setIsEditing(false);
     setFormData({
       id: null,
@@ -74,7 +67,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleEdit = (adicion) => {
-    cleanupSessionUploads();
+    setFileToUpload(null);
     setIsEditing(true);
     setFormData({
       id: adicion.idAdicion,
@@ -107,47 +100,39 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     }
   };
 
-  const handleCloudinaryUpload = async (e) => {
+  const handleImageSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      setUploading(true);
-      const previousImg = formData.imagen;
-      const url = await uploadImageToCloudinary(file);
-      sessionUploadsRef.current.add(url);
-
-      // Si había una subida previa en esta sesión, destruirla para evitar huérfanas
-      if (previousImg && sessionUploadsRef.current.has(previousImg)) {
-        deleteImageFromCloudinary(previousImg);
-        sessionUploadsRef.current.delete(previousImg);
-      }
-
-      setFormData((prev) => ({ ...prev, imagen: url }));
-      toast.success("Imagen subida", "La imagen se subió a Cloudinary con éxito.");
-    } catch (err) {
-      console.error(err);
-      toast.error("Error al subir imagen", err.message || "No se pudo subir la imagen a Cloudinary.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file.type.startsWith("image/")) {
+      toast.error("Archivo inválido", "El archivo debe ser una imagen (JPG, PNG, WEBP).");
+      return;
     }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error("Archivo pesado", "La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // Previsualización local inmediata: cero subidas a Cloudinary hasta que guarde
+    setFileToUpload(file);
+    const localUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, imagen: localUrl }));
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleClearImage = () => {
-    if (formData.imagen && sessionUploadsRef.current.has(formData.imagen)) {
-      deleteImageFromCloudinary(formData.imagen);
-      sessionUploadsRef.current.delete(formData.imagen);
-    }
-    setFormData({ ...formData, imagen: "" });
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSelectEmoji = (emoji) => {
-    if (formData.imagen && sessionUploadsRef.current.has(formData.imagen)) {
-      deleteImageFromCloudinary(formData.imagen);
-      sessionUploadsRef.current.delete(formData.imagen);
-    }
-    setFormData({ ...formData, imagen: emoji });
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: emoji }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -156,13 +141,24 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       toast.error("Campos requeridos", "Por favor completa el nombre, insumo base y precio");
       return;
     }
+
     try {
+      setUploading(true);
+      let finalImageUrl = formData.imagen;
+
+      // SUBIDA DIFERIDA: Si se seleccionó archivo local, subirlo a Cloudinary ahora
+      if (fileToUpload) {
+        finalImageUrl = await uploadImageToCloudinary(fileToUpload);
+      } else if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
+        finalImageUrl = getAdditionEmoji(formData.nombre, "");
+      }
+
       const payload = {
         ...formData,
         idInsumo: Number(formData.idInsumo),
         precio: Number(formData.precio),
         estado: "Activo",
-        imagen: formData.imagen || getAdditionEmoji(formData.nombre, "")
+        imagen: finalImageUrl || getAdditionEmoji(formData.nombre, "")
       };
 
       if (isEditing) {
@@ -173,12 +169,14 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
         toast.success("Adición creada", "La adición se creó exitosamente");
       }
 
-      sessionUploadsRef.current.clear();
+      setFileToUpload(null);
       setShowForm(false);
       await loadAdiciones();
     } catch (err) {
       console.error(err);
       toast.error("Error al guardar", err.message || "No se pudo guardar la adición");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -301,21 +299,21 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploading}
                           className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
-                          title="Subir archivo directo a Cloudinary"
+                          title="Seleccionar archivo de imagen"
                         >
                           {uploading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <UploadCloud className="w-4 h-4" />
                           )}
-                          <span>{uploading ? "Subiendo..." : "Subir a Cloudinary"}</span>
+                          <span>{uploading ? "Subiendo..." : fileToUpload ? "Cambiar Imagen" : "Seleccionar Imagen"}</span>
                         </button>
                         <input
                           ref={fileInputRef}
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={handleCloudinaryUpload}
+                          onChange={handleImageSelected}
                         />
                         {formData.imagen && (
                           <button

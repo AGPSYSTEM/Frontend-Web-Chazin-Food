@@ -13,77 +13,91 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
   const [estado, setEstado] = useState("Activo");
 
   const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [previewIcon, setPreviewIcon] = useState("");
   const fileInputRef = useRef(null);
-  const sessionUploadsRef = useRef(new Set());
 
   const handleCancelOrClose = () => {
-    // Si se cancela o cierra sin guardar, eliminar cualquier imagen subida en esta sesión
-    sessionUploadsRef.current.forEach((url) => {
-      deleteImageFromCloudinary(url);
-    });
-    sessionUploadsRef.current.clear();
+    setFileToUpload(null);
+    setPreviewIcon("");
     onClose();
   };
 
   useEffect(() => {
-    sessionUploadsRef.current.clear();
+    setFileToUpload(null);
     if (categoria) {
       setNombre(categoria.nombre || "");
       setDescripcion(categoria.descripcion || "");
       setIcon(categoria.icon || "");
+      setPreviewIcon(categoria.icon || "");
       setEstado(categoria.estado || "Activo");
     } else {
       setNombre("");
       setDescripcion("");
       setIcon("");
+      setPreviewIcon("");
       setEstado("Activo");
     }
   }, [categoria, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nombre.trim() || uploading) return;
-    // Guardado exitoso: vaciamos la lista de temporales para preservar la imagen guardada
-    sessionUploadsRef.current.clear();
-    onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), icon, estado });
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
     try {
       setUploading(true);
-      const previousIcon = icon;
-      const url = await uploadImageToCloudinary(file);
-      sessionUploadsRef.current.add(url);
+      let finalIcon = icon;
 
-      // Si el usuario ya había subido un archivo en esta sesión y lo sustituye, eliminar el anterior
-      if (previousIcon && sessionUploadsRef.current.has(previousIcon)) {
-        deleteImageFromCloudinary(previousIcon);
-        sessionUploadsRef.current.delete(previousIcon);
+      // SUBIDA DIFERIDA: Solo sube a Cloudinary al momento de confirmar el formulario
+      if (fileToUpload) {
+        finalIcon = await uploadImageToCloudinary(fileToUpload);
       }
 
-      setIcon(url);
+      await onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), icon: finalIcon, estado });
+      setFileToUpload(null);
+      setPreviewIcon("");
     } catch (err) {
-      console.error("Error en handleImageUpload:", err);
-      alert(err.message || "Error al subir la imagen a Cloudinary");
+      console.error("Error al guardar categoría:", err);
+      alert(err.message || "Error al subir imagen o guardar categoría");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    }
+  };
+
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      alert("La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // Previsualización local inmediata sin subir a la nube
+    setFileToUpload(file);
+    const localUrl = URL.createObjectURL(file);
+    setPreviewIcon(localUrl);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleRemoveIcon = () => {
-    if (icon && sessionUploadsRef.current.has(icon)) {
-      deleteImageFromCloudinary(icon);
-      sessionUploadsRef.current.delete(icon);
-    }
+    setFileToUpload(null);
+    setPreviewIcon("");
     setIcon("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -126,11 +140,11 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
             <label className={labelCls}>Imagen / Ícono de la Categoría</label>
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 shrink-0 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800">
-                {icon ? (
-                  icon.includes('/') || icon.includes('.') ? (
-                    <img src={icon} alt="Preview" className="w-full h-full object-cover" />
+                {previewIcon ? (
+                  previewIcon.includes('/') || previewIcon.includes('.') || previewIcon.startsWith('blob:') ? (
+                    <img src={previewIcon} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="text-2xl">{icon}</div>
+                    <div className="text-2xl">{previewIcon}</div>
                   )
                 ) : (
                   <UtensilsCrossed className="w-6 h-6 text-gray-300 dark:text-gray-600" />
@@ -144,12 +158,12 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4 text-[#F05454]" />}
-                      {uploading ? "Subiendo..." : "Subir Imagen"}
+                      {uploading ? "Subiendo..." : previewIcon ? "Cambiar Imagen" : "Subir Imagen"}
                     </button>
-                    {icon && (
+                    {previewIcon && (
                       <button
                         type="button"
                         onClick={handleRemoveIcon}
@@ -164,12 +178,16 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                     accept="image/*"
                     className="hidden"
                     ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    onChange={handleImageSelected}
                   />
                   <input
                     type="text"
-                    value={icon}
-                    onChange={(e) => setIcon(e.target.value)}
+                    value={previewIcon.startsWith('blob:') ? '' : icon}
+                    onChange={(e) => {
+                      setFileToUpload(null);
+                      setIcon(e.target.value);
+                      setPreviewIcon(e.target.value);
+                    }}
                     className={inputCls}
                     placeholder="O ingresa un emoji (ej. 🍔) o URL"
                   />

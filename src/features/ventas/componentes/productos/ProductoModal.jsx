@@ -24,15 +24,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [todasAdiciones, setTodasAdiciones] = useState([]);
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
   const fileInputRef = useRef(null);
-  const sessionUploadsRef = useRef(new Set());
 
   const handleCancelOrClose = () => {
-    // Si se cancela o cierra sin guardar, eliminar cualquier imagen subida en esta sesión
-    sessionUploadsRef.current.forEach((url) => {
-      deleteImageFromCloudinary(url);
-    });
-    sessionUploadsRef.current.clear();
+    // Limpiar archivo seleccionado y previsualización local sin haber subido nada a Cloudinary
+    setFileToUpload(null);
+    setPreviewUrl("");
     onClose();
   };
 
@@ -47,7 +46,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   }, [isOpen]);
 
   useEffect(() => {
-    sessionUploadsRef.current.clear();
+    setFileToUpload(null);
+    setPreviewUrl(producto?.imagen || "");
+
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
 
@@ -92,7 +93,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (uploading) return;
     if (!form.nombre || !form.nombre.trim()) {
@@ -103,55 +104,67 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       alert("Por favor ingresa un precio de venta válido");
       return;
     }
-    // Como el usuario guardó exitosamente, evitamos eliminar la nueva imagen guardada
-    sessionUploadsRef.current.clear();
-
-    const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
-    onSave({
-      ...form,
-      idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
-      precio: Number(form.precio) || 0,
-      fichaTecnica
-    });
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
     try {
       setUploading(true);
-      const previousSessionImg = form.imagen;
-      const url = await uploadImageToCloudinary(file);
-      sessionUploadsRef.current.add(url);
+      let finalImageUrl = form.imagen;
 
-      // Si el usuario ya había subido una foto en este mismo modal y la reemplaza,
-      // destruir la foto previa en Cloudinary para no dejar imágenes basura
-      if (previousSessionImg && sessionUploadsRef.current.has(previousSessionImg)) {
-        deleteImageFromCloudinary(previousSessionImg);
-        sessionUploadsRef.current.delete(previousSessionImg);
+      // SUBIDA DIFERIDA: Se sube a Cloudinary ÚNICAMENTE si el usuario confirma y guarda el formulario
+      if (fileToUpload) {
+        finalImageUrl = await uploadImageToCloudinary(fileToUpload);
       }
 
-      setForm((prev) => ({ ...prev, imagen: url }));
+      const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
+      await onSave({
+        ...form,
+        imagen: finalImageUrl,
+        idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
+        precio: Number(form.precio) || 0,
+        fichaTecnica
+      });
+
+      setFileToUpload(null);
+      setPreviewUrl("");
     } catch (err) {
-      console.error("Error en handleImageUpload:", err);
-      alert(err.message || "Error al subir la imagen a Cloudinary");
+      console.error("Error al guardar producto:", err);
+      alert(err.message || "Error al subir imagen o guardar el producto");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    }
+  };
+
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      alert("La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // No se sube a Cloudinary todavía; se genera vista previa local instantánea
+    setFileToUpload(file);
+    const localBlobUrl = URL.createObjectURL(file);
+    setPreviewUrl(localBlobUrl);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleRemoveImage = () => {
-    const currentImg = form.imagen;
-    // Si la imagen fue subida en esta sesión de modal, destruirla inmediatamente en Cloudinary
-    if (currentImg && sessionUploadsRef.current.has(currentImg)) {
-      deleteImageFromCloudinary(currentImg);
-      sessionUploadsRef.current.delete(currentImg);
-    }
+    setFileToUpload(null);
+    setPreviewUrl("");
     setForm((prev) => ({ ...prev, imagen: "" }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -235,8 +248,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <div className="flex items-start gap-4">
                 {/* Preview Thumbnail */}
                 <div className="w-24 h-24 shrink-0 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800">
-                  {form.imagen ? (
-                    <img src={form.imagen} alt="Preview" className="w-full h-full object-cover" />
+                  {previewUrl ? (
+                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <Utensils className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                   )}
@@ -249,12 +262,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4 text-[#F05454]" />}
-                      {uploading ? "Subiendo..." : "Subir Imagen"}
+                      {uploading ? "Subiendo a Cloudinary..." : previewUrl ? "Cambiar Imagen" : "Seleccionar Imagen"}
                     </button>
-                    {form.imagen && (
+                    {previewUrl && (
                       <button
                         type="button"
                         onClick={handleRemoveImage}
@@ -269,7 +282,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     accept="image/*"
                     className="hidden"
                     ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    onChange={handleImageSelected}
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     Formatos soportados: JPG, PNG, WEBP. Tamaño ideal 1000x1000px.
