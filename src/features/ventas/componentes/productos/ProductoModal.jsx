@@ -4,7 +4,7 @@ import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
-import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -25,18 +25,29 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const sessionUploadsRef = useRef(new Set());
+
+  const handleCancelOrClose = () => {
+    // Si se cancela o cierra sin guardar, eliminar cualquier imagen subida en esta sesión
+    sessionUploadsRef.current.forEach((url) => {
+      deleteImageFromCloudinary(url);
+    });
+    sessionUploadsRef.current.clear();
+    onClose();
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && isOpen) {
-        onClose();
+        handleCancelOrClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   useEffect(() => {
+    sessionUploadsRef.current.clear();
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
 
@@ -92,6 +103,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       alert("Por favor ingresa un precio de venta válido");
       return;
     }
+    // Como el usuario guardó exitosamente, evitamos eliminar la nueva imagen guardada
+    sessionUploadsRef.current.clear();
+
     const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
     onSave({
       ...form,
@@ -107,7 +121,17 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
     try {
       setUploading(true);
+      const previousSessionImg = form.imagen;
       const url = await uploadImageToCloudinary(file);
+      sessionUploadsRef.current.add(url);
+
+      // Si el usuario ya había subido una foto en este mismo modal y la reemplaza,
+      // destruir la foto previa en Cloudinary para no dejar imágenes basura
+      if (previousSessionImg && sessionUploadsRef.current.has(previousSessionImg)) {
+        deleteImageFromCloudinary(previousSessionImg);
+        sessionUploadsRef.current.delete(previousSessionImg);
+      }
+
       setForm((prev) => ({ ...prev, imagen: url }));
     } catch (err) {
       console.error("Error en handleImageUpload:", err);
@@ -120,10 +144,20 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
   };
 
+  const handleRemoveImage = () => {
+    const currentImg = form.imagen;
+    // Si la imagen fue subida en esta sesión de modal, destruirla inmediatamente en Cloudinary
+    if (currentImg && sessionUploadsRef.current.has(currentImg)) {
+      deleteImageFromCloudinary(currentImg);
+      sessionUploadsRef.current.delete(currentImg);
+    }
+    setForm((prev) => ({ ...prev, imagen: "" }));
+  };
+
   return (
     <div
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleCancelOrClose();
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
     >
@@ -138,9 +172,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           </div>
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+            onClick={handleCancelOrClose}
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -224,8 +257,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     {form.imagen && (
                       <button
                         type="button"
-                        onClick={() => setForm({ ...form, imagen: "" })}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                        onClick={handleRemoveImage}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
                       >
                         Quitar imagen
                       </button>
@@ -325,8 +358,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              onClick={handleCancelOrClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancelar
             </button>

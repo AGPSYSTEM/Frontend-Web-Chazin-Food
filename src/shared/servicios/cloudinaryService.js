@@ -1,29 +1,31 @@
-const CLOUD_NAME =
-import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET =
-import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+import { apiClient } from "@/shared/api/apiClient";
+
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 export const uploadImageToCloudinary = async (file) => {
   if (!file) throw new Error("No se ha seleccionado ningún archivo");
 
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    throw new Error("Falta configurar VITE_CLOUDINARY_CLOUD_NAME o VITE_CLOUDINARY_UPLOAD_PRESET en tu archivo .env");
+    throw new Error(
+      "Falta configurar VITE_CLOUDINARY_CLOUD_NAME o VITE_CLOUDINARY_UPLOAD_PRESET en tu archivo .env"
+    );
   }
 
   if (!file.type.startsWith("image/")) {
     throw new Error("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
   }
 
-const maxSizeInBytes = 5 * 1024 * 1024;
-if (file.size > maxSizeInBytes) {
+  const maxSizeInBytes = 5 * 1024 * 1024;
+  if (file.size > maxSizeInBytes) {
     throw new Error("La imagen no debe superar los 5 MB de tamaño.");
-}
+  }
 
-const formData = new FormData();
-formData.append("file", file);
-formData.append("upload_preset", UPLOAD_PRESET);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
 
- try {
+  try {
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
       {
@@ -43,3 +45,30 @@ formData.append("upload_preset", UPLOAD_PRESET);
     throw error;
   }
 };
+
+/**
+ * Solicita al backend la eliminación segura de un recurso en Cloudinary mediante su URL o public_id.
+ * No genera errores bloqueantes si la imagen era externa o no se pudo eliminar.
+ * 
+ * @param {string} imageUrlOrPublicId 
+ */
+export const deleteImageFromCloudinary = async (imageUrlOrPublicId) => {
+  if (!imageUrlOrPublicId || typeof imageUrlOrPublicId !== "string") return;
+
+  // Ignorar emojis, URLs de Unsplash, rutas relativas o placeholders que no son de Cloudinary
+  if (
+    !imageUrlOrPublicId.includes("cloudinary.com") &&
+    !imageUrlOrPublicId.includes("res.cloudinary")
+  ) {
+    return;
+  }
+
+  try {
+    const res = await apiClient.post("/upload/delete", {
+      url: imageUrlOrPublicId,
+    });
+    return res;
+  } catch (err) {
+    console.warn("⚠️ [Cloudinary] No se pudo eliminar la imagen mediante backend:", err.message);
+  }
+};

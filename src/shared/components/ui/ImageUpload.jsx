@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
 import { UploadCloud, Loader2, X, Image as ImageIcon } from "lucide-react";
-import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function ImageUpload({ value, onChange, label = "Imagen del Producto" }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef(null);
+  const sessionUploadsRef = useRef(new Set());
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -14,7 +15,17 @@ export function ImageUpload({ value, onChange, label = "Imagen del Producto" }) 
     try {
       setLoading(true);
       setErrorMsg("");
+      const previousValue = value;
       const url = await uploadImageToCloudinary(file);
+      sessionUploadsRef.current.add(url);
+
+      // Si el usuario ya había subido una foto en esta misma sesión y la está reemplazando,
+      // eliminar la anterior inmediatamente de Cloudinary para evitar imágenes huérfanas
+      if (previousValue && sessionUploadsRef.current.has(previousValue)) {
+        deleteImageFromCloudinary(previousValue);
+        sessionUploadsRef.current.delete(previousValue);
+      }
+
       onChange(url); // Devuelve la URL de Cloudinary al formulario padre
     } catch (err) {
       setErrorMsg(err.message || "Error al subir imagen");
@@ -24,10 +35,18 @@ export function ImageUpload({ value, onChange, label = "Imagen del Producto" }) 
     }
   };
 
-  const handleRemove = (e) => {
+  const handleRemove = async (e) => {
     e.stopPropagation();
+    const currentVal = value;
     onChange("");
+
+    // Si la imagen fue subida en esta sesión o es una imagen de Cloudinary, eliminarla
+    if (currentVal && sessionUploadsRef.current.has(currentVal)) {
+      sessionUploadsRef.current.delete(currentVal);
+      await deleteImageFromCloudinary(currentVal);
+    }
   };
+
 
   return (
     <div className="space-y-1.5 w-full">

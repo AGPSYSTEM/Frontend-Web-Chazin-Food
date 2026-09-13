@@ -50,7 +50,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
@@ -477,7 +477,14 @@ export function ClientePerfil() {
 
     try {
       info("Subiendo foto...", "Subiendo tu foto a Cloudinary...");
+      const previousAvatar = avatarUrl;
       const url = await uploadImageToCloudinary(file);
+
+      // Si el avatar anterior era una foto subida a Cloudinary, eliminarla
+      if (previousAvatar && previousAvatar !== url && previousAvatar.includes("cloudinary.com")) {
+        deleteImageFromCloudinary(previousAvatar);
+      }
+
       setAvatarUrl(url);
       localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, url);
       success("Foto cargada", "Presiona 'Guardar Cambios' para aplicar tu foto de perfil");
@@ -488,12 +495,20 @@ export function ClientePerfil() {
   };
 
   const handleSelectPresetAvatar = (avatar) => {
+    const previousAvatar = avatarUrl;
+    if (previousAvatar && previousAvatar.includes("cloudinary.com")) {
+      deleteImageFromCloudinary(previousAvatar);
+    }
     setAvatarUrl(avatar);
     localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, avatar);
     success("Avatar seleccionado", "Presiona 'Guardar Cambios' para actualizar tu perfil");
   };
 
   const handleRemoveAvatar = () => {
+    const previousAvatar = avatarUrl;
+    if (previousAvatar && previousAvatar.includes("cloudinary.com")) {
+      deleteImageFromCloudinary(previousAvatar);
+    }
     setAvatarUrl("");
     localStorage.removeItem(`avatar_${user?.id || user?.idUsuario}`);
     success("Foto eliminada", "Se mostrará el distintivo de tu nivel");

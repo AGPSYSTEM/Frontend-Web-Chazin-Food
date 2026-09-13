@@ -4,7 +4,7 @@ import { adicionesService } from "../../servicios/adicionesService";
 import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
-import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
   const toast = useToast();
@@ -25,9 +25,23 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const sessionUploadsRef = useRef(new Set());
+
+  const cleanupSessionUploads = () => {
+    sessionUploadsRef.current.forEach((url) => {
+      deleteImageFromCloudinary(url);
+    });
+    sessionUploadsRef.current.clear();
+  };
+
+  const handleCloseModal = () => {
+    cleanupSessionUploads();
+    onClose();
+  };
 
   useEffect(() => {
     if (isOpen) {
+      cleanupSessionUploads();
       loadAdiciones();
     }
   }, [isOpen]);
@@ -46,6 +60,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleCreateNew = () => {
+    cleanupSessionUploads();
     setIsEditing(false);
     setFormData({
       id: null,
@@ -59,6 +74,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleEdit = (adicion) => {
+    cleanupSessionUploads();
     setIsEditing(true);
     setFormData({
       id: adicion.idAdicion,
@@ -97,7 +113,16 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
     try {
       setUploading(true);
+      const previousImg = formData.imagen;
       const url = await uploadImageToCloudinary(file);
+      sessionUploadsRef.current.add(url);
+
+      // Si había una subida previa en esta sesión, destruirla para evitar huérfanas
+      if (previousImg && sessionUploadsRef.current.has(previousImg)) {
+        deleteImageFromCloudinary(previousImg);
+        sessionUploadsRef.current.delete(previousImg);
+      }
+
       setFormData((prev) => ({ ...prev, imagen: url }));
       toast.success("Imagen subida", "La imagen se subió a Cloudinary con éxito.");
     } catch (err) {
@@ -107,6 +132,22 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleClearImage = () => {
+    if (formData.imagen && sessionUploadsRef.current.has(formData.imagen)) {
+      deleteImageFromCloudinary(formData.imagen);
+      sessionUploadsRef.current.delete(formData.imagen);
+    }
+    setFormData({ ...formData, imagen: "" });
+  };
+
+  const handleSelectEmoji = (emoji) => {
+    if (formData.imagen && sessionUploadsRef.current.has(formData.imagen)) {
+      deleteImageFromCloudinary(formData.imagen);
+      sessionUploadsRef.current.delete(formData.imagen);
+    }
+    setFormData({ ...formData, imagen: emoji });
   };
 
   const handleSubmit = async (e) => {
@@ -132,6 +173,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
         toast.success("Adición creada", "La adición se creó exitosamente");
       }
 
+      sessionUploadsRef.current.clear();
       setShowForm(false);
       await loadAdiciones();
     } catch (err) {
@@ -144,7 +186,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={handleCloseModal} />
 
       <div className="relative bg-white dark:bg-gray-900 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -158,7 +200,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -278,7 +320,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                         {formData.imagen && (
                           <button
                             type="button"
-                            onClick={() => setFormData({ ...formData, imagen: "" })}
+                            onClick={handleClearImage}
                             className="px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer shrink-0"
                             title="Limpiar imagen"
                           >
@@ -294,7 +336,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                           <button
                             key={item.emoji}
                             type="button"
-                            onClick={() => setFormData({ ...formData, imagen: item.emoji })}
+                            onClick={() => handleSelectEmoji(item.emoji)}
                             className={`w-8 h-8 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
                               formData.imagen === item.emoji
                                 ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 scale-110 ring-2 ring-purple-300"
@@ -327,7 +369,10 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    cleanupSessionUploads();
+                    setShowForm(false);
+                  }}
                   className="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors cursor-pointer"
                 >
                   Cancelar
