@@ -416,6 +416,57 @@ export function FastFoodProductModal({
   const [customObservation, setCustomObservation] = useState("");
   const [imageError, setImageError] = useState(false);
 
+  // Detección y resolución de configuración de Combo con bebidas incluidas
+  const comboConfig = useMemo(() => {
+    if (producto?.configuracionCombo && typeof producto.configuracionCombo === "object") {
+      return producto.configuracionCombo;
+    }
+    const pLower = String(producto?.nombre || "").toLowerCase();
+    const cLower = String(producto?.categoria || producto?.categoriaNombre || "").toLowerCase();
+    if (cLower.includes("combo") || pLower.includes("combo")) {
+      let cant = 1;
+      if (pLower.includes("familiar") || pLower.includes("4 personas")) cant = 4;
+      else if (pLower.includes("pareja") || pLower.includes("amigos") || pLower.includes("2 personas") || pLower.includes("duo") || pLower.includes("dúo")) cant = 2;
+      return { esCombo: true, cantidadBebidas: cant, bebidasPermitidas: [] };
+    }
+    return { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [] };
+  }, [producto]);
+
+  const isComboWithDrinks = Boolean(comboConfig?.esCombo && (comboConfig?.cantidadBebidas || 0) > 0);
+  const requiredDrinkCount = isComboWithDrinks ? (Number(comboConfig.cantidadBebidas) || 1) : 0;
+
+  const availableBebidas = useMemo(() => {
+    if (!allBebidas || !Array.isArray(allBebidas)) return [];
+    if (isComboWithDrinks && Array.isArray(comboConfig.bebidasPermitidas) && comboConfig.bebidasPermitidas.length > 0) {
+      return allBebidas.filter((b) => comboConfig.bebidasPermitidas.includes(b.id || b.idProducto));
+    }
+    return allBebidas;
+  }, [allBebidas, isComboWithDrinks, comboConfig]);
+
+  const totalSelectedDrinkQty = useMemo(() => {
+    return selectedDrinks.reduce((sum, d) => sum + (Number(d.cantidad) || 1), 0);
+  }, [selectedDrinks]);
+
+  const isComboDrinkComplete = !isComboWithDrinks || totalSelectedDrinkQty >= requiredDrinkCount;
+
+  // Cálculo de costo de bebidas considerando la cuota incluida en el combo
+  const drinksTotal = useMemo(() => {
+    if (!isComboWithDrinks) {
+      return selectedDrinks.reduce((sum, d) => sum + Number(d.precio || 0) * Number(d.cantidad || 1), 0);
+    }
+    let remainingIncluded = requiredDrinkCount;
+    let extraCost = 0;
+    for (const d of selectedDrinks) {
+      const qty = Number(d.cantidad || 1);
+      const price = Number(d.precio || 0);
+      const covered = Math.min(remainingIncluded, qty);
+      const extras = qty - covered;
+      remainingIncluded -= covered;
+      extraCost += extras * price;
+    }
+    return extraCost;
+  }, [selectedDrinks, isComboWithDrinks, requiredDrinkCount]);
+
   // Reseñas dinámicas del producto
   const [reviewsData, setReviewsData] = useState({ promedio: 0, total: 0, resenas: [] });
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -804,16 +855,17 @@ export function FastFoodProductModal({
     0
   );
 
-  const drinksTotal = selectedDrinks.reduce(
-    (sum, d) => sum + Number(d.precio || 0) * Number(d.cantidad || 1),
-    0
-  );
-
   const finalUnitPrice = basePrice + additionsUnitPrice;
   const grandTotal = finalUnitPrice * quantity + drinksTotal;
 
   // Confirmar y agregar
   const handleConfirm = () => {
+    if (isComboWithDrinks && !isComboDrinkComplete) {
+      setActiveTab("bebidas");
+      alert(`🥤 Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
+      return;
+    }
+
     const variantName = selectedVariant?.nombre && selectedVariant.nombre !== producto.nombre && selectedVariant.nombre !== "Estándar"
       ? selectedVariant.nombre
       : "";
@@ -826,6 +878,12 @@ export function FastFoodProductModal({
       : removedIngredients.map((r) => `Sin ${r}`);
 
     let fullNotes = [];
+    if (isComboWithDrinks && selectedDrinks.length > 0) {
+      const drinksSummary = selectedDrinks
+        .map((d) => `${d.cantidad || 1}x ${d.nombre}`)
+        .join(", ");
+      fullNotes.push(`🥤 Bebidas combo: ${drinksSummary}`);
+    }
     if (personalizacionesFormatted.length > 0) {
       fullNotes.push(personalizacionesFormatted.join(", "));
     }
@@ -846,12 +904,15 @@ export function FastFoodProductModal({
         ...producto,
         idVariante: chosenVarId,
         nombrePersonalizado: customName,
-        saborSeleccionado: variantName
+        saborSeleccionado: variantName,
+        configuracionCombo: comboConfig
       },
       idVariante: chosenVarId,
       cantidad: quantity,
       adiciones: isDrink ? [] : selectedAdditions,
       bebidas: isDrink ? [] : selectedDrinks,
+      bebidasDelCombo: isComboWithDrinks ? selectedDrinks : [],
+      isCombo: isComboWithDrinks,
       sabor: variantName,
       personalizaciones: personalizacionesFormatted,
       ingredientesRemovidos: isDrink ? [] : removedIngredients,
@@ -1228,23 +1289,31 @@ export function FastFoodProductModal({
                     )}
                   </button>
 
-                  {allBebidas.length > 0 && (
+                  {availableBebidas.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("bebidas")}
                       className={`flex-1 min-w-[95px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
                         activeTab === "bebidas"
                           ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : isComboWithDrinks && !isComboDrinkComplete
+                          ? "text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40 animate-pulse"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
                       <span>🥤</span>
-                      <span>Bebidas</span>
-                      {selectedDrinks.length > 0 && (
+                      <span>{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
+                      {isComboWithDrinks ? (
+                        <span className={`h-4 min-w-[16px] px-1.5 rounded-full text-[10px] flex items-center justify-center font-black ${
+                          isComboDrinkComplete ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
+                        }`}>
+                          {totalSelectedDrinkQty}/{requiredDrinkCount}
+                        </span>
+                      ) : selectedDrinks.length > 0 ? (
                         <span className="h-4 min-w-[16px] px-1 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black">
                           {selectedDrinks.length}
                         </span>
-                      )}
+                      ) : null}
                     </button>
                   )}
 
@@ -1545,19 +1614,55 @@ export function FastFoodProductModal({
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                       <span>🥤</span>
-                      Bebidas Frías & Acompañamientos
+                      {isComboWithDrinks ? "Bebidas Incluidas en tu Combo" : "Bebidas Frías & Acompañamientos"}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      El maridaje ideal para disfrutar tu pedido al máximo:
+                      {isComboWithDrinks
+                        ? `Selecciona ${requiredDrinkCount} bebida${requiredDrinkCount > 1 ? 's' : ''} incluida${requiredDrinkCount > 1 ? 's' : ''} en tu combo sin costo extra:`
+                        : "El maridaje ideal para disfrutar tu pedido al máximo:"}
                     </p>
                   </div>
-                  <span className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    {allBebidas.length} opciones
+                  <span className={`text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                    isComboWithDrinks
+                      ? (isComboDrinkComplete ? "bg-emerald-500 text-white" : "bg-blue-600 text-white animate-pulse")
+                      : "text-gray-400 dark:text-gray-500"
+                  }`}>
+                    {isComboWithDrinks ? `${totalSelectedDrinkQty} de ${requiredDrinkCount} seleccionadas` : `${availableBebidas.length} opciones`}
                   </span>
                 </div>
 
+                {/* Banner de estado del combo */}
+                {isComboWithDrinks && (
+                  <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 ${
+                    isComboDrinkComplete
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-850 text-emerald-800 dark:text-emerald-200"
+                      : "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-850 text-blue-800 dark:text-blue-200"
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">🥤</span>
+                      <div>
+                        <p className="text-xs font-black">
+                          {isComboDrinkComplete
+                            ? "¡Bebidas del combo seleccionadas!"
+                            : `Selecciona ${requiredDrinkCount} bebida${requiredDrinkCount > 1 ? 's' : ''} para tu combo`}
+                        </p>
+                        <p className="text-[11px] opacity-80">
+                          {isComboDrinkComplete
+                            ? "Las bebidas seleccionadas están incluidas en el precio base ($0 COP)."
+                            : `Faltan ${Math.max(0, requiredDrinkCount - totalSelectedDrinkQty)} bebida(s) por elegir.`}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-black px-2.5 py-1 rounded-xl shrink-0 ${
+                      isComboDrinkComplete ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
+                    }`}>
+                      {totalSelectedDrinkQty} / {requiredDrinkCount}
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-                  {allBebidas.map((drink) => {
+                  {availableBebidas.map((drink) => {
                     const dId = drink.id || drink.idProducto;
                     const selectedObj = selectedDrinks.find((d) => (d.id || d.idProducto) === dId);
                     const isSelected = Boolean(selectedObj);
@@ -1593,9 +1698,15 @@ export function FastFoodProductModal({
                               {drink.nombre}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-blue-600 dark:text-blue-400 font-black text-xs">
-                                ${Number(drink.precio).toLocaleString("es-CO")}
-                              </span>
+                              {isComboWithDrinks ? (
+                                <span className="bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-extrabold text-[10.5px]">
+                                  {isSelected ? `Incluida ($0 COP)` : `Elegir ($0 COP)`}
+                                </span>
+                              ) : (
+                                <span className="text-blue-600 dark:text-blue-400 font-black text-xs">
+                                  ${Number(drink.precio).toLocaleString("es-CO")}
+                                </span>
+                              )}
                               <span
                                 className={`text-[10px] font-bold ${
                                   dStock <= 5 ? "text-amber-600" : "text-emerald-600 dark:text-emerald-400"

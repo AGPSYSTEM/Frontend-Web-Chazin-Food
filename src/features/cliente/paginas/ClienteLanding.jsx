@@ -1205,20 +1205,32 @@ export function ClienteLanding() {
     }
 
     let bebidasCount = 0;
+    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let includedQuotaRemaining = requiredDrinks;
+
     if (!isDrink && Array.isArray(bebidas)) {
       for (const b of bebidas) {
-        const bRes = addToCart({
-          id: b.id || b.idProducto,
-          idProducto: b.idProducto || b.id,
-          nombre: b.nombre,
-          precio: Number(b.precio),
-          cantidad: Number(b.cantidad) || 1,
-          stock: Number(b.stock !== undefined ? b.stock : 30),
-          imagen: b.imagen || "🥤",
-          adiciones: []
-        });
-        if (!bRes || bRes.success !== false) {
-          bebidasCount += (Number(b.cantidad) || 1);
+        const qty = Number(b.cantidad || 1);
+        const covered = isComboProd ? Math.min(includedQuotaRemaining, qty) : 0;
+        const extraQty = qty - covered;
+        if (isComboProd) includedQuotaRemaining -= covered;
+
+        // Solo cobrar en carrito si es producto estándar o bebidas extra por encima del combo
+        if (!isComboProd || extraQty > 0) {
+          const bRes = addToCart({
+            id: b.id || b.idProducto,
+            idProducto: b.idProducto || b.id,
+            nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
+            precio: Number(b.precio),
+            cantidad: isComboProd ? extraQty : qty,
+            stock: Number(b.stock !== undefined ? b.stock : 30),
+            imagen: b.imagen || "🥤",
+            adiciones: []
+          });
+          if (!bRes || bRes.success !== false) {
+            bebidasCount += (isComboProd ? extraQty : qty);
+          }
         }
       }
     }

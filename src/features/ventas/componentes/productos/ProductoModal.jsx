@@ -3,6 +3,7 @@ import { X, Utensils, UploadCloud, Loader2 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
@@ -22,6 +23,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     adiciones: []
   });
   const [todasAdiciones, setTodasAdiciones] = useState([]);
+  const [todasBebidas, setTodasBebidas] = useState([]);
+  const [configCombo, setConfigCombo] = useState({
+    esCombo: false,
+    cantidadBebidas: 1,
+    bebidasPermitidas: []
+  });
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
@@ -52,6 +59,22 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
 
+    // Cargar catálogo de bebidas para asociar al combo
+    productosService.getProductos().then((prods) => {
+      const bebidas = (prods || []).filter((p) => {
+        const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+        const nom = String(p.nombre || "").toLowerCase();
+        return (
+          cat.includes("bebida") ||
+          cat.includes("gaseos") ||
+          cat.includes("refresco") ||
+          nom.includes("gaseosa") ||
+          nom.includes("agua")
+        );
+      });
+      setTodasBebidas(bebidas);
+    }).catch(console.error);
+
     if (producto) {
       const selectedCat = (categorias || []).find(c => c.nombre === producto.categoria || (c.id && c.id === producto.idCategoriaProducto) || (c.idCategoriaProducto && c.idCategoriaProducto === producto.idCategoriaProducto));
       setForm({
@@ -65,11 +88,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         adiciones: producto.adiciones || []
       });
       setFichaTecnica(producto.fichaTecnica || null);
+
+      const pLower = String(producto.nombre || "").toLowerCase();
+      const cLower = String(producto.categoria || selectedCat?.nombre || "").toLowerCase();
+      const isAutoCombo = cLower.includes("combo") || pLower.includes("combo");
+
+      let defaultCant = 1;
+      if (pLower.includes("familiar") || pLower.includes("4 personas")) defaultCant = 4;
+      else if (pLower.includes("pareja") || pLower.includes("amigos") || pLower.includes("2 personas") || pLower.includes("duo")) defaultCant = 2;
+
+      setConfigCombo(producto.configuracionCombo || {
+        esCombo: isAutoCombo,
+        cantidadBebidas: defaultCant,
+        bebidasPermitidas: []
+      });
     } else {
+      const firstCat = categorias[0]?.nombre || "";
+      const isFirstCombo = firstCat.toLowerCase().includes("combo");
       setForm({
         nombre: "",
         idCategoriaProducto: categorias[0]?.id || categorias[0]?.idCategoriaProducto || null,
-        categoria: categorias[0]?.nombre || "",
+        categoria: firstCat,
         precio: "",
         descripcion: "",
         imagen: "",
@@ -77,6 +116,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         adiciones: []
       });
       setFichaTecnica(null);
+      setConfigCombo({
+        esCombo: isFirstCombo,
+        cantidadBebidas: 1,
+        bebidasPermitidas: []
+      });
     }
   }, [producto, isOpen, categorias]);
 
@@ -120,6 +164,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         imagen: finalImageUrl,
         idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
         precio: Number(form.precio) || 0,
+        configuracionCombo: configCombo.esCombo
+          ? {
+              esCombo: true,
+              cantidadBebidas: Math.max(1, Number(configCombo.cantidadBebidas) || 1),
+              bebidasPermitidas: configCombo.bebidasPermitidas || []
+            }
+          : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [] },
         fichaTecnica
       });
 
@@ -214,11 +265,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 onChange={(e) => {
                   const selectedName = e.target.value;
                   const catObj = (categorias || []).find(c => c.nombre === selectedName);
+                  const isComboCat = selectedName.toLowerCase().includes("combo");
                   setForm({
                     ...form,
                     categoria: selectedName,
                     idCategoriaProducto: catObj?.id || catObj?.idCategoriaProducto || null
                   });
+                  if (isComboCat) {
+                    setConfigCombo(prev => ({ ...prev, esCombo: true }));
+                  }
                 }}
                 className={inputCls}
               >
@@ -312,6 +367,125 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 <option value="Activo">Activo</option>
                 <option value="Inactivo">Inactivo</option>
               </select>
+            </div>
+
+            {/* Configuración de Combo y Bebidas Incluidas */}
+            <div className="sm:col-span-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl shrink-0">🥤</span>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                      Configuración de Combo: Bebidas Incluidas
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Permite que el cliente elija bebidas incluidas sin costo extra al ordenar este producto.
+                    </p>
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                    {configCombo.esCombo ? "Es Combo" : "No es Combo"}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={configCombo.esCombo}
+                    onChange={(e) => setConfigCombo({ ...configCombo, esCombo: e.target.checked })}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {configCombo.esCombo && (
+                <div className="space-y-3 pt-3 border-t border-blue-150 dark:border-blue-900/40">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Cantidad de Bebidas Incluidas en el Combo:
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setConfigCombo(prev => ({ ...prev, cantidadBebidas: Math.max(1, (prev.cantidadBebidas || 1) - 1) }))}
+                          className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition cursor-pointer active:scale-95"
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center font-black text-sm text-gray-900 dark:text-gray-100">
+                          {configCombo.cantidadBebidas || 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setConfigCombo(prev => ({ ...prev, cantidadBebidas: Math.min(10, (prev.cantidadBebidas || 1) + 1) }))}
+                          className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition cursor-pointer active:scale-95"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span className="text-xs text-blue-700 dark:text-blue-300 font-semibold">
+                        {configCombo.cantidadBebidas === 1
+                          ? "✓ El cliente podrá elegir 1 bebida incluida en el precio ($0 COP)."
+                          : `✓ El cliente podrá elegir ${configCombo.cantidadBebidas} bebidas incluidas en el precio ($0 COP).`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {todasBebidas.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                          Bebidas disponibles para elegir ({todasBebidas.length} en catálogo):
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setConfigCombo(prev => ({ ...prev, bebidasPermitidas: [] }))}
+                          className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Habilitar todas
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
+                        {todasBebidas.map((bebida) => {
+                          const bId = bebida.id || bebida.idProducto;
+                          const isAllowed = configCombo.bebidasPermitidas.length === 0 || configCombo.bebidasPermitidas.includes(bId);
+                          return (
+                            <label
+                              key={bId}
+                              className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition select-none ${
+                                isAllowed
+                                  ? "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-900/60 text-gray-900 dark:text-gray-100 shadow-2xs"
+                                  : "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400 opacity-60"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isAllowed}
+                                onChange={() => {
+                                  const current = configCombo.bebidasPermitidas.length === 0
+                                    ? todasBebidas.map(b => b.id || b.idProducto)
+                                    : [...configCombo.bebidasPermitidas];
+                                  let updated;
+                                  if (current.includes(bId)) {
+                                    updated = current.filter(id => id !== bId);
+                                  } else {
+                                    updated = [...current, bId];
+                                  }
+                                  setConfigCombo(prev => ({
+                                    ...prev,
+                                    bebidasPermitidas: updated.length === todasBebidas.length ? [] : updated
+                                  }));
+                                }}
+                                className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                              <span className="truncate font-medium flex-1">{bebida.nombre}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="sm:col-span-2 mt-4">
