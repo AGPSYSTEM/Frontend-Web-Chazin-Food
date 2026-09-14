@@ -27,14 +27,43 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   const [fileToUpload, setFileToUpload] = useState(null);
   const fileInputRef = useRef(null);
 
-  const handleCloseModal = () => {
+  const resetFormState = () => {
     setFileToUpload(null);
+    setIsEditing(false);
+    setShowForm(false);
+    setFormData({
+      id: null,
+      nombre: "",
+      idInsumo: "",
+      precio: "",
+      descripcion: "",
+      imagen: "",
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCloseModal = () => {
+    resetFormState();
     onClose();
   };
 
+  const handleCancelForm = () => {
+    resetFormState();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        handleCloseModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
-      setFileToUpload(null);
+      resetFormState();
       loadAdiciones();
     }
   }, [isOpen]);
@@ -169,8 +198,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
         toast.success("Adición creada", "La adición se creó exitosamente");
       }
 
-      setFileToUpload(null);
-      setShowForm(false);
+      resetFormState();
       await loadAdiciones();
     } catch (err) {
       console.error(err);
@@ -367,10 +395,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
-                  onClick={() => {
-                    cleanupSessionUploads();
-                    setShowForm(false);
-                  }}
+                  onClick={handleCancelForm}
                   className="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors cursor-pointer"
                 >
                   Cancelar
