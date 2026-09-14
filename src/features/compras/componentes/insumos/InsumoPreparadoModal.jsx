@@ -128,7 +128,7 @@ export function InsumoPreparadoModal({
     if (missingFields.length > 0) {
       notify.error(
         "Ficha Técnica Incompleta",
-        `Por favor completa los siguientes campos obligatorios de la ficha técnica: ${missingFields.join(", ")}.`
+        "Primero debes completar y guardar la ficha técnica"
       );
       return;
     }

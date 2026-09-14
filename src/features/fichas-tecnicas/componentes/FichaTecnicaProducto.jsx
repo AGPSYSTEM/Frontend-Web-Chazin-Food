@@ -45,6 +45,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
         const f = await fichasTecnicasService.getFichaByProducto(productId);
         if (f && f.idFichaTecnica) {
           populateFields(f);
+          if (onSave) onSave(f);
         }
       } catch (err) {
         console.error("Error cargando ficha de producto:", err);
