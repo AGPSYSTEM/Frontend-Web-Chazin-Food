@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
+import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
@@ -65,6 +66,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
 
   // Insumos de la Receta (Ficha Técnica Oficial para inventario y cocina)
   const [prodInsumosReceta, setProdInsumosReceta] = useState([]);
+  const [prodFichaTecnica, setProdFichaTecnica] = useState(null);
   const [searchRecetaInsumo, setSearchRecetaInsumo] = useState("");
   const [showRecetaDropdown, setShowRecetaDropdown] = useState(false);
 
@@ -162,6 +164,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       setProdEtiquetas(["🔥 Edición Festival"]);
       setProdDestacadoWeb(true);
       setProdInsumosReceta([]);
+      setProdFichaTecnica(null);
       setSearchRecetaInsumo("");
       setShowRecetaDropdown(false);
       setTieneCortesia(false);
@@ -514,9 +517,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
             precio: Number(prodPrecioRegular),
             idCategoriaProducto: Number(prodCategoria || 3),
             imagen: prodImagen.trim(),
-            procedimiento: prodProcedimiento.trim() || 'Preparar con los más selectos ingredientes de temporada y empaque festivo.',
-            tiempoPreparacion: Number(tiempoPreparacion) || 12,
-            rendimiento: prodRendimiento || '1 porción',
+            procedimiento: prodFichaTecnica?.procedimiento || prodDescripcion.trim() || 'Preparar con los más selectos ingredientes de temporada y empaque festivo.',
+            tiempoPreparacion: Number(prodFichaTecnica?.tiempoPreparacion) || 12,
+            rendimiento: prodFichaTecnica?.rendimiento || prodRendimiento || '1 porción',
             estado: prodEstadoInicial === "Activo" ? 1 : 0,
             adiciones: adicionesSeleccionadas,
             configuracionCombo: configCombo.esCombo ? configCombo : null,
@@ -524,11 +527,14 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
               nombre: v.nombre.trim(),
               precio: Number(v.precio || prodPrecioEvento)
             })),
-            insumosFicha: prodInsumosReceta.map(item => ({
-              idInsumo: item.idInsumo || item.id,
-              cantidad: Number(item.cantidad || 1),
-              unidadMedida: item.unidadMedida || 'und'
-            }))
+            fichaTecnica: prodFichaTecnica || null,
+            insumosFicha: (prodFichaTecnica?.detalles && prodFichaTecnica.detalles.length > 0)
+              ? prodFichaTecnica.detalles
+              : prodInsumosReceta.map(item => ({
+                  idInsumo: item.idInsumo || item.id,
+                  cantidad: Number(item.cantidad || 1),
+                  unidadMedida: item.unidadMedida || 'und'
+                }))
           }
         };
 
@@ -1183,144 +1189,19 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 )}
               </div>
 
-              {/* Sección 6: Insumos de la Receta / Ficha Técnica Oficial (Inventario y Cocina) */}
-              <div className="border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                      <Utensils className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
-                          Insumos de la Receta (Ficha Técnica Oficial)
-                        </h4>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">
-                          {prodInsumosReceta.length} ingredientes
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                        Define los insumos de inventario que componen este platillo para que la cocina consulte la receta y se descuente stock al venderlo.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Buscador de Insumos */}
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar insumo para agregar a la receta (ej. Pan Brioche, Carne Angus, Queso Cheddar)..."
-                      value={searchRecetaInsumo}
-                      onChange={(e) => {
-                        setSearchRecetaInsumo(e.target.value);
-                        setShowRecetaDropdown(true);
-                      }}
-                      onFocus={() => setShowRecetaDropdown(true)}
-                      className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  {showRecetaDropdown && insumosSugeridosReceta.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-30 max-h-56 overflow-y-auto p-1 divide-y divide-gray-100 dark:divide-gray-800">
-                      {insumosSugeridosReceta.map((ins) => (
-                        <button
-                          key={ins.idInsumo || ins.id}
-                          type="button"
-                          onClick={() => handleAddInsumoReceta(ins)}
-                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center justify-between transition cursor-pointer text-xs group"
-                        >
-                          <span className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600">
-                            {ins.nombre}
-                          </span>
-                          <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                            Stock: {ins.stock || 0} {ins.unidadMedida || 'und'}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Lista de Insumos Añadidos */}
-                {prodInsumosReceta.length > 0 ? (
-                  <div className="space-y-2 pt-1">
-                    {prodInsumosReceta.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900/40 rounded-xl shadow-2xs"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
-                            {item.nombre}
-                          </p>
-                          <span className="text-[10px] text-gray-400">
-                            En bodega: {item.stock} {item.unidadMedida}
-                          </span>
-                        </div>
-
-                        {/* Cantidad y Unidad */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateInsumoRecetaCantidad(idx, -1)}
-                              className="w-6 h-6 rounded-md bg-white dark:bg-gray-700 hover:bg-gray-200 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs transition cursor-pointer"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              step="any"
-                              min="0.01"
-                              value={item.cantidad}
-                              onChange={(e) => handleUpdateInsumoReceta(idx, "cantidad", Math.max(0.01, parseFloat(e.target.value) || 0))}
-                              className="w-14 text-center font-bold text-xs bg-transparent border-0 outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateInsumoRecetaCantidad(idx, 1)}
-                              className="w-6 h-6 rounded-md bg-white dark:bg-gray-700 hover:bg-gray-200 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs transition cursor-pointer"
-                            >
-                              +
-                            </button>
-                          </div>
-
-                          <select
-                            value={item.unidadMedida}
-                            onChange={(e) => handleUpdateInsumoRecetaUnidad(idx, e.target.value)}
-                            className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold cursor-pointer"
-                          >
-                            <option value="und">und</option>
-                            <option value="gr">gr</option>
-                            <option value="kg">kg</option>
-                            <option value="ml">ml</option>
-                            <option value="lt">lt</option>
-                          </select>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveInsumoReceta(idx)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
-                            title="Quitar insumo de la receta"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic py-1">
-                    No has agregado insumos a la receta. Puedes buscar arriba ingredientes como Pan Brioche, Carne Angus 180g, Queso Gouda, Salsas, etc.
-                  </p>
-                )}
+              {/* Sección: Ficha Técnica Oficial del Producto (Idéntica a Gestión de Productos) */}
+              <div className="pt-2">
+                <FichaTecnicaProducto
+                  productId={null}
+                  productName={prodNombre || "Nuevo Producto de Evento"}
+                  initialData={prodFichaTecnica}
+                  onChange={(data) => setProdFichaTecnica(data)}
+                  onSave={(data) => setProdFichaTecnica(data)}
+                />
               </div>
 
-              {/* Sección 7: Ingrediente Extra o Topping de Cortesía (Opcional) */}
-              <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
+              {/* Sección: Ingrediente Extra o Topping de Cortesía (Opcional) */}
+              <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -1335,8 +1216,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                       </p>
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
                       {tieneCortesia ? "Con Cortesía" : "Sin Cortesía"}
                     </span>
                     <input
@@ -1394,56 +1275,6 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* Sección 8: Descripción Gourmet & Ficha Técnica */}
-              <div className="bg-gray-50/70 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
-                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
-                  <Utensils className="w-4 h-4" />
-                  <span>Detalles de Cocina y Preparación</span>
-                </div>
-
-                {/* Descripción Gourmet */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    Descripción Gourmet / Atributos del Plato
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="180g de carne angus madurada, queso gouda ahumado fundido, cebolla caramelizada al vino tinto y salsa trufada en pan brioche artesanal..."
-                    value={prodDescripcion}
-                    onChange={(e) => setProdDescripcion(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 resize-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="sm:col-span-2">
-                    {/* Procedimiento de Preparación (Ficha Técnica) */}
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Procedimiento de Preparación Oficial
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Sellar la carne a la plancha a término medio. Tostar pan brioche con mantequilla artesanal. Untar salsa festiva..."
-                      value={prodProcedimiento}
-                      onChange={(e) => setProdProcedimiento(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 resize-none text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Tiempo Preparación (min)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={tiempoPreparacion}
-                      onChange={(e) => setTiempoPreparacion(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-bold"
-                    />
-                  </div>
-                </div>
               </div>
 
               {/* Sección 9: Vigencia del Evento y Visibilidad Web */}

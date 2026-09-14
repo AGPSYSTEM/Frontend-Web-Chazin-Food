@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -9,7 +9,7 @@ const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 d
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
 const requiredMark = <span className="text-red-500"> *</span>;
 
-export function FichaTecnicaProducto({ productId, productName, initialData, onSave, readOnly = false }) {
+export function FichaTecnicaProducto({ productId, productName, initialData, onSave, onChange, readOnly = false }) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
   const [dbInsumosList, setDbInsumosList] = useState([]);
@@ -26,6 +26,39 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   
   const [searchInsumo, setSearchInsumo] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Sincronizar cambios en tiempo real hacia el componente padre
+  useEffect(() => {
+    if (typeof onChangeRef.current === "function") {
+      onChangeRef.current({
+        idProducto: productId || null,
+        procedimiento,
+        tiempoPreparacion: Number(tiempoPreparacion) || 0,
+        rendimiento,
+        especificaciones,
+        caracteristicas,
+        informacionNutricional,
+        condicionesAlmacenamiento,
+        vidaUtil,
+        observaciones,
+        detalles: insumos.map(i => ({
+          idInsumo: i.idInsumo || i.id,
+          nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
+          cantidad: Number(i.cantidad || 1),
+          unidadMedida: i.unidadMedida || 'und'
+        }))
+      });
+    }
+  }, [
+    procedimiento, tiempoPreparacion, rendimiento, especificaciones,
+    caracteristicas, informacionNutricional, condicionesAlmacenamiento,
+    vidaUtil, observaciones, insumos, productId
+  ]);
 
   // Load insumos list for autocomplete search
   useEffect(() => {
