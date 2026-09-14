@@ -6,11 +6,13 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
 export function ProductoModal({ isOpen, onClose, onSave, producto = null, categorias = [] }) {
+  const notify = useNotifications();
   const isEditing = !!producto;
   const [form, setForm] = useState({
     nombre: "",
@@ -235,30 +237,79 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     e.preventDefault();
     if (uploading) return;
     if (!form.nombre || !form.nombre.trim()) {
-      alert("Por favor ingresa el nombre del producto");
+      notify.warning("Campo Requerido", "Por favor ingresa el nombre del producto");
       return;
     }
     if (form.precio === "" || form.precio === null || isNaN(Number(form.precio)) || Number(form.precio) < 0) {
-      alert("Por favor ingresa un precio de venta válido");
+      notify.warning("Campo Requerido", "Por favor ingresa un precio de venta válido");
       return;
     }
 
     // Validar variantes
     if (variantes.length === 0) {
-      alert("El producto debe tener al menos una variante o presentación registrada");
+      notify.warning("Variantes Requeridas", "El producto debe tener al menos una variante o presentación registrada");
       return;
     }
 
     for (let i = 0; i < variantes.length; i++) {
       const v = variantes[i];
       if (!v.nombre || !v.nombre.trim()) {
-        alert(`Por favor escribe el nombre de la variante o presentación #${i + 1} (ej. "Original 400ml" o "Estándar")`);
+        notify.warning("Campo Requerido", `Por favor escribe el nombre de la variante o presentación #${i + 1} (ej. "Original 400ml" o "Estándar")`);
         return;
       }
       if (v.precio === "" || v.precio === null || isNaN(Number(v.precio)) || Number(v.precio) < 0) {
-        alert(`Por favor ingresa un precio válido para la variante "${v.nombre}"`);
+        notify.warning("Campo Requerido", `Por favor ingresa un precio válido para la variante "${v.nombre}"`);
         return;
       }
+    }
+
+    // Validar ficha técnica obligatoria (todos los campos menos observaciones)
+    const ft = fichaTecnica || {};
+    const missingFichaFields = [];
+
+    const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+    if (!ingredientes || ingredientes.length === 0) {
+      missingFichaFields.push("Ingredientes / Insumos necesarios (mínimo 1)");
+    }
+
+    if (!ft.procedimiento || !String(ft.procedimiento).trim()) {
+      missingFichaFields.push("Procedimiento de Preparación");
+    }
+
+    if (!ft.tiempoPreparacion || Number(ft.tiempoPreparacion) < 1) {
+      missingFichaFields.push("Tiempo de Preparación (mínimo 1 min)");
+    }
+
+    if (!ft.rendimiento || !String(ft.rendimiento).trim()) {
+      missingFichaFields.push("Rendimiento / Porciones");
+    }
+
+    if (!ft.condicionesAlmacenamiento || !String(ft.condicionesAlmacenamiento).trim()) {
+      missingFichaFields.push("Condiciones de Almacenamiento");
+    }
+
+    if (!ft.vidaUtil || !String(ft.vidaUtil).trim()) {
+      missingFichaFields.push("Vida Útil");
+    }
+
+    if (!ft.especificaciones || !String(ft.especificaciones).trim()) {
+      missingFichaFields.push("Especificaciones Técnicas / Calidad");
+    }
+
+    if (!ft.caracteristicas || !String(ft.caracteristicas).trim()) {
+      missingFichaFields.push("Características Organolépticas");
+    }
+
+    if (!ft.informacionNutricional || !String(ft.informacionNutricional).trim()) {
+      missingFichaFields.push("Información Nutricional");
+    }
+
+    if (missingFichaFields.length > 0) {
+      notify.error(
+        "Ficha Técnica Incompleta",
+        "Primero debes completar y guardar la ficha técnica"
+      );
+      return;
     }
 
     try {
@@ -297,7 +348,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       setPreviewUrl("");
     } catch (err) {
       console.error("Error al guardar producto:", err);
-      alert(err.message || "Error al subir imagen o guardar el producto");
+      notify.error("Error", err.message || "Error al subir imagen o guardar el producto");
     } finally {
       setUploading(false);
     }
@@ -308,13 +359,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      notify.warning("Formato Inválido", "El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
       return;
     }
 
     const maxSizeInBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeInBytes) {
-      alert("La imagen no debe superar los 5 MB de tamaño.");
+      notify.warning("Tamaño Excedido", "La imagen no debe superar los 5 MB de tamaño.");
       return;
     }
 
