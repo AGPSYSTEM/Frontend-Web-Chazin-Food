@@ -69,18 +69,34 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                       <div className="flex items-start gap-3">
                         <div className="text-2xl select-none shrink-0 mt-0.5">{o.imagen || "🍔"}</div>
                         <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 font-bold text-gray-900 dark:text-gray-100">
-                            <span>{o.platilloNombre}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 font-bold text-gray-900 dark:text-gray-100">
+                            {Array.isArray(o.productos) && o.productos.length > 2 ? (
+                              <>
+                                <span>
+                                  {o.productos.slice(0, 2).map((p) => `${p.nombre} (x${p.cantidad})`).join(", ")}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onView(o)}
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition shadow-2xs whitespace-nowrap"
+                                  title="Ver todos los platillos en el detalle de la orden"
+                                >
+                                  +{o.productos.length - 2} platillos más
+                                </button>
+                              </>
+                            ) : (
+                              <span>{o.platilloNombre}</span>
+                            )}
                             {o.alerta && (
                               <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" title="Pendiente de aprobación / Alerta especial" />
                             )}
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{o.codigo || `OP-00${o.id}`}</div>
 
-                          {/* Badges de Adiciones y Observaciones */}
+                          {/* Badges de Adiciones y Observaciones (primeros 2 para no sobrecargar la fila) */}
                           {Array.isArray(o.productos) && (
                             <div className="space-y-1 pt-0.5 max-w-sm">
-                              {o.productos.map((prod, pIdx) => {
+                              {o.productos.slice(0, 2).map((prod, pIdx) => {
                                 const adds = Array.isArray(prod.adiciones) ? prod.adiciones : [];
                                 const obs = prod.observaciones || prod.observacion || "";
                                 if (adds.length === 0 && !obs) return null;
@@ -109,6 +125,15 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                                   </div>
                                 );
                               })}
+                              {o.productos.length > 2 && o.productos.slice(2).some(p => (Array.isArray(p.adiciones) && p.adiciones.length > 0) || p.observaciones) && (
+                                <button
+                                  type="button"
+                                  onClick={() => onView(o)}
+                                  className="text-[10px] font-bold text-gray-400 hover:text-[#F05454] transition cursor-pointer"
+                                >
+                                  + más adiciones en detalle →
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
