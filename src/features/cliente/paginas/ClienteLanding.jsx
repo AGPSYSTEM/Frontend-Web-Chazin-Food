@@ -691,8 +691,16 @@ export function ClienteLanding() {
   })();
 
   // ═══ Complementos INTELIGENTES: recomienda según lo que ya hay en el carrito ═══
-  // Categorías consideradas "plato principal" (NO se sugieren como complemento)
-  const CATEGORIAS_PLATO_PRINCIPAL = ["hamburguesas", "perros calientes", "combos"];
+  // Categorías consideradas "plato principal / plato fuerte" (NO se sugieren como complemento/antojo)
+  const CATEGORIAS_PLATO_PRINCIPAL = [
+    "hamburguesas",
+    "perros calientes",
+    "combos",
+    "salchipapas",
+    "salchipapas gourmet",
+    "platos fuertes",
+    "plato fuerte"
+  ];
 
   const complementosOrden = useMemo(() => {
     // IDs de productos ya en el carrito para no duplicar sugerencias
@@ -702,19 +710,26 @@ export function ClienteLanding() {
     const cartHasDrink = cart.some(item => isDrinkProduct(item));
     const cartHasSide = cart.some(item => {
       const n = (item.nombre || "").toLowerCase();
-      return n.includes("papas") || n.includes("porción") || n.includes("porcion") || n.includes("salchipapa");
+      // Las salchipapas son un plato fuerte, no un acompañamiento
+      if (n.includes("salchipapa")) return false;
+      return n.includes("papas") || n.includes("porción") || n.includes("porcion") || n.includes("casco") || n.includes("espiral");
     });
 
-    // Helper: determinar si un producto es "plato principal"
+    // Helper: determinar si un producto es "plato principal / plato fuerte"
     const isPlatoPrincipal = (p) => {
       const catName = String(p.categoriaNombre || p.categoria || "").toLowerCase().trim();
       const prodName = (p.nombre || "").toLowerCase();
       return CATEGORIAS_PLATO_PRINCIPAL.some(cp =>
-        catName.includes(cp) || prodName.includes("hamburguesa") || prodName.includes("perro caliente") || prodName.includes("perro suizo") || prodName.includes("combo")
+        catName.includes(cp) ||
+        prodName.includes("hamburguesa") ||
+        prodName.includes("perro caliente") ||
+        prodName.includes("perro suizo") ||
+        prodName.includes("salchipapa") ||
+        prodName.includes("combo")
       );
     };
 
-    // Helper: generar badge inteligente
+    // Helper: generar badge inteligente para complementos
     const getBadge = (p) => {
       const n = (p.nombre || "").toLowerCase();
       if (n.includes("coca-cola") || n.includes("coca cola")) return "Más Vendido";
@@ -727,7 +742,6 @@ export function ClienteLanding() {
       if (n.includes("malteada") || n.includes("milkshake")) return "Cremoso";
       if (n.includes("jugo") || n.includes("hit")) return "Natural";
       if (n.includes("papas")) return "Favorito";
-      if (n.includes("salchipapa")) return "Para Picar";
       if (n.includes("nugget")) return "Crunchy";
       if (n.includes("postre") || n.includes("brownie") || n.includes("torta") || n.includes("helado")) return "Dulce";
       if (n.includes("arepa") || n.includes("empanada") || n.includes("dedito")) return "Entrada";
@@ -741,7 +755,6 @@ export function ClienteLanding() {
       const n = (p.nombre || "").toLowerCase();
       if (isDrinkProduct(p)) return "Bebida personal bien fría";
       if (n.includes("papas")) return "Crocantes y doradas";
-      if (n.includes("salchipapa")) return "Para compartir";
       if (n.includes("nugget")) return "Crujientes y jugosos";
       if (n.includes("postre") || n.includes("brownie") || n.includes("helado")) return "Para el antojo dulce";
       if (n.includes("arepa") || n.includes("empanada")) return "Entrada rápida";
@@ -790,8 +803,10 @@ export function ClienteLanding() {
     const entradas = candidatos.filter(p => {
       if (isDrinkProduct(p)) return false;
       const n = (p.nombre || "").toLowerCase();
-      return n.includes("papas") || n.includes("porción") || n.includes("porcion") || n.includes("salchipapa") ||
-             n.includes("nugget") || n.includes("arepa") || n.includes("empanada") || n.includes("dedito");
+      if (n.includes("salchipapa")) return false;
+      return n.includes("papas") || n.includes("porción") || n.includes("porcion") ||
+             n.includes("nugget") || n.includes("arepa") || n.includes("empanada") || n.includes("dedito") ||
+             n.includes("casco") || n.includes("espiral");
     });
     const otros = candidatos.filter(p => !isDrinkProduct(p) && !entradas.includes(p));
 
