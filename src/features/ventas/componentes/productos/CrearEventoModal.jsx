@@ -489,6 +489,47 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         notifyError("Validación de Fechas", "La fecha fin de la campaña no puede ser anterior a la fecha de inicio.");
         return;
       }
+
+      // Validar ficha técnica obligatoria (mismo estándar estricto que ProductoModal)
+      const ft = prodFichaTecnica || {};
+      const missingFichaFields = [];
+      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || prodInsumosReceta || [];
+      if (!ingredientes || ingredientes.length === 0) {
+        missingFichaFields.push("Ingredientes / Insumos necesarios (mínimo 1)");
+      }
+      if (!ft.procedimiento || !String(ft.procedimiento).trim()) {
+        missingFichaFields.push("Procedimiento de Preparación");
+      }
+      if (!ft.tiempoPreparacion || Number(ft.tiempoPreparacion) < 1) {
+        missingFichaFields.push("Tiempo de Preparación (mínimo 1 min)");
+      }
+      if (!ft.rendimiento || !String(ft.rendimiento).trim()) {
+        missingFichaFields.push("Rendimiento / Porciones");
+      }
+      if (!ft.condicionesAlmacenamiento || !String(ft.condicionesAlmacenamiento).trim()) {
+        missingFichaFields.push("Condiciones de Almacenamiento");
+      }
+      if (!ft.vidaUtil || !String(ft.vidaUtil).trim()) {
+        missingFichaFields.push("Vida Útil");
+      }
+      if (!ft.especificaciones || !String(ft.especificaciones).trim()) {
+        missingFichaFields.push("Especificaciones Técnicas / Calidad");
+      }
+      if (!ft.caracteristicas || !String(ft.caracteristicas).trim()) {
+        missingFichaFields.push("Características Organolépticas");
+      }
+      if (!ft.informacionNutricional || !String(ft.informacionNutricional).trim()) {
+        missingFichaFields.push("Información Nutricional");
+      }
+
+      if (missingFichaFields.length > 0) {
+        notifyError(
+          "Ficha Técnica Incompleta",
+          `No se puede crear un producto sin su Ficha Técnica completa. Faltan: ${missingFichaFields.join(", ")}.`
+        );
+        return;
+      }
+
       setSaving(true);
       try {
         const descParts = [prodDescripcion.trim()];

@@ -23,10 +23,16 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
   useEffect(() => {
     if (isOpen && (producto?.id || producto?.idProducto)) {
       const pId = producto.id || producto.idProducto;
+      if (producto.fichaTecnica) {
+        setFichaTecnica(producto.fichaTecnica);
+      }
       setLoadingFicha(true);
       fichasTecnicasService.getFichaByProducto(pId)
-        .then(f => setFichaTecnica(f))
-        .catch(err => console.error("Error cargando ficha", err))
+        .then(f => setFichaTecnica(f || producto.fichaTecnica || null))
+        .catch(err => {
+          console.error("Error cargando ficha", err);
+          if (producto.fichaTecnica) setFichaTecnica(producto.fichaTecnica);
+        })
         .finally(() => setLoadingFicha(false));
 
       setLoadingResenas(true);
