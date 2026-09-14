@@ -1194,7 +1194,6 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 <FichaTecnicaProducto
                   productId={null}
                   productName={prodNombre || "Nuevo Producto de Evento"}
-                  initialData={prodFichaTecnica}
                   onChange={(data) => setProdFichaTecnica(data)}
                   onSave={(data) => setProdFichaTecnica(data)}
                 />

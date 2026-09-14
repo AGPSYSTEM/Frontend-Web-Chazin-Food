@@ -900,8 +900,7 @@ export function FastFoodProductModal({
 
     const personalizacionesFormatted = isDrink
       ? [
-          variantName ? `Variante: ${variantName}` : null,
-          `Servicio: ${selectedTemp}`
+          variantName ? `Variante: ${variantName}` : null
         ].filter(Boolean)
       : removedIngredients.map((r) => `Sin ${r}`);
 

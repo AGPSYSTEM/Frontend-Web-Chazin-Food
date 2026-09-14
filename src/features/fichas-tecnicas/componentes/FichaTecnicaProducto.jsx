@@ -32,27 +32,39 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Sincronizar cambios en tiempo real hacia el componente padre
+  const lastSentRef = useRef("");
+  const isMountedRef = useRef(false);
+
+  // Sincronizar cambios en tiempo real hacia el componente padre (solo si cambiaron)
   useEffect(() => {
-    if (typeof onChangeRef.current === "function") {
-      onChangeRef.current({
-        idProducto: productId || null,
-        procedimiento,
-        tiempoPreparacion: Number(tiempoPreparacion) || 0,
-        rendimiento,
-        especificaciones,
-        caracteristicas,
-        informacionNutricional,
-        condicionesAlmacenamiento,
-        vidaUtil,
-        observaciones,
-        detalles: insumos.map(i => ({
-          idInsumo: i.idInsumo || i.id,
-          nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
-          cantidad: Number(i.cantidad || 1),
-          unidadMedida: i.unidadMedida || 'und'
-        }))
-      });
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+    const payload = {
+      idProducto: productId || null,
+      procedimiento,
+      tiempoPreparacion: Number(tiempoPreparacion) || 0,
+      rendimiento,
+      especificaciones,
+      caracteristicas,
+      informacionNutricional,
+      condicionesAlmacenamiento,
+      vidaUtil,
+      observaciones,
+      detalles: insumos.map(i => ({
+        idInsumo: i.idInsumo || i.id,
+        nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
+        cantidad: Number(i.cantidad || 1),
+        unidadMedida: i.unidadMedida || 'und'
+      }))
+    };
+    const key = JSON.stringify(payload);
+    if (key !== lastSentRef.current) {
+      lastSentRef.current = key;
+      if (typeof onChangeRef.current === "function") {
+        onChangeRef.current(payload);
+      }
     }
   }, [
     procedimiento, tiempoPreparacion, rendimiento, especificaciones,
@@ -67,18 +79,20 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       .catch(() => setDbInsumosList([]));
   }, []);
 
+  const loadedInitialRef = useRef(null);
+
   // Load ficha data from prop or backend API
   const loadFichaData = useCallback(async () => {
-    if (initialData) {
+    if (initialData && initialData !== loadedInitialRef.current) {
+      loadedInitialRef.current = initialData;
       populateFields(initialData);
       return;
     }
-    if (productId) {
+    if (productId && !initialData) {
       try {
         const f = await fichasTecnicasService.getFichaByProducto(productId);
         if (f && f.idFichaTecnica) {
           populateFields(f);
-          if (onSave) onSave(f);
         }
       } catch (err) {
         console.error("Error cargando ficha de producto:", err);
