@@ -92,13 +92,31 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
       const pLower = String(producto.nombre || "").toLowerCase();
       const cLower = String(producto.categoria || selectedCat?.nombre || "").toLowerCase();
-      const isAutoCombo = cLower.includes("combo") || pLower.includes("combo");
+      const dLower = String(producto.descripcion || "").toLowerCase();
+      const isAutoCombo =
+        cLower.includes("combo") ||
+        pLower.includes("combo") ||
+        pLower.includes("+ bebida") ||
+        pLower.includes("+bebida") ||
+        pLower.includes("con bebida") ||
+        pLower.includes("+ gaseosa") ||
+        pLower.includes("+gaseosa") ||
+        pLower.includes("con gaseosa") ||
+        dLower.includes("+ gaseosa") ||
+        dLower.includes("+ bebida") ||
+        dLower.includes("bebida a elección") ||
+        dLower.includes("gaseosa a elección");
 
       let defaultCant = 1;
       if (pLower.includes("familiar") || pLower.includes("4 personas")) defaultCant = 4;
       else if (pLower.includes("pareja") || pLower.includes("amigos") || pLower.includes("2 personas") || pLower.includes("duo")) defaultCant = 2;
 
-      setConfigCombo(producto.configuracionCombo || {
+      let parsedConfig = producto.configuracionCombo;
+      if (typeof parsedConfig === "string") {
+        try { parsedConfig = JSON.parse(parsedConfig); } catch (e) { parsedConfig = null; }
+      }
+
+      setConfigCombo(parsedConfig || {
         esCombo: isAutoCombo,
         cantidadBebidas: defaultCant,
         bebidasPermitidas: []

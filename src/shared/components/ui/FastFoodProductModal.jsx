@@ -418,14 +418,42 @@ export function FastFoodProductModal({
 
   // Detección y resolución de configuración de Combo con bebidas incluidas
   const comboConfig = useMemo(() => {
-    if (producto?.configuracionCombo && typeof producto.configuracionCombo === "object") {
-      return producto.configuracionCombo;
+    let raw = producto?.configuracionCombo;
+    if (typeof raw === "string") {
+      try {
+        raw = JSON.parse(raw);
+      } catch (e) {
+        raw = null;
+      }
+    }
+    if (raw && typeof raw === "object" && raw.esCombo !== undefined) {
+      return {
+        esCombo: Boolean(raw.esCombo),
+        cantidadBebidas: Math.max(1, Number(raw.cantidadBebidas) || 1),
+        bebidasPermitidas: Array.isArray(raw.bebidasPermitidas) ? raw.bebidasPermitidas : []
+      };
     }
     const pLower = String(producto?.nombre || "").toLowerCase();
     const cLower = String(producto?.categoria || producto?.categoriaNombre || "").toLowerCase();
-    if (cLower.includes("combo") || pLower.includes("combo")) {
+    const dLower = String(producto?.descripcion || "").toLowerCase();
+
+    const isCombo =
+      cLower.includes("combo") ||
+      pLower.includes("combo") ||
+      pLower.includes("+ bebida") ||
+      pLower.includes("+bebida") ||
+      pLower.includes("con bebida") ||
+      pLower.includes("+ gaseosa") ||
+      pLower.includes("+gaseosa") ||
+      pLower.includes("con gaseosa") ||
+      dLower.includes("+ gaseosa") ||
+      dLower.includes("+ bebida") ||
+      dLower.includes("bebida a elección") ||
+      dLower.includes("gaseosa a elección");
+
+    if (isCombo) {
       let cant = 1;
-      if (pLower.includes("familiar") || pLower.includes("4 personas")) cant = 4;
+      if (pLower.includes("familiar") || pLower.includes("4 personas") || pLower.includes("4 pers")) cant = 4;
       else if (pLower.includes("pareja") || pLower.includes("amigos") || pLower.includes("2 personas") || pLower.includes("duo") || pLower.includes("dúo")) cant = 2;
       return { esCombo: true, cantidadBebidas: cant, bebidasPermitidas: [] };
     }
