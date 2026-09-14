@@ -129,9 +129,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       setInsumosSeleccionados([]);
       setShowInsumoDropdown(false);
       
-      const today = new Date().toISOString().split("T")[0];
-      setFechaInicio(today);
-      setFechaFin(today);
+      const now = new Date();
+      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+      setFechaInicio(localToday);
+      setFechaFin(localFuture);
       
       setNuevoPrecio("");
       setDescuento("");
@@ -493,14 +496,19 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         if (prodDestacadoWeb) descParts.push("[DESTACADO_WEB]");
         const finalDescripcion = descParts.filter(Boolean).join(" ");
 
+        const nowSub = new Date();
+        const localTodaySub = `${nowSub.getFullYear()}-${String(nowSub.getMonth() + 1).padStart(2, '0')}-${String(nowSub.getDate()).padStart(2, '0')}`;
+        const futureSub = new Date(nowSub.getTime() + 45 * 24 * 60 * 60 * 1000);
+        const localFutureSub = `${futureSub.getFullYear()}-${String(futureSub.getMonth() + 1).padStart(2, '0')}-${String(futureSub.getDate()).padStart(2, '0')}`;
+
         const payload = {
           crearComoProducto: true,
           nombreEvento: nombreEvento.trim(),
           descripcion: finalDescripcion || "Edición especial gastronómica de tiempo limitado.",
           tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
           isTemporal: prodVigenciaTipo === "temporal",
-          fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || new Date().toISOString().split("T")[0]) : null,
-          fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]) : null,
+          fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || localTodaySub) : null,
+          fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || localFutureSub) : null,
           nuevoPrecio: Number(prodPrecioEvento),
           descuento: Math.round(((Number(prodPrecioRegular) - Number(prodPrecioEvento)) / Number(prodPrecioRegular)) * 100),
           estado: prodEstadoInicial === "Activo" ? "Activo" : "Inactivo",
