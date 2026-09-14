@@ -841,72 +841,63 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
               </div>
 
               {/* Sección 4: Adiciones Disponibles para este Producto */}
-              <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center text-orange-600 dark:text-orange-400">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-orange-900 dark:text-orange-200">
-                          Adiciones Disponibles para este Producto
-                        </h4>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-200 dark:bg-orange-900/60 text-orange-800 dark:text-orange-200">
-                          {adicionesSeleccionadas.length} seleccionadas
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                        Selecciona los extras que el comensal puede agregarle a este platillo.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Adiciones Disponibles
+                  </label>
+                  {todasAdiciones.length > 0 && (
                     <button
                       type="button"
                       onClick={toggleSelectAllAdiciones}
-                      className="text-xs font-bold text-orange-700 dark:text-orange-300 hover:underline cursor-pointer"
+                      className="text-xs font-semibold text-[#F05454] hover:underline cursor-pointer"
                     >
                       {adicionesSeleccionadas.length === todasAdiciones.length ? "Desmarcar todas" : "Seleccionar todas"}
                     </button>
-                  </div>
+                  )}
                 </div>
 
-                {todasAdiciones.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                    {todasAdiciones.map((adicion) => {
-                      const adId = adicion.idAdicion || adicion.id;
-                      const isSelected = adicionesSeleccionadas.some((a) => (a.idAdicion || a.id) === adId);
-                      return (
-                        <label
-                          key={adId}
-                          className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition select-none ${
-                            isSelected
-                              ? "bg-white dark:bg-gray-900 border-orange-300 dark:border-orange-800 text-orange-950 dark:text-orange-100 shadow-2xs font-semibold"
-                              : "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-500 opacity-70"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleAdicion(adicion)}
-                              className="rounded text-orange-600 focus:ring-orange-500 cursor-pointer shrink-0"
-                            />
-                            <span className="text-base shrink-0">{getAdditionEmoji(adicion.nombre, adicion.imagen)}</span>
-                            <span className="truncate">{adicion.nombre}</span>
-                          </div>
-                          <span className="font-bold text-[11px] text-orange-600 dark:text-orange-400 shrink-0">
-                            +${Number(adicion.precio || 0).toLocaleString()}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic">No hay adiciones registradas en el sistema.</p>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {todasAdiciones.map((adicion) => {
+                    const adId = adicion.idAdicion || adicion.id;
+                    const isSelected = adicionesSeleccionadas.some((a) => (a.idAdicion || a.id) === adId);
+                    return (
+                      <label
+                        key={adId}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'border-[#F05454] bg-red-50 dark:bg-red-900/10' 
+                            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleAdicion(adicion)}
+                          className="rounded text-[#F05454] focus:ring-[#F05454] cursor-pointer"
+                        />
+                        <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
+                          {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
+                            <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            getAdditionEmoji(adicion.nombre, adicion.imagen)
+                          )}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {adicion.nombre}
+                          </p>
+                          <p className="text-xs text-[#F05454] font-medium">
+                            +${Number(adicion.precio || 0).toLocaleString('es-CO')}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                  {todasAdiciones.length === 0 && (
+                    <p className="text-sm text-gray-500 col-span-full">No hay adiciones registradas en el sistema.</p>
+                  )}
+                </div>
               </div>
 
               {/* Sección 5: Variantes y Presentaciones (Opcional) */}
