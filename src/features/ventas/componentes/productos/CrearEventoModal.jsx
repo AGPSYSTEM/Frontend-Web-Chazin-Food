@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
   CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
-  Layers, Utensils, Plus, Minus, Check, Flame, ChevronDown, ChevronUp, Image as ImageIcon
+  Layers, Utensils, Plus, Minus, Check, Flame, ChevronDown, ChevronUp, Image as ImageIcon,
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -16,6 +17,22 @@ const TIPO_EVENTO_OPTIONS = [
   { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos" },
   { value: "Promoción Precio", icon: Tag, label: "Promoción Precio" },
   { value: "Descuento", icon: ArrowDownUp, label: "Descuento" }
+];
+
+const PROD_EVENT_TYPES = [
+  { value: "EDICION_LIMITADA", label: "Edición Limitada", icon: Flame, desc: "Plato festivo único y conmemorativo", activeCls: "border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/40" },
+  { value: "COMBO_ESPECIAL", label: "Combo Festivo", icon: Gift, desc: "Platillo + acompañamiento + bebida", activeCls: "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-200 ring-2 ring-purple-400/40" },
+  { value: "PROMOCION_2X1", label: "Promoción 2x1", icon: Zap, desc: "Lleva 2 por el precio de 1", activeCls: "border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-2 ring-rose-400/40" },
+  { value: "DESCUENTO", label: "Precio Rebajado", icon: Tag, desc: "Descuento directo sobre precio regular", activeCls: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-400/40" }
+];
+
+const BADGES_GASTRONOMICOS = [
+  "🔥 Edición Festival",
+  "⭐ Recomendado del Chef",
+  "🌶️ Picante Gourmet",
+  "🏆 Plato Estrella",
+  "🌱 Opción Veggie",
+  "🧀 Extra Queso"
 ];
 
 export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
@@ -37,6 +54,23 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   const [prodImagen, setProdImagen] = useState("");
   const [prodProcedimiento, setProdProcedimiento] = useState("");
   const [categoriasBD, setCategoriasBD] = useState([]);
+
+  // Estados avanzados del producto nuevo de evento
+  const [prodTipoEvento, setProdTipoEvento] = useState("EDICION_LIMITADA");
+  const [prodEstadoInicial, setProdEstadoInicial] = useState("Activo");
+  const [prodRendimiento, setProdRendimiento] = useState("1 porción");
+  const [prodVigenciaTipo, setProdVigenciaTipo] = useState("temporal"); // 'temporal' | 'permanente'
+  const [prodEtiquetas, setProdEtiquetas] = useState(["🔥 Edición Festival"]);
+  const [prodDestacadoWeb, setProdDestacadoWeb] = useState(true);
+
+  // Insumos de la Receta (Ficha Técnica Oficial para inventario y cocina)
+  const [prodInsumosReceta, setProdInsumosReceta] = useState([]);
+  const [searchRecetaInsumo, setSearchRecetaInsumo] = useState("");
+  const [showRecetaDropdown, setShowRecetaDropdown] = useState(false);
+
+  // Topping o Insumo de Cortesía del Evento
+  const [tieneCortesia, setTieneCortesia] = useState(false);
+  const [toppingCortesia, setToppingCortesia] = useState({ idInsumo: "", nombre: "", cantidad: 1, unidadMedida: "und" });
 
   // Cloudinary image upload states
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -121,6 +155,17 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       });
       setProdVariantes([]);
       setTiempoPreparacion(12);
+      setProdTipoEvento("EDICION_LIMITADA");
+      setProdEstadoInicial("Activo");
+      setProdRendimiento("1 porción");
+      setProdVigenciaTipo("temporal");
+      setProdEtiquetas(["🔥 Edición Festival"]);
+      setProdDestacadoWeb(true);
+      setProdInsumosReceta([]);
+      setSearchRecetaInsumo("");
+      setShowRecetaDropdown(false);
+      setTieneCortesia(false);
+      setToppingCortesia({ idInsumo: "", nombre: "", cantidad: 1, unidadMedida: "und" });
 
       // Fetch insumos and productos
       eventosService.getInsumos().then((data) => {
@@ -266,6 +311,68 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
     setProdVariantes(prev => prev.filter((_, i) => i !== idx));
   };
 
+  // Manejo de Insumos de Receta (Ficha Técnica de Cocina e Inventario)
+  const handleAddInsumoReceta = (ins) => {
+    const id = ins.idInsumo || ins.id;
+    if (prodInsumosReceta.some(i => (i.idInsumo || i.id) === id)) return;
+    setProdInsumosReceta(prev => [
+      ...prev,
+      {
+        idInsumo: id,
+        id: id,
+        nombre: ins.nombre,
+        unidadMedida: ins.unidadMedida || "und",
+        cantidad: 1,
+        stock: ins.stock || 0
+      }
+    ]);
+    setSearchRecetaInsumo("");
+    setShowRecetaDropdown(false);
+  };
+
+  const handleUpdateInsumoRecetaCantidad = (idx, delta) => {
+    setProdInsumosReceta(prev =>
+      prev.map((item, i) => {
+        if (i === idx) {
+          const current = Number(item.cantidad) || 0;
+          const isDecimalUnit = item.unidadMedida === 'kg' || item.unidadMedida === 'lt';
+          const step = isDecimalUnit ? 0.05 : 1;
+          const nuevaCant = Math.max(isDecimalUnit ? 0.01 : 1, Math.round((current + delta * step) * 100) / 100);
+          return { ...item, cantidad: nuevaCant };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleUpdateInsumoRecetaUnidad = (idx, unidadMedida) => {
+    setProdInsumosReceta(prev => prev.map((item, i) => i === idx ? { ...item, unidadMedida } : item));
+  };
+
+  const handleRemoveInsumoReceta = (idx) => {
+    setProdInsumosReceta(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const toggleEtiqueta = (tag) => {
+    setProdEtiquetas(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const insumosSugeridosReceta = (insumosBD || []).filter((ins) => {
+    const t = searchRecetaInsumo.trim().toLowerCase();
+    const nombre = ins.nombre || "";
+    const yaAgregado = prodInsumosReceta.some((i) => String(i.idInsumo || i.id) === String(ins.id || ins.idInsumo));
+    return t.length > 0 && nombre.toLowerCase().includes(t) && !yaAgregado;
+  }).slice(0, 8);
+
+  const diasVigenciaCampaña = (() => {
+    if (!fechaInicio || !fechaFin) return null;
+    const ini = new Date(`${fechaInicio}T00:00:00`);
+    const fin = new Date(`${fechaFin}T23:59:59`);
+    const diffMs = fin.getTime() - ini.getTime();
+    if (diffMs < 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  })();
+
   useEffect(() => {
     if (insumoSearch.trim() === "") {
       setFilteredInsumos([]);
@@ -372,38 +479,61 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         notifyError("Subiendo Imagen", "Por favor espera a que la imagen termine de subirse a Cloudinary.");
         return;
       }
+      if (prodVigenciaTipo === "temporal" && fechaFin && fechaInicio && new Date(fechaFin) < new Date(fechaInicio)) {
+        notifyError("Validación de Fechas", "La fecha fin de la campaña no puede ser anterior a la fecha de inicio.");
+        return;
+      }
       setSaving(true);
       try {
+        const descParts = [prodDescripcion.trim()];
+        if (prodEtiquetas.length > 0) descParts.push(`[${prodEtiquetas.join(", ")}]`);
+        if (prodDestacadoWeb) descParts.push("[DESTACADO_WEB]");
+        const finalDescripcion = descParts.filter(Boolean).join(" ");
+
         const payload = {
           crearComoProducto: true,
           nombreEvento: nombreEvento.trim(),
-          descripcion: (descripcion || prodDescripcion).trim(),
-          tipoEvento: "EDICION_LIMITADA",
-          isTemporal: true,
-          fechaInicio: fechaInicio || new Date().toISOString().split("T")[0],
-          fechaFin: fechaFin || new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          descripcion: finalDescripcion || "Edición especial gastronómica de tiempo limitado.",
+          tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
+          isTemporal: prodVigenciaTipo === "temporal",
+          fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || new Date().toISOString().split("T")[0]) : null,
+          fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]) : null,
           nuevoPrecio: Number(prodPrecioEvento),
           descuento: Math.round(((Number(prodPrecioRegular) - Number(prodPrecioEvento)) / Number(prodPrecioRegular)) * 100),
-          estado: "Activo",
+          estado: prodEstadoInicial === "Activo" ? "Activo" : "Inactivo",
+          accion: tieneCortesia && toppingCortesia.idInsumo ? "Añadir" : null,
+          insumos: tieneCortesia && toppingCortesia.idInsumo ? [{
+            idInsumo: Number(toppingCortesia.idInsumo),
+            nombre: toppingCortesia.nombre,
+            cantidad: Number(toppingCortesia.cantidad || 1),
+            unidadMedida: toppingCortesia.unidadMedida || "und"
+          }] : null,
           productoNuevo: {
             nombre: prodNombre.trim(),
-            descripcion: (prodDescripcion || descripcion).trim() || "Edición especial gastronómica de tiempo limitado.",
+            descripcion: prodDescripcion.trim() || "Edición especial gastronómica de tiempo limitado.",
             precio: Number(prodPrecioRegular),
             idCategoriaProducto: Number(prodCategoria || 3),
             imagen: prodImagen.trim(),
             procedimiento: prodProcedimiento.trim() || 'Preparar con los más selectos ingredientes de temporada y empaque festivo.',
             tiempoPreparacion: Number(tiempoPreparacion) || 12,
+            rendimiento: prodRendimiento || '1 porción',
+            estado: prodEstadoInicial === "Activo" ? 1 : 0,
             adiciones: adicionesSeleccionadas,
             configuracionCombo: configCombo.esCombo ? configCombo : null,
             variantes: prodVariantes.filter(v => v.nombre?.trim()).map(v => ({
               nombre: v.nombre.trim(),
               precio: Number(v.precio || prodPrecioEvento)
+            })),
+            insumosFicha: prodInsumosReceta.map(item => ({
+              idInsumo: item.idInsumo || item.id,
+              cantidad: Number(item.cantidad || 1),
+              unidadMedida: item.unidadMedida || 'und'
             }))
           }
         };
 
         await eventosService.createEvento(payload);
-        success("¡Producto de Evento Creado!", `Se ha creado "${prodNombre.trim()}" con sus adiciones, combo, imagen y evento activo en la tienda.`);
+        success("¡Producto de Evento Creado!", `Se ha creado "${prodNombre.trim()}" con sus insumos de receta, adiciones, combo, imagen y evento activo en la tienda.`);
         if (onCreated) onCreated();
         onClose();
       } catch (err) {
@@ -526,7 +656,43 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
               <div className="bg-gray-50/70 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
                 <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
                   <Flame className="w-4 h-4" />
-                  <span>Información Principal del Platillo</span>
+                  <span>Información Principal y Formato de Campaña</span>
+                </div>
+
+                {/* Formato / Dinámica del Evento */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">
+                    Formato / Dinámica del Evento *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {PROD_EVENT_TYPES.map((t) => {
+                      const Icon = t.icon;
+                      const isSelected = prodTipoEvento === t.value;
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => setProdTipoEvento(t.value)}
+                          className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none ${
+                            isSelected
+                              ? t.activeCls
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-xs flex items-center gap-1.5">
+                              <Icon className="w-3.5 h-3.5 shrink-0" />
+                              <span>{t.label}</span>
+                            </span>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />}
+                          </div>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
+                            {t.desc}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Título del Evento / Campaña */}
@@ -581,6 +747,66 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                         </option>
                       ))}
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Rendimiento / Porciones */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      Rendimiento / Porciones
+                    </label>
+                    <select
+                      value={prodRendimiento}
+                      onChange={(e) => setProdRendimiento(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
+                    >
+                      <option value="1 porción">1 Persona (Personal)</option>
+                      <option value="2 personas">2 Personas (Pareja / Dúo)</option>
+                      <option value="4 personas">4 Personas (Familiar / Amigos)</option>
+                      <option value="Para compartir">Para Compartir (Picada)</option>
+                    </select>
+                  </div>
+
+                  {/* Estado Inicial */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                      Estado Inicial del Producto
+                    </label>
+                    <select
+                      value={prodEstadoInicial}
+                      onChange={(e) => setProdEstadoInicial(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
+                    >
+                      <option value="Activo">✓ Activo (Publicado de inmediato en Menú)</option>
+                      <option value="Inactivo">⏸ Inactivo / Borrador (Oculto)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Badges y Etiquetas del Menú */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Etiquetas Destacadas para el Menú
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {BADGES_GASTRONOMICOS.map((tag) => {
+                      const hasTag = prodEtiquetas.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleEtiqueta(tag)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                            hasTag
+                              ? "bg-purple-600 text-white shadow-xs"
+                              : "bg-gray-150 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -957,7 +1183,220 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 )}
               </div>
 
-              {/* Sección 6: Descripción Gourmet & Ficha Técnica */}
+              {/* Sección 6: Insumos de la Receta / Ficha Técnica Oficial (Inventario y Cocina) */}
+              <div className="border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                      <Utensils className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                          Insumos de la Receta (Ficha Técnica Oficial)
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">
+                          {prodInsumosReceta.length} ingredientes
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Define los insumos de inventario que componen este platillo para que la cocina consulte la receta y se descuente stock al venderlo.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Buscador de Insumos */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar insumo para agregar a la receta (ej. Pan Brioche, Carne Angus, Queso Cheddar)..."
+                      value={searchRecetaInsumo}
+                      onChange={(e) => {
+                        setSearchRecetaInsumo(e.target.value);
+                        setShowRecetaDropdown(true);
+                      }}
+                      onFocus={() => setShowRecetaDropdown(true)}
+                      className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  {showRecetaDropdown && insumosSugeridosReceta.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-30 max-h-56 overflow-y-auto p-1 divide-y divide-gray-100 dark:divide-gray-800">
+                      {insumosSugeridosReceta.map((ins) => (
+                        <button
+                          key={ins.idInsumo || ins.id}
+                          type="button"
+                          onClick={() => handleAddInsumoReceta(ins)}
+                          className="w-full px-3 py-2 text-left hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center justify-between transition cursor-pointer text-xs group"
+                        >
+                          <span className="font-semibold text-gray-800 dark:text-gray-200 group-hover:text-emerald-600">
+                            {ins.nombre}
+                          </span>
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Stock: {ins.stock || 0} {ins.unidadMedida || 'und'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lista de Insumos Añadidos */}
+                {prodInsumosReceta.length > 0 ? (
+                  <div className="space-y-2 pt-1">
+                    {prodInsumosReceta.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-3 p-2.5 bg-white dark:bg-gray-900 border border-emerald-100 dark:border-emerald-900/40 rounded-xl shadow-2xs"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                            {item.nombre}
+                          </p>
+                          <span className="text-[10px] text-gray-400">
+                            En bodega: {item.stock} {item.unidadMedida}
+                          </span>
+                        </div>
+
+                        {/* Cantidad y Unidad */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateInsumoRecetaCantidad(idx, -1)}
+                              className="w-6 h-6 rounded-md bg-white dark:bg-gray-700 hover:bg-gray-200 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs transition cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0.01"
+                              value={item.cantidad}
+                              onChange={(e) => handleUpdateInsumoReceta(idx, "cantidad", Math.max(0.01, parseFloat(e.target.value) || 0))}
+                              className="w-14 text-center font-bold text-xs bg-transparent border-0 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateInsumoRecetaCantidad(idx, 1)}
+                              className="w-6 h-6 rounded-md bg-white dark:bg-gray-700 hover:bg-gray-200 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center text-xs transition cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <select
+                            value={item.unidadMedida}
+                            onChange={(e) => handleUpdateInsumoRecetaUnidad(idx, e.target.value)}
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold cursor-pointer"
+                          >
+                            <option value="und">und</option>
+                            <option value="gr">gr</option>
+                            <option value="kg">kg</option>
+                            <option value="ml">ml</option>
+                            <option value="lt">lt</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveInsumoReceta(idx)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
+                            title="Quitar insumo de la receta"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic py-1">
+                    No has agregado insumos a la receta. Puedes buscar arriba ingredientes como Pan Brioche, Carne Angus 180g, Queso Gouda, Salsas, etc.
+                  </p>
+                )}
+              </div>
+
+              {/* Sección 7: Ingrediente Extra o Topping de Cortesía (Opcional) */}
+              <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                        Topping de Cortesía Incluido por la Campaña (Opcional)
+                      </h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        ¿Este festival incluye un topping o ingrediente de regalo sin costo adicional para el comensal?
+                      </p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                      {tieneCortesia ? "Con Cortesía" : "Sin Cortesía"}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={tieneCortesia}
+                      onChange={(e) => setTieneCortesia(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {tieneCortesia && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 animate-in fade-in duration-150">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Insumo o Topping de Regalo:
+                      </label>
+                      <select
+                        value={toppingCortesia.idInsumo || ""}
+                        onChange={(e) => {
+                          const selected = insumosBD.find(ins => String(ins.idInsumo || ins.id) === String(e.target.value));
+                          setToppingCortesia({
+                            idInsumo: e.target.value,
+                            nombre: selected?.nombre || "",
+                            cantidad: 1,
+                            unidadMedida: selected?.unidadMedida || "und"
+                          });
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold cursor-pointer"
+                      >
+                        <option value="">Selecciona el ingrediente de cortesía...</option>
+                        {insumosBD.map((ins) => (
+                          <option key={ins.idInsumo || ins.id} value={ins.idInsumo || ins.id}>
+                            {ins.nombre} ({ins.unidadMedida || 'und'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Porción de Regalo:
+                      </label>
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-xl p-1">
+                        <input
+                          type="number"
+                          min="1"
+                          value={toppingCortesia.cantidad || 1}
+                          onChange={(e) => setToppingCortesia(prev => ({ ...prev, cantidad: Math.max(1, parseFloat(e.target.value) || 1) }))}
+                          className="w-full text-center font-bold text-xs bg-transparent border-0 outline-none"
+                        />
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 pr-2">
+                          {toppingCortesia.unidadMedida || 'und'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sección 8: Descripción Gourmet & Ficha Técnica */}
               <div className="bg-gray-50/70 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
                 <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
                   <Utensils className="w-4 h-4" />
@@ -1007,28 +1446,96 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 </div>
               </div>
 
-              {/* Sección 7: Vigencia del Evento */}
-              <div className="grid grid-cols-2 gap-4 p-4 border border-purple-100 dark:border-purple-900/30 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha Inicio de Campaña
-                  </label>
-                  <input
-                    type="date"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
-                  />
+              {/* Sección 9: Vigencia del Evento y Visibilidad Web */}
+              <div className="border border-purple-100 dark:border-purple-900/40 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
+                  <CalendarClock className="w-4 h-4" />
+                  <span>Vigencia de la Campaña y Publicación Web</span>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha Fin de Campaña
-                  </label>
+
+                {/* Selector de Vigencia: Temporal vs Permanente */}
+                <div className="flex items-center gap-2 p-1 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60">
+                  <button
+                    type="button"
+                    onClick={() => setProdVigenciaTipo("temporal")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      prodVigenciaTipo === "temporal"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    ⏱️ Campaña Temporal (con fecha límite)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProdVigenciaTipo("permanente")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      prodVigenciaTipo === "permanente"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    ♾️ Vigencia Permanente / Indefinida
+                  </button>
+                </div>
+
+                {prodVigenciaTipo === "temporal" ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha Inicio de Campaña
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaInicio}
+                          onChange={(e) => setFechaInicio(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha Fin de Campaña
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaFin}
+                          onChange={(e) => setFechaFin(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                    {diasVigenciaCampaña !== null && (
+                      <p className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Duración de la campaña: {diasVigenciaCampaña} {diasVigenciaCampaña === 1 ? "día" : "días"} (del {fechaInicio} al {fechaFin}).</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60 text-xs text-purple-800 dark:text-purple-300 font-medium">
+                    ✓ Este platillo de evento permanecerá activo permanentemente en el catálogo online y POS hasta que el administrador decida pausarlo.
+                  </div>
+                )}
+
+                {/* Destacar en portada web */}
+                <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <div>
+                      <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                        Destacar en Portada Web & Menú Principal
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Aparecerá en el carrusel superior y en la sección especial de eventos de la tienda web.
+                      </p>
+                    </div>
+                  </div>
                   <input
-                    type="date"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    type="checkbox"
+                    checked={prodDestacadoWeb}
+                    onChange={(e) => setProdDestacadoWeb(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
                   />
                 </div>
               </div>
