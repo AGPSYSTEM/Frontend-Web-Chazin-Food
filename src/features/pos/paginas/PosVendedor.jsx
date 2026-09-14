@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X } from "lucide-react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
@@ -187,11 +187,35 @@ export default function PosVendedor() {
     }
   };
 
+  const eventProductsCount = useMemo(() => {
+    const now = new Date();
+    return (productos || []).filter((p) => {
+      const evts = Array.isArray(p.eventos) ? p.eventos : [];
+      return evts.some((e) => {
+        if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+        if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+        if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+        return true;
+      });
+    }).length;
+  }, [productos]);
+
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchSearch) return false;
       if (categoriaActiva === null) return true;
+
+      if (categoriaActiva === "eventos") {
+        const evts = Array.isArray(p.eventos) ? p.eventos : [];
+        const now = new Date();
+        return evts.some((e) => {
+          if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+          if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+          if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+          return true;
+        });
+      }
 
       const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
       const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
@@ -279,6 +303,21 @@ export default function PosVendedor() {
               <span>Todos</span>
             </button>
 
+            {eventProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setCategoriaActiva("eventos")}
+                className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
+                  categoriaActiva === "eventos"
+                    ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
+                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 animate-pulse" />
+                <span>Eventos ({eventProductsCount})</span>
+              </button>
+            )}
+
             {categorias.map((c) => {
               const active = categoriaActiva === c.id;
               return (
@@ -324,6 +363,21 @@ export default function PosVendedor() {
                 <span className="text-base">🍽️</span>
                 <span className="truncate">Todos</span>
               </button>
+
+              {eventProductsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCategoriaActiva("eventos")}
+                  className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-black transition-all ${
+                    categoriaActiva === "eventos"
+                      ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_8px_16px_rgba(245,158,11,0.3)]"
+                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 border border-amber-200/80 dark:border-amber-800/60"
+                  }`}
+                >
+                  <Flame className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-pulse shrink-0" />
+                  <span className="truncate">Eventos ({eventProductsCount})</span>
+                </button>
+              )}
 
               {categorias.map((c) => {
                 const active = categoriaActiva === c.id;
