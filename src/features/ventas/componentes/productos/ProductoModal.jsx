@@ -174,12 +174,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   }, [producto, isOpen, categorias]);
 
   const toggleAdicion = (adicion) => {
-    const isSelected = form.adiciones.some((a) => a.idAdicion === adicion.idAdicion);
+    const adId = adicion.idAdicion || adicion.id;
+    const isSelected = form.adiciones.some((a) => (a.idAdicion || a.id || a) === adId);
     let nuevasAdiciones;
     if (isSelected) {
-      nuevasAdiciones = form.adiciones.filter((a) => a.idAdicion !== adicion.idAdicion);
+      nuevasAdiciones = form.adiciones.filter((a) => (a.idAdicion || a.id || a) !== adId);
     } else {
-      nuevasAdiciones = [...form.adiciones, adicion];
+      nuevasAdiciones = [
+        ...form.adiciones,
+        {
+          idAdicion: adId,
+          nombre: adicion.nombre,
+          precio: Number(adicion.precio || 0),
+          imagen: adicion.imagen || ''
+        }
+      ];
     }
     setForm({ ...form, adiciones: nuevasAdiciones });
   };
@@ -761,10 +770,43 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             <div className="sm:col-span-2 mt-4">
-              <label className={labelCls}>Adiciones Disponibles</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelCls}>
+                  Adiciones Disponibles ({form.adiciones?.length || 0} seleccionadas)
+                </label>
+                {todasAdiciones.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allSelected = todasAdiciones.every(ad =>
+                        form.adiciones.some(a => (a.idAdicion || a.id || a) === (ad.idAdicion || ad.id))
+                      );
+                      if (allSelected) {
+                        setForm({ ...form, adiciones: [] });
+                      } else {
+                        setForm({
+                          ...form,
+                          adiciones: todasAdiciones.map(a => ({
+                            idAdicion: a.idAdicion || a.id,
+                            nombre: a.nombre,
+                            precio: Number(a.precio || 0),
+                            imagen: a.imagen || ''
+                          }))
+                        });
+                      }
+                    }}
+                    className="text-xs text-[#F05454] hover:underline font-bold cursor-pointer transition-colors"
+                  >
+                    {todasAdiciones.every(ad => form.adiciones.some(a => (a.idAdicion || a.id || a) === (ad.idAdicion || ad.id)))
+                      ? "Desmarcar todas"
+                      : "Seleccionar todas"}
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {todasAdiciones.map((adicion) => {
-                  const isSelected = form.adiciones.some((a) => a.idAdicion === adicion.idAdicion);
+                  const adId = adicion.idAdicion || adicion.id;
+                  const isSelected = form.adiciones.some((a) => (a.idAdicion || a.id || a) === adId);
                   return (
                     <label
                       key={adicion.idAdicion}
@@ -810,6 +852,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             productId={producto?.id || producto?.idProducto}
             productName={form.nombre}
             initialData={fichaTecnica}
+            onChange={(data) => setFichaTecnica(data)}
             onSave={(data) => setFichaTecnica(data)}
           />
 

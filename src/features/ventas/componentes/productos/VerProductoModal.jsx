@@ -203,24 +203,35 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
 
             {/* Adiciones */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <PlusCircle className="w-4 h-4 text-red-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Adiciones Disponibles</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PlusCircle className="w-4 h-4 text-[#F05454]" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Adiciones Disponibles
+                  </h3>
+                </div>
+                {adiciones.length > 0 && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-[#F05454]">
+                    {adiciones.length} activas
+                  </span>
+                )}
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px]">
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-100 dark:border-gray-700/50 min-h-[100px]">
                 {adiciones.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 max-h-48 overflow-y-auto pr-1 divide-y divide-gray-100 dark:divide-gray-800">
                     {adiciones.map((a, i) => (
-                      <li key={i} className="flex justify-between items-center text-xs">
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">{a.nombre}</span>
-                        <span className="text-red-500 dark:text-red-400 font-bold">
-                          +${Number(a.precio).toLocaleString("es-CO")}
+                      <li key={a.idAdicion || a.id || i} className="flex justify-between items-center text-xs pt-1.5 first:pt-0">
+                        <span className="text-gray-800 dark:text-gray-200 font-medium truncate pr-2">
+                          {a.nombre}
+                        </span>
+                        <span className="text-[#F05454] font-bold shrink-0 font-mono">
+                          +${Number(a.precio || 0).toLocaleString("es-CO")}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 py-3">
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400 py-4">
                     <PlusCircle className="w-5 h-5 mb-1 opacity-50" />
                     <p className="text-xs text-center">No tiene adiciones configuradas</p>
                   </div>
