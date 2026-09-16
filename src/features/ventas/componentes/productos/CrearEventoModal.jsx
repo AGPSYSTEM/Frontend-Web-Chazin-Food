@@ -1,17 +1,43 @@
 import { useState, useEffect } from "react";
-import { X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2, CalendarClock } from "lucide-react";
+import { 
+  X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2, CalendarClock,
+  Percent, Gift, Rocket, Flame, Crown, Coffee, Sparkles, UtensilsCrossed 
+} from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos" },
-  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio" },
-  { value: "Descuento", icon: ArrowDownUp, label: "Descuento" }
+  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Insumos extra" },
+  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Precio fijo especial" },
+  { value: "Descuento", icon: Percent, label: "Descuento %", desc: "% de rebaja directa" },
+  { value: "2x1 / Combo Especial", icon: Gift, label: "2x1 / Combo", desc: "Paquete o 2x1" },
+  { value: "Lanzamiento / Novedad", icon: Rocket, label: "Lanzamiento", desc: "Nuevo sabor o plato" },
+  { value: "Happy Hour / Flash Sale", icon: Flame, label: "Flash Sale", desc: "Tiempo limitado" },
+  { value: "Edición Especial", icon: Crown, label: "Edición Especial", desc: "Temporada gourmet" },
+  { value: "Cortesía / Degustación", icon: Coffee, label: "Cortesía", desc: "Degustación / Regalo" }
+];
+
+const ICONO_OPTIONS = [
+  { emoji: "🎉", label: "Celebración" },
+  { emoji: "🔥", label: "En Llamas" },
+  { emoji: "⚡", label: "Flash" },
+  { emoji: "🏷️", label: "Oferta" },
+  { emoji: "🍔", label: "Burger" },
+  { emoji: "🍕", label: "Pizza" },
+  { emoji: "👑", label: "Especial" },
+  { emoji: "🎁", label: "Combo" },
+  { emoji: "🚀", label: "Lanzamiento" },
+  { emoji: "🌟", label: "Estrella" },
+  { emoji: "⏱️", label: "Tiempo" },
+  { emoji: "💥", label: "Mega Promo" },
+  { emoji: "🍹", label: "Bebida" },
+  { emoji: "🏆", label: "Exclusivo" }
 ];
 
 export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   const { success, error: notifyError } = useNotifications();
   const [tipoEvento, setTipoEvento] = useState("Añadir Insumos");
+  const [icono, setIcono] = useState("🎉");
   const [isTemporal, setIsTemporal] = useState(false);
   const [nombreEvento, setNombreEvento] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -42,6 +68,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   useEffect(() => {
     if (isOpen) {
       setTipoEvento("Añadir Insumos");
+      setIcono("🎉");
       setIsTemporal(false);
       setNombreEvento("");
       setDescripcion("");
@@ -163,6 +190,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       const payload = {
         productoId: producto?.id || producto?.idProducto,
         tipoEvento,
+        icono: icono || "🎉",
         isTemporal,
         nombreEvento: nombreEvento.trim(),
         descripcion: descripcion.trim(),
@@ -174,27 +202,34 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         payload.fechaFin = fechaFin;
       }
 
-      if (tipoEvento === "Añadir Insumos") {
+      const isModifierInsumos = tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad";
+      if (isModifierInsumos) {
         payload.accion = accion;
         payload.insumos = insumosSeleccionados;
         if (nuevoPrecio) {
           payload.nuevoPrecio = Number(nuevoPrecio);
         }
-      } else if (!producto) {
+      }
+
+      if (!producto) {
         // Global event: mapped to array of products
         payload.productos = productosSeleccionados.map(p => ({
           idProducto: p.id,
-          nuevoPrecio: tipoEvento === "Promoción Precio" ? Number(p.nuevoPrecio) : null,
-          descuento: tipoEvento === "Descuento" ? Number(p.descuento) : null
+          nuevoPrecio: (tipoEvento === "Promoción Precio" || tipoEvento === "2x1 / Combo Especial" || tipoEvento === "Edición Especial" || nuevoPrecio) ? Number(p.nuevoPrecio || nuevoPrecio || 0) : null,
+          descuento: (tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") ? Number(p.descuento || descuento || 0) : null
         }));
-      } else if (tipoEvento === "Descuento") {
-        payload.descuento = Number(descuento);
-      } else if (tipoEvento === "Promoción Precio") {
-        payload.nuevoPrecio = Number(nuevoPrecio);
+      } else {
+        if (tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") {
+          payload.descuento = Number(descuento);
+        } else if (tipoEvento === "Promoción Precio" || tipoEvento === "2x1 / Combo Especial" || tipoEvento === "Edición Especial") {
+          payload.nuevoPrecio = Number(nuevoPrecio);
+        } else if (nuevoPrecio) {
+          payload.nuevoPrecio = Number(nuevoPrecio);
+        }
       }
 
       await eventosService.createEvento(payload);
-      success("¡Evento Creado!", "El evento se ha registrado correctamente.");
+      success("¡Evento Creado!", "El evento se ha registrado correctamente con su iconografía.");
       if (onCreated) onCreated();
       onClose();
     } catch (err) {
@@ -213,7 +248,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         {/* Purple Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-500 p-6 flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="text-4xl">🎉</div>
+            <div className="text-4xl bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center backdrop-blur-xs border border-white/20 shadow-inner">
+              {icono}
+            </div>
             <div>
               <h2 className="text-xl font-bold text-white">{producto ? "Crear Evento" : "Crear Evento Global"}</h2>
               <p className="text-purple-200 text-sm">{producto?.nombre || "Múltiples productos"}</p>
@@ -231,10 +268,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Tipo de Evento */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              Tipo de Modificación
+            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Tipo de Evento
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+              Selecciona el tipo de beneficio u objetivo que tendrá este evento.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {TIPO_EVENTO_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isActive = tipoEvento === opt.value;
@@ -243,14 +283,52 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     key={opt.value}
                     type="button"
                     onClick={() => setTipoEvento(opt.value)}
-                    className={`flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                    className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                       isActive
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
-                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
                     }`}
                   >
-                    <Icon className={`w-6 h-6 ${isActive ? "text-purple-500" : "text-gray-400"}`} />
-                    <span className="text-center text-xs">{opt.label}</span>
+                    <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-purple-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="font-bold text-xs leading-tight">{opt.label}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug line-clamp-1">{opt.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selector de Iconografía */}
+          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Iconografía del Evento
+              </label>
+              <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                <span>Insignia:</span> <span className="text-base">{icono}</span>
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
+            </p>
+            <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+              {ICONO_OPTIONS.map((item) => {
+                const isSelected = icono === item.emoji;
+                return (
+                  <button
+                    key={item.emoji}
+                    type="button"
+                    onClick={() => setIcono(item.emoji)}
+                    title={item.label}
+                    className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                        : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                    }`}
+                  >
+                    {item.emoji}
                   </button>
                 );
               })}
@@ -333,7 +411,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           </div>
 
           {/* Detalle Insumos */}
-          {tipoEvento === "Añadir Insumos" && (
+          {(tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad") && (
             <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Gestión de Insumos</h3>
@@ -449,50 +527,56 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           )}
 
           {/* Sección de Precio / Descuento */}
-          {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio" || tipoEvento === "Añadir Insumos") && (
-            <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
-              </h3>
-              
-              {producto ? (
-                // Single product event
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
-                    <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                      ${producto?.precio?.toLocaleString() || "0"}
-                    </div>
+          <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+              {(tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale")
+                ? "Detalles del Descuento" 
+                : (tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad")
+                ? "Precio de Venta (Opcional)" 
+                : "Detalles del Precio Promocional"}
+            </h3>
+            
+            {producto ? (
+              // Single product event
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
+                  <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
+                    ${producto?.precio?.toLocaleString() || "0"}
                   </div>
-                  
-                  {tipoEvento === "Descuento" ? (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={descuento}
-                        onChange={(e) => setDescuento(e.target.value)}
-                        placeholder="Ej: 10 (%) o 5000 ($)"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        {tipoEvento === "Añadir Insumos" ? "Precio Final con Adiciones" : "Nuevo Precio Promocional"}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={nuevoPrecio}
-                        onChange={(e) => setNuevoPrecio(e.target.value)}
-                        placeholder="Ej: 15000"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                      />
-                    </div>
-                  )}
                 </div>
+                
+                {(tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") ? (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Descuento (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={descuento}
+                      onChange={(e) => setDescuento(e.target.value)}
+                      placeholder="Ej: 15 (%)"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      {(tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad")
+                        ? "Precio Final (Opcional)" 
+                        : "Nuevo Precio Promocional"}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={nuevoPrecio}
+                      onChange={(e) => setNuevoPrecio(e.target.value)}
+                      placeholder="Ej: 15000"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                    />
+                  </div>
+                )}
+              </div>
               ) : (
                 // Multiple product event
                 <div className="space-y-4">
@@ -559,8 +643,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
         {/* Footer */}
         <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50/50 dark:bg-gray-900/50">

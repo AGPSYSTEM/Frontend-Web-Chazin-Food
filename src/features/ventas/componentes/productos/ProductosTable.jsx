@@ -6,6 +6,7 @@ import {
   Tag,
   Eye,
   Zap,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -121,11 +122,40 @@ export function ProductosTable({
                         </div>
                       )}
                       <div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
-                          {p.nombre}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {p.nombre}
+                          </span>
+                          {p.eventos && p.eventos.length > 0 && (() => {
+                            const evt = p.eventos[0];
+                            const evtIcon = evt.icono || "🎉";
+                            const evtLabel = evt.nombreEvento || evt.tipoEvento || "Evento Activo";
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white shadow-xs"
+                                title={`Evento: ${evtLabel} (${evt.tipoEvento || ''})`}
+                              >
+                                <span>{evtIcon}</span>
+                                <span className="max-w-[130px] truncate">{evtLabel}</span>
+                              </span>
+                            );
+                          })()}
                         </div>
-                        <div className="text-xs text-gray-400 font-mono">
-                          {p.codigo || `PRD-${p.id}`}
+                        <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
+                          <span>{p.codigo || `PRD-${p.id}`}</span>
+                          {p.eventos && p.eventos.length > 0 && (() => {
+                            const evt = p.eventos[0];
+                            if (evt.tipoEvento === "Descuento" && evt.descuento) {
+                              return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(evt.descuento)}% OFF)</span>;
+                            }
+                            if (evt.tipoEvento === "Promoción Precio" && evt.nuevoPrecio) {
+                              return <span className="text-purple-600 dark:text-purple-400 font-bold">(Promo: ${Number(evt.nuevoPrecio).toLocaleString("es-CO")})</span>;
+                            }
+                            if (evt.tipoEvento === "Añadir Insumos") {
+                              return <span className="text-indigo-600 dark:text-indigo-400 font-bold">(Insumos extra)</span>;
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -137,7 +167,38 @@ export function ProductosTable({
                     </span>
                   </td>
                   <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                    ${Number(p.precio || 0).toLocaleString("es-CO")}
+                    {p.eventos && p.eventos.length > 0 && (() => {
+                      const evtDesc = p.eventos.find(e => e.tipoEvento === "Descuento");
+                      const evtPrecio = p.eventos.find(e => e.tipoEvento === "Promoción Precio");
+                      if (evtPrecio && evtPrecio.nuevoPrecio) {
+                        return (
+                          <div>
+                            <span className="text-xs text-gray-400 line-through block font-normal">
+                              ${Number(p.precio || 0).toLocaleString("es-CO")}
+                            </span>
+                            <span className="font-extrabold text-purple-600 dark:text-purple-400 text-sm flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5" />
+                              ${Number(evtPrecio.nuevoPrecio).toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        );
+                      }
+                      if (evtDesc && evtDesc.descuento) {
+                        const finalP = Number(p.precio || 0) * (1 - Number(evtDesc.descuento) / 100);
+                        return (
+                          <div>
+                            <span className="text-xs text-gray-400 line-through block font-normal">
+                              ${Number(p.precio || 0).toLocaleString("es-CO")}
+                            </span>
+                            <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
+                              <Zap className="w-3.5 h-3.5" />
+                              ${Math.round(finalP).toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return `$${Number(p.precio || 0).toLocaleString("es-CO")}`;
+                    })() || `$${Number(p.precio || 0).toLocaleString("es-CO")}`}
                   </td>
                   <td className="px-6 py-4">
                     {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (

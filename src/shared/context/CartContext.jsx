@@ -11,12 +11,13 @@ const CartContext = createContext(undefined);
  */
 export function generateCartItemId(item) {
   const prodId = item.id || item.idProducto;
+  const evtKey = item.eventoInfo?.idEvento || (item.isEvento ? 'evt' : '');
   const adicionesKey = (item.adiciones || [])
     .map((a) => `${a.idAdicion || a.id}:${a.cantidad || 1}`)
     .sort()
     .join(",");
   const obsKey = (item.observaciones || item.instrucciones || "").trim().toLowerCase();
-  return `${prodId}__ads[${adicionesKey}]__obs[${obsKey}]`;
+  return `${prodId}__evt[${evtKey}]__ads[${adicionesKey}]__obs[${obsKey}]`;
 }
 
 export function CartProvider({ children }) {

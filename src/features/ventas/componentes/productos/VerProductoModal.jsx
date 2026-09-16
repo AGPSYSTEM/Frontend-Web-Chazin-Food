@@ -216,31 +216,48 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           {eventosActivos.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Eventos y Promociones Activas</h3>
+                <span className="text-base">🎉</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                  Eventos y Promociones Activas ({eventosActivos.length})
+                </h3>
               </div>
-              <div className="bg-amber-50/70 dark:bg-amber-900/10 rounded-2xl p-4 border border-amber-100 dark:border-amber-900/30">
+              <div className="bg-purple-50/60 dark:bg-purple-950/20 rounded-2xl p-4 border border-purple-100 dark:border-purple-900/30">
                 <ul className="space-y-2.5">
                   {eventosActivos.map((evt, i) => (
-                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3 rounded-xl shadow-xs border border-amber-100 dark:border-amber-900/20">
-                      <div>
-                        <span className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                          {evt.nombreEvento || evt.nombre}
-                          {evt.isTemporal && (
-                            <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.2 rounded font-bold uppercase">Temporal</span>
-                          )}
-                        </span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{evt.descripcion}</p>
+                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-purple-100 dark:border-purple-900/20">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-2xl shrink-0 p-1 bg-purple-50 dark:bg-purple-900/40 rounded-lg">{evt.icono || "🎉"}</span>
+                        <div>
+                          <span className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                            {evt.nombreEvento || evt.nombre}
+                            {evt.tipoEvento && (
+                              <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-semibold">
+                                {evt.tipoEvento}
+                              </span>
+                            )}
+                            {evt.isTemporal && (
+                              <span className="text-[10px] bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 px-1.5 py-0.5 rounded font-bold uppercase">
+                                Temporal
+                              </span>
+                            )}
+                          </span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">{evt.descripcion}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        {evt.tipoEvento === "Descuento" && (
-                          <span className="text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-md">
+                      <div className="text-right shrink-0 ml-3">
+                        {evt.tipoEvento === "Descuento" && evt.descuento && (
+                          <span className="text-emerald-700 dark:text-emerald-300 font-extrabold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg">
                             -{Number(evt.descuento)}% OFF
                           </span>
                         )}
-                        {evt.tipoEvento === "Promoción Precio" && (
-                          <span className="text-purple-600 font-bold bg-purple-50 dark:bg-purple-950/40 px-2 py-1 rounded-md">
+                        {(evt.tipoEvento === "Promoción Precio" || evt.nuevoPrecio) && (
+                          <span className="text-purple-700 dark:text-purple-300 font-extrabold bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg">
                             ${Number(evt.nuevoPrecio).toLocaleString("es-CO")}
+                          </span>
+                        )}
+                        {evt.tipoEvento === "2x1 / Combo Especial" && (
+                          <span className="text-amber-700 dark:text-amber-300 font-extrabold bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg">
+                            2x1 COMBO
                           </span>
                         )}
                       </div>

@@ -16,6 +16,9 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { wompiService } from "@/features/ventas/servicios/wompiService";
+import { eventosService } from "@/features/ventas/servicios/eventosService";
+import { EventosCarousel } from "../componentes/EventosCarousel";
+import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -220,6 +223,10 @@ export function ClienteLanding() {
   const [categoriasList, setCategoriasList] = useState([]);
   const [productosList, setProductosList] = useState([]);
   const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
+  const [eventosList, setEventosList] = useState([]);
+  const [showPersonalizarEventoModal, setShowPersonalizarEventoModal] = useState(false);
+  const [eventoParaPersonalizar, setEventoParaPersonalizar] = useState(null);
+  const [productoParaEvento, setProductoParaEvento] = useState(null);
 
   // Manejador de flecha Atrás / Adelante del navegador (popstate) para cerrar modales sin salir de la página
   useEffect(() => {
@@ -230,6 +237,8 @@ export function ClienteLanding() {
         setShowCart(false);
       } else if (showProductModal) {
         setShowProductModal(false);
+      } else if (showPersonalizarEventoModal) {
+        setShowPersonalizarEventoModal(false);
       } else if (showPedidos) {
         setShowPedidos(false);
       } else if (showResenasModal) {
@@ -239,7 +248,7 @@ export function ClienteLanding() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [showCheckout, showCart, showProductModal, showPedidos, showResenasModal]);
+  }, [showCheckout, showCart, showProductModal, showPersonalizarEventoModal, showPedidos, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
   // Detectar retorno desde Wompi (si se completó pago vía checkout web directo)
@@ -276,12 +285,17 @@ export function ClienteLanding() {
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
-        const [catsRes, prodsRes, fichasRes, adicRes] = await Promise.allSettled([
+        const [catsRes, prodsRes, fichasRes, adicRes, evtsRes] = await Promise.allSettled([
           categoriaProductosService.getCategorias(),
           productosService.getProductos(),
           fichasTecnicasService.getFichas(),
-          adicionesService.getAdiciones()
+          adicionesService.getAdiciones(),
+          eventosService.getEventos()
         ]);
+
+        if (evtsRes.status === "fulfilled" && Array.isArray(evtsRes.value)) {
+          setEventosList(evtsRes.value);
+        }
 
         if (catsRes.status === "fulfilled" && Array.isArray(catsRes.value) && catsRes.value.length > 0) {
           const apiCats = catsRes.value
@@ -538,7 +552,24 @@ export function ClienteLanding() {
     return matchCatId || matchCatName || matchSubcategory;
   });
 
+  const handleSelectEventoFromCarousel = (evento, targetProd) => {
+    setEventoParaPersonalizar(evento);
+    setProductoParaEvento(targetProd || null);
+    setShowPersonalizarEventoModal(true);
+  };
+
   const handleProductClick = async (producto) => {
+    // Si el producto tiene un evento activo, abrir personalización individual de eventos
+    if (producto.eventos && producto.eventos.length > 0) {
+      const activeEvt = producto.eventos.find(e => e.estado === 1 || e.estado === "Activo") || producto.eventos[0];
+      if (activeEvt) {
+        setEventoParaPersonalizar(activeEvt);
+        setProductoParaEvento(producto);
+        setShowPersonalizarEventoModal(true);
+        return;
+      }
+    }
+
     const prodId = producto.id || producto.idProducto;
     let ficha = fichasMap[prodId] || fichasTecnicasDefault[prodId];
     if (!ficha) {
@@ -1221,6 +1252,13 @@ export function ClienteLanding() {
         </div>
       )}
 
+      {/* Carrusel con Eventos Activos en Vista de Cliente */}
+      <EventosCarousel
+        eventos={eventosList}
+        productos={activeProductos}
+        onSelectEvento={handleSelectEventoFromCarousel}
+      />
+
       {/* Categorías Carousel */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-4">
@@ -1325,6 +1363,29 @@ export function ClienteLanding() {
                 ) : (
                   <div className="text-7xl group-hover:scale-110 transition-transform duration-300">{producto.imagen || "🍔"}</div>
                 )}
+                
+                {/* Rediseño de Indicador de Evento Activo */}
+                {producto.eventos && producto.eventos.length > 0 && (() => {
+                  const evt = producto.eventos[0];
+                  const evtIcon = evt.icono || "🎉";
+                  let benefit = "OFERTA";
+                  if (evt.tipoEvento === "Descuento" && evt.descuento) {
+                    benefit = `-${Number(evt.descuento)}% OFF`;
+                  } else if (evt.tipoEvento === "Promoción Precio") {
+                    benefit = "PROMO";
+                  } else if (evt.tipoEvento === "2x1 / Combo Especial") {
+                    benefit = "2x1";
+                  } else if (evt.tipoEvento === "Añadir Insumos") {
+                    benefit = "EXTRA";
+                  }
+                  return (
+                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-lg border border-white/25 backdrop-blur-md animate-pulse">
+                      <span className="text-sm">{evtIcon}</span>
+                      <span className="tracking-wide uppercase">{benefit}</span>
+                    </div>
+                  );
+                })()}
+
                 {/* Badge Ver detalles */}
                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
                   <FileText className="w-3 h-3" />
@@ -1377,19 +1438,31 @@ export function ClienteLanding() {
                 </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-col">
-                    {producto.eventos && producto.eventos.length > 0 && producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento") ? (
+                    {producto.eventos && producto.eventos.length > 0 ? (
                       <>
-                        <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
-                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Zap className="w-4 h-4" />
-                          ${(() => {
-                            const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio");
-                            if (evtPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
-                            const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
-                            if (evtDesc) return (producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
-                            return producto.precio.toLocaleString();
-                          })()}
-                        </span>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[10.5px] font-black text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span>{producto.eventos[0]?.icono || "🎉"}</span>
+                            <span className="truncate max-w-[150px]">{producto.eventos[0]?.nombreEvento || producto.eventos[0]?.tipoEvento || "Evento Activo"}</span>
+                          </span>
+                        </div>
+                        {producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento" || e.nuevoPrecio) ? (
+                          <>
+                            <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                            <span className="text-2xl font-black text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                              <Sparkles className="w-4 h-4 text-purple-500" />
+                              ${(() => {
+                                const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.nuevoPrecio);
+                                if (evtPrecio && evtPrecio.nuevoPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
+                                const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
+                                if (evtDesc) return Math.round(producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                                return producto.precio.toLocaleString();
+                              })()}
+                            </span>
+                          </>
+                        ) : (
+                          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">${producto.precio.toLocaleString()}</p>
+                        )}
                       </>
                     ) : (
                       <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
@@ -1401,10 +1474,23 @@ export function ClienteLanding() {
                       e.stopPropagation();
                       handleProductClick(producto);
                     }}
-                    className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
+                    className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
+                      producto.eventos && producto.eventos.length > 0
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
+                        : "bg-red-500 hover:bg-red-600 shadow-red-500/20"
+                    }`}
                   >
-                    <ShoppingCart className="w-4 h-4" />
-                    Inspeccionar y Agregar
+                    {producto.eventos && producto.eventos.length > 0 ? (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Personalizar Evento</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>Inspeccionar y Agregar</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2396,6 +2482,25 @@ export function ClienteLanding() {
           }
         }}
         producto={productoParaResenas}
+      />
+
+      {/* Modal de Personalización Individual de Eventos */}
+      <PersonalizarEventoModal
+        isOpen={showPersonalizarEventoModal}
+        onClose={() => setShowPersonalizarEventoModal(false)}
+        evento={eventoParaPersonalizar}
+        producto={productoParaEvento}
+        productosList={activeProductos}
+        adicionesList={activeAdiciones}
+        onAddToCart={(item) => {
+          const res = addToCart(item);
+          if (res && res.success === false) {
+            error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+            return;
+          }
+          success("¡Agregado al carrito!", `${item.nombre} se agregó correctamente con sus personalizaciones.`);
+        }}
+        getProductQuantityInCart={getProductQuantityInCart}
       />
     </div>
   );
