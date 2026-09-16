@@ -254,11 +254,20 @@ export function Productos() {
         />
       )}
 
-      {/* Eventos Modal (Versionamiento de Fichas Técnicas) */}
+      {/* Eventos Modal */}
       <EventosModal
         isOpen={eventosModalOpen}
         onClose={() => setEventosModalOpen(false)}
         eventos={eventos}
+        onOpenCrearEvento={() => {
+          setEventosModalOpen(false);
+          setProductoParaEvento(null);
+          setCrearEventoModalOpen(true);
+        }}
+        onRefresh={() => {
+          fetchEventos();
+          refetch();
+        }}
       />
 
       {/* Crear Evento Modal */}

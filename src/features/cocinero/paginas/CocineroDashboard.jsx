@@ -25,7 +25,19 @@ import {
   Sparkles,
   RotateCcw,
   CheckCheck,
-  Calendar
+  Calendar,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  Minimize2,
+  List,
+  LayoutGrid,
+  SlidersHorizontal,
+  Layers,
+  Pause,
+  Play,
+  Check,
+  Archive
 } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
@@ -35,6 +47,61 @@ import { produccionService } from "@/features/produccion/servicios/produccionSer
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import LoadingSpinner from "@/shared/components/ui/LoadingSpinner";
+import { HistorialComandasLista } from "../componentes/HistorialComandasLista";
+import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
+
+/**
+ * Clean Web Audio Kitchen Chime (synthesized without external audio files)
+ */
+function playKitchenDing() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    // First bell tone (587.33 Hz - D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.35);
+
+    // Second bell tone (880 Hz - A5)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    gain2.gain.setValueAtTime(0.25, ctx.currentTime + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.65);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.12);
+    osc2.stop(ctx.currentTime + 0.65);
+  } catch (e) {
+    console.warn("Audio chime no pudo reproducirse por política de interacción:", e);
+  }
+}
+
+/**
+ * Determine if an order is from a previous calendar day
+ */
+function isOrderFromPastDays(order) {
+  const rawDate = order.fechaVenta || order.fecha;
+  if (!rawDate) return false;
+  const d = new Date(rawDate);
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  return (
+    d.getFullYear() < now.getFullYear() ||
+    d.getMonth() < now.getMonth() ||
+    d.getDate() < now.getDate()
+  );
+}
 
 /**
  * Clean human notes from JSON artifacts, redundant additions summaries, or duplicate product names
@@ -286,9 +353,34 @@ export function CocineroDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showTestSpinner, setShowTestSpinner] = useState(false);
 
+  // ── Vista Principal: "tablero" (tarjetas de cocina) | "historial" (lista de despachadas) ──
+  const [vistaPrincipal, setVistaPrincipal] = useState("tablero");
+
+  // ── Ajustes de KDS & Multimedia ──
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    return localStorage.getItem("kds_sound_enabled") !== "false";
+  });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // ── Configuración de Auto-desvanecimiento de comandas listas ──
+  const [autoFadeSegundos, setAutoFadeSegundos] = useState(() => {
+    const saved = localStorage.getItem("kds_auto_fade_sec");
+    return saved !== null ? Number(saved) : 60; // 60 segundos por defecto
+  });
+  const [showConfigFade, setShowConfigFade] = useState(false);
+
+  // Timers & Fading States
+  const readyTimestamps = useRef({});
+  const [pausedOrderIds, setPausedOrderIds] = useState({});
+  const [fadingOrders, setFadingOrders] = useState({});
+  const [, setCountdownTick] = useState(0); // Trigger re-render every second
+
+  // Filter by product from Totalizador
+  const [filtroProductoBatch, setFiltroProductoBatch] = useState(null);
+
   // Interactive Checklist of prepared dishes per order { "orderId-itemIdx": boolean }
   const [checkedItems, setCheckedItems] = useState({});
-  // Collapsible tickets state (defaults to collapsed)
+  // Collapsible tickets state (defaults to expanded)
   const [expandedTickets, setExpandedTickets] = useState({});
 
   // Receta / Ficha Técnica Modal
@@ -296,11 +388,36 @@ export function CocineroDashboard() {
   const [modalRecetaData, setModalRecetaData] = useState(null);
   const [loadingReceta, setLoadingReceta] = useState(false);
 
-  // Live Digital Clock (HH:MM:SS 12h format with AM/PM)
+  // Live Digital Clock & Countdown Tick
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+      setCountdownTick((t) => (t + 1) % 1000);
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fullscreen Handler
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  const handleSoundToggle = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem("kds_sound_enabled", String(next));
+    if (next) playKitchenDing();
+  };
+
+  const handleAutoFadeConfigChange = (seconds) => {
+    setAutoFadeSegundos(seconds);
+    localStorage.setItem("kds_auto_fade_sec", String(seconds));
+    setShowConfigFade(false);
+  };
 
   // Fetch orders from API
   const fetchPedidos = useCallback(
@@ -335,6 +452,104 @@ export function CocineroDashboard() {
     return () => clearInterval(interval);
   }, [fetchPedidos]);
 
+  // Sound chime when new order arrives
+  const prevOrdersCountRef = useRef(0);
+  useEffect(() => {
+    if (prevOrdersCountRef.current > 0 && pedidos.length > prevOrdersCountRef.current) {
+      if (soundEnabled) {
+        playKitchenDing();
+      }
+    }
+    prevOrdersCountRef.current = pedidos.length;
+  }, [pedidos.length, soundEnabled]);
+
+  // Despachar / Archivar Comanda (con desvanecimiento suave)
+  const despacharOrden = async (orderId, options = {}) => {
+    // 1. Iniciar animación de desvanecimiento CSS
+    setFadingOrders((prev) => ({ ...prev, [orderId]: true }));
+
+    setTimeout(async () => {
+      try {
+        await produccionService.updateEstadoOrden(orderId, "Entregado");
+        setPedidos((prev) =>
+          prev.map((p) =>
+            String(p.id) === String(orderId) || String(p.idVenta) === String(orderId)
+              ? { ...p, estado: "Entregado", estadoEntrega: "ENTREGADO" }
+              : p
+          )
+        );
+        delete readyTimestamps.current[orderId];
+        if (!options.silent) {
+          success("Comanda Despachada", `Comanda #${orderId} trasladada al historial`);
+        }
+      } catch (err) {
+        notifyError("Error", "No se pudo archivar la comanda");
+      } finally {
+        setFadingOrders((prev) => {
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
+      }
+    }, 600);
+  };
+
+  // Despachar en lote todas las comandas que estén listas
+  const despacharTodasLasListas = async () => {
+    const listos = pedidos.filter(
+      (p) => (p.estado === "Listo" || p.estadoEntrega === "LISTO") && !isOrderFromPastDays(p)
+    );
+    if (listos.length === 0) return;
+
+    const confirmed = await confirmAction(
+      "¿Despachar todas las listas?",
+      `¿Deseas archivar ${listos.length} comanda(s) listas y enviarlas al historial?`
+    );
+    if (!confirmed) return;
+
+    for (const p of listos) {
+      const orderId = p.id || p.idVenta;
+      await despacharOrden(orderId, { silent: true });
+    }
+    success("Comandas archivadas", "Todas las comandas listas fueron enviadas al historial");
+  };
+
+  // Alternar pausa en el temporizador de auto-archivo de una comanda lista
+  const togglePauseCountdown = (orderId) => {
+    setPausedOrderIds((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
+
+  // Auto-fade live interval handler for orders in "Listo" state
+  useEffect(() => {
+    if (autoFadeSegundos <= 0) return;
+
+    const now = Date.now();
+    for (const p of pedidos) {
+      const orderId = p.id || p.idVenta;
+      const isListo = p.estado === "Listo" || p.estadoEntrega === "LISTO";
+      if (!isListo) continue;
+
+      // Skip past-day orders (already treated in history)
+      if (isOrderFromPastDays(p)) continue;
+      if (pausedOrderIds[orderId]) continue;
+      if (fadingOrders[orderId]) continue;
+
+      // If order does not have ready timestamp yet, initialize it
+      if (!readyTimestamps.current[orderId]) {
+        readyTimestamps.current[orderId] = now;
+        continue;
+      }
+
+      const elapsedSec = (now - readyTimestamps.current[orderId]) / 1000;
+      if (elapsedSec >= autoFadeSegundos) {
+        despacharOrden(orderId, { silent: true });
+      }
+    }
+  }, [currentTime, autoFadeSegundos, pausedOrderIds, fadingOrders, pedidos]);
+
   // Change order state
   const cambiarEstado = async (id, nuevoEstado, options = {}) => {
     const pedObj = pedidos.find((p) => String(p.id) === String(id) || String(p.idVenta) === String(id));
@@ -357,6 +572,13 @@ export function CocineroDashboard() {
             : p
         )
       );
+
+      // Si pasa a Listo, iniciar marca de tiempo para auto-desvanecimiento
+      if (nuevoEstado === "Listo") {
+        readyTimestamps.current[id] = Date.now();
+      } else {
+        delete readyTimestamps.current[id];
+      }
 
       // Auto-check all items when moving to Listo
       if (nuevoEstado === "Listo" && itemsCount > 0) {
@@ -468,28 +690,45 @@ export function CocineroDashboard() {
     }
   };
 
-  // Filter approved active orders
-  const pedidosAprobados = useMemo(() => {
-    return pedidos.filter((p) => {
+  // ── Separación limpia: Comandas Activas de Cocina vs Historial de Despachadas ──
+  const { pedidosActivos, pedidosHistorial } = useMemo(() => {
+    const activos = [];
+    const historial = [];
+
+    for (const p of pedidos) {
       const isApproved = p.estadoAprobacion === "APROBADO";
-      const isPendingApproval = p.estado === "Por Aprobar" || p.estadoAprobacion === "PENDIENTE";
       const isRejected =
         p.estado === "Rechazado" ||
         p.estadoAprobacion === "RECHAZADO" ||
         p.estado === "Anulada" ||
         p.estadoEntrega === "CANCELADO";
 
-      if (isRejected || isPendingApproval || !isApproved) {
-        return false;
+      if (isRejected || !isApproved) continue;
+
+      const isEntregado =
+        p.estado === "Entregado" ||
+        p.estadoEntrega === "ENTREGADO" ||
+        p.estadoEntrega === "DESPACHADO" ||
+        p.estado === "Completada";
+
+      const isListo = p.estado === "Listo" || p.estadoEntrega === "LISTO";
+      const isPastDate = isOrderFromPastDays(p);
+
+      // Si ya fue entregada, o es una comanda "Listo" de días pasados: se clasifica en Historial
+      if (isEntregado || (isListo && isPastDate)) {
+        historial.push(p);
+      } else {
+        activos.push(p);
       }
-      return true;
-    });
+    }
+
+    return { pedidosActivos: activos, pedidosHistorial: historial };
   }, [pedidos]);
 
-  // Apply tab & search filters
+  // Filtrado de comandas activas según pestaña, búsqueda y batch seleccionado
   const pedidosFiltrados = useMemo(() => {
-    return pedidosAprobados.filter((p) => {
-      // Tab filter
+    return pedidosActivos.filter((p) => {
+      // 1. Filtro por pestaña de estado
       const isListo = p.estado === "Listo" || p.estadoEntrega === "LISTO";
       const isPreparando = p.estado === "En Preparación" || p.estadoEntrega === "PREPARANDO";
       const isPendiente = !isListo && !isPreparando;
@@ -498,7 +737,15 @@ export function CocineroDashboard() {
       if (filtroEstado === "En Preparación" && !isPreparando) return false;
       if (filtroEstado === "Listo" && !isListo) return false;
 
-      // Search query filter
+      // 2. Filtro por producto seleccionado en el Totalizador
+      if (filtroProductoBatch) {
+        const hasProd = (p.productos || []).some(
+          (pr) => (pr.nombre || "").toLowerCase() === filtroProductoBatch.toLowerCase()
+        );
+        if (!hasProd) return false;
+      }
+
+      // 3. Filtro por buscador de texto
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
         const codeMatch = (p.codigo || `VEN-${p.id || p.idVenta}`).toLowerCase().includes(q);
@@ -509,31 +756,31 @@ export function CocineroDashboard() {
 
       return true;
     });
-  }, [pedidosAprobados, filtroEstado, searchTerm]);
+  }, [pedidosActivos, filtroEstado, searchTerm, filtroProductoBatch]);
 
-  // Calculate counts for badges
+  // Contadores para badges de pestañas activas
   const countPendientes = useMemo(() => {
-    return pedidosAprobados.filter(
+    return pedidosActivos.filter(
       (p) => p.estado === "En Cola" || p.estado === "Pendiente" || p.estadoEntrega === "PENDIENTE"
     ).length;
-  }, [pedidosAprobados]);
+  }, [pedidosActivos]);
 
   const countPreparando = useMemo(() => {
-    return pedidosAprobados.filter(
+    return pedidosActivos.filter(
       (p) => p.estado === "En Preparación" || p.estadoEntrega === "PREPARANDO"
     ).length;
-  }, [pedidosAprobados]);
+  }, [pedidosActivos]);
 
   const countListos = useMemo(() => {
-    return pedidosAprobados.filter((p) => p.estado === "Listo" || p.estadoEntrega === "LISTO").length;
-  }, [pedidosAprobados]);
+    return pedidosActivos.filter((p) => p.estado === "Listo" || p.estadoEntrega === "LISTO").length;
+  }, [pedidosActivos]);
 
   const countTotalPlatillos = useMemo(() => {
-    return pedidosAprobados.reduce(
+    return pedidosActivos.reduce(
       (acc, p) => acc + (p.cantidad || (p.productos || []).reduce((s, i) => s + (i.cantidad || 1), 0)),
       0
     );
-  }, [pedidosAprobados]);
+  }, [pedidosActivos]);
 
   // Format live header clock in 12h format (e.g. 06:20:33 PM)
   const formattedHeaderClock = useMemo(() => {
@@ -582,27 +829,125 @@ export function CocineroDashboard() {
             </div>
           </div>
 
-          {/* Quick Search & Utility Actions */}
-          <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1 md:w-56">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar comanda..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-[#F05454] focus:bg-white dark:focus:bg-gray-900 rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-hidden transition"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+          {/* Quick Search, View Toggle & Utility Actions */}
+          <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-2.5 flex-wrap">
+            {/* View Mode Switcher: Tablero vs Historial */}
+            <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200/80 dark:border-gray-700/80">
+              <button
+                type="button"
+                onClick={() => setVistaPrincipal("tablero")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
+                  vistaPrincipal === "tablero"
+                    ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-[#F05454]" />
+                <span>Tablero ({pedidosActivos.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVistaPrincipal("historial")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
+                  vistaPrincipal === "historial"
+                    ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+              >
+                <List className="w-3.5 h-3.5 text-blue-500" />
+                <span>Historial en Lista ({pedidosHistorial.length})</span>
+              </button>
+            </div>
+
+            {/* Search Input (visible in Tablero) */}
+            {vistaPrincipal === "tablero" && (
+              <div className="relative flex-1 md:w-48">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar comanda..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-[#F05454] focus:bg-white dark:focus:bg-gray-900 rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-hidden transition"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Auto-Fade Timer Config Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowConfigFade(!showConfigFade)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750 transition cursor-pointer"
+                title="Configurar tiempo de desvanecimiento de comandas listas"
+              >
+                <Clock className="w-3.5 h-3.5 text-[#F05454]" />
+                <span className="hidden sm:inline">
+                  {autoFadeSegundos === 0 ? "Manual" : `${autoFadeSegundos}s`}
+                </span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+
+              {showConfigFade && (
+                <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-2 z-50 text-xs animate-in fade-in zoom-in-95">
+                  <p className="font-black text-[11px] text-gray-400 px-2 py-1 uppercase tracking-wide">
+                    ⏱️ Desvanecer listas:
+                  </p>
+                  {[
+                    { label: "30 segundos (Rápido)", val: 30 },
+                    { label: "60 segundos (Recomendado)", val: 60 },
+                    { label: "3 minutos (Holgado)", val: 180 },
+                    { label: "Manual (Sin temporizador)", val: 0 }
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => handleAutoFadeConfigChange(opt.val)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-xl font-bold transition flex items-center justify-between cursor-pointer ${
+                        autoFadeSegundos === opt.val
+                          ? "bg-red-50 dark:bg-red-950/40 text-[#F05454]"
+                          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {autoFadeSegundos === opt.val && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
+
+            {/* Audio Chime Toggle */}
+            <button
+              type="button"
+              onClick={handleSoundToggle}
+              className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 transition cursor-pointer ${
+                soundEnabled
+                  ? "bg-red-50 dark:bg-red-950/40 text-[#F05454] border-red-200 dark:border-red-900/50"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-50 dark:bg-gray-800"
+              }`}
+              title={soundEnabled ? "Sonido de cocina activado (clic para silenciar)" : "Sonido silenciado (clic para activar)"}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            {/* Fullscreen Toggle */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer hidden sm:flex"
+              title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa KDS"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
 
             {/* Sync Refresh Button */}
             <button
@@ -624,17 +969,6 @@ export function CocineroDashboard() {
               <BookOpen className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Recetario</span>
             </Link>
-
-            {/* Test Spinner Button */}
-            <button
-              onClick={() => {
-                setShowTestSpinner(true);
-                setTimeout(() => setShowTestSpinner(false), 3000);
-              }}
-              className="px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition cursor-pointer hidden sm:flex"
-            >
-              Ver Logo Animado
-            </button>
 
             {/* Dark Mode Toggle */}
             <button
@@ -659,71 +993,101 @@ export function CocineroDashboard() {
 
       {/* ── Main KDS Body ── */}
       <main className="p-4 sm:p-6 w-full max-w-[1920px] mx-auto space-y-5 flex-1 flex flex-col">
-        {/* Filters & Metrics Strip */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-3.5 sm:p-4 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0">
-            {[
-              { id: "Todos", label: "Todas las Comandas", count: pedidosAprobados.length },
-              { id: "Pendiente", label: "En Cola", count: countPendientes },
-              { id: "En Preparación", label: "En Preparación", count: countPreparando },
-              { id: "Listo", label: "Listos para Entrega", count: countListos }
-            ].map((tab) => {
-              const active = filtroEstado === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setFiltroEstado(tab.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-2.5 whitespace-nowrap cursor-pointer select-none ${
-                    active
-                      ? "bg-[#F05454] text-white shadow-xs"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-750"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-black min-w-[20px] text-center ${
-                      active
-                        ? "bg-white/25 text-white"
-                        : tab.count > 0 && tab.id === "Pendiente"
-                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
-                        : tab.count > 0 && tab.id === "En Preparación"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300"
-                        : tab.count > 0 && tab.id === "Listo"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300"
-                        : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Render View: Historial en Lista VS Tablero de Cocina */}
+        {vistaPrincipal === "historial" ? (
+          <HistorialComandasLista
+            pedidos={pedidosHistorial}
+            onReabrir={(id) => cambiarEstado(id, "En Preparación")}
+            onVerReceta={verReceta}
+            onVolverAlTablero={() => setVistaPrincipal("tablero")}
+            isLoading={loading}
+          />
+        ) : (
+          <>
+            {/* ── Totalizador Consolidado de Cocina (Batch Cooking) ── */}
+            <TotalizadorCocina
+              pedidosActivos={pedidosActivos}
+              filtroProductoSeleccionado={filtroProductoBatch}
+              onSeleccionarProducto={setFiltroProductoBatch}
+            />
 
-          {/* Quick Metrics */}
-          <div className="flex items-center justify-between lg:justify-end gap-4 text-xs font-bold text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1.5">
-              <UtensilsCrossed className="w-3.5 h-3.5 text-[#F05454]" />
-              <span>
-                Total Platillos: <strong className="text-gray-900 dark:text-gray-100">{countTotalPlatillos}</strong>
-              </span>
+            {/* Filters & Metrics Strip */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-white dark:bg-gray-900 p-3.5 sm:p-4 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
+              {/* Status Tabs */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0">
+                {[
+                  { id: "Todos", label: "Todas las Comandas", count: pedidosActivos.length },
+                  { id: "Pendiente", label: "En Cola", count: countPendientes },
+                  { id: "En Preparación", label: "En Preparación", count: countPreparando },
+                  { id: "Listo", label: "Listos para Entrega", count: countListos }
+                ].map((tab) => {
+                  const active = filtroEstado === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setFiltroEstado(tab.id)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 flex items-center gap-2.5 whitespace-nowrap cursor-pointer select-none ${
+                        active
+                          ? "bg-[#F05454] text-white shadow-xs"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-750"
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-black min-w-[20px] text-center ${
+                          active
+                            ? "bg-white/25 text-white"
+                            : tab.count > 0 && tab.id === "Pendiente"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
+                            : tab.count > 0 && tab.id === "En Preparación"
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300"
+                            : tab.count > 0 && tab.id === "Listo"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-300"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Quick Metrics & Batch Clearance */}
+              <div className="flex items-center justify-between lg:justify-end gap-3 sm:gap-4 text-xs font-bold text-gray-500 dark:text-gray-400 flex-wrap">
+                {countListos > 0 && (
+                  <button
+                    type="button"
+                    onClick={despacharTodasLasListas}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-950/50 dark:hover:bg-green-900/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 rounded-xl text-xs font-black transition cursor-pointer shadow-2xs"
+                    title="Archivar y despachar todas las comandas que ya están listas"
+                  >
+                    <CheckCheck className="w-4 h-4 text-green-600" />
+                    <span>Despachar todas ({countListos})</span>
+                  </button>
+                )}
+
+                <div className="flex items-center gap-1.5">
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-[#F05454]" />
+                  <span>
+                    Total Platillos: <strong className="text-gray-900 dark:text-gray-100">{countTotalPlatillos}</strong>
+                  </span>
+                </div>
+                <div className="h-3.5 w-px bg-gray-200 dark:bg-gray-800" />
+                <div className="flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-blue-500" />
+                  <span>
+                    Comandas Activas: <strong className="text-gray-900 dark:text-gray-100">{pedidosFiltrados.length}</strong>
+                  </span>
+                </div>
+                {refreshing && (
+                  <span className="text-[#F05454] text-[11px] font-black animate-pulse flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Sincronizando...
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="h-3.5 w-px bg-gray-200 dark:bg-gray-800" />
-            <div className="flex items-center gap-1.5">
-              <Package className="w-3.5 h-3.5 text-blue-500" />
-              <span>
-                Comandas Activas: <strong className="text-gray-900 dark:text-gray-100">{pedidosFiltrados.length}</strong>
-              </span>
-            </div>
-            {refreshing && (
-              <span className="text-[#F05454] text-[11px] font-black animate-pulse flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Sincronizando...
-              </span>
-            )}
-          </div>
-        </div>
 
         {/* ── KDS Grid of Orders ── */}
         {loading ? (
@@ -793,14 +1157,27 @@ export function CocineroDashboard() {
                 badgeLabel = "En Mesa";
               }
 
-              // By default, tickets are expanded so items are clearly readable in kitchen
               const isExpanded = expandedTickets[orderId] !== false;
               const toggleCollapse = () => setExpandedTickets(prev => ({...prev, [orderId]: isExpanded ? false : true}));
+
+              // Fading transition state
+              const isFading = Boolean(fadingOrders[orderId]);
+
+              // Countdown calculation for Listo state
+              const readyTs = readyTimestamps.current[orderId] || Date.now();
+              const elapsedSec = Math.floor((currentTime.getTime() - readyTs) / 1000);
+              const remainingSec = Math.max(0, autoFadeSegundos - elapsedSec);
+              const progressPercent = autoFadeSegundos > 0 ? Math.min(100, (elapsedSec / autoFadeSegundos) * 100) : 0;
+              const isPaused = Boolean(pausedOrderIds[orderId]);
 
               return (
                 <div
                   key={orderId}
-                  className={`break-inside-avoid inline-block w-full rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all relative overflow-hidden mb-5 ${
+                  className={`break-inside-avoid inline-block w-full rounded-3xl bg-white dark:bg-gray-900 border shadow-xs hover:shadow-md transition-all duration-700 relative overflow-hidden mb-5 ${
+                    isFading
+                      ? "opacity-0 scale-95 pointer-events-none -translate-y-4"
+                      : "opacity-100 scale-100"
+                  } ${
                     isListo
                       ? "border-green-200 dark:border-green-900/60"
                       : isPreparando
@@ -1109,22 +1486,53 @@ export function CocineroDashboard() {
                     )}
 
                     {isListo && (
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 py-2.5 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900/40 rounded-xl text-center text-xs font-black text-green-700 dark:text-green-300 flex items-center justify-center gap-1.5">
-                          <CheckCheck className="w-4 h-4 text-green-600" />
-                          <span>¡Listo para entregar!</span>
-                        </div>
+                      <div className="space-y-2">
+                        {/* Auto-Fade Countdown Progress Bar */}
+                        {autoFadeSegundos > 0 && (
+                          <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-900/40 rounded-xl p-2.5">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-green-800 dark:text-green-300 mb-1.5">
+                              <span className="flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-green-600 animate-spin" />
+                                {isPaused ? "⏸️ Auto-archivo pausado" : `⏱️ Se archivará en ${remainingSec}s`}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => togglePauseCountdown(orderId)}
+                                className="text-[10px] px-2 py-0.5 bg-green-100 hover:bg-green-200 dark:bg-green-900/60 dark:hover:bg-green-800 text-green-800 dark:text-green-200 rounded-md transition cursor-pointer"
+                              >
+                                {isPaused ? "Reanudar" : "Pausar"}
+                              </button>
+                            </div>
+                            <div className="w-full bg-green-200/60 dark:bg-green-900/60 h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className="bg-green-600 h-full transition-all duration-1000 ease-linear"
+                                style={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
 
-                        {/* Reopen button */}
-                        <button
-                          type="button"
-                          onClick={() => cambiarEstado(orderId, "En Preparación")}
-                          className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
-                          title="Volver a poner en preparación si se necesita ajustar"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span className="text-[11px]">Reabrir</span>
-                        </button>
+                        {/* Action Buttons: Despachar ya & Reabrir */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => despacharOrden(orderId)}
+                            className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 active:scale-95 text-white rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                          >
+                            <CheckCheck className="w-4 h-4" />
+                            <span>Despachar Ahora</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => cambiarEstado(orderId, "En Preparación")}
+                            className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                            title="Volver a poner en preparación si se necesita ajustar"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span className="text-[11px]">Reabrir</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1132,6 +1540,8 @@ export function CocineroDashboard() {
               );
             })}
           </div>
+        )}
+          </>
         )}
       </main>
 

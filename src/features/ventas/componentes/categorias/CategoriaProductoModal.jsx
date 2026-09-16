@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UtensilsCrossed, UploadCloud, Loader2 } from "lucide-react";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -12,63 +13,100 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
   const [estado, setEstado] = useState("Activo");
 
   const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const [previewIcon, setPreviewIcon] = useState("");
   const fileInputRef = useRef(null);
 
+  const handleCancelOrClose = () => {
+    setFileToUpload(null);
+    setPreviewIcon("");
+    onClose();
+  };
+
   useEffect(() => {
+    setFileToUpload(null);
     if (categoria) {
       setNombre(categoria.nombre || "");
       setDescripcion(categoria.descripcion || "");
       setIcon(categoria.icon || "");
+      setPreviewIcon(categoria.icon || "");
       setEstado(categoria.estado || "Activo");
     } else {
       setNombre("");
       setDescripcion("");
       setIcon("");
+      setPreviewIcon("");
       setEstado("Activo");
     }
   }, [categoria, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nombre.trim() || uploading) return;
-    onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), icon, estado });
-  };
-
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("image", file);
 
     try {
       setUploading(true);
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-      const res = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIcon(data.url);
-      } else {
-        alert(data.message || "Error al subir la imagen");
+      let finalIcon = icon;
+
+      // SUBIDA DIFERIDA: Solo sube a Cloudinary al momento de confirmar el formulario
+      if (fileToUpload) {
+        finalIcon = await uploadImageToCloudinary(fileToUpload);
       }
+
+      await onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), icon: finalIcon, estado });
+      setFileToUpload(null);
+      setPreviewIcon("");
     } catch (err) {
-      console.error(err);
-      alert("Error de conexión al subir la imagen");
+      console.error("Error al guardar categoría:", err);
+      alert(err.message || "Error al subir imagen o guardar categoría");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    }
+  };
+
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      alert("La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // Previsualización local inmediata sin subir a la nube
+    setFileToUpload(file);
+    const localUrl = URL.createObjectURL(file);
+    setPreviewIcon(localUrl);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveIcon = () => {
+    setFileToUpload(null);
+    setPreviewIcon("");
+    setIcon("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleCancelOrClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    >
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
@@ -78,8 +116,8 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
             </h2>
           </div>
           <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={handleCancelOrClose}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -102,11 +140,11 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
             <label className={labelCls}>Imagen / Ícono de la Categoría</label>
             <div className="flex items-start gap-4">
               <div className="w-16 h-16 shrink-0 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800">
-                {icon ? (
-                  icon.includes('/') || icon.includes('.') ? (
-                    <img src={icon} alt="Preview" className="w-full h-full object-cover" />
+                {previewIcon ? (
+                  previewIcon.includes('/') || previewIcon.includes('.') || previewIcon.startsWith('blob:') ? (
+                    <img src={previewIcon} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="text-2xl">{icon}</div>
+                    <div className="text-2xl">{previewIcon}</div>
                   )
                 ) : (
                   <UtensilsCrossed className="w-6 h-6 text-gray-300 dark:text-gray-600" />
@@ -120,16 +158,16 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50"
+                      className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4 text-[#F05454]" />}
-                      {uploading ? "Subiendo..." : "Subir Imagen"}
+                      {uploading ? "Subiendo..." : previewIcon ? "Cambiar Imagen" : "Subir Imagen"}
                     </button>
-                    {icon && (
+                    {previewIcon && (
                       <button
                         type="button"
-                        onClick={() => setIcon("")}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                        onClick={handleRemoveIcon}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer"
                       >
                         Quitar
                       </button>
@@ -140,12 +178,16 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                     accept="image/*"
                     className="hidden"
                     ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    onChange={handleImageSelected}
                   />
                   <input
                     type="text"
-                    value={icon}
-                    onChange={(e) => setIcon(e.target.value)}
+                    value={previewIcon.startsWith('blob:') ? '' : icon}
+                    onChange={(e) => {
+                      setFileToUpload(null);
+                      setIcon(e.target.value);
+                      setPreviewIcon(e.target.value);
+                    }}
                     className={inputCls}
                     placeholder="O ingresa un emoji (ej. 🍔) o URL"
                   />
@@ -180,8 +222,8 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              onClick={handleCancelOrClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancelar
             </button>

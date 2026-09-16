@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from "react";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X } from "lucide-react";
+import React, { useMemo, useState, useEffect } from "react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
 import PosCheckoutModal from "../components/PosCheckoutModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useToast } from "@/shared/context/ToastContext";
 
 const categoryIcons = {
@@ -54,6 +57,123 @@ export default function PosVendedor() {
 
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [customizingFicha, setCustomizingFicha] = useState(null);
+  const [allAdiciones, setAllAdiciones] = useState([]);
+  const [fichasCache, setFichasCache] = useState({});
+
+  useEffect(() => {
+    adicionesService
+      .getAdiciones()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setAllAdiciones(
+            res.filter(
+              (a) => a.estado === 1 || a.estado === "Activo" || a.estado === undefined
+            )
+          );
+        }
+      })
+      .catch((err) => console.warn("Error cargando adiciones en POS:", err));
+  }, []);
+
+  const allBebidas = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+      const name = String(p.nombre || "").toLowerCase();
+      return (
+        cat.includes("bebida") ||
+        cat.includes("gaseos") ||
+        cat.includes("refresco") ||
+        name.includes("gaseosa") ||
+        name.includes("agua")
+      );
+    });
+  }, [productos]);
+
+  const handleOpenCustomize = async (producto) => {
+    setCustomizingProduct(producto);
+    const prodId = producto.id || producto.idProducto;
+    if (fichasCache[prodId]) {
+      setCustomizingFicha(fichasCache[prodId]);
+      return;
+    }
+
+    try {
+      const f = await fichasTecnicasService.getFichaByProducto(prodId);
+      if (f) {
+        setFichasCache((prev) => ({ ...prev, [prodId]: f }));
+        setCustomizingFicha(f);
+      } else {
+        setCustomizingFicha(null);
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar ficha técnica para producto:", prodId);
+      setCustomizingFicha(null);
+    }
+  };
+
+  const handleModalConfirm = ({
+    producto,
+    cantidad,
+    adiciones,
+    bebidas,
+    observacion
+  }) => {
+    const displayName = producto.nombrePersonalizado || producto.nombre;
+    addProduct({
+      productoId: producto.id || producto.idProducto,
+      varianteId: producto.id || producto.idProducto,
+      nombre: displayName,
+      precio: producto.precio,
+      adiciones: (adiciones || []).map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        id: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio || 0),
+        cantidad: Number(a.cantidad || 1),
+        imagen: a.imagen || ""
+      })),
+      observacion,
+      cantidad: Number(cantidad) || 1,
+      stock: producto.stock
+    });
+
+    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let includedQuotaRemaining = requiredDrinks;
+
+    if (Array.isArray(bebidas) && bebidas.length > 0) {
+      for (const b of bebidas) {
+        const qty = Number(b.cantidad || 1);
+        const covered = isComboProd ? Math.min(includedQuotaRemaining, qty) : 0;
+        const extraQty = qty - covered;
+        if (isComboProd) includedQuotaRemaining -= covered;
+
+        // Solo agregar al carrito como ítem con costo si es un producto normal O es bebida extra por encima del combo
+        if (!isComboProd || extraQty > 0) {
+          addProduct({
+            productoId: b.id || b.idProducto,
+            varianteId: b.id || b.idProducto,
+            nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
+            precio: Number(b.precio || 0),
+            adiciones: [],
+            observacion: isComboProd ? `Bebida extra de ${displayName}` : `Acompañante de ${displayName}`,
+            cantidad: isComboProd ? extraQty : qty,
+            stock: b.stock
+          });
+        }
+      }
+    }
+
+    setCustomizingProduct(null);
+    setCustomizingFicha(null);
+    toast.success(
+      "¡Producto configurado!",
+      `${displayName} agregado al pedido con éxito.`
+    );
+  };
+
   const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
 
   const handleConfirmCheckout = async (checkoutData) => {
@@ -67,11 +187,35 @@ export default function PosVendedor() {
     }
   };
 
+  const eventProductsCount = useMemo(() => {
+    const now = new Date();
+    return (productos || []).filter((p) => {
+      const evts = Array.isArray(p.eventos) ? p.eventos : [];
+      return evts.some((e) => {
+        if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+        if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+        if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+        return true;
+      });
+    }).length;
+  }, [productos]);
+
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchSearch) return false;
       if (categoriaActiva === null) return true;
+
+      if (categoriaActiva === "eventos") {
+        const evts = Array.isArray(p.eventos) ? p.eventos : [];
+        const now = new Date();
+        return evts.some((e) => {
+          if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+          if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+          if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+          return true;
+        });
+      }
 
       const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
       const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
@@ -159,6 +303,21 @@ export default function PosVendedor() {
               <span>Todos</span>
             </button>
 
+            {eventProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setCategoriaActiva("eventos")}
+                className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
+                  categoriaActiva === "eventos"
+                    ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
+                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 animate-pulse" />
+                <span>Eventos ({eventProductsCount})</span>
+              </button>
+            )}
+
             {categorias.map((c) => {
               const active = categoriaActiva === c.id;
               return (
@@ -205,6 +364,21 @@ export default function PosVendedor() {
                 <span className="truncate">Todos</span>
               </button>
 
+              {eventProductsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCategoriaActiva("eventos")}
+                  className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-black transition-all ${
+                    categoriaActiva === "eventos"
+                      ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_8px_16px_rgba(245,158,11,0.3)]"
+                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 border border-amber-200/80 dark:border-amber-800/60"
+                  }`}
+                >
+                  <Flame className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-pulse shrink-0" />
+                  <span className="truncate">Eventos ({eventProductsCount})</span>
+                </button>
+              )}
+
               {categorias.map((c) => {
                 const active = categoriaActiva === c.id;
                 return (
@@ -249,6 +423,7 @@ export default function PosVendedor() {
                     onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
                       addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
                     }
+                    onCustomize={handleOpenCustomize}
                   />
                 ))}
               </div>
@@ -346,6 +521,21 @@ export default function PosVendedor() {
         total={total}
         onConfirm={handleConfirmCheckout}
         loading={loading}
+      />
+
+      {/* Fast Food Product Customization Modal (Mise en place, Adiciones, Ficha Técnica) */}
+      <FastFoodProductModal
+        isOpen={Boolean(customizingProduct)}
+        onClose={() => {
+          setCustomizingProduct(null);
+          setCustomizingFicha(null);
+        }}
+        producto={customizingProduct}
+        ficha={customizingFicha}
+        allAdiciones={allAdiciones}
+        allBebidas={allBebidas}
+        onConfirm={handleModalConfirm}
+        mode="pos"
       />
     </div>
   );

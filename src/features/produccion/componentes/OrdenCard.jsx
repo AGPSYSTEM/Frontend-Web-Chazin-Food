@@ -37,7 +37,16 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
           <div className="text-3xl select-none shrink-0">{orden.imagen || "🍔"}</div>
           <div>
             <h4 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">
-              {orden.platilloNombre}
+              {Array.isArray(orden.productos) && orden.productos.length > 2 ? (
+                <span>
+                  {orden.productos.slice(0, 2).map((p) => `${p.nombre} (x${p.cantidad})`).join(", ")}{" "}
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+                    +{orden.productos.length - 2} más
+                  </span>
+                </span>
+              ) : (
+                orden.platilloNombre
+              )}
             </h4>
             <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
               {orden.codigo || `OP-00${orden.id}`} · x{orden.cantidad || 1}

@@ -18,14 +18,25 @@ export const loadWompiScript = () => {
         clearInterval(interval);
         return resolve(window.WidgetCheckout);
       }
-      if (checkCount >= 50) { // 2.5 segundos
+      if (checkCount >= 100) { // 10 segundos (100 * 100ms)
         clearInterval(interval);
-        reject(new Error("No se pudo inicializar la pasarela Wompi en el navegador. Revisa tu conexión."));
+        reject(new Error("No se pudo inicializar la pasarela Wompi en el navegador. Revisa tu conexión o desactiva bloqueadores de anuncios."));
       }
-    }, 50);
+    }, 100);
 
     const existingScript = document.querySelector(`script[src="${WOMPI_SCRIPT_URL}"]`);
-    if (!existingScript) {
+    if (existingScript) {
+      existingScript.addEventListener("load", () => {
+        if (typeof window !== "undefined" && window.WidgetCheckout) {
+          clearInterval(interval);
+          resolve(window.WidgetCheckout);
+        }
+      });
+      existingScript.addEventListener("error", () => {
+        clearInterval(interval);
+        reject(new Error("Error al descargar el script de Wompi desde Bancolombia."));
+      });
+    } else {
       const script = document.createElement("script");
       script.src = WOMPI_SCRIPT_URL; // Sin parámetros query para que coincida con el selector interno de Wompi
       script.async = true;
@@ -37,7 +48,7 @@ export const loadWompiScript = () => {
       };
       script.onerror = () => {
         clearInterval(interval);
-        reject(new Error("Error al descargar el script de Wompi desde Bancolombia"));
+        reject(new Error("Error al descargar el script de Wompi desde Bancolombia."));
       };
       document.body.appendChild(script);
     }

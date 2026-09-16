@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
 import {
   Search,
   Filter,
@@ -86,32 +87,56 @@ function formatDateSafe(dateVal, fallback = "") {
     setSelectedVentaDetail(v);
   };
 
-  // Export to Excel (CSV with UTF-8 BOM)
+  // Export to Excel (.xlsx)
   const handleExportExcel = () => {
-    const headers = ["N° Factura / Pedido", "Cliente", "Fecha", "Horario", "Entrega", "Método de Pago", "Subtotal", "Descuento", "Total (COP)", "Estado"];
-    const rows = displayedVentas.map(v => [
-      `"${v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`}"`,
-      `"${v.clienteNombre || v.cliente || "Cliente General"}"`,
-      `"${v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"}"`,
-      `"${v.horario || "13:45 - 14:00"}"`,
-      `"${v.tipoEntrega || "En Mesa"}"`,
-      `"${v.metodoPago || "Efectivo"}"`,
-      `"$${Number(v.subtotal || v.total || 0).toLocaleString("es-CO")}"`,
-      `"${v.descuentoPorcentaje ? `-${v.descuentoPorcentaje}%` : "N/A"}"`,
-      `"$${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}"`,
-      `"${v.estado || "Completada"}"`
+    const headers = [
+      "N° Factura / Pedido",
+      "Cliente",
+      "Fecha",
+      "Horario",
+      "Entrega",
+      "Método de Pago",
+      "Subtotal (COP)",
+      "Descuento",
+      "Total (COP)",
+      "Estado"
+    ];
+
+    const rows = displayedVentas.map((v) => [
+      v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`,
+      v.clienteNombre || v.cliente || "Cliente General",
+      v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06",
+      v.horario || "13:45 - 14:00",
+      v.tipoEntrega || "En Mesa",
+      v.metodoPago || "Efectivo",
+      Number(v.subtotal || v.total || 0),
+      v.descuentoPorcentaje ? `${v.descuentoPorcentaje}%` : "0%",
+      Number(v.total || v.subtotal || 0),
+      v.estado || "Completada"
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Historial_Pedidos_${selectedPeriod}_${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    // Ancho de columnas optimizado para visualización en Excel
+    worksheet["!cols"] = [
+      { wch: 22 }, // N° Factura / Pedido
+      { wch: 24 }, // Cliente
+      { wch: 14 }, // Fecha
+      { wch: 16 }, // Horario
+      { wch: 14 }, // Entrega
+      { wch: 18 }, // Método de Pago
+      { wch: 16 }, // Subtotal
+      { wch: 12 }, // Descuento
+      { wch: 16 }, // Total
+      { wch: 16 }  // Estado
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Pedidos");
+    XLSX.writeFile(
+      workbook,
+      `Historial_Pedidos_${selectedPeriod}_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
   // Export to Printable PDF Window
@@ -313,7 +338,7 @@ function formatDateSafe(dateVal, fallback = "") {
                       className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-600 flex items-center gap-2.5 transition-colors cursor-pointer"
                     >
                       <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                      <span>Exportar a Excel (.csv)</span>
+                      <span>Exportar a Excel (.xlsx)</span>
                     </button>
                     <button
                       onClick={() => {

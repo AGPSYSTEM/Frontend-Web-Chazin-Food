@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles, UploadCloud, Loader2 } from "lucide-react";
 import { adicionesService } from "../../servicios/adicionesService";
 import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
   const toast = useToast();
@@ -22,9 +23,47 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const resetFormState = () => {
+    setFileToUpload(null);
+    setIsEditing(false);
+    setShowForm(false);
+    setFormData({
+      id: null,
+      nombre: "",
+      idInsumo: "",
+      precio: "",
+      descripcion: "",
+      imagen: "",
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCloseModal = () => {
+    resetFormState();
+    onClose();
+  };
+
+  const handleCancelForm = () => {
+    resetFormState();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        handleCloseModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
+      resetFormState();
       loadAdiciones();
     }
   }, [isOpen]);
@@ -43,6 +82,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleCreateNew = () => {
+    setFileToUpload(null);
     setIsEditing(false);
     setFormData({
       id: null,
@@ -56,6 +96,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
   };
 
   const handleEdit = (adicion) => {
+    setFileToUpload(null);
     setIsEditing(true);
     setFormData({
       id: adicion.idAdicion,
@@ -88,19 +129,65 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     }
   };
 
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Archivo inválido", "El archivo debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error("Archivo pesado", "La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // Previsualización local inmediata: cero subidas a Cloudinary hasta que guarde
+    setFileToUpload(file);
+    const localUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, imagen: localUrl }));
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleClearImage = () => {
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSelectEmoji = (emoji) => {
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: emoji }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nombre.trim() || !formData.idInsumo || formData.precio === "") {
       toast.error("Campos requeridos", "Por favor completa el nombre, insumo base y precio");
       return;
     }
+
     try {
+      setUploading(true);
+      let finalImageUrl = formData.imagen;
+
+      // SUBIDA DIFERIDA: Si se seleccionó archivo local, subirlo a Cloudinary ahora
+      if (fileToUpload) {
+        finalImageUrl = await uploadImageToCloudinary(fileToUpload);
+      } else if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
+        finalImageUrl = getAdditionEmoji(formData.nombre, "");
+      }
+
       const payload = {
         ...formData,
         idInsumo: Number(formData.idInsumo),
         precio: Number(formData.precio),
         estado: "Activo",
-        imagen: formData.imagen || getAdditionEmoji(formData.nombre, "")
+        imagen: finalImageUrl || getAdditionEmoji(formData.nombre, "")
       };
 
       if (isEditing) {
@@ -111,11 +198,13 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
         toast.success("Adición creada", "La adición se creó exitosamente");
       }
 
-      setShowForm(false);
+      resetFormState();
       await loadAdiciones();
     } catch (err) {
       console.error(err);
       toast.error("Error al guardar", err.message || "No se pudo guardar la adición");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -123,7 +212,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={handleCloseModal} />
 
       <div className="relative bg-white dark:bg-gray-900 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -137,7 +226,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -225,13 +314,46 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     </div>
 
                     <div className="flex-1 w-full space-y-2">
-                      <input
-                        type="text"
-                        value={formData.imagen}
-                        onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
-                        placeholder="Ej. 🥓 o https://..."
-                      />
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={formData.imagen}
+                          onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                          placeholder="Pega URL directa de imagen (.jpg, .png) o emoji..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                          title="Seleccionar archivo de imagen"
+                        >
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-4 h-4" />
+                          )}
+                          <span>{uploading ? "Subiendo..." : fileToUpload ? "Cambiar Imagen" : "Seleccionar Imagen"}</span>
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageSelected}
+                        />
+                        {formData.imagen && (
+                          <button
+                            type="button"
+                            onClick={handleClearImage}
+                            className="px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer shrink-0"
+                            title="Limpiar imagen"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
 
                       {/* Quick Food Emoji Palette */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
@@ -240,7 +362,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                           <button
                             key={item.emoji}
                             type="button"
-                            onClick={() => setFormData({ ...formData, imagen: item.emoji })}
+                            onClick={() => handleSelectEmoji(item.emoji)}
                             className={`w-8 h-8 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
                               formData.imagen === item.emoji
                                 ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 scale-110 ring-2 ring-purple-300"
@@ -273,7 +395,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={handleCancelForm}
                   className="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors cursor-pointer"
                 >
                   Cancelar

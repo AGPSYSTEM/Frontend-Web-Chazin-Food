@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -9,7 +9,7 @@ const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 d
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
 const requiredMark = <span className="text-red-500"> *</span>;
 
-export function FichaTecnicaProducto({ productId, productName, initialData, onSave, readOnly = false }) {
+export function FichaTecnicaProducto({ productId, productName, initialData, onSave, onChange, readOnly = false }) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
   const [dbInsumosList, setDbInsumosList] = useState([]);
@@ -27,6 +27,51 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [searchInsumo, setSearchInsumo] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const lastSentRef = useRef("");
+  const isMountedRef = useRef(false);
+
+  // Sincronizar cambios en tiempo real hacia el componente padre (solo si cambiaron)
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
+    const payload = {
+      idProducto: productId || null,
+      procedimiento,
+      tiempoPreparacion: Number(tiempoPreparacion) || 0,
+      rendimiento,
+      especificaciones,
+      caracteristicas,
+      informacionNutricional,
+      condicionesAlmacenamiento,
+      vidaUtil,
+      observaciones,
+      detalles: insumos.map(i => ({
+        idInsumo: i.idInsumo || i.id,
+        nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
+        cantidad: Number(i.cantidad || 1),
+        unidadMedida: i.unidadMedida || 'und'
+      }))
+    };
+    const key = JSON.stringify(payload);
+    if (key !== lastSentRef.current) {
+      lastSentRef.current = key;
+      if (typeof onChangeRef.current === "function") {
+        onChangeRef.current(payload);
+      }
+    }
+  }, [
+    procedimiento, tiempoPreparacion, rendimiento, especificaciones,
+    caracteristicas, informacionNutricional, condicionesAlmacenamiento,
+    vidaUtil, observaciones, insumos, productId
+  ]);
+
   // Load insumos list for autocomplete search
   useEffect(() => {
     insumosService.getInsumos()
@@ -34,13 +79,16 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       .catch(() => setDbInsumosList([]));
   }, []);
 
+  const loadedInitialRef = useRef(null);
+
   // Load ficha data from prop or backend API
   const loadFichaData = useCallback(async () => {
-    if (initialData) {
+    if (initialData && initialData !== loadedInitialRef.current) {
+      loadedInitialRef.current = initialData;
       populateFields(initialData);
       return;
     }
-    if (productId) {
+    if (productId && !initialData) {
       try {
         const f = await fichasTecnicasService.getFichaByProducto(productId);
         if (f && f.idFichaTecnica) {
@@ -96,8 +144,10 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setInsumos((prev) =>
       prev.map((item, i) => {
         if (i === idx) {
-          const current = Math.floor(Number(item.cantidad) || 1);
-          const nuevaCant = Math.max(1, current + delta);
+          const current = Number(item.cantidad) || 0;
+          const isDecimalUnit = item.unidadMedida === 'kg' || item.unidadMedida === 'lt';
+          const step = isDecimalUnit ? 0.05 : 1;
+          const nuevaCant = Math.max(isDecimalUnit ? 0.01 : 1, Math.round((current + delta * step) * 100) / 100);
           return { ...item, cantidad: nuevaCant };
         }
         return item;
@@ -385,21 +435,23 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                             </button>
                             <input
                               type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
+                              inputMode="decimal"
                               value={item.cantidad}
-                              onKeyDown={(e) => {
-                                if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
-                                  e.preventDefault();
+                              onChange={(e) => {
+                                const val = e.target.value.replace(',', '.');
+                                if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                                  setInsumos(prev => prev.map((x, i) => i === idx ? { ...x, cantidad: val } : x));
                                 }
                               }}
-                              onChange={(e) => {
-                                const sanitized = String(e.target.value).replace(/[^0-9]/g, '');
-                                const val = sanitized === '' ? '' : Math.max(1, parseInt(sanitized, 10));
-                                setInsumos(prev => prev.map((x, i) => i === idx ? { ...x, cantidad: val } : x));
-                              }}
                               onBlur={() => {
-                                setInsumos(prev => prev.map((x, i) => i === idx ? { ...x, cantidad: Math.max(1, parseInt(x.cantidad, 10) || 1) } : x));
+                                setInsumos(prev => prev.map((x, i) => {
+                                  if (i === idx) {
+                                    const parsed = parseFloat(x.cantidad);
+                                    const finalVal = (!isNaN(parsed) && parsed > 0) ? parsed : 1;
+                                    return { ...x, cantidad: finalVal };
+                                  }
+                                  return x;
+                                }));
                               }}
                               className="w-16 text-center font-semibold border border-gray-200 dark:border-gray-700 rounded py-1 bg-white dark:bg-gray-800 text-xs text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-[#F05454]"
                             />
@@ -457,7 +509,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               onChange={(e) => setProcedimiento(e.target.value)}
               className={`${inputCls} resize-none`}
               rows={4}
-              required
               placeholder="Describe paso a paso cómo se prepara el producto..."
             />
           </div>
@@ -470,7 +521,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                required
                 value={tiempoPreparacion}
                 onKeyDown={(e) => {
                   if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
@@ -487,7 +537,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               <label className={labelCls}>Rendimiento / Porciones{requiredMark}</label>
               <input
                 type="text"
-                required
                 value={rendimiento}
                 onChange={(e) => setRendimiento(e.target.value)}
                 className={inputCls}
@@ -505,7 +554,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                 onChange={(e) => setEspecificaciones(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
-                required
                 placeholder="Gramaje, temperatura de cocción, estándares..."
               />
             </div>
@@ -516,7 +564,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                 onChange={(e) => setCaracteristicas(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
-                required
                 placeholder="Sabor, textura, aroma, apariencia..."
               />
             </div>
@@ -531,7 +578,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                 onChange={(e) => setInformacionNutricional(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
-                required
                 placeholder="Calorías, proteínas, carbohidratos..."
               />
             </div>
@@ -542,7 +588,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                 onChange={(e) => setCondicionesAlmacenamiento(e.target.value)}
                 className={`${inputCls} resize-none`}
                 rows={3}
-                required
                 placeholder="Refrigeración, temperatura ideal..."
               />
             </div>
@@ -554,7 +599,6 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               <label className={labelCls}>Vida Útil{requiredMark}</label>
               <input
                 type="text"
-                required
                 value={vidaUtil}
                 onChange={(e) => setVidaUtil(e.target.value)}
                 className={inputCls}
