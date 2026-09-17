@@ -39,18 +39,6 @@ const ICONO_OPTIONS = [
   { emoji: "⭐", label: "Destacado" },
   { emoji: "🌭", label: "Hot Dog" },
   { emoji: "🍟", label: "Papas" },
-  { emoji: "🥤", label: "Bebida" }
-];
-
-const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Insumos extra" },
-  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Precio fijo especial" },
-  { value: "Descuento", icon: Percent, label: "Descuento %", desc: "% de rebaja directa" },
-  { value: "2x1 / Combo Especial", icon: Gift, label: "2x1 / Combo", desc: "Paquete o 2x1" },
-  { value: "Lanzamiento / Novedad", icon: Rocket, label: "Lanzamiento", desc: "Nuevo sabor o plato" },
-  { value: "Happy Hour / Flash Sale", icon: Flame, label: "Flash Sale", desc: "Tiempo limitado" },
-  { value: "Edición Especial", icon: Crown, label: "Edición Especial", desc: "Temporada gourmet" },
-  { value: "Cortesía / Degustación", icon: Coffee, label: "Cortesía", desc: "Degustación / Regalo" }
 ];
 
 const PROD_EVENT_TYPES = [

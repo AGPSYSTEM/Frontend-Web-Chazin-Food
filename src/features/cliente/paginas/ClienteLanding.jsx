@@ -2143,7 +2143,6 @@ export function ClienteLanding() {
                       {producto.imagen || "🍔"}
                     </div>
                   )}
-                </div>
 
                 {/* Rediseño de Indicador de Evento Activo */}
                 {producto.eventos && producto.eventos.length > 0 && (() => {
