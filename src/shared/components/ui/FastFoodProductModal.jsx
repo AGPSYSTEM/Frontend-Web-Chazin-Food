@@ -507,6 +507,7 @@ export function FastFoodProductModal({
   const [guestName, setGuestName] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState(null); // { type: 'success'|'error', message: string }
+  const [showFullDesc, setShowFullDesc] = useState(false);
 
   const prodId = producto?.id || producto?.idProducto;
 
@@ -639,6 +640,7 @@ export function FastFoodProductModal({
       setImageError(false);
       setShowWriteReview(false);
       setReviewFeedback(null);
+      setShowFullDesc(false);
       fetchReviews();
     }
   }, [producto, isOpen, fetchReviews, initialTab]);
@@ -1077,29 +1079,25 @@ export function FastFoodProductModal({
             {/* Bottom Overlay Info (Name & Price) */}
             <div className="absolute bottom-3 left-4 right-4 z-20 flex items-end justify-between gap-3 text-white">
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-2xl font-black leading-tight drop-shadow-md line-clamp-1">
+                <h2 className="text-xl sm:text-2xl font-black leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-white tracking-tight">
                   {producto.nombre}
                 </h2>
-                {isDrink && selectedFlavor ? (
-                  <p className="text-xs text-amber-300 drop-shadow-sm line-clamp-1 font-bold mt-0.5 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: selectedFlavor.color }} />
-                    {selectedVariant?.nombre || selectedFlavor.nombre}
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-200/90 drop-shadow-sm line-clamp-1 font-medium mt-0.5">
-                    {producto.descripcion || "Preparación gourmet artesanal con insumos de primera."}
+                {isDrink && selectedFlavor && (
+                  <p className="text-xs text-amber-300 drop-shadow-md font-bold mt-1 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full inline-block border border-white/40" style={{ backgroundColor: selectedFlavor.color }} />
+                    <span>{selectedVariant?.nombre || selectedFlavor.nombre}</span>
                   </p>
                 )}
               </div>
 
               {/* Price Pill */}
-              <div className="text-right shrink-0 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20 shadow-lg">
+              <div className="text-right shrink-0 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/25 shadow-xl">
                 {hasDiscount && (
                   <span className="block text-[11px] text-gray-300 line-through font-bold">
                     ${originalPrice.toLocaleString("es-CO")}
                   </span>
                 )}
-                <span className="text-base sm:text-xl font-black text-amber-300 drop-shadow-sm">
+                <span className="text-base sm:text-xl font-black text-amber-300 drop-shadow-md">
                   ${basePrice.toLocaleString("es-CO")}
                 </span>
               </div>
@@ -1136,7 +1134,7 @@ export function FastFoodProductModal({
               </span>
             </button>
 
-            <div className="flex items-center gap-3 text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-3 text-[11.5px] font-bold text-gray-700 dark:text-gray-300">
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-red-500" />
                 {ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : "1 - 2 min"}
@@ -1153,6 +1151,28 @@ export function FastFoodProductModal({
               </span>
             </div>
           </div>
+
+          {/* ═══ DESCRIPCIÓN COMPLETA DEL PLATILLO (MÁXIMA LEGIBILIDAD Y ALTO CONTRASTE) ═══ */}
+          {producto.descripcion && (
+            <div className="mx-4 sm:mx-6 mt-3.5 p-4 rounded-2xl bg-white dark:bg-gray-850 border-2 border-amber-300/80 dark:border-amber-600/50 shadow-sm flex items-start gap-3.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-base shadow-2xs mt-0.5">
+                🍽️
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="font-black text-xs text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+                    Descripción & Preparación:
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    Receta de la Casa
+                  </span>
+                </div>
+                <p className="text-sm sm:text-[15px] font-medium text-gray-900 dark:text-gray-100 leading-relaxed">
+                  {producto.descripcion}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ═══ BENEFICIOS EXCLUSIVOS DEL EVENTO (FESTIVAL DROP HIGHLIGHT) ═══ */}
           {eventInfo && (

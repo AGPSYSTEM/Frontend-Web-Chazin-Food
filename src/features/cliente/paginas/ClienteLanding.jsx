@@ -19,6 +19,7 @@ import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -337,6 +338,13 @@ export function ClienteLanding() {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modalInitialTab, setModalInitialTab] = useState("personalizar");
   const [showResenasModal, setShowResenasModal] = useState(false);
+
+  // Real-time ticker for live countdowns (1-second precision)
+  const [liveTick, setLiveTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setLiveTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
   const [productoParaResenas, setProductoParaResenas] = useState(null);
   const [ratingsMap, setRatingsMap] = useState({});
 
@@ -1320,31 +1328,77 @@ export function ClienteLanding() {
   const comprasFaltantes = fidelidadCliente.comprasFaltantes !== undefined ? fidelidadCliente.comprasFaltantes : (3 - (comprasCiclo % 3));
   const siguienteNivel = fidelidadCliente.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
 
-  // Dynamic real-time calculation of remaining days in hero banner
+  // Dynamic real-time calculation of remaining days and seconds in hero banner
   const heroVenceObj = fidelidadCliente.fechaVencimientoNivel || fidelidadCliente.vence ? new Date(fidelidadCliente.fechaVencimientoNivel || fidelidadCliente.vence) : null;
-  let heroDiasRestantes = fidelidadCliente.diasRestantes !== undefined ? fidelidadCliente.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);
-  let heroEnGracia = Boolean(fidelidadCliente.enGracia);
-  let heroDiasGracia = fidelidadCliente.diasGraciaRestantes || 0;
 
-  if (tipoFidelidad !== "Nuevo" && heroVenceObj && !isNaN(heroVenceObj.getTime())) {
-    const diffMs = heroVenceObj.getTime() - Date.now();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDays > 0) {
-      heroDiasRestantes = diffDays;
-      heroEnGracia = false;
-      heroDiasGracia = 0;
-    } else {
-      const diasExpirado = Math.abs(diffDays);
-      const limiteGracia = tipoFidelidad === "VIP" ? 15 : (tipoFidelidad === "Frecuente" ? 10 : 0);
-      if (limiteGracia > 0 && diasExpirado <= limiteGracia) {
-        heroEnGracia = true;
-        heroDiasGracia = Math.max(1, limiteGracia - diasExpirado);
-        heroDiasRestantes = 0;
-      } else {
-        heroDiasRestantes = 0;
-      }
+  const heroLiveStatus = useMemo(() => {
+    if (tipoFidelidad === "Nuevo") {
+      return {
+        esNuevo: true,
+        enGracia: false,
+        expirado: false,
+        countdownStr: null,
+        diasRestantes: null,
+      };
     }
-  }
+
+    if (!heroVenceObj || isNaN(heroVenceObj.getTime())) {
+      return {
+        esNuevo: false,
+        enGracia: false,
+        expirado: false,
+        countdownStr: "30 días restantes",
+        diasRestantes: 30,
+      };
+    }
+
+    const diffMs = heroVenceObj.getTime() - liveTick;
+
+    if (diffMs > 0) {
+      const totalSec = Math.floor(diffMs / 1000);
+      const d = Math.floor(totalSec / 86400);
+      const h = Math.floor((totalSec % 86400) / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const str = `${d > 0 ? `${d}d ` : ""}${h}h ${m}m ${String(s).padStart(2, "0")}s restantes`;
+      return {
+        esNuevo: false,
+        enGracia: false,
+        expirado: false,
+        countdownStr: str,
+        diasRestantes: d,
+      };
+    }
+
+    // Vencido -> Evaluar Periodo de Gracia
+    const msExpirado = Math.abs(diffMs);
+    const limiteGraciaDias = tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : 0;
+    const limiteGraciaMs = limiteGraciaDias * 86400000;
+
+    if (limiteGraciaDias > 0 && msExpirado < limiteGraciaMs) {
+      const msRestanteGracia = limiteGraciaMs - msExpirado;
+      const totalSecG = Math.floor(msRestanteGracia / 1000);
+      const dG = Math.floor(totalSecG / 86400);
+      const hG = Math.floor((totalSecG % 86400) / 3600);
+      const mG = Math.floor((totalSecG % 3600) / 60);
+      const sG = totalSecG % 60;
+      return {
+        esNuevo: false,
+        enGracia: true,
+        expirado: false,
+        countdownStr: `Periodo de Gracia: ${dG > 0 ? `${dG}d ` : ""}${hG}h ${mG}m ${String(sG).padStart(2, "0")}s`,
+        diasGracia: dG,
+      };
+    }
+
+    return {
+      esNuevo: false,
+      enGracia: false,
+      expirado: true,
+      countdownStr: "Membresía por renovar",
+      diasRestantes: 0,
+    };
+  }, [tipoFidelidad, heroVenceObj, liveTick]);
 
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
@@ -1520,12 +1574,14 @@ export function ClienteLanding() {
             clearCart();
             setShowCart(false);
             await fetchMyOrders();
+            if (refreshUser) await refreshUser();
             setShowPedidos(true);
           } else if (verificacion.estado === 'PENDING') {
             success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Te notificaremos en cuanto se confirme.");
             clearCart();
             setShowCart(false);
             await fetchMyOrders();
+            if (refreshUser) await refreshUser();
             setShowPedidos(true);
           } else {
             setShowCheckout(true);
@@ -1649,6 +1705,7 @@ export function ClienteLanding() {
         setShowCheckout(false);
         setShowCart(false);
         await fetchMyOrders();
+        if (refreshUser) await refreshUser();
         setShowPedidos(true);
       } catch (err) {
         console.error("Error confirmando pedido:", err);
@@ -1837,10 +1894,15 @@ export function ClienteLanding() {
                       {discountPercent}% OFF activo
                     </span>
                   )}
-                  {heroEnGracia && (
-                    <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1">
+                  {heroLiveStatus.enGracia && (
+                    <span className="px-2.5 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-lg flex items-center gap-1 animate-pulse">
                       <Clock className="w-3 h-3" />
-                      <span>Periodo de Gracia: {heroDiasGracia}d</span>
+                      <span>{heroLiveStatus.countdownStr}</span>
+                    </span>
+                  )}
+                  {heroLiveStatus.esNuevo && (
+                    <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold rounded-lg">
+                      Membresía Permanente
                     </span>
                   )}
                 </div>
@@ -1857,12 +1919,12 @@ export function ClienteLanding() {
                         ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para renovar`
                         : `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para subir a ${siguienteNivel}`}
                   </span>
-                  {tipoFidelidad !== "Nuevo" && heroDiasRestantes !== null && !heroEnGracia && (
+                  {!heroLiveStatus.esNuevo && heroLiveStatus.countdownStr && !heroLiveStatus.enGracia && (
                     <>
                       <span className="text-gray-400">•</span>
-                      <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1 font-medium">
-                        <Clock className="w-3 h-3 text-gray-400" />
-                        <span>Vigencia: {heroDiasRestantes} {heroDiasRestantes === 1 ? 'día restante' : 'días restantes'}</span>
+                      <span className="text-gray-600 dark:text-gray-300 flex items-center gap-1 font-mono font-bold bg-white/70 dark:bg-gray-800/70 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700">
+                        <Clock className="w-3 h-3 text-[#f05454]" />
+                        <span>Vigencia: {heroLiveStatus.countdownStr}</span>
                       </span>
                     </>
                   )}
@@ -2056,7 +2118,33 @@ export function ClienteLanding() {
                     </div>
                   </div>
                 )}
-                
+
+                {/* ═══ ESCENARIO GOURMET AMBIENTAL DUAL-LAYER (ENCUADRE 100% PERFECTO & SOMBRA 3D) ═══ */}
+                <div className="relative h-48 sm:h-52 w-full bg-gray-950 flex items-center justify-center overflow-hidden border-b border-gray-100 dark:border-gray-800/80">
+                  {/* Capa 1: Glow ambiental difuminado con los colores vivos de la comida */}
+                  {hasRealImage ? (
+                    <>
+                      <img
+                        src={producto.imagen}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover scale-125 blur-xl opacity-35 dark:opacity-40 filter saturate-150 pointer-events-none"
+                      />
+                      {/* Vignette oscura sutil para contraste pro */}
+                      <div className="absolute inset-0 bg-radial from-transparent via-black/20 to-black/70 pointer-events-none" />
+                      {/* Capa 2: Producto protagonista flotante con iluminación cenital */}
+                      <img
+                        src={producto.imagen}
+                        alt={producto.nombre}
+                        className="relative z-10 max-h-[92%] max-w-[92%] object-contain drop-shadow-[0_12px_16px_rgba(0,0,0,0.55)] group-hover:scale-108 group-hover:-rotate-1 transition-all duration-300 ease-out"
+                        loading="lazy"
+                      />
+                    </>
+                  ) : (
+                    <div className="text-7xl group-hover:scale-115 transition-transform duration-300 select-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]">
+                      {producto.imagen || "🍔"}
+                    </div>
+                  )}
+
                 {/* Rediseño de Indicador de Evento Activo */}
                 {producto.eventos && producto.eventos.length > 0 && (() => {
                   const evt = producto.eventos[0];
@@ -2085,52 +2173,8 @@ export function ClienteLanding() {
                   <span>Ver detalles</span>
                 </div>
               </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-red-500 transition-colors">{producto.nombre}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion || "Platillo preparado con ingredientes frescos y de calidad."}</p>
-                  
-                  {/* Rating Stars Summary */}
-                  <div className="mt-2 flex items-center justify-between">
-                    {(() => {
-                      const pId = producto.id || producto.idProducto;
-                      const rInfo = ratingsMap[pId];
-                      if (rInfo && rInfo.total > 0) {
-                        return (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProductoParaResenas(producto);
-                              setShowResenasModal(true);
-                            }}
-                            className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
-                            title="Ver reseñas"
-                          >
-                            <StarRating value={rInfo.promedio} readonly size="xs" />
-                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
-                            <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProductoParaResenas(producto);
-                            setShowResenasModal(true);
-                          }}
-                          className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <Star className="w-3 h-3" />
-                          <span>Sin reseñas</span>
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors line-clamp-1">
                       {producto.nombre}
@@ -3119,7 +3163,47 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* Modal Reseñas de Producto */}
+      {/* Modal de Personalización Individual de Eventos */}
+      <PersonalizarEventoModal
+        isOpen={showPersonalizarEventoModal}
+        onClose={() => setShowPersonalizarEventoModal(false)}
+        evento={eventoParaPersonalizar}
+        producto={productoParaEvento}
+        productosList={activeProductos}
+        adicionesList={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+        allBebidas={bebidasDisponibles}
+        fichasMap={fichasMap}
+        ratingsMap={ratingsMap}
+        onOpenResenas={(prod) => {
+          setProductoParaResenas(prod);
+          setShowResenasModal(true);
+        }}
+        onAddToCart={(item, selectedDrinks = []) => {
+          const res = addToCart(item);
+          if (res && res.success === false) {
+            error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+            return;
+          }
+          if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
+            for (const b of selectedDrinks) {
+              addToCart({
+                id: b.id || b.idProducto,
+                idProducto: b.idProducto || b.id,
+                nombre: b.nombre,
+                precio: Number(b.precio || 0),
+                cantidad: 1,
+                esBebida: true,
+                categoria: "Bebidas"
+              });
+            }
+          }
+          const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
+          success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
+        }}
+        getProductQuantityInCart={getProductQuantityInCart}
+      />
+
+      {/* Modal Reseñas de Producto (renders over PersonalizarEventoModal) */}
       <ProductoResenasModal
         isOpen={showResenasModal}
         onClose={() => {
@@ -3133,25 +3217,6 @@ export function ClienteLanding() {
           }
         }}
         producto={productoParaResenas}
-      />
-
-      {/* Modal de Personalización Individual de Eventos */}
-      <PersonalizarEventoModal
-        isOpen={showPersonalizarEventoModal}
-        onClose={() => setShowPersonalizarEventoModal(false)}
-        evento={eventoParaPersonalizar}
-        producto={productoParaEvento}
-        productosList={activeProductos}
-        adicionesList={activeAdiciones}
-        onAddToCart={(item) => {
-          const res = addToCart(item);
-          if (res && res.success === false) {
-            error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-            return;
-          }
-          success("¡Agregado al carrito!", `${item.nombre} se agregó correctamente con sus personalizaciones.`);
-        }}
-        getProductQuantityInCart={getProductQuantityInCart}
       />
     </div>
   );

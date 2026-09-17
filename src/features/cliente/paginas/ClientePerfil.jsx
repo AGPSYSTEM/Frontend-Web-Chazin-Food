@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Sprout,
   Check,
   Mail,
   Phone,
@@ -292,12 +293,16 @@ export function ClientePerfil() {
 
   useEffect(() => {
     fetchMyOrders();
-  }, [fetchMyOrders]);
+    if (refreshUser) refreshUser();
+  }, [fetchMyOrders, refreshUser]);
 
   // ── Calculate Advanced Real Statistics ──
   const stats = useMemo(() => {
-    const totalPedidosCount = pedidos.length;
-    const completedPedidos = pedidos.filter((p) => p.estado !== "Anulada");
+    const completedPedidos = pedidos.filter((p) => {
+      const st = String(p.estado || "").toUpperCase();
+      return !st.includes("ANULAD") && !st.includes("CANCEL") && !st.includes("RECHAZ");
+    });
+    const totalPedidosCount = completedPedidos.length;
 
     // Total spent & savings
     const totalGastado = completedPedidos.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
@@ -420,38 +425,122 @@ export function ClientePerfil() {
       ? new Date(fidelidad.fechaVencimientoNivel || fidelidad.vence)
       : null;
 
-  // Real-time client countdown ticker
+  // Real-time client countdown ticker (1-second precision)
   const [currentTick, setCurrentTick] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTick(Date.now()), 60000);
+    const timer = setInterval(() => setCurrentTick(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const now = new Date(currentTick);
-  let diasRestantes = diasRestantesRaw;
-  let enGraciaActivo = enGracia;
-  let diasGraciaRestantes = diasGraciaRestantesRaw;
-
-  if (tipoFidelidad !== "Nuevo" && fechaVencimientoObj && !isNaN(fechaVencimientoObj.getTime())) {
-    const diffMs = fechaVencimientoObj.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > 0) {
-      diasRestantes = diffDays;
-      enGraciaActivo = false;
-      diasGraciaRestantes = 0;
-    } else {
-      const diasExpirado = Math.abs(diffDays);
-      const limiteGracia = tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : 0;
-      if (limiteGracia > 0 && diasExpirado <= limiteGracia) {
-        enGraciaActivo = true;
-        diasGraciaRestantes = Math.max(1, limiteGracia - diasExpirado);
-        diasRestantes = 0;
-      } else {
-        diasRestantes = 0;
-      }
+  const liveFidelityStatus = useMemo(() => {
+    if (tipoFidelidad === "Nuevo") {
+      return {
+        esNuevo: true,
+        enGracia: false,
+        expirado: false,
+        diasRestantes: null,
+        formattedCountdown: "Membresía Permanente sin vencimiento",
+        pctRemaining: 100,
+        barColor: "from-emerald-500 to-teal-500",
+        fechaVencimientoStr: null,
+      };
     }
-  }
+
+    if (!fechaVencimientoObj || isNaN(fechaVencimientoObj.getTime())) {
+      return {
+        esNuevo: false,
+        enGracia: false,
+        expirado: false,
+        diasRestantes: 30,
+        formattedCountdown: "30 días restantes",
+        pctRemaining: 100,
+        barColor: "from-emerald-500 to-teal-500",
+        fechaVencimientoStr: null,
+      };
+    }
+
+    const diffMs = fechaVencimientoObj.getTime() - currentTick;
+
+    if (diffMs > 0) {
+      const totalSec = Math.floor(diffMs / 1000);
+      const d = Math.floor(totalSec / 86400);
+      const h = Math.floor((totalSec % 86400) / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+
+      const pct = Math.min(100, Math.max(0, (diffMs / (30 * 86400000)) * 100));
+      const barColor =
+        pct > 33
+          ? "from-emerald-500 to-teal-500"
+          : pct > 12
+          ? "from-amber-500 to-orange-500"
+          : "from-red-500 to-rose-600 animate-pulse";
+
+      return {
+        esNuevo: false,
+        enGracia: false,
+        expirado: false,
+        diasRestantes: d,
+        horasRestantes: h,
+        minutosRestantes: m,
+        segundosRestantes: s,
+        formattedCountdown: `${d > 0 ? `${d}d ` : ""}${h}h ${m}m ${String(s).padStart(2, "0")}s restantes`,
+        pctRemaining: Math.max(pct, 5),
+        barColor,
+        fechaVencimientoStr: fechaVencimientoObj.toLocaleDateString("es-CO", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+      };
+    }
+
+    // Expiration date passed -> Evaluate grace period
+    const msExpirado = Math.abs(diffMs);
+    const limiteGraciaDias = tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : 0;
+    const limiteGraciaMs = limiteGraciaDias * 86400000;
+
+    if (limiteGraciaDias > 0 && msExpirado < limiteGraciaMs) {
+      const msRestanteGracia = limiteGraciaMs - msExpirado;
+      const totalSecG = Math.floor(msRestanteGracia / 1000);
+      const dG = Math.floor(totalSecG / 86400);
+      const hG = Math.floor((totalSecG % 86400) / 3600);
+      const mG = Math.floor((totalSecG % 3600) / 60);
+      const sG = totalSecG % 60;
+      const pctG = Math.min(100, Math.max(5, (msRestanteGracia / limiteGraciaMs) * 100));
+
+      return {
+        esNuevo: false,
+        enGracia: true,
+        expirado: false,
+        diasGracia: dG,
+        horasGracia: hG,
+        minutosGracia: mG,
+        segundosGracia: sG,
+        formattedCountdown: `${dG > 0 ? `${dG}d ` : ""}${hG}h ${mG}m ${String(sG).padStart(2, "0")}s para reactivar`,
+        pctRemaining: pctG,
+        barColor: "from-amber-500 to-red-500 animate-pulse",
+        fechaVencimientoStr: "En periodo de gracia",
+      };
+    }
+
+    // Grace expired -> Tier degraded
+    return {
+      esNuevo: false,
+      enGracia: false,
+      expirado: true,
+      diasRestantes: 0,
+      formattedCountdown: "Ciclo Vencido (Nivel por renovar)",
+      pctRemaining: 0,
+      barColor: "from-red-600 to-gray-600",
+      fechaVencimientoStr: "Vencido",
+    };
+  }, [tipoFidelidad, fechaVencimientoObj, currentTick]);
+
+  const now = new Date(currentTick);
+  const diasRestantes = liveFidelityStatus.diasRestantes;
+  const enGraciaActivo = liveFidelityStatus.enGracia;
+  const diasGraciaRestantes = liveFidelityStatus.diasGracia || diasGraciaRestantesRaw;
 
   // Format clean full name avoiding word duplication
   const formatFullName = (u) => {
@@ -787,21 +876,39 @@ export function ClientePerfil() {
                 </div>
 
                 {/* Expiration, Grace & Real-Time Countdown Progress Bar */}
-                {tipoFidelidad !== "Nuevo" && (
+                {/* Expiration, Grace & Real-Time Countdown Progress Bar */}
+                {tipoFidelidad === "Nuevo" ? (
+                  <div className="pt-2">
+                    <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                          <Sprout className="w-3.5 h-3.5 shrink-0" />
+                          <span>Membresía Permanente</span>
+                        </span>
+                        <span className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10.5px] font-black px-2 py-0.5 rounded-md">
+                          Sin vencimiento
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-emerald-700 dark:text-emerald-300/90 mt-1">
+                        Realiza 3 compras para ascender al nivel <strong>Regular</strong> y obtener <strong>5% OFF</strong> automático en todos tus pedidos.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
                   <div className="pt-2 space-y-2">
-                    {enGraciaActivo ? (
+                    {liveFidelityStatus.enGracia ? (
                       <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200">
                         <div className="flex items-center justify-between text-xs font-black">
                           <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                             <AlertTriangle className="w-3.5 h-3.5 animate-pulse shrink-0" />
                             <span>Periodo de Gracia Activo</span>
                           </span>
-                          <span className="bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-md font-black">
-                            {diasGraciaRestantes} días restantes
+                          <span className="bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-md font-mono font-black text-[11px]">
+                            {liveFidelityStatus.formattedCountdown}
                           </span>
                         </div>
                         <p className="text-[10.5px] text-amber-700 dark:text-amber-300/90 mt-1">
-                          Realiza 1 compra antes de que finalicen tus días de gracia para reactivar tu nivel {tipoFidelidad} sin descender.
+                          Realiza 1 compra antes de que finalice tu tiempo de gracia para reactivar tu nivel {tipoFidelidad} sin descender.
                         </p>
                       </div>
                     ) : (
@@ -809,23 +916,23 @@ export function ClientePerfil() {
                         <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5 text-[#f05454]" />
-                            <span>Vigencia del Nivel (Ciclo 30 días):</span>
+                            <span>Vigencia del Nivel (Tiempo Real):</span>
                           </span>
-                          <span className="text-[#f05454] font-black">
-                            {diasRestantes !== null ? `${diasRestantes} de 30 días restantes` : "30 días restantes"}
+                          <span className="text-[#f05454] font-mono font-bold text-[11px] bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-md border border-red-100 dark:border-red-900/40">
+                            {liveFidelityStatus.formattedCountdown}
                           </span>
                         </div>
-                        {/* Progress Bar for the 30-day cycle */}
-                        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                        {/* Progress Bar with Correct Health Color */}
+                        <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
                           <div
-                            className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-[#f05454] rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, Math.max(5, ((diasRestantes !== null ? diasRestantes : 30) / 30) * 100))}%` }}
+                            className={`h-full bg-gradient-to-r ${liveFidelityStatus.barColor} rounded-full transition-all duration-300`}
+                            style={{ width: `${liveFidelityStatus.pctRemaining}%` }}
                           />
                         </div>
                         {fechaVencimientoObj && (
                           <div className="flex items-center justify-between text-[10px] text-gray-400">
-                            <span>Fecha de Renovación:</span>
-                            <span className="font-bold">{fechaVencimientoObj.toLocaleDateString("es-CO")}</span>
+                            <span>Próxima Renovación:</span>
+                            <span className="font-bold">{liveFidelityStatus.fechaVencimientoStr}</span>
                           </div>
                         )}
                       </div>
@@ -971,6 +1078,37 @@ export function ClientePerfil() {
             {/* ══ TAB 1: FIDELIDAD & HÁBITOS ══ */}
             {tab === "fidelidad" && (
               <div className="space-y-6">
+                {/* Real-time Fidelity Card */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-red-500/10 border border-amber-200 dark:border-amber-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xl">
+                        {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+                      </span>
+                      <h4 className="font-black text-base text-gray-900 dark:text-gray-100">
+                        Nivel {tipoFidelidad}
+                      </h4>
+                      {descuentoPorcentaje > 0 && (
+                        <span className="px-2.5 py-0.5 rounded-lg bg-[#f05454] text-white text-xs font-black">
+                          {descuentoPorcentaje}% OFF
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                      {tipoFidelidad === "Nuevo"
+                        ? "Membresía Permanente sin vencimiento. Completa 3 compras para desbloquear 5% de descuento permanente."
+                        : `Vigencia activa con renovación automática cada 30 días o al cumplir la meta del ciclo.`}
+                    </p>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-2xs shrink-0 self-stretch md:self-auto text-center md:text-right">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Tiempo Restante:</span>
+                    <span className="font-mono font-black text-sm text-[#f05454] block mt-0.5">
+                      {liveFidelityStatus.formattedCountdown}
+                    </span>
+                  </div>
+                </div>
+
                 {/* Top 3 Platillos Ranking & Hábitos */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left 2 Cols: Top Platillos Ranking */}
