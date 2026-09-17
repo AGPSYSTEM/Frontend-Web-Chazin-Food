@@ -5,6 +5,7 @@ import { useUsuarios } from "../hooks/useUsuarios";
 import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
 import { UsuarioPasswordModal } from "../componentes/usuarios/UsuarioPasswordModal";
+import { UsuarioDetalleModal } from "../componentes/usuarios/UsuarioDetalleModal";
 
 export function Usuarios() {
   const {
@@ -29,6 +30,8 @@ export function Usuarios() {
 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordUsuario, setPasswordUsuario] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingUsuario, setViewingUsuario] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
@@ -41,6 +44,11 @@ export function Usuarios() {
   const pillBtn = (active) => active
     ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F05454] text-white shadow-sm"
     : "px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
+
+  const handleOpenView = (usuario) => {
+    setViewingUsuario(usuario);
+    setViewModalOpen(true);
+  };
 
   const handleOpenCreate = () => {
     setEditingUsuario(null);
@@ -298,6 +306,7 @@ export function Usuarios() {
         onEdit={handleOpenEdit}
         onDelete={deleteUsuario}
         onChangePassword={handleOpenPassword}
+        onView={handleOpenView}
       />
 
       {/* Modals */}
@@ -314,6 +323,15 @@ export function Usuarios() {
         onClose={() => setPasswordModalOpen(false)}
         onSave={handleSavePassword}
         usuario={passwordUsuario}
+      />
+
+      <UsuarioDetalleModal
+        isOpen={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setViewingUsuario(null);
+        }}
+        usuario={viewingUsuario}
       />
     </div>
   );

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { 
-  X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2, CalendarClock,
-  Percent, Gift, Rocket, Flame, Crown, Coffee, Sparkles, UtensilsCrossed 
+import { useState, useEffect, useRef } from "react";
+import {
+  X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
+  CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
+  Layers, Utensils, Plus, Minus, Check, Flame, Crown, Coffee, ChevronDown, ChevronUp, Image as ImageIcon,
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -13,11 +15,11 @@ import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Insumos extra" },
-  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Precio fijo especial" },
-  { value: "Descuento", icon: Percent, label: "Descuento %", desc: "% de rebaja directa" },
-  { value: "2x1 / Combo Especial", icon: Gift, label: "2x1 / Combo", desc: "Paquete o 2x1" },
-  { value: "Lanzamiento / Novedad", icon: Rocket, label: "Lanzamiento", desc: "Nuevo sabor o plato" },
+  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Modifica receta base" },
+  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Rebaja temporal" },
+  { value: "Descuento", icon: ArrowDownUp, label: "Descuento %", desc: "Descuento directo" },
+  { value: "2x1 / Combo Especial", icon: Zap, label: "2x1 / Combo", desc: "Oferta por volumen" },
+  { value: "Lanzamiento / Novedad", icon: Sparkles, label: "Lanzamiento", desc: "Nuevo en carta" },
   { value: "Happy Hour / Flash Sale", icon: Flame, label: "Flash Sale", desc: "Tiempo limitado" },
   { value: "Edición Especial", icon: Crown, label: "Edición Especial", desc: "Temporada gourmet" },
   { value: "Cortesía / Degustación", icon: Coffee, label: "Cortesía", desc: "Degustación / Regalo" }
@@ -34,10 +36,10 @@ const ICONO_OPTIONS = [
   { emoji: "🎁", label: "Combo" },
   { emoji: "🚀", label: "Lanzamiento" },
   { emoji: "🌟", label: "Estrella" },
-  { emoji: "⏱️", label: "Tiempo" },
-  { emoji: "💥", label: "Mega Promo" },
-  { emoji: "🍹", label: "Bebida" },
-  { emoji: "🏆", label: "Exclusivo" }
+  { emoji: "⭐", label: "Destacado" },
+  { emoji: "🌭", label: "Hot Dog" },
+  { emoji: "🍟", label: "Papas" },
+  { emoji: "🥤", label: "Bebida" }
 ];
 
 const PROD_EVENT_TYPES = [
@@ -142,7 +144,6 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   useEffect(() => {
     if (isOpen) {
       setTipoEvento("Añadir Insumos");
-      setIcono("🎉");
       setIsTemporal(false);
       setNombreEvento("");
       setDescripcion("");
@@ -155,6 +156,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+      setIcono("🎉");
       setFechaInicio(localToday);
       setFechaFin(localFuture);
       
@@ -569,6 +571,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           nombreEvento: nombreEvento.trim(),
           descripcion: finalDescripcion || "Edición especial gastronómica de tiempo limitado.",
           tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
+          icono: icono || "🎉",
           isTemporal: prodVigenciaTipo === "temporal",
           fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || localTodaySub) : null,
           fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || localFutureSub) : null,
@@ -644,34 +647,27 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         payload.fechaFin = fechaFin;
       }
 
-      const isModifierInsumos = tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad";
-      if (isModifierInsumos) {
+      if (tipoEvento === "Añadir Insumos") {
         payload.accion = accion;
         payload.insumos = insumosSeleccionados;
         if (nuevoPrecio) {
           payload.nuevoPrecio = Number(nuevoPrecio);
         }
-      }
-
-      if (!producto) {
+      } else if (!producto) {
         // Global event: mapped to array of products
         payload.productos = productosSeleccionados.map(p => ({
           idProducto: p.id,
-          nuevoPrecio: (tipoEvento === "Promoción Precio" || tipoEvento === "2x1 / Combo Especial" || tipoEvento === "Edición Especial" || nuevoPrecio) ? Number(p.nuevoPrecio || nuevoPrecio || 0) : null,
-          descuento: (tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") ? Number(p.descuento || descuento || 0) : null
+          nuevoPrecio: tipoEvento === "Promoción Precio" ? Number(p.nuevoPrecio) : null,
+          descuento: tipoEvento === "Descuento" ? Number(p.descuento) : null
         }));
-      } else {
-        if (tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") {
-          payload.descuento = Number(descuento);
-        } else if (tipoEvento === "Promoción Precio" || tipoEvento === "2x1 / Combo Especial" || tipoEvento === "Edición Especial") {
-          payload.nuevoPrecio = Number(nuevoPrecio);
-        } else if (nuevoPrecio) {
-          payload.nuevoPrecio = Number(nuevoPrecio);
-        }
+      } else if (tipoEvento === "Descuento") {
+        payload.descuento = Number(descuento);
+      } else if (tipoEvento === "Promoción Precio") {
+        payload.nuevoPrecio = Number(nuevoPrecio);
       }
 
       await eventosService.createEvento(payload);
-      success("¡Evento Creado!", "El evento se ha registrado correctamente con su iconografía.");
+      success("¡Evento Creado!", "El evento se ha registrado correctamente.");
       if (onCreated) onCreated();
       onClose();
     } catch (err) {
@@ -708,118 +704,32 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
 
         {/* Scrollable Body */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
-          {/* Tipo de Evento */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              Tipo de Evento
-            </label>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-              Selecciona el tipo de beneficio u objetivo que tendrá este evento.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {TIPO_EVENTO_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const isActive = tipoEvento === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTipoEvento(opt.value)}
-                    className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
-                      isActive
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-purple-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <span className="font-bold text-xs leading-tight">{opt.label}</span>
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug line-clamp-1">{opt.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Selector de Iconografía */}
-          <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Iconografía del Evento
-              </label>
-              <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
-                <span>Insignia:</span> <span className="text-base">{icono}</span>
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
-            </p>
-            <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
-              {ICONO_OPTIONS.map((item) => {
-                const isSelected = icono === item.emoji;
-                return (
-                  <button
-                    key={item.emoji}
-                    type="button"
-                    onClick={() => setIcono(item.emoji)}
-                    title={item.label}
-                    className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
-                        : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
-                    }`}
-                  >
-                    {item.emoji}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Temporalidad Toggle */}
-          <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-750 select-none">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${isTemporal ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30' : 'bg-gray-200 text-gray-500 dark:bg-gray-700'}`}>
-                <CalendarClock className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Evento Temporal</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Activo solo en un rango de fechas</p>
-              </div>
-            </div>
-            <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isTemporal ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isTemporal ? 'translate-x-6' : 'translate-x-1'}`} />
-            </div>
-            {/* Hidden checkbox to trigger onChange */}
-            <input type="checkbox" className="hidden" checked={isTemporal} onChange={() => setIsTemporal(!isTemporal)} />
-          </label>
-
-          {/* Fechas (Condicionales) */}
-          {isTemporal && (
-            <div className="grid grid-cols-2 gap-4 p-4 border border-purple-100 dark:border-purple-900/30 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Fecha Inicio
-                </label>
-                <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Fecha Fin
-                </label>
-                <input
-                  type="date"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
-                />
-              </div>
+          {/* Segmented Control: Modo Vincular Existente vs Crear Producto Nuevo */}
+          {!producto && (
+            <div className="flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setModoCrearProducto(false)}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  !modoCrearProducto
+                    ? "bg-white dark:bg-gray-900 text-purple-700 dark:text-purple-300 shadow-sm"
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+              >
+                <span>🔗 Vincular a Producto Existente</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoCrearProducto(true)}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  modoCrearProducto
+                    ? "bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>✨ Crear Producto de Evento Nuevo</span>
+              </button>
             </div>
           )}
 
@@ -868,22 +778,40 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                   </div>
                 </div>
 
-          {/* Detalle Insumos */}
-          {(tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad") && (
-            <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Gestión de Insumos</h3>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="accion"
-                      value="Agregar"
-                      checked={accion === "Agregar"}
-                      onChange={() => setAccion("Agregar")}
-                      className="accent-purple-600"
-                    />
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Sumar al plato</span>
+                
+                {/* Selector de Iconografía */}
+                <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 rounded-xl border border-purple-100 dark:border-purple-900/30">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Icono de la Campaña / Festival
+                    </label>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                      {icono}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-7 sm:grid-cols-14 gap-1.5">
+                    {ICONO_OPTIONS.map((item) => (
+                      <button
+                        key={item.emoji}
+                        type="button"
+                        onClick={() => setIcono(item.emoji)}
+                        title={item.label}
+                        className={`h-8 rounded-lg flex items-center justify-center text-base transition-all cursor-pointer ${
+                          icono === item.emoji
+                            ? "bg-purple-600 text-white shadow-sm scale-110"
+                            : "bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                        }`}
+                      >
+                        {item.emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Título del Evento / Campaña */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                    Nombre del Evento / Campaña *
                   </label>
                   <input
                     type="text"
@@ -1378,60 +1306,355 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 />
               </div>
 
-          {/* Sección de Precio / Descuento */}
-          <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-              {(tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale")
-                ? "Detalles del Descuento" 
-                : (tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad")
-                ? "Precio de Venta (Opcional)" 
-                : "Detalles del Precio Promocional"}
-            </h3>
-            
-            {producto ? (
-              // Single product event
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
-                  <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                    ${producto?.precio?.toLocaleString() || "0"}
+              {/* Sección: Ingrediente Extra o Topping de Cortesía (Opcional) */}
+              <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <Gift className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                        Topping de Cortesía Incluido por la Campaña (Opcional)
+                      </h4>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        ¿Este festival incluye un topping o ingrediente de regalo sin costo adicional para el comensal?
+                      </p>
+                    </div>
                   </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                      {tieneCortesia ? "Con Cortesía" : "Sin Cortesía"}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={tieneCortesia}
+                      onChange={(e) => setTieneCortesia(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                    />
+                  </label>
                 </div>
-                
-                {(tipoEvento === "Descuento" || tipoEvento === "Happy Hour / Flash Sale") ? (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Descuento (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={descuento}
-                      onChange={(e) => setDescuento(e.target.value)}
-                      placeholder="Ej: 15 (%)"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      {(tipoEvento === "Añadir Insumos" || tipoEvento === "Cortesía / Degustación" || tipoEvento === "Lanzamiento / Novedad")
-                        ? "Precio Final (Opcional)" 
-                        : "Nuevo Precio Promocional"}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={nuevoPrecio}
-                      onChange={(e) => setNuevoPrecio(e.target.value)}
-                      placeholder="Ej: 15000"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
-                    />
+
+                {tieneCortesia && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-amber-200/60 dark:border-amber-900/40 animate-in fade-in duration-150">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Insumo o Topping de Regalo:
+                      </label>
+                      <select
+                        value={toppingCortesia.idInsumo || ""}
+                        onChange={(e) => {
+                          const selected = insumosBD.find(ins => String(ins.idInsumo || ins.id) === String(e.target.value));
+                          setToppingCortesia({
+                            idInsumo: e.target.value,
+                            nombre: selected?.nombre || "",
+                            cantidad: 1,
+                            unidadMedida: selected?.unidadMedida || "und"
+                          });
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold cursor-pointer"
+                      >
+                        <option value="">Selecciona el ingrediente de cortesía...</option>
+                        {insumosBD.map((ins) => (
+                          <option key={ins.idInsumo || ins.id} value={ins.idInsumo || ins.id}>
+                            {ins.nombre} ({ins.unidadMedida || 'und'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Porción de Regalo:
+                      </label>
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-xl p-1">
+                        <input
+                          type="number"
+                          min="1"
+                          value={toppingCortesia.cantidad || 1}
+                          onChange={(e) => setToppingCortesia(prev => ({ ...prev, cantidad: Math.max(1, parseFloat(e.target.value) || 1) }))}
+                          className="w-full text-center font-bold text-xs bg-transparent border-0 outline-none"
+                        />
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 pr-2">
+                          {toppingCortesia.unidadMedida || 'und'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              ) : (
-                // Multiple product event
-                <div className="space-y-4">
+
+              {/* Sección 9: Vigencia del Evento y Visibilidad Web */}
+              <div className="border border-purple-100 dark:border-purple-900/40 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
+                  <CalendarClock className="w-4 h-4" />
+                  <span>Vigencia de la Campaña y Publicación Web</span>
+                </div>
+
+                {/* Selector de Vigencia: Temporal vs Permanente */}
+                <div className="flex items-center gap-2 p-1 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60">
+                  <button
+                    type="button"
+                    onClick={() => setProdVigenciaTipo("temporal")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      prodVigenciaTipo === "temporal"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    ⏱️ Campaña Temporal (con fecha límite)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProdVigenciaTipo("permanente")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      prodVigenciaTipo === "permanente"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                    }`}
+                  >
+                    ♾️ Vigencia Permanente / Indefinida
+                  </button>
+                </div>
+
+                {prodVigenciaTipo === "temporal" ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha Inicio de Campaña
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaInicio}
+                          onChange={(e) => setFechaInicio(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha Fin de Campaña
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaFin}
+                          onChange={(e) => setFechaFin(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                    {diasVigenciaCampaña !== null && (
+                      <p className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Duración de la campaña: {diasVigenciaCampaña} {diasVigenciaCampaña === 1 ? "día" : "días"} (del {fechaInicio} al {fechaFin}).</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60 text-xs text-purple-800 dark:text-purple-300 font-medium">
+                    ✓ Este platillo de evento permanecerá activo permanentemente en el catálogo online y POS hasta que el administrador decida pausarlo.
+                  </div>
+                )}
+
+                {/* Destacar en portada web */}
+                <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <div>
+                      <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                        Destacar en Portada Web & Menú Principal
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                        Aparecerá en el carrusel superior y en la sección especial de eventos de la tienda web.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={prodDestacadoWeb}
+                    onChange={(e) => setProdDestacadoWeb(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Tipo de Evento */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  Tipo de Evento
+                </label>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                  Selecciona el tipo de beneficio u objetivo que tendrá este evento.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {TIPO_EVENTO_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const isActive = tipoEvento === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setTipoEvento(opt.value)}
+                        className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                          isActive
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+                        }`}
+                      >
+                        <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-purple-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-xs leading-tight">{opt.label}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug line-clamp-1">{opt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selector de Iconografía */}
+              <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Iconografía del Evento
+                  </label>
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                    <span>Insignia:</span> <span className="text-base">{icono}</span>
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
+                </p>
+                <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+                  {ICONO_OPTIONS.map((item) => {
+                    const isSelected = icono === item.emoji;
+                    return (
+                      <button
+                        key={item.emoji}
+                        type="button"
+                        onClick={() => setIcono(item.emoji)}
+                        title={item.label}
+                        className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                        }`}
+                      >
+                        {item.emoji}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Temporalidad Toggle */}
+              <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-750 select-none">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${isTemporal ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30' : 'bg-gray-200 text-gray-500 dark:bg-gray-700'}`}>
+                    <CalendarClock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Evento Temporal</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Activo solo en un rango de fechas</p>
+                  </div>
+                </div>
+                <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isTemporal ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isTemporal ? 'translate-x-6' : 'translate-x-1'}`} />
+                </div>
+                {/* Hidden checkbox to trigger onChange */}
+                <input type="checkbox" className="hidden" checked={isTemporal} onChange={() => setIsTemporal(!isTemporal)} />
+              </label>
+
+              {/* Fechas (Condicionales) */}
+              {isTemporal && (
+                <div className="grid grid-cols-2 gap-4 p-4 border border-purple-100 dark:border-purple-900/30 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Fecha Inicio
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Fecha Fin
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaFin}
+                      onChange={(e) => setFechaFin(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Título y Descripción */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Título del Evento <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nombreEvento}
+                    onChange={(e) => setNombreEvento(e.target.value)}
+                    placeholder="Ej: Temporada de verano — carne extra incluida"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Descripción
+                  </label>
+                  <textarea
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Describe brevemente este evento..."
+                    rows={2}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Detalle Insumos */}
+              {tipoEvento === "Añadir Insumos" && (
+                <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Gestión de Insumos</h3>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="accion"
+                          value="Agregar"
+                          checked={accion === "Agregar"}
+                          onChange={() => setAccion("Agregar")}
+                          className="accent-purple-600"
+                        />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Sumar al plato</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="accion"
+                          value="Eliminar"
+                          checked={accion === "Eliminar"}
+                          onChange={() => setAccion("Eliminar")}
+                          className="accent-gray-600"
+                        />
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Restar del plato</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Buscador de insumos */}
                   <div className="relative z-10">
                     <div className="relative">
                       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -1515,8 +1738,122 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                   )}
                 </div>
               )}
-            </div>
-          </div>
+
+              {/* Sección de Precio / Descuento */}
+              {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio" || tipoEvento === "Añadir Insumos") && (
+                <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                    {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
+                  </h3>
+                  
+                  {producto ? (
+                    // Single product event
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
+                        <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
+                          ${producto?.precio?.toLocaleString() || "0"}
+                        </div>
+                      </div>
+                      
+                      {tipoEvento === "Descuento" ? (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={descuento}
+                            onChange={(e) => setDescuento(e.target.value)}
+                            placeholder="Ej: 10 (%) o 5000 ($)"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            {tipoEvento === "Añadir Insumos" ? "Precio Final con Adiciones" : "Nuevo Precio Promocional"}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={nuevoPrecio}
+                            onChange={(e) => setNuevoPrecio(e.target.value)}
+                            placeholder="Ej: 15000"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Multiple product event
+                    <div className="space-y-4">
+                      <div className="relative z-10">
+                        <div className="relative">
+                          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={productoSearch}
+                            onChange={(e) => setProductoSearch(e.target.value)}
+                            onFocus={() => {
+                              if (filteredProductos.length > 0) setShowProductoDropdown(true);
+                            }}
+                            placeholder="Buscar productos para agregar al evento..."
+                            className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        {showProductoDropdown && (
+                          <div className="absolute top-full mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                            {filteredProductos.map((prod) => (
+                              <button
+                                key={prod.id || prod.idProducto}
+                                type="button"
+                                onClick={() => handleSelectProducto(prod)}
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
+                              >
+                                <span className="font-medium">{prod.nombre}</span>
+                                <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">${prod.precio}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {productosSeleccionados.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          {productosSeleccionados.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.nombre}</p>
+                                <p className="text-xs text-gray-400">Precio base: ${item.precioBase}</p>
+                              </div>
+                              <div className="w-32">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder={tipoEvento === "Descuento" ? "Desc" : "Precio"}
+                                  value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
+                                  onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
+                                  className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => quitarProducto(idx)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50/50 dark:bg-gray-900/50">

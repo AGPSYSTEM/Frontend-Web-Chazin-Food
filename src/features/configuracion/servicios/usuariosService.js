@@ -27,5 +27,9 @@ export const usuariosService = {
 
   toggleEstado: async (id, nuevoEstado) => {
     return await apiClient.put(`/usuarios/${id}/estado`, { estado: nuevoEstado });
+  },
+
+  getResenasUsuario: async (idUsuario) => {
+    return await apiClient.get(`/resenas/usuario/${idUsuario}`);
   }
 };

@@ -29,6 +29,7 @@ export function GestionCompras() {
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCompra, setEditCompra] = useState(null);
+  const [procesandoId, setProcesandoId] = useState(null);
 
   const stats = useMemo(() => {
     const total = compras.length;
@@ -75,27 +76,35 @@ export function GestionCompras() {
   };
 
   const handleMarcarRecibida = async (idCompra) => {
+    // Protección anti-doble-click: si ya se está procesando esta compra, ignorar
+    if (procesandoId === idCompra) return false;
     const confirmed = await notify.confirmAction(
       "¿Marcar como Recibida?",
       "Al confirmar, el stock de los insumos incluidos en esta compra se actualizará automáticamente (se sumarán las cantidades compradas). Esta acción sí afecta el inventario.",
       "Sí, marcar como Recibida"
     );
     if (!confirmed) return false;
-    const ok = await updateEstado(idCompra, "RECIBIDA");
-    if (ok) {
-      notify.success(
-        "✅ Compra Recibida",
-        "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
+    setProcesandoId(idCompra);
+    try {
+      const ok = await updateEstado(idCompra, "RECIBIDA");
+      if (ok) {
+        notify.success(
+          "✅ Compra Recibida",
+          "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
+        );
+        if (selectedCompra && selectedCompra.id === idCompra) {
+          setSelectedCompra(null);
+        }
+        await refetch();
       }
-      await refetch();
+      return ok;
+    } finally {
+      setProcesandoId(null);
     }
-    return ok;
   };
 
   const handleUpdateEstado = async (idCompra, nuevoEstado) => {
+    if (procesandoId === idCompra) return false;
     const e = String(nuevoEstado || "").toUpperCase();
     if (e === "RECIBIDA") {
       return await handleMarcarRecibida(idCompra);
@@ -104,18 +113,24 @@ export function GestionCompras() {
   };
 
   const handleCancelar = async (idCompra) => {
-    const ok = await cancelarCompra(idCompra);
-    if (ok) {
-      notify.success(
-        "Compra Anulada",
-        "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
+    if (procesandoId === idCompra) return false;
+    setProcesandoId(idCompra);
+    try {
+      const ok = await cancelarCompra(idCompra);
+      if (ok) {
+        notify.success(
+          "Compra Anulada",
+          "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
+        );
+        if (selectedCompra && selectedCompra.id === idCompra) {
+          setSelectedCompra(null);
+        }
+        await refetch();
       }
-      await refetch();
+      return ok;
+    } finally {
+      setProcesandoId(null);
     }
-    return ok;
   };
 
   return (
@@ -225,6 +240,7 @@ export function GestionCompras() {
           onEdit={handleEdit}
           onUpdateEstado={handleUpdateEstado}
           onCancelar={handleCancelar}
+          procesandoId={procesandoId}
         />
       )}
 

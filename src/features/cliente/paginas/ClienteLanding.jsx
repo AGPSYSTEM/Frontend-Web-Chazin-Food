@@ -19,6 +19,7 @@ import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
@@ -2057,8 +2058,22 @@ export function ClienteLanding() {
                   </div>
                 )}
                 
-                {/* Rediseño de Indicador de Evento Activo */}
-                {producto.eventos && producto.eventos.length > 0 && (() => {
+                {/* Image Container */}
+                <div className="bg-gradient-to-br from-red-400 to-red-600 h-44 flex items-center justify-center relative overflow-hidden">
+                  {hasRealImage ? (
+                    <img
+                      src={producto.imagen}
+                      alt={producto.nombre}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="text-7xl group-hover:scale-110 transition-transform duration-300">
+                      {producto.imagen || "🍔"}
+                    </div>
+                  )}
+
+                  {/* Rediseño de Indicador de Evento Activo */}
+                  {producto.eventos && producto.eventos.length > 0 && (() => {
                   const evt = producto.eventos[0];
                   const evtIcon = evt.icono || "🎉";
                   let benefit = "OFERTA";
@@ -2082,55 +2097,10 @@ export function ClienteLanding() {
                 {/* Badge Ver detalles */}
                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
                   <FileText className="w-3 h-3" />
-                  <span>Ver detalles</span>
                 </div>
               </div>
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-red-500 transition-colors">{producto.nombre}</h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{producto.descripcion || "Platillo preparado con ingredientes frescos y de calidad."}</p>
-                  
-                  {/* Rating Stars Summary */}
-                  <div className="mt-2 flex items-center justify-between">
-                    {(() => {
-                      const pId = producto.id || producto.idProducto;
-                      const rInfo = ratingsMap[pId];
-                      if (rInfo && rInfo.total > 0) {
-                        return (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setProductoParaResenas(producto);
-                              setShowResenasModal(true);
-                            }}
-                            className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
-                            title="Ver reseñas"
-                          >
-                            <StarRating value={rInfo.promedio} readonly size="xs" />
-                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
-                            <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
-                          </div>
-                        );
-                      }
-                      return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProductoParaResenas(producto);
-                            setShowResenasModal(true);
-                          }}
-                          className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer"
-                        >
-                          <Star className="w-3 h-3" />
-                          <span>Sin reseñas</span>
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
                     <h4 className="font-bold text-lg text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors line-clamp-1">
                       {producto.nombre}
