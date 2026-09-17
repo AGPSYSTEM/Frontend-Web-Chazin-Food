@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
   CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
-  Layers, Utensils, Plus, Minus, Check, Flame, ChevronDown, ChevronUp, Image as ImageIcon,
-  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Crown, Coffee
+  Layers, Utensils, Plus, Minus, Check, Flame, Crown, Coffee, ChevronDown, ChevronUp, Image as ImageIcon,
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -14,6 +14,16 @@ import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
+const TIPO_EVENTO_OPTIONS = [
+  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Modifica receta base" },
+  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Rebaja temporal" },
+  { value: "Descuento", icon: ArrowDownUp, label: "Descuento %", desc: "Descuento directo" },
+  { value: "2x1 / Combo Especial", icon: Zap, label: "2x1 / Combo", desc: "Oferta por volumen" },
+  { value: "Lanzamiento / Novedad", icon: Sparkles, label: "Lanzamiento", desc: "Nuevo en carta" },
+  { value: "Happy Hour / Flash Sale", icon: Flame, label: "Flash Sale", desc: "Tiempo limitado" },
+  { value: "Edición Especial", icon: Crown, label: "Edición Especial", desc: "Temporada gourmet" },
+  { value: "Cortesía / Degustación", icon: Coffee, label: "Cortesía", desc: "Degustación / Regalo" }
+];
 
 const ICONO_OPTIONS = [
   { emoji: "🎉", label: "Celebración" },
@@ -26,10 +36,10 @@ const ICONO_OPTIONS = [
   { emoji: "🎁", label: "Combo" },
   { emoji: "🚀", label: "Lanzamiento" },
   { emoji: "🌟", label: "Estrella" },
-  { emoji: "⏱️", label: "Tiempo" },
-  { emoji: "💥", label: "Mega Promo" },
-  { emoji: "🍹", label: "Bebida" },
-  { emoji: "🏆", label: "Exclusivo" }
+  { emoji: "⭐", label: "Destacado" },
+  { emoji: "🌭", label: "Hot Dog" },
+  { emoji: "🍟", label: "Papas" },
+  { emoji: "🥤", label: "Bebida" }
 ];
 
 const TIPO_EVENTO_OPTIONS = [
@@ -158,6 +168,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+      setIcono("🎉");
       setFechaInicio(localToday);
       setFechaFin(localFuture);
       
@@ -778,40 +789,40 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 </div>
 
                 
-              {/* Selector de Iconografía */}
-              <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Iconografía del Evento
-                  </label>
-                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
-                    <span>Insignia:</span> <span className="text-base">{icono}</span>
-                  </span>
+                {/* Selector de Iconografía */}
+                <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      Iconografía del Evento
+                    </label>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                      <span>Insignia:</span> <span className="text-base">{icono}</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
+                  </p>
+                  <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+                    {ICONO_OPTIONS.map((item) => {
+                      const isSelected = icono === item.emoji;
+                      return (
+                        <button
+                          key={item.emoji}
+                          type="button"
+                          onClick={() => setIcono(item.emoji)}
+                          title={item.label}
+                          className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                              : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                          }`}
+                        >
+                          {item.emoji}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
-                </p>
-                <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
-                  {ICONO_OPTIONS.map((item) => {
-                    const isSelected = icono === item.emoji;
-                    return (
-                      <button
-                        key={item.emoji}
-                        type="button"
-                        onClick={() => setIcono(item.emoji)}
-                        title={item.label}
-                        className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
-                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
-                        }`}
-                      >
-                        {item.emoji}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
                 {/* Título del Evento / Campaña */}
                 <div>
@@ -1486,10 +1497,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
             <>
               {/* Tipo de Evento */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                  Tipo de Modificación
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  Tipo de Evento
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                  Selecciona el tipo de beneficio u objetivo que tendrá este evento.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {TIPO_EVENTO_OPTIONS.map((opt) => {
                     const Icon = opt.icon;
                     const isActive = tipoEvento === opt.value;
@@ -1498,14 +1512,52 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                         key={opt.value}
                         type="button"
                         onClick={() => setTipoEvento(opt.value)}
-                        className={`flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                        className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                           isActive
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
-                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                            : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
                         }`}
                       >
-                        <Icon className={`w-6 h-6 ${isActive ? "text-purple-500" : "text-gray-400"}`} />
-                        <span className="text-center text-xs">{opt.label}</span>
+                        <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-purple-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-xs leading-tight">{opt.label}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 leading-snug line-clamp-1">{opt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Selector de Iconografía */}
+              <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Iconografía del Evento
+                  </label>
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                    <span>Insignia:</span> <span className="text-base">{icono}</span>
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
+                </p>
+                <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+                  {ICONO_OPTIONS.map((item) => {
+                    const isSelected = icono === item.emoji;
+                    return (
+                      <button
+                        key={item.emoji}
+                        type="button"
+                        onClick={() => setIcono(item.emoji)}
+                        title={item.label}
+                        className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
+                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                        }`}
+                      >
+                        {item.emoji}
                       </button>
                     );
                   })}

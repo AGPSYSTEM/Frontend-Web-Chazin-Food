@@ -2118,7 +2118,6 @@ export function ClienteLanding() {
                     </div>
                   </div>
                 )}
-
                 {/* ═══ ESCENARIO GOURMET AMBIENTAL DUAL-LAYER (ENCUADRE 100% PERFECTO & SOMBRA 3D) ═══ */}
                 <div className="relative h-48 sm:h-52 w-full bg-gray-950 flex items-center justify-center overflow-hidden border-b border-gray-100 dark:border-gray-800/80">
                   {/* Capa 1: Glow ambiental difuminado con los colores vivos de la comida */}
@@ -2144,6 +2143,7 @@ export function ClienteLanding() {
                       {producto.imagen || "🍔"}
                     </div>
                   )}
+                </div>
 
                 {/* Rediseño de Indicador de Evento Activo */}
                 {producto.eventos && producto.eventos.length > 0 && (() => {
@@ -2170,7 +2170,6 @@ export function ClienteLanding() {
                 {/* Badge Ver detalles */}
                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
                   <FileText className="w-3 h-3" />
-                  <span>Ver detalles</span>
                 </div>
               </div>
 
