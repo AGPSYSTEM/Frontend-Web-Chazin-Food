@@ -28,6 +28,9 @@ export function AuthProvider({ children }) {
       const profileData = await apiClient.get("/usuarios/perfil");
       if (profileData) {
         setUser((prev) => {
+          if (prev && Object.keys(profileData).every(k => prev[k] === profileData[k])) {
+            return prev;
+          }
           const merged = { ...prev, ...profileData, token: prev?.token || token };
           localStorage.setItem("chazin_user", JSON.stringify(merged));
           return merged;

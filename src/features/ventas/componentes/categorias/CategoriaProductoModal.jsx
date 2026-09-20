@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UtensilsCrossed, UploadCloud, Loader2 } from "lucide-react";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
+import { FoodIcon, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -144,7 +145,7 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                   previewIcon.includes('/') || previewIcon.includes('.') || previewIcon.startsWith('blob:') ? (
                     <img src={previewIcon} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="text-2xl">{previewIcon}</div>
+                    <FoodIcon name={previewIcon || nombre} category={nombre} size={30} stroke={1.75} className="text-amber-500" />
                   )
                 ) : (
                   <UtensilsCrossed className="w-6 h-6 text-gray-300 dark:text-gray-600" />
@@ -189,8 +190,32 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
                       setPreviewIcon(e.target.value);
                     }}
                     className={inputCls}
-                    placeholder="O ingresa un emoji (ej. 🍔) o URL"
+                    placeholder="O escribe un slug (ej. burger, pizza, fries) o URL"
                   />
+
+                  {/* Catálogo de Íconos Vectoriales Disponibles */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-gray-400 mr-1">Rápidos:</span>
+                    {AVAILABLE_FOOD_SLUGS.map((item) => (
+                      <button
+                        key={item.slug}
+                        type="button"
+                        onClick={() => {
+                          setFileToUpload(null);
+                          setIcon(item.slug);
+                          setPreviewIcon(item.slug);
+                        }}
+                        className={`w-7 h-7 rounded-lg border flex items-center justify-center transition cursor-pointer ${
+                          icon === item.slug
+                            ? "border-[#F05454] bg-red-50 dark:bg-red-950/40 text-[#F05454] ring-2 ring-red-400/40"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750"
+                        }`}
+                        title={item.label}
+                      >
+                        <item.icon size={16} stroke={1.75} />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

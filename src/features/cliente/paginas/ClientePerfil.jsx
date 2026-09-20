@@ -48,6 +48,7 @@ import {
   Globe
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -58,7 +59,7 @@ import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import Swal from "sweetalert2";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
-const PRESET_AVATARS = ["🌱", "🥇", "🍔", "🍟", "🍕", "🍗", "🌮", "👑", "😎", "🤠", "👨‍🍳", "🌟"];
+const PRESET_AVATARS = ["sprout", "gold", "burger", "fries", "pizza", "chicken", "taco", "chef", "icecream", "coffee", "cupcake", "fire"];
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -160,11 +161,16 @@ export function ClientePerfil() {
 
   // Fetch client orders (backend + localStorage)
   const fetchMyOrders = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoadingPedidos(false);
+      return;
+    }
     try {
       setLoadingPedidos(true);
-      const userId = user?.idUsuario || user?.id || user?._id;
-      const storageKey = `mis_pedidos_${userId || "guest"}`;
+      const currentUserId = user?.idUsuario || user?.id || user?._id;
+      const currentUserClientId = user?.idCliente;
+      const currentUserFullName = `${user?.nombre || ""} ${user?.apellidos || ""}`.trim();
+      const storageKey = `mis_pedidos_${currentUserId || "guest"}`;
       let localHistory = [];
       try {
         localHistory = JSON.parse(localStorage.getItem(storageKey) || "[]");
@@ -178,9 +184,9 @@ export function ClientePerfil() {
         if (data && Array.isArray(data)) {
           backendOrders = data.filter(
             (v) =>
-              v.idUsuario === userId ||
-              v.idCliente === user?.idCliente ||
-              v.clienteNombre === `${user?.nombre || ""} ${user?.apellidos || ""}`.trim()
+              (currentUserId && (v.idUsuario === currentUserId || v.usuario?.idUsuario === currentUserId)) ||
+              (currentUserClientId && v.idCliente === currentUserClientId) ||
+              (currentUserFullName && v.clienteNombre === currentUserFullName)
           );
         }
       } catch (err) {
@@ -215,12 +221,17 @@ export function ClientePerfil() {
             currentEstado = "Completada";
           }
 
+          let items = localOrd.items || [];
+          if ((!items || items.length === 0) && matched.productos && Array.isArray(matched.productos)) {
+            items = matched.productos;
+          }
+
           localOrd.estado = currentEstado;
           mergedPedidos.push({
             id: matched.idVenta || matched.id || localOrd.id,
             numeroVenta: matched.numeroVenta || localOrd.numeroVenta,
             fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString("es-CO") : localOrd.fecha,
-            items: localOrd.items || [],
+            items,
             total: matched.total || localOrd.total,
             descuentoAplicado: matched.descuentoAplicado || 0,
             metodoPago: matched.metodoPago || "Efectivo",
@@ -228,7 +239,6 @@ export function ClientePerfil() {
             estado: currentEstado,
           });
         } else {
-          localOrd.estado = "Anulada";
           mergedPedidos.push({
             id: localOrd.id,
             numeroVenta: localOrd.numeroVenta,
@@ -238,7 +248,7 @@ export function ClientePerfil() {
             descuentoAplicado: localOrd.descuentoAplicado || 0,
             metodoPago: localOrd.metodoPago || "Efectivo",
             tipoEntrega: localOrd.tipoEntrega || "Domicilio",
-            estado: "Anulada",
+            estado: localOrd.estado || "Completada",
           });
         }
       }
@@ -261,7 +271,13 @@ export function ClientePerfil() {
           }
 
           let items = [];
-          if (o.detalles && Array.isArray(o.detalles)) {
+          if (o.productos && Array.isArray(o.productos) && o.productos.length > 0) {
+            items = o.productos.map((p) => ({
+              nombre: p.nombre || "Producto",
+              cantidad: Number(p.cantidad) || 1,
+              precio: Number(p.precioUnitario || p.total) || 0,
+            }));
+          } else if (o.detalles && Array.isArray(o.detalles)) {
             items = o.detalles.map((d) => ({
               nombre: d.producto?.nombre || d.nombreProducto || "Producto",
               cantidad: Number(d.cantidad) || 1,
@@ -289,12 +305,11 @@ export function ClientePerfil() {
     } finally {
       setLoadingPedidos(false);
     }
-  }, [user]);
+  }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
 
   useEffect(() => {
     fetchMyOrders();
-    if (refreshUser) refreshUser();
-  }, [fetchMyOrders, refreshUser]);
+  }, [fetchMyOrders]);
 
   // ── Calculate Advanced Real Statistics ──
   const stats = useMemo(() => {
@@ -800,15 +815,9 @@ export function ClientePerfil() {
                 {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
                   <img src={avatarUrl} alt={userName} className="w-full h-full object-cover rounded-3xl" />
                 ) : avatarUrl ? (
-                  <span>{avatarUrl}</span>
-                ) : tipoFidelidad === "VIP" ? (
-                  "🥇"
-                ) : tipoFidelidad === "Frecuente" ? (
-                  "🥈"
-                ) : tipoFidelidad === "Regular" ? (
-                  "🥉"
+                  <FoodIcon name={avatarUrl} size={36} />
                 ) : (
-                  "🌱"
+                  <FidelidadBadge tipo={tipoFidelidad} size="lg" />
                 )}
               </div>
 
@@ -849,9 +858,9 @@ export function ClientePerfil() {
                     <Flame className="w-4 h-4 text-orange-500" />
                     <span>Racha ({comprasCiclo} de 3)</span>
                   </span>
-                  <span className="text-[11px] font-extrabold text-[#f05454]">
+                  <span className="text-[11px] font-extrabold text-[#f05454] flex items-center gap-1">
                     {comprasFaltantes === 0
-                      ? "¡Meta alcanzada! 🎉"
+                      ? <><span>¡Meta alcanzada!</span> <Sparkles className="w-3.5 h-3.5 text-amber-500 inline" /></>
                       : tipoFidelidad === "VIP"
                       ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? "compra" : "compras"}`
                       : `Faltan ${comprasFaltantes} para ${siguienteNivel}`}
@@ -1082,8 +1091,16 @@ export function ClientePerfil() {
                 <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-red-500/10 border border-amber-200 dark:border-amber-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xl">
-                        {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+                      <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-white dark:bg-gray-800 shadow-2xs border border-amber-200 dark:border-amber-800 shrink-0">
+                        {tipoFidelidad === "VIP" ? (
+                          <FoodIcon name="gold" size={20} stroke={2} className="text-amber-500" />
+                        ) : tipoFidelidad === "Frecuente" ? (
+                          <FoodIcon name="silver" size={20} stroke={2} className="text-indigo-500" />
+                        ) : tipoFidelidad === "Regular" ? (
+                          <FoodIcon name="bronze" size={20} stroke={2} className="text-orange-500" />
+                        ) : (
+                          <FoodIcon name="sprout" size={20} stroke={2} className="text-emerald-500" />
+                        )}
                       </span>
                       <h4 className="font-black text-base text-gray-900 dark:text-gray-100">
                         Nivel {tipoFidelidad}
@@ -1133,9 +1150,9 @@ export function ClientePerfil() {
                             className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between gap-3 shadow-2xs"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <span className="text-xl shrink-0">
-                                {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
-                              </span>
+                              <div className="shrink-0">
+                                <FidelidadBadge tipo={idx === 0 ? "VIP" : idx === 1 ? "Frecuente" : "Regular"} size="sm" />
+                              </div>
                               <div className="min-w-0">
                                 <h5 className="font-black text-sm text-gray-900 dark:text-gray-100 truncate">
                                   {item.nombre}
@@ -1227,7 +1244,9 @@ export function ClientePerfil() {
                       {/* Nivel Nuevo */}
                       <div className="p-4 rounded-2xl border bg-gray-50/80 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl">🌱</span>
+                          <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-gray-200/60 dark:border-gray-700">
+                            <FoodIcon name="sprout" size={20} stroke={2} className="text-emerald-600" />
+                          </span>
                           <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-[10px] font-black rounded-lg">0% OFF</span>
                         </div>
                         <h5 className="font-black text-sm">Cliente Nuevo</h5>
@@ -1237,7 +1256,9 @@ export function ClientePerfil() {
                       {/* Nivel Regular */}
                       <div className="p-4 rounded-2xl border bg-orange-50/70 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/40 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl">🥉</span>
+                          <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-orange-200/60 dark:border-orange-900/40">
+                            <FoodIcon name="bronze" size={20} stroke={2} className="text-orange-600" />
+                          </span>
                           <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-black rounded-lg">5% OFF</span>
                         </div>
                         <h5 className="font-black text-sm text-orange-900 dark:text-orange-300">Cliente Regular</h5>
@@ -1249,7 +1270,9 @@ export function ClientePerfil() {
                       {/* Nivel Frecuente */}
                       <div className="p-4 rounded-2xl border bg-indigo-50/70 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl">🥈</span>
+                          <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-indigo-200/60 dark:border-indigo-900/40">
+                            <FoodIcon name="silver" size={20} stroke={2} className="text-indigo-600" />
+                          </span>
                           <span className="px-2 py-0.5 bg-indigo-600 text-white text-[10px] font-black rounded-lg">10% OFF</span>
                         </div>
                         <h5 className="font-black text-sm text-indigo-900 dark:text-indigo-300">Cliente Frecuente</h5>
@@ -1261,7 +1284,9 @@ export function ClientePerfil() {
                       {/* Nivel VIP */}
                       <div className="p-4 rounded-2xl border bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 space-y-2 shadow-xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl">🥇</span>
+                          <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-amber-300/60 dark:border-amber-900/40">
+                            <FoodIcon name="gold" size={20} stroke={2} className="text-amber-500" />
+                          </span>
                           <span className="px-2 py-0.5 bg-amber-500 text-amber-950 text-[10px] font-black rounded-lg">15% OFF</span>
                         </div>
                         <h5 className="font-black text-sm text-amber-950 dark:text-amber-300">Cliente VIP</h5>
@@ -1337,11 +1362,14 @@ export function ClientePerfil() {
                             <span className="text-xs text-gray-400 font-medium">{ped.fecha}</span>
                           </div>
 
-                          <div className="text-xs text-gray-600 dark:text-gray-300">
+                          <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5 flex-wrap">
                             {(ped.items || []).length > 0 ? (
-                              <span>
-                                {(ped.items || []).map((i) => `${i.cantidad || 1}x ${i.nombre}`).join(", ")}
-                              </span>
+                              (ped.items || []).map((i, iIdx) => (
+                                <span key={iIdx} className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-medium">
+                                  <FoodIcon name={i.nombre} size={13} stroke={2} className="text-amber-500 shrink-0" />
+                                  <span>{i.cantidad || 1}x {i.nombre}</span>
+                                </span>
+                              ))
                             ) : (
                               <span className="italic text-gray-400">Platillos preparados</span>
                             )}
@@ -1546,7 +1574,7 @@ export function ClientePerfil() {
 
                 {/* ── Right Column: Foto de Perfil & Sesiones Activas ── */}
                 <div className="lg:col-span-5 space-y-6">
-                  {/* 📸 Tarjeta 1: Foto de Perfil */}
+                  {/* Tarjeta 1: Foto de Perfil */}
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -1571,11 +1599,9 @@ export function ClientePerfil() {
                         {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
                           <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : avatarUrl ? (
-                          <span>{avatarUrl}</span>
+                          <FoodIconBadge name={avatarUrl} size="lg" />
                         ) : (
-                          <span className="text-3xl">
-                            {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
-                          </span>
+                          <FidelidadBadge tipo={tipoFidelidad} size="lg" />
                         )}
 
                         <button
@@ -1618,26 +1644,26 @@ export function ClientePerfil() {
                         O elige un avatar rápido:
                       </p>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {PRESET_AVATARS.map((emoji) => (
+                        {PRESET_AVATARS.map((slug) => (
                           <button
-                            key={emoji}
+                            key={slug}
                             type="button"
-                            onClick={() => handleSelectPresetAvatar(emoji)}
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center text-base transition-transform active:scale-95 cursor-pointer ${
-                              avatarUrl === emoji
+                            onClick={() => handleSelectPresetAvatar(slug)}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${
+                              avatarUrl === slug
                                 ? "bg-red-100 dark:bg-red-950/60 border-2 border-[#f05454] scale-110 shadow-xs"
                                 : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
                             }`}
-                            title={`Elegir ${emoji}`}
+                            title={`Elegir avatar ${slug}`}
                           >
-                            {emoji}
+                            <FoodIcon name={slug} size={18} />
                           </button>
                         ))}
                       </div>
                     </div>
                   </div>
 
-                  {/* 🔒 Tarjeta 2: Sesiones Activas & Seguridad */}
+                  {/* Tarjeta 2: Sesiones Activas & Seguridad */}
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">

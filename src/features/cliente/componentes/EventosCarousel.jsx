@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Sparkles, Tag, Zap, Clock, ArrowRight, Gift, Flame } from "lucide-react";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -125,7 +126,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
             {/* Badges row */}
             <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white/20 backdrop-blur-md border border-white/20 text-white shadow-xs">
-                <span className="text-base">{currentEvt.icono || "🎉"}</span>
+                <FoodIcon name={currentEvt.icono || "party"} size={16} />
                 <span>{currentEvt.tipoEvento || "Evento Activo"}</span>
               </span>
 
@@ -206,9 +207,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-center">
-                  <span className="text-6xl sm:text-7xl filter drop-shadow-xl animate-bounce duration-1000">
-                    {currentEvt.icono || "🎉"}
-                  </span>
+                  <FoodIconBadge name={currentEvt.icono || targetProduct?.nombre || "party"} size="xl" />
                   {targetProduct && (
                     <span className="text-[11px] font-bold text-white/90 mt-2 truncate max-w-[140px]">
                       {targetProduct.nombre}

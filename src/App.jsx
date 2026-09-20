@@ -5,6 +5,7 @@ import { AuthProvider } from '@/shared/context/AuthContext';
 import { ToastProvider } from '@/shared/context/ToastContext';
 import { ConfirmProvider } from '@/shared/context/ConfirmContext';
 import { AppRoutes } from '@/routes/AppRoutes';
+import FoodIcon from '@/shared/components/ui/FoodIcon';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -30,7 +31,9 @@ class ErrorBoundary extends Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "sans-serif", background: "#f9fafb" }}>
           <div style={{ maxWidth: "600px", width: "100%", background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", textAlign: "center" }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px" }}>🍔</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+              <FoodIcon name="burger" size={48} className="text-amber-500" />
+            </div>
             <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", marginBottom: "8px" }}>Chazin Food</h2>
             <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
               Detalle del error capturado:

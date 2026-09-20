@@ -69,6 +69,6 @@ export const deleteImageFromCloudinary = async (imageUrlOrPublicId) => {
     });
     return res;
   } catch (err) {
-    console.warn("⚠️ [Cloudinary] No se pudo eliminar la imagen mediante backend:", err.message);
+    console.warn("[Cloudinary] No se pudo eliminar la imagen mediante backend:", err.message);
   }
 };

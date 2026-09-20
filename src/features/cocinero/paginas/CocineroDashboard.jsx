@@ -46,6 +46,7 @@ import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { produccionService } from "@/features/produccion/servicios/produccionService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import LoadingSpinner from "@/shared/components/ui/LoadingSpinner";
 import { HistorialComandasLista } from "../componentes/HistorialComandasLista";
 import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
@@ -1205,7 +1206,7 @@ export function CocineroDashboard() {
                     {/* Row 1: Code, Type Badge & Status */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xl shrink-0">{ped.imagen || "🍽️"}</span>
+                        <FoodIconBadge name={ped.nombreProducto || ped.producto || "plate"} size="sm" />
                         <h3 className="font-black text-gray-900 dark:text-gray-100 text-base tracking-tight truncate">
                           {ped.codigo || `VEN-${String(orderId).padStart(4, "0")}`}
                         </h3>
@@ -1281,13 +1282,19 @@ export function CocineroDashboard() {
                     {totalItemsInOrder > 0 && (
                       <div className="pt-0.5">
                         <div className="flex items-center justify-between text-[10px] font-black text-gray-400 mb-1">
-                          <span>
-                            {isListo
-                              ? "✅ Comanda completada al 100%"
-                              : isAllChecked
-                              ? "🎉 ¡Todos los platillos cocinados!"
-                              : "Progreso de preparación"}
-                          </span>
+                          <div>
+                            {isListo ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Comanda completada al 100%
+                              </span>
+                            ) : isAllChecked ? (
+                              <span className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold">
+                                <Sparkles className="w-3.5 h-3.5" /> ¡Todos los platillos cocinados!
+                              </span>
+                            ) : (
+                              "Progreso de preparación"
+                            )}
+                          </div>
                           <span
                             className={
                               isListo || isAllChecked
@@ -1420,7 +1427,7 @@ export function CocineroDashboard() {
                                         ) : (
                                           <span className="opacity-70 font-black text-[11px]">+</span>
                                         )}
-                                        <span className="text-xs">{getAdditionEmoji(ad.name, rawAd?.imagen)}</span>
+                                        <FoodIcon name={ad.name} size={14} stroke={2} className="shrink-0" />
                                         <span className={isMulti ? "font-black" : "font-extrabold"}>{ad.name}</span>
                                       </span>
                                     );
@@ -1588,8 +1595,9 @@ export function CocineroDashboard() {
                 <>
                   {/* Ingredients List */}
                   <div>
-                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5">
-                      🥘 Ingredientes & Porciones Requeridas:
+                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Ingredientes & Porciones Requeridas:</span>
                     </h4>
                     {modalRecetaData?.ingredientes && modalRecetaData.ingredientes.length > 0 ? (
                       <div className="space-y-1.5">
@@ -1612,8 +1620,9 @@ export function CocineroDashboard() {
 
                   {/* Step-by-step preparation */}
                   <div>
-                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5">
-                      👨‍🍳 Procedimiento de Preparación:
+                    <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <ChefHat className="w-3.5 h-3.5 text-orange-500" />
+                      <span>Procedimiento de Preparación:</span>
                     </h4>
                     {modalRecetaData?.pasos && modalRecetaData.pasos.length > 0 ? (
                       <ol className="space-y-2 list-decimal list-inside text-xs sm:text-sm text-gray-700 dark:text-gray-300">

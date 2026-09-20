@@ -8,31 +8,7 @@ import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useToast } from "@/shared/context/ToastContext";
-
-const categoryIcons = {
-  default: "🍽️",
-  burgers: "🍔",
-  bebidas: "🥤",
-  pollo: "🍗",
-  papas: "🍟",
-  acompañamientos: "🍟",
-  postres: "🍰",
-};
-
-const getCategoryEmoji = (nombre = "") => {
-  const normalized = nombre.toLowerCase();
-  if (normalized.includes("hambur")) return "🍔";
-  if (normalized.includes("perro") || normalized.includes("hot dog")) return "🌭";
-  if (normalized.includes("salchipapa") || normalized.includes("papa")) return "🍟";
-  if (normalized.includes("combo")) return "🍱";
-  if (normalized.includes("pizza")) return "🍕";
-  if (normalized.includes("pollo") || normalized.includes("alitas")) return "🍗";
-  if (normalized.includes("beb") || normalized.includes("gaseos") || normalized.includes("jugo")) return "🥤";
-  if (normalized.includes("acompa") || normalized.includes("ensalada")) return "🥗";
-  if (normalized.includes("post") || normalized.includes("torta")) return "🍰";
-  if (normalized.includes("taco") || normalized.includes("entrada")) return "🌮";
-  return categoryIcons.default;
-};
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export default function PosVendedor() {
   const toast = useToast();
@@ -299,7 +275,7 @@ export default function PosVendedor() {
                   : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
               }`}
             >
-              <span>🍽️</span>
+              <FoodIcon name="plate" size={16} />
               <span>Todos</span>
             </button>
 
@@ -331,7 +307,7 @@ export default function PosVendedor() {
                       : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
                   }`}
                 >
-                  <span>{getCategoryEmoji(c.nombre)}</span>
+                  <FoodIcon name={c.nombre} size={16} />
                   <span>{c.nombre}</span>
                 </button>
               );
@@ -360,7 +336,7 @@ export default function PosVendedor() {
                     : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
                 }`}
               >
-                <span className="text-base">🍽️</span>
+                <FoodIcon name="plate" size={16} />
                 <span className="truncate">Todos</span>
               </button>
 
@@ -392,7 +368,7 @@ export default function PosVendedor() {
                         : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
                     }`}
                   >
-                    <span className="text-base">{getCategoryEmoji(c.nombre)}</span>
+                    <FoodIcon name={c.nombre} size={16} />
                     <span className="truncate">{c.nombre}</span>
                   </button>
                 );

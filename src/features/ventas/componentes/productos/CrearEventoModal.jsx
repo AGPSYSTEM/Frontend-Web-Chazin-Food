@@ -3,7 +3,7 @@ import {
   X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
   CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
   Layers, Utensils, Plus, Minus, Check, Flame, Crown, Coffee, ChevronDown, ChevronUp, Image as ImageIcon,
-  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Link, Infinity as InfinityIcon
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -12,6 +12,7 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
@@ -26,19 +27,18 @@ const TIPO_EVENTO_OPTIONS = [
 ];
 
 const ICONO_OPTIONS = [
-  { emoji: "🎉", label: "Celebración" },
-  { emoji: "🔥", label: "En Llamas" },
-  { emoji: "⚡", label: "Flash" },
-  { emoji: "🏷️", label: "Oferta" },
-  { emoji: "🍔", label: "Burger" },
-  { emoji: "🍕", label: "Pizza" },
-  { emoji: "👑", label: "Especial" },
-  { emoji: "🎁", label: "Combo" },
-  { emoji: "🚀", label: "Lanzamiento" },
-  { emoji: "🌟", label: "Estrella" },
-  { emoji: "⭐", label: "Destacado" },
-  { emoji: "🌭", label: "Hot Dog" },
-  { emoji: "🍟", label: "Papas" },
+  { slug: "party", label: "Celebración" },
+  { slug: "fire", label: "En Llamas" },
+  { slug: "flash", label: "Flash" },
+  { slug: "tag", label: "Oferta" },
+  { slug: "burger", label: "Burger" },
+  { slug: "pizza", label: "Pizza" },
+  { slug: "vip", label: "Especial" },
+  { slug: "gift", label: "Combo" },
+  { slug: "rocket", label: "Lanzamiento" },
+  { slug: "star", label: "Estrella" },
+  { slug: "hotdog", label: "Hot Dog" },
+  { slug: "fries", label: "Papas" },
 ];
 
 const PROD_EVENT_TYPES = [
@@ -49,18 +49,18 @@ const PROD_EVENT_TYPES = [
 ];
 
 const BADGES_GASTRONOMICOS = [
-  "🔥 Edición Festival",
-  "⭐ Recomendado del Chef",
-  "🌶️ Picante Gourmet",
-  "🏆 Plato Estrella",
-  "🌱 Opción Veggie",
-  "🧀 Extra Queso"
+  "Edición Festival",
+  "Recomendado del Chef",
+  "Picante Gourmet",
+  "Plato Estrella",
+  "Opción Veggie",
+  "Extra Queso"
 ];
 
 export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   const { success, error: notifyError } = useNotifications();
   const [tipoEvento, setTipoEvento] = useState("Añadir Insumos");
-  const [icono, setIcono] = useState("🎉");
+  const [icono, setIcono] = useState("party");
   const [isTemporal, setIsTemporal] = useState(false);
   const [nombreEvento, setNombreEvento] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -83,7 +83,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   const [prodEstadoInicial, setProdEstadoInicial] = useState("Activo");
   const [prodRendimiento, setProdRendimiento] = useState("1 porción");
   const [prodVigenciaTipo, setProdVigenciaTipo] = useState("temporal"); // 'temporal' | 'permanente'
-  const [prodEtiquetas, setProdEtiquetas] = useState(["🔥 Edición Festival"]);
+  const [prodEtiquetas, setProdEtiquetas] = useState(["Edición Festival"]);
   const [prodDestacadoWeb, setProdDestacadoWeb] = useState(true);
 
   // Insumos de la Receta (Ficha Técnica Oficial para inventario y cocina)
@@ -143,7 +143,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
   useEffect(() => {
     if (isOpen) {
       setTipoEvento("Añadir Insumos");
-      setIcono(producto?.icono || "🎉");
+      setIcono(producto?.icono || "party");
       setIsTemporal(false);
       setNombreEvento("");
       setDescripcion("");
@@ -156,7 +156,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
-      setIcono("🎉");
+      setIcono("party");
       setFechaInicio(localToday);
       setFechaFin(localFuture);
       
@@ -188,7 +188,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       setProdEstadoInicial("Activo");
       setProdRendimiento("1 porción");
       setProdVigenciaTipo("temporal");
-      setProdEtiquetas(["🔥 Edición Festival"]);
+      setProdEtiquetas(["Edición Festival"]);
       setProdDestacadoWeb(true);
       setProdInsumosReceta([]);
       setProdFichaTecnica(null);
@@ -571,7 +571,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           nombreEvento: nombreEvento.trim(),
           descripcion: finalDescripcion || "Edición especial gastronómica de tiempo limitado.",
           tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
-          icono: icono || "🎉",
+          icono: icono || "party",
           isTemporal: prodVigenciaTipo === "temporal",
           fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || localTodaySub) : null,
           fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || localFutureSub) : null,
@@ -635,7 +635,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       const payload = {
         productoId: producto?.id || producto?.idProducto,
         tipoEvento,
-        icono: icono || "🎉",
+        icono: icono || "party",
         isTemporal,
         nombreEvento: nombreEvento.trim(),
         descripcion: descripcion.trim(),
@@ -714,7 +714,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
                 }`}
               >
-                <span>🔗 Vincular a Producto Existente</span>
+                <Link className="w-3.5 h-3.5" />
+                <span>Vincular a Producto Existente</span>
               </button>
               <button
                 type="button"
@@ -726,7 +727,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>✨ Crear Producto de Evento Nuevo</span>
+                <span>Crear Producto de Evento Nuevo</span>
               </button>
             </div>
           )}
@@ -819,7 +820,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                   </label>
                   <input
                     type="text"
-                    placeholder="ej. 🔥 Chazin Burger Fest 2026 - Edición Limitada"
+                    placeholder="ej. Chazin Burger Fest 2026 - Edición Limitada"
                     value={nombreEvento}
                     onChange={(e) => setNombreEvento(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium"
@@ -896,7 +897,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                       className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
                     >
                       <option value="Activo">✓ Activo (Publicado de inmediato en Menú)</option>
-                      <option value="Inactivo">⏸ Inactivo / Borrador (Oculto)</option>
+                      <option value="Inactivo">Inactivo / Borrador (Oculto)</option>
                     </select>
                   </div>
                 </div>
@@ -960,7 +961,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                 {/* Dynamic Savings Breakdown */}
                 {Number(prodPrecioRegular) > 0 && Number(prodPrecioEvento) > 0 && Number(prodPrecioRegular) > Number(prodPrecioEvento) && (
                   <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    <span>🎉 Ahorro directo para el cliente:</span>
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Ahorro directo para el cliente:</span>
+                    </span>
                     <span className="bg-emerald-200 dark:bg-emerald-900/60 px-2.5 py-0.5 rounded-full font-black">
                       ${(Number(prodPrecioRegular) - Number(prodPrecioEvento)).toLocaleString()} ({Math.round(((Number(prodPrecioRegular) - Number(prodPrecioEvento)) / Number(prodPrecioRegular)) * 100)}% OFF)
                     </span>
@@ -1068,7 +1072,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
               <div className="border border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20 rounded-2xl p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-2xl shrink-0">🥤</span>
+                    <FoodIcon name="drink" size={24} className="text-blue-600 dark:text-blue-400 shrink-0" />
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-200">
                         Configuración de Combo: Bebidas Incluidas
@@ -1223,7 +1227,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                           {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
                             <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
                           ) : (
-                            getAdditionEmoji(adicion.nombre, adicion.imagen)
+                            <FoodIcon name={adicion.nombre} size={18} stroke={1.75} />
                           )}
                         </span>
                         <div className="flex-1 min-w-0">
@@ -1399,24 +1403,26 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                   <button
                     type="button"
                     onClick={() => setProdVigenciaTipo("temporal")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       prodVigenciaTipo === "temporal"
                         ? "bg-purple-600 text-white shadow-xs"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    ⏱️ Campaña Temporal (con fecha límite)
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Campaña Temporal (con fecha límite)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setProdVigenciaTipo("permanente")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       prodVigenciaTipo === "permanente"
                         ? "bg-purple-600 text-white shadow-xs"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    ♾️ Vigencia Permanente / Indefinida
+                    <InfinityIcon className="w-3.5 h-3.5" />
+                    <span>Vigencia Permanente / Indefinida</span>
                   </button>
                 </div>
 
@@ -1524,28 +1530,29 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     Iconografía del Evento
                   </label>
                   <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
-                    <span>Insignia:</span> <span className="text-base">{icono}</span>
+                    <span>Insignia:</span>
+                    <FoodIcon name={icono || "party"} size={16} className="text-purple-600 dark:text-purple-400" />
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                   Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
                 </p>
-                <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
                   {ICONO_OPTIONS.map((item) => {
-                    const isSelected = icono === item.emoji;
+                    const isSelected = icono === item.slug;
                     return (
                       <button
-                        key={item.emoji}
+                        key={item.slug}
                         type="button"
-                        onClick={() => setIcono(item.emoji)}
+                        onClick={() => setIcono(item.slug)}
                         title={item.label}
-                        className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                        className={`h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                           isSelected
                             ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
-                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105 text-gray-700 dark:text-gray-300"
                         }`}
                       >
-                        {item.emoji}
+                        <FoodIcon name={item.slug} size={18} stroke={2} />
                       </button>
                     );
                   })}

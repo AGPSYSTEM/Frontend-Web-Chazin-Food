@@ -1,29 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, ChefHat, Plus } from "lucide-react";
 import { productosService } from "../../ventas/servicios/productosService";
-
-const EMOJI_MAP = {
-  Hamburguesa: "🍔",
-  Perro: "🌭",
-  Gaseosa: "🥤",
-  Bebida: "🥤",
-  Pizza: "🍕",
-  Combo: "🍱",
-  Pollo: "🍗",
-  Papas: "🍟"
-};
-
-const getEmojiForProduct = (nombre = "") => {
-  const lower = nombre.toLowerCase();
-  if (lower.includes("hamburguesa")) return "🍔";
-  if (lower.includes("perro")) return "🌭";
-  if (lower.includes("gaseosa") || lower.includes("bebida") || lower.includes("jugo")) return "🥤";
-  if (lower.includes("pizza")) return "🍕";
-  if (lower.includes("combo")) return "🍱";
-  if (lower.includes("pollo")) return "🍗";
-  if (lower.includes("salchipapa") || lower.includes("papas")) return "🍟";
-  return "🍔";
-};
+import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
   const [productos, setProductos] = useState([]);
@@ -33,7 +11,7 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
   const [responsable, setResponsable] = useState("Carlos R.");
   const [tiempo, setTiempo] = useState("15 min");
   const [prioridad, setPrioridad] = useState("Normal");
-  const [imagen, setImagen] = useState("🍔");
+  const [imagen, setImagen] = useState("burger");
   const [alerta, setAlerta] = useState(false);
   const [observaciones, setObservaciones] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,12 +21,13 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
       productosService
         .getProductos()
         .then((data) => {
-          setProductos(data || []);
-          if (data && data.length > 0) {
-            const first = data[0];
-            setSelectedProductoId(String(first.id || first.idProducto || ""));
+          const prods = Array.isArray(data) ? data : [];
+          setProductos(prods);
+          if (prods.length > 0) {
+            const first = prods[0];
+            setSelectedProductoId(first.id);
             setPlatilloNombre(first.nombre);
-            setImagen(getEmojiForProduct(first.nombre));
+            setImagen(first.imagen || "burger");
           }
         })
         .catch(() => setProductos([]));
@@ -57,14 +36,12 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
 
   if (!isOpen) return null;
 
-  const handleSelectProduct = (idStr) => {
-    setSelectedProductoId(idStr);
-    const found = productos.find(
-      (p) => String(p.id || p.idProducto) === idStr
-    );
+  const handleProductoChange = (id) => {
+    setSelectedProductoId(id);
+    const found = productos.find((p) => String(p.id) === String(id));
     if (found) {
       setPlatilloNombre(found.nombre);
-      setImagen(getEmojiForProduct(found.nombre));
+      setImagen(found.imagen || "burger");
     }
   };
 
@@ -144,9 +121,9 @@ export function NuevaOrdenModal({ isOpen, onClose, onCreate }) {
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
               Nombre del Platillo / Variación
             </label>
-            <div className="flex gap-2">
-              <span className="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xl flex items-center justify-center">
-                {imagen}
+            <div className="flex gap-2 items-center">
+              <span className="p-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl flex items-center justify-center shrink-0">
+                <FoodIconBadge name={platilloNombre || imagen} size="sm" />
               </span>
               <input
                 type="text"

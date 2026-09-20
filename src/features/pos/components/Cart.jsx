@@ -1,5 +1,5 @@
 import React from "react";
-import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat } from "lucide-react";
 
 export function Cart({
   cart,
@@ -129,8 +129,8 @@ export function Cart({
               </div>
 
               {it.observacion && (
-                <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                  <span>👨‍🍳</span>
+                <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                   <span className="truncate">{it.observacion}</span>
                 </div>
               )}

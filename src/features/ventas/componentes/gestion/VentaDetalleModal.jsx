@@ -17,6 +17,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export function VentaDetalleModal({ isOpen, onClose, venta }) {
   if (!isOpen || !venta) return null;
@@ -89,10 +90,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
 
   const getEntregaBadge = (tipo) => {
     const t = (tipo || "").toLowerCase();
-    if (t.includes("mesa")) return { icon: "🍽️", label: "En Mesa" };
+    if (t.includes("mesa")) return { slug: "table", label: "En Mesa" };
     if (t.includes("recoger") || t.includes("llevar") || t.includes("local"))
-      return { icon: "🏪", label: "Recoger en Local" };
-    return { icon: "🛵", label: "Domicilio" };
+      return { slug: "takeout", label: "Recoger en Local" };
+    return { slug: "delivery", label: "Domicilio" };
   };
 
   const entregaInfo = getEntregaBadge(tipoEntrega);
@@ -176,15 +177,24 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 <span>Método de pago</span>
               </div>
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                <span>
-                  {metodoPago.toLowerCase().includes("tarjeta")
-                    ? "💳 Tarjeta"
-                    : metodoPago.toLowerCase().includes("trans") ||
-                      metodoPago.toLowerCase().includes("nequi") ||
-                      metodoPago.toLowerCase().includes("davi")
-                    ? "📱 Transferencia"
-                    : "💵 Efectivo"}
-                </span>
+                {metodoPago.toLowerCase().includes("tarjeta") ? (
+                  <>
+                    <FoodIcon name="card" size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>Tarjeta</span>
+                  </>
+                ) : metodoPago.toLowerCase().includes("trans") ||
+                  metodoPago.toLowerCase().includes("nequi") ||
+                  metodoPago.toLowerCase().includes("davi") ? (
+                  <>
+                    <FoodIcon name="mobile" size={15} className="text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>Transferencia</span>
+                  </>
+                ) : (
+                  <>
+                    <FoodIcon name="cash" size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Efectivo</span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -193,8 +203,8 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 <Store className="w-3.5 h-3.5 text-gray-400" />
                 <span>Entrega</span>
               </div>
-              <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1">
-                <span>{entregaInfo.icon}</span>
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                <FoodIcon name={entregaInfo.slug} size={15} className="text-gray-600 dark:text-gray-300 shrink-0" />
                 <span>{entregaInfo.label}</span>
               </div>
             </div>

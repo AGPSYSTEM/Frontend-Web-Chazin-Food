@@ -1,4 +1,5 @@
-import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2, Check, X } from "lucide-react";
+import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2, Check, X, FileText } from "lucide-react";
+import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails }) {
   const getNextStatusConfig = (currentStatus) => {
@@ -67,7 +68,9 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                     {/* Orden / Código */}
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="text-2xl select-none shrink-0 mt-0.5">{o.imagen || "🍔"}</div>
+                        <div className="shrink-0 mt-0.5">
+                          <FoodIconBadge name={o.productos?.[0]?.nombre || o.nombreProducto || o.producto || "burger"} size="sm" />
+                        </div>
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-1.5 font-bold text-gray-900 dark:text-gray-100">
                             {Array.isArray(o.productos) && o.productos.length > 2 ? (
@@ -116,10 +119,11 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                                     )}
                                     {obs && (
                                       <div
-                                        className="text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded text-[10px] font-medium italic border border-amber-200 dark:border-amber-900/50 inline-block max-w-full truncate"
+                                        className="text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded text-[10px] font-medium italic border border-amber-200 dark:border-amber-900/50 inline-flex items-center gap-1 max-w-full truncate"
                                         title={obs}
                                       >
-                                        📝 Nota: {obs}
+                                        <FileText className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                        <span className="truncate">Nota: {obs}</span>
                                       </div>
                                     )}
                                   </div>

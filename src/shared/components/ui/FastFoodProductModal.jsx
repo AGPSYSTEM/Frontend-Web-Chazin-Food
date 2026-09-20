@@ -21,9 +21,11 @@ import {
   ThumbsUp,
   Award,
   Send,
-  User as UserIcon
+  User as UserIcon,
+  UtensilsCrossed
 } from "lucide-react";
 import { getProductEmoji, getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import postobonUvaImg from "@/shared/assets/drinks/postobon_uva.jpg";
@@ -292,14 +294,14 @@ export const detectDefaultDrinkSize = (prod) => {
 };
 
 const INGREDIENTES_CANDIDATOS = [
-  { id: "cebolla", nombre: "Cebolla", icono: "🧅", aliases: ["cebolla", "onion"] },
-  { id: "salsas", nombre: "Salsas de la casa", icono: "🥫", aliases: ["salsa", "salsas", "sauce"] },
-  { id: "tomate", nombre: "Tomate", icono: "🍅", aliases: ["tomate", "tomato"] },
-  { id: "lechuga", nombre: "Lechuga", icono: "🥬", aliases: ["lechuga", "lettuce"] },
-  { id: "queso", nombre: "Queso", icono: "🧀", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
-  { id: "tocineta", nombre: "Tocineta", icono: "🥓", aliases: ["tocineta", "tocino", "bacon"] },
-  { id: "ripio", nombre: "Ripio de papa", icono: "🍟", aliases: ["ripio", "papas ripio", "chips"] },
-  { id: "jalapenos", nombre: "Jalapeños", icono: "🌶️", aliases: ["jalapeño", "jalapeno", "picante"] }
+  { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion"] },
+  { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce"] },
+  { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
+  { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
+  { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
+  { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
+  { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio", "papas ripio", "chips"] },
+  { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
 ];
 
 export const extractPersonalizables = (producto, ficha) => {
@@ -1207,7 +1209,7 @@ export function FastFoodProductModal({
             nombre: drink.nombre,
             precio: Number(drink.precio || 0),
             cantidad: 1,
-            imagen: drink.imagen || "🥤",
+            imagen: drink.imagen || "drink",
             stock: Number(drink.stock !== undefined ? drink.stock : 30)
           }
         ];
@@ -1258,7 +1260,7 @@ export function FastFoodProductModal({
   const handleConfirm = () => {
     if (isComboWithDrinks && !isComboDrinkComplete) {
       setActiveTab("bebidas");
-      alert(`🥤 Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
+      alert(`Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
       return;
     }
 
@@ -1449,7 +1451,7 @@ export function FastFoodProductModal({
         {eventInfo && (
           <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base animate-pulse">🔥</span>
+              <Flame className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
               <span className="truncate">{eventInfo.nombre}</span>
               <span className="hidden sm:inline-flex bg-black/30 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
                 {eventInfo.tipo === "Descuento"
@@ -1520,8 +1522,8 @@ export function FastFoodProductModal({
                   className="max-h-[170px] sm:max-h-[200px] w-auto max-w-[90%] object-contain drop-shadow-[0_22px_28px_rgba(0,0,0,0.7)] select-none animate-in zoom-in-95 duration-300"
                 />
               ) : (
-                <div className="text-8xl select-none drop-shadow-2xl animate-bounce">
-                  {getProductEmoji(producto.nombre)}
+                <div className="flex items-center justify-center w-36 h-36 rounded-full bg-white/10 backdrop-blur-md border border-white/20 drop-shadow-2xl">
+                  <FoodIcon name={producto.nombre} category={producto.categoria} size={72} stroke={1.75} className="text-amber-400" />
                 </div>
               )}
             </div>
@@ -1532,7 +1534,7 @@ export function FastFoodProductModal({
             {/* Top-Left Category Badge */}
             <div className="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-                <span>{getProductEmoji(producto.nombre)}</span>
+                <FoodIcon name={producto.nombre} category={producto.categoria} size={15} stroke={2} className="text-amber-400" />
                 <span>{producto.categoria || "Plato Especial"}</span>
               </span>
               {eventInfo && (
@@ -1631,8 +1633,8 @@ export function FastFoodProductModal({
           {/* ═══ DESCRIPCIÓN COMPLETA DEL PLATILLO (MÁXIMA LEGIBILIDAD Y ALTO CONTRASTE) ═══ */}
           {producto.descripcion && (
             <div className="mx-4 sm:mx-6 mt-3.5 p-4 rounded-2xl bg-white dark:bg-gray-850 border-2 border-amber-300/80 dark:border-amber-600/50 shadow-sm flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-base shadow-2xs mt-0.5">
-                🍽️
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
@@ -1830,7 +1832,7 @@ export function FastFoodProductModal({
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
-                      <span className="shrink-0">🥤</span>
+                      <FoodIcon name="drink" size={13} className="shrink-0" />
                       <span className="whitespace-nowrap">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
                       {isComboWithDrinks ? (
                         <span className={`shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
@@ -2151,7 +2153,7 @@ export function FastFoodProductModal({
                         }`}
                       >
                         <span className="flex items-center gap-2 truncate">
-                          <span className="text-xl shrink-0">{ing.icono}</span>
+                          <FoodIcon name={ing.icono || ing.nombre} size={18} className="shrink-0" />
                           <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
                             {ing.nombre}
                           </span>
@@ -2285,9 +2287,9 @@ export function FastFoodProductModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                      <span>🥤</span>
-                      {isComboWithDrinks ? "Bebidas Incluidas en tu Combo" : "Bebidas Frías & Acompañamientos"}
+                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <FoodIcon name="drink" size={18} className="shrink-0" />
+                      <span>{isComboWithDrinks ? "Bebidas Incluidas en tu Combo" : "Bebidas Frías & Acompañamientos"}</span>
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {isComboWithDrinks
@@ -2312,7 +2314,7 @@ export function FastFoodProductModal({
                       : "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-850 text-blue-800 dark:text-blue-200"
                   }`}>
                     <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">🥤</span>
+                      <FoodIconBadge name="drink" size="md" />
                       <div>
                         <p className="text-xs font-black">
                           {isComboDrinkComplete
@@ -2362,9 +2364,7 @@ export function FastFoodProductModal({
                               className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
                             />
                           ) : (
-                            <span className="w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl shrink-0 shadow-2xs">
-                              {drink.imagen || "🥤"}
-                            </span>
+                            <FoodIconBadge name={drink.nombre || "drink"} size="md" />
                           )}
                           <div className="min-w-0">
                             <p className="text-gray-900 dark:text-gray-100 font-black text-xs sm:text-sm truncate">
@@ -2496,7 +2496,8 @@ export function FastFoodProductModal({
                 {/* Receta e Insumos */}
                 <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 space-y-2.5">
                   <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>🌾</span> Ingredientes Oficiales que Componen la Receta:
+                    <ChefHat className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Ingredientes Oficiales que Componen la Receta:</span>
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {(() => {

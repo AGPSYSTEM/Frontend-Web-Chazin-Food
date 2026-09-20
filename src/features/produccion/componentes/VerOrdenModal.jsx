@@ -103,8 +103,8 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
         {/* Header Limpio y Estructurado */}
         <div className="p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 flex items-start justify-between bg-gray-50/70 dark:bg-gray-800/40 shrink-0">
           <div className="flex items-start gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800/80 flex items-center justify-center text-3xl select-none shrink-0 shadow-2xs">
-              {orden.imagen || "🍔"}
+            <div className="shrink-0">
+              <FoodIconBadge name={orden.producto || orden.nombreProducto || orden.productos?.[0]?.nombre || "burger"} size="lg" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">

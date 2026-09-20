@@ -89,7 +89,7 @@ export function GestionCompras() {
       const ok = await updateEstado(idCompra, "RECIBIDA");
       if (ok) {
         notify.success(
-          "✅ Compra Recibida",
+          "Compra Recibida",
           "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
         );
         if (selectedCompra && selectedCompra.id === idCompra) {

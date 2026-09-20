@@ -5,6 +5,7 @@ import {
   Mail, Phone, MapPin, CreditCard, Save, AlertCircle, Edit2
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import Swal from "sweetalert2";
@@ -275,16 +276,8 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/30 dark:bg-white/5 rounded-full blur-2xl pointer-events-none" />
                 <div className="flex items-start justify-between gap-3 relative z-10">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-xs border shrink-0 ${
-                      tipoFidelidad === "VIP"
-                        ? "bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 border-amber-200"
-                        : tipoFidelidad === "Frecuente"
-                          ? "bg-gradient-to-tr from-indigo-500 to-purple-500 text-white border-indigo-300"
-                          : tipoFidelidad === "Regular"
-                            ? "bg-gradient-to-tr from-orange-500 to-amber-500 text-white border-orange-300"
-                            : "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200"
-                    }`}>
-                      {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+                    <div className="shrink-0">
+                      <FidelidadBadge tipo={tipoFidelidad} size="md" />
                     </div>
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -308,9 +301,9 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                       <Flame className="w-4 h-4 text-orange-500" />
                       <span>Racha de Compras ({comprasCiclo} de 3)</span>
                     </span>
-                    <span className="text-[11px] font-extrabold text-[#f05454]">
+                    <span className="text-[11px] font-extrabold text-[#f05454] flex items-center gap-1">
                       {comprasFaltantes === 0
-                        ? "¡Meta alcanzada! 🎉"
+                        ? <><span>¡Meta alcanzada!</span> <Sparkles className="w-3.5 h-3.5 text-amber-500 inline" /></>
                         : tipoFidelidad === "VIP"
                           ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para renovar`
                           : `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para subir a ${siguienteNivel}`}
@@ -383,19 +376,19 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                     <div className="mt-3 space-y-2 text-[11px] bg-white/80 dark:bg-gray-800/90 p-3 rounded-2xl border border-gray-200 dark:border-gray-700 animate-in fade-in duration-150">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between p-1.5 rounded-xl bg-gray-50 dark:bg-gray-750">
-                          <span className="font-bold">🌱 Nuevo (0%)</span>
+                          <span className="font-bold flex items-center gap-1.5"><FoodIcon name="sprout" size={14} className="text-emerald-500" /> Nuevo (0%)</span>
                           <span className="text-gray-500">3 compras para subir</span>
                         </div>
                         <div className="flex items-center justify-between p-1.5 rounded-xl bg-orange-50/70 dark:bg-orange-950/30">
-                          <span className="font-bold text-orange-700 dark:text-orange-300">🥉 Regular (5% OFF)</span>
+                          <span className="font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1.5"><FoodIcon name="bronze" size={14} className="text-amber-700" /> Regular (5% OFF)</span>
                           <span className="text-gray-500">Dura 1 mes (sin gracia)</span>
                         </div>
                         <div className="flex items-center justify-between p-1.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30">
-                          <span className="font-bold text-indigo-700 dark:text-indigo-300">🥈 Frecuente (10% OFF)</span>
+                          <span className="font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5"><FoodIcon name="silver" size={14} className="text-slate-400" /> Frecuente (10% OFF)</span>
                           <span className="text-gray-500">Dura 1 mes + 10 días de gracia</span>
                         </div>
                         <div className="flex items-center justify-between p-1.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30">
-                          <span className="font-bold text-amber-700 dark:text-amber-300">🥇 VIP (15% OFF)</span>
+                          <span className="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5"><FoodIcon name="gold" size={14} className="text-amber-500" /> VIP (15% OFF)</span>
                           <span className="text-gray-500">Dura 1 mes + 15 días de gracia</span>
                         </div>
                       </div>

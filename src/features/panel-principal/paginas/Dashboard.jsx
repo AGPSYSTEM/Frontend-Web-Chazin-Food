@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { TrendingUp, TrendingDown, Minus, ShoppingCart, Users, Package, DollarSign, AlertCircle, Settings, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ShoppingCart, Users, Package, DollarSign, AlertCircle, Settings, ChevronRight, Zap, CheckCircle2 } from "lucide-react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
@@ -166,7 +166,8 @@ export function Dashboard() {
             <StatVariation value={stats.pedidosVariacion} />
             {stats.frecuenciaVentas !== undefined && (
               <p className="text-blue-600 dark:text-blue-400 text-xs mt-1.5 flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-900/20 w-fit px-2 py-0.5 rounded">
-                ⚡ {stats.frecuenciaVentas} pedidos / día
+                <Zap className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>{stats.frecuenciaVentas} pedidos / día</span>
               </p>
             )}
           </div>
@@ -296,8 +297,9 @@ export function Dashboard() {
                 </button>
               </div>
             )) : (
-              <div className="flex items-center justify-center py-8 text-gray-400 dark:text-gray-600 text-sm">
-                ✅ Todos los insumos están abastecidos
+              <div className="flex items-center justify-center gap-1.5 py-8 text-gray-400 dark:text-gray-600 text-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Todos los insumos están abastecidos</span>
               </div>
             )}
           </div>

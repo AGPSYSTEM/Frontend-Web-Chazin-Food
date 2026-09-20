@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, FlaskConical } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, FlaskConical, Scale, Leaf } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
@@ -245,20 +245,23 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl">
             <p className="text-xs font-bold text-[#F05454] uppercase tracking-wider">Tiempo de Preparación</p>
-            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">
-              ⏱️ {tiempoPreparacion ? `${tiempoPreparacion} min` : "No especificado"}
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-[#F05454]" />
+              <span>{tiempoPreparacion ? `${tiempoPreparacion} min` : "No especificado"}</span>
             </p>
           </div>
           <div className="p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-2xl">
             <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Rendimiento</p>
-            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">
-              ⚖️ {rendimiento || "1 receta base"}
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">
+              <Scale className="w-5 h-5 text-amber-500" />
+              <span>{rendimiento || "1 receta base"}</span>
             </p>
           </div>
           <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Vida Útil</p>
-            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">
-              🌿 {vidaUtil || "Según fecha de lote"}
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">
+              <Leaf className="w-5 h-5 text-emerald-500" />
+              <span>{vidaUtil || "Según fecha de lote"}</span>
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Building, User } from "lucide-react";
+import { X, Building, User, AlertCircle } from "lucide-react";
 
 const TIPOS_PROVEEDOR = [
   { id: 1, nombre: "Mayorista" },
@@ -251,7 +251,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               />
               {errors.nombre && (
                 <p className={errorMsgCls}>
-                  <span>⚠</span> {errors.nombre}
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nombre}
                 </p>
               )}
             </div>
@@ -300,7 +300,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               />
               {errors.nit && (
                 <p className={errorMsgCls}>
-                  <span>⚠</span> {errors.nit}
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nit}
                 </p>
               )}
             </div>
@@ -319,7 +319,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               />
               {errors.contacto && (
                 <p className={errorMsgCls}>
-                  <span>⚠</span> {errors.contacto}
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.contacto}
                 </p>
               )}
             </div>
@@ -339,7 +339,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               />
               {errors.telefono && (
                 <p className={errorMsgCls}>
-                  <span>⚠</span> {errors.telefono}
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.telefono}
                 </p>
               )}
             </div>

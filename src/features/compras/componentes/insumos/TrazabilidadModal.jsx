@@ -105,13 +105,14 @@ export function TrazabilidadModal({
 
           <button
             onClick={() => setFilterType("Reabastecimientos")}
-            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
+            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 flex items-center gap-1.5 ${
               filterType === "Reabastecimientos"
                 ? "bg-emerald-600 text-white"
                 : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
             }`}
           >
-            🛒 Reabastecimientos ({reabastecimientosCount})
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Reabastecimientos ({reabastecimientosCount})</span>
           </button>
 
           <button

@@ -4,6 +4,7 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function VerProductoModal({ isOpen, onClose, producto }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -137,18 +138,14 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
 
           {/* Product Image Frame */}
           <div className="mt-3 w-48 h-48 sm:w-56 sm:h-56 rounded-3xl bg-white dark:bg-gray-800/90 p-3 shadow-md border border-gray-200/80 dark:border-gray-700/80 flex items-center justify-center overflow-hidden transition-transform duration-300 hover:scale-[1.02]">
-            {producto.imagen ? (
-              (producto.imagen.startsWith("http") || producto.imagen.startsWith("/")) ? (
-                <img
-                  src={producto.imagen}
-                  alt={producto.nombre}
-                  className="w-full h-full object-contain rounded-2xl"
-                />
-              ) : (
-                <span className="text-7xl">{producto.imagen}</span>
-              )
+            {producto.imagen && (producto.imagen.startsWith("http") || producto.imagen.startsWith("/")) ? (
+              <img
+                src={producto.imagen}
+                alt={producto.nombre}
+                className="w-full h-full object-contain rounded-2xl"
+              />
             ) : (
-              <span className="text-7xl">🍔</span>
+              <FoodIconBadge name={producto.nombre || "burger"} size="xl" />
             )}
           </div>
         </div>
@@ -419,7 +416,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           {eventosActivos.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-base">🎉</span>
+                <FoodIcon name="party" size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
                   Eventos y Promociones Activas ({eventosActivos.length})
                 </h3>
@@ -429,7 +426,9 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                   {eventosActivos.map((evt, i) => (
                     <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-purple-100 dark:border-purple-900/20">
                       <div className="flex items-start gap-2.5">
-                        <span className="text-2xl shrink-0 p-1 bg-purple-50 dark:bg-purple-900/40 rounded-lg">{evt.icono || "🎉"}</span>
+                        <div className="shrink-0">
+                          <FoodIconBadge name={evt.icono || "party"} size="sm" />
+                        </div>
                         <div>
                           <span className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
                             {evt.nombreEvento || evt.nombre}

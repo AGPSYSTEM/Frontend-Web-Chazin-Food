@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Plus, Minus, Check, ChevronDown, ChevronUp, Layers, Sliders, Sparkles, FileText, Flame } from "lucide-react";
 import { getAdditionEmoji, getProductEmoji } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function ProductCard({ producto, onAdd, onCustomize }) {
   const [showAdditions, setShowAdditions] = useState(false);
@@ -177,9 +178,12 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
           />
         ) : (
           <div className="flex flex-col items-center justify-center p-3 text-center">
-            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-white/70 dark:bg-white/10 text-3xl sm:text-4xl shadow-xs backdrop-blur-md border border-white/40 dark:border-white/10 group-hover:scale-110 transition-transform">
-              {getProductEmoji(producto.nombre)}
-            </div>
+            <FoodIconBadge
+              name={producto.nombre}
+              category={producto.categoria?.nombre || producto.categoria}
+              size="lg"
+              className="group-hover:scale-110 transition-transform shadow-sm"
+            />
           </div>
         )}
 
@@ -298,7 +302,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
                           {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
                             <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover" />
                           ) : (
-                            getAdditionEmoji(adicion.nombre, adicion.imagen)
+                            <FoodIcon name={adicion.nombre} size={14} stroke={2} />
                           )}
                         </span>
                         <span className="truncate text-[11.5px] font-semibold leading-tight">

@@ -14,11 +14,13 @@ import {
   ChefHat,
   Info,
   Check,
-  Send
+  Send,
+  UtensilsCrossed
 } from "lucide-react";
 import { extractPersonalizables, resolveNutritionalSpecs } from "@/shared/components/ui/FastFoodProductModal";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 const QUICK_KITCHEN_TAGS = [
   "Salsas aparte",
@@ -49,17 +51,7 @@ function formatFecha(dateStr) {
   }
 }
 
-const getProductEmoji = (nombre = "") => {
-  const n = String(nombre).toLowerCase();
-  if (n.includes("hambur")) return "🍔";
-  if (n.includes("perro") || n.includes("hot dog")) return "🌭";
-  if (n.includes("salchipapa") || n.includes("papa")) return "🍟";
-  if (n.includes("pollo") || n.includes("alita")) return "🍗";
-  if (n.includes("pizza")) return "🍕";
-  if (n.includes("combo")) return "🍱";
-  if (n.includes("bebida") || n.includes("gaseosa")) return "🥤";
-  return "🍽️";
-};
+
 
 export function PersonalizarEventoModal({
   isOpen,
@@ -172,14 +164,14 @@ export function PersonalizarEventoModal({
     // Fallback candidates
     const desc = String(selectedProduct.descripcion || "").toLowerCase();
     const fallbackCandidates = [
-      { id: "cebolla", nombre: "Cebolla", icono: "🧅", aliases: ["cebolla"] },
-      { id: "tomate", nombre: "Tomate", icono: "🍅", aliases: ["tomate"] },
-      { id: "lechuga", nombre: "Lechuga", icono: "🥬", aliases: ["lechuga"] },
-      { id: "queso", nombre: "Queso", icono: "🧀", aliases: ["queso", "cheddar", "mozzarella"] },
-      { id: "tocineta", nombre: "Tocineta", icono: "🥓", aliases: ["tocineta", "tocino"] },
-      { id: "salsas", nombre: "Salsas de la casa", icono: "🥫", aliases: ["salsa", "salsas", "tártara"] },
-      { id: "ripio", nombre: "Ripio de papa", icono: "🍟", aliases: ["ripio"] },
-      { id: "jalapenos", nombre: "Jalapeños", icono: "🌶️", aliases: ["jalapeño", "jalapeno", "picante"] }
+      { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla"] },
+      { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate"] },
+      { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga"] },
+      { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella"] },
+      { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino"] },
+      { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "tártara"] },
+      { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio"] },
+      { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
     ];
     return fallbackCandidates.filter((c) => c.aliases.some((alias) => desc.includes(alias)));
   }, [selectedProduct, currentFicha]);
@@ -358,7 +350,7 @@ export function PersonalizarEventoModal({
           nombre: ad.nombre,
           precio: Number(ad.precio) || 0,
           cantidad: 1,
-          imagen: ad.imagen || "🥫"
+          imagen: ad.imagen || "sauce"
         }
       ]);
     }
@@ -399,7 +391,7 @@ export function PersonalizarEventoModal({
           nombre: drink.nombre,
           precio: Number(drink.precio) || 0,
           cantidad: 1,
-          imagen: drink.imagen || "🥤"
+          imagen: drink.imagen || "drink"
         }
       ]);
     }
@@ -448,7 +440,7 @@ export function PersonalizarEventoModal({
     const itemToAdd = {
       id: selectedProduct.id || selectedProduct.idProducto,
       idProducto: selectedProduct.idProducto || selectedProduct.id,
-      nombre: `${selectedProduct.nombre} (${evento.icono || "🎉"} ${eventNameTag})`,
+      nombre: `${selectedProduct.nombre} (${eventNameTag})`,
       nombreOriginal: selectedProduct.nombre,
       precio: promoPrice,
       cantidad: cantidad,
@@ -459,14 +451,14 @@ export function PersonalizarEventoModal({
         idEvento: evento.id || evento.idEvento,
         nombre: eventNameTag,
         tipoEvento: evento.tipoEvento,
-        icono: evento.icono || "🎉"
+        icono: evento.icono || "party"
       },
       adiciones: selectedAdditions.map((a) => ({
         idAdicion: a.idAdicion,
         nombre: a.nombre,
         precio: Number(a.precio) || 0,
         cantidad: Number(a.cantidad) || 1,
-        imagen: a.imagen || "🥫"
+        imagen: a.imagen || "sauce"
       })),
       ingredientesRemovidos: removedIngredients,
       observaciones: kitchenNotes || undefined
@@ -508,7 +500,7 @@ export function PersonalizarEventoModal({
         {/* ── 1. Festival Drop Top Ribbon (Evento Activo) ── */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base animate-pulse">{evento.icono || "🎉"}</span>
+            <FoodIcon name={evento.icono || "party"} size={16} className="shrink-0 animate-pulse" />
             <span className="truncate">{evento.nombreEvento || evento.nombre || "Promoción Especial"}</span>
             <span className="hidden sm:inline-flex bg-white/20 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
               {evento.tipoEvento || "EVENTO ESPECIAL"}
@@ -567,14 +559,16 @@ export function PersonalizarEventoModal({
                   className="max-h-full max-w-full object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.65)] hover:scale-105 transition-transform duration-300"
                 />
               ) : (
-                <div className="text-6xl">{getProductEmoji(selectedProduct?.nombre)}</div>
+                <div className="flex items-center justify-center w-28 h-28 rounded-full bg-white/10 backdrop-blur-md border border-white/20 drop-shadow-xl">
+                  <FoodIcon name={selectedProduct?.nombre} category={selectedProduct?.categoria} size={64} stroke={1.75} className="text-amber-400" />
+                </div>
               )}
             </div>
 
             {/* Top-Left Badges */}
             <div className="absolute top-3.5 left-4 z-20 flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-                <span>{getProductEmoji(selectedProduct?.nombre)}</span>
+                <FoodIcon name={selectedProduct?.nombre} category={selectedProduct?.categoria} size={15} stroke={2} className="text-amber-400" />
                 <span>{selectedProduct?.categoria || selectedProduct?.categoriaNombre || "Plato del Evento"}</span>
               </span>
               <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
@@ -638,7 +632,7 @@ export function PersonalizarEventoModal({
                           : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
                       }`}
                     >
-                      <span>{getProductEmoji(p.nombre)}</span>
+                      <FoodIcon name={p.nombre} size={16} stroke={1.75} />
                       <span className="truncate max-w-[140px]">{p.nombre}</span>
                     </button>
                   );
@@ -695,8 +689,8 @@ export function PersonalizarEventoModal({
           {/* ═══ 5. DESCRIPCIÓN & PREPARACIÓN (MÁXIMA LEGIBILIDAD) ═══ */}
           {selectedProduct?.descripcion && (
             <div className="mx-4 sm:mx-6 mt-3.5 p-4 rounded-2xl bg-white dark:bg-gray-850 border-2 border-amber-300/80 dark:border-amber-600/50 shadow-sm flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-base shadow-2xs mt-0.5">
-                🍽️
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
@@ -785,7 +779,7 @@ export function PersonalizarEventoModal({
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                   }`}
                 >
-                  <span>🥤</span>
+                  <FoodIcon name="drink" size={13} className="shrink-0" />
                   <span>Bebidas</span>
                   {selectedDrinks.length > 0 && (
                     <span className="h-4 min-w-[16px] px-1 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black">
@@ -939,7 +933,7 @@ export function PersonalizarEventoModal({
                             {ad.imagen && typeof ad.imagen === "string" && ad.imagen.startsWith("http") ? (
                               <img src={ad.imagen} alt={ad.nombre} className="w-full h-full object-cover" />
                             ) : (
-                              <span>{ad.imagen || "🥓"}</span>
+                              <FoodIcon name={ad.nombre || "sauce"} size={18} />
                             )}
                           </div>
                           <div className="min-w-0">
@@ -996,9 +990,9 @@ export function PersonalizarEventoModal({
               <div className="space-y-3 animate-in fade-in duration-150">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                      <span>🥤</span>
-                      Bebidas Frías & Acompañamientos
+                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <FoodIcon name="drink" size={16} className="shrink-0" />
+                      <span>Bebidas Frías & Acompañamientos</span>
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       El maridaje ideal para disfrutar tu pedido al máximo:
@@ -1033,7 +1027,7 @@ export function PersonalizarEventoModal({
                             {drink.imagen && typeof drink.imagen === "string" && drink.imagen.startsWith("http") ? (
                               <img src={drink.imagen} alt={drink.nombre} className="w-full h-full object-cover" />
                             ) : (
-                              <span>🥤</span>
+                              <FoodIcon name="drink" size={18} />
                             )}
                           </div>
                           <div className="min-w-0">
@@ -1095,7 +1089,7 @@ export function PersonalizarEventoModal({
                       <span className="text-base leading-none">
                         {effectiveRating.total > 0 ? Number(effectiveRating.promedio || 5).toFixed(1) : "5.0"}
                       </span>
-                      <span className="text-[9px] uppercase tracking-wider opacity-90">★</span>
+                      <Star className="w-2.5 h-2.5 fill-current opacity-90 mt-0.5" />
                     </div>
                     <div>
                       <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">

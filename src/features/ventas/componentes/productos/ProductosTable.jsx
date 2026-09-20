@@ -12,6 +12,7 @@ import {
   ChevronsLeft,
   ChevronsRight
 } from "lucide-react";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export function ProductosTable({
   productos = [],
@@ -128,14 +129,14 @@ export function ProductosTable({
                           </span>
                           {p.eventos && p.eventos.length > 0 && (() => {
                             const evt = p.eventos[0];
-                            const evtIcon = evt.icono || "🎉";
+                            const evtIcon = evt.icono || "party";
                             const evtLabel = evt.nombreEvento || evt.tipoEvento || "Evento Activo";
                             return (
                               <span
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white shadow-xs"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white shadow-xs"
                                 title={`Evento: ${evtLabel} (${evt.tipoEvento || ''})`}
                               >
-                                <span>{evtIcon}</span>
+                                <FoodIcon name={evtIcon} size={12} className="shrink-0" />
                                 <span className="max-w-[130px] truncate">{evtLabel}</span>
                               </span>
                             );

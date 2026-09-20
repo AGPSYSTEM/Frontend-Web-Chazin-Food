@@ -1,4 +1,5 @@
 import { User, Clock, AlertCircle, Eye, Check, X } from "lucide-react";
+import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
   // Determine next status and button label
@@ -34,7 +35,10 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
       {/* Top Header Row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="text-3xl select-none shrink-0">{orden.imagen || "🍔"}</div>
+          <FoodIconBadge
+            name={orden.platilloNombre || orden.productos?.[0]?.nombre}
+            size="md"
+          />
           <div>
             <h4 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">
               {Array.isArray(orden.productos) && orden.productos.length > 2 ? (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -20,71 +20,73 @@ import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
 import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { IconFlame as TablerFlame } from "@tabler/icons-react";
 
 const defaultCategoryIcons = {
-  "hamburguesas": { icon: "🍔", color: "from-yellow-400 to-orange-500" },
-  "salchipapas": { icon: "🍟", color: "from-yellow-500 to-amber-600" },
-  "perros calientes": { icon: "🌭", color: "from-orange-400 to-red-500" },
-  "perros": { icon: "🌭", color: "from-orange-400 to-red-500" },
-  "pollo": { icon: "🍗", color: "from-amber-500 to-orange-600" },
-  "bebidas": { icon: "🥤", color: "from-blue-400 to-blue-600" },
-  "refrescos": { icon: "🥤", color: "from-blue-400 to-blue-600" },
-  "acompañamientos": { icon: "🥗", color: "from-green-400 to-green-600" },
-  "combos": { icon: "🍱", color: "from-purple-400 to-purple-600" },
-  "postres": { icon: "🍰", color: "from-pink-400 to-rose-500" },
-  "helados": { icon: "🍦", color: "from-indigo-400 to-purple-500" },
-  "entradas": { icon: "🌮", color: "from-emerald-400 to-teal-500" },
-  "pizzas": { icon: "🍕", color: "from-red-500 to-amber-500" }
+  "hamburguesas": { icon: "burger", color: "from-yellow-400 to-orange-500" },
+  "salchipapas": { icon: "fries", color: "from-yellow-500 to-amber-600" },
+  "perros calientes": { icon: "hotdog", color: "from-orange-400 to-red-500" },
+  "perros": { icon: "hotdog", color: "from-orange-400 to-red-500" },
+  "pollo": { icon: "chicken", color: "from-amber-500 to-orange-600" },
+  "bebidas": { icon: "drink", color: "from-blue-400 to-blue-600" },
+  "refrescos": { icon: "drink", color: "from-blue-400 to-blue-600" },
+  "acompañamientos": { icon: "salad", color: "from-green-400 to-green-600" },
+  "combos": { icon: "combo", color: "from-purple-400 to-purple-600" },
+  "postres": { icon: "cake", color: "from-pink-400 to-rose-500" },
+  "helados": { icon: "icecream", color: "from-indigo-400 to-purple-500" },
+  "entradas": { icon: "taco", color: "from-emerald-400 to-teal-500" },
+  "pizzas": { icon: "pizza", color: "from-red-500 to-amber-500" }
 };
 
 const getCategoryMeta = (nombre) => {
   const key = String(nombre || "").toLowerCase().trim();
-  if (key.includes("hambur")) return { icon: "🍔", color: "from-yellow-400 to-orange-500" };
-  if (key.includes("perro") || key.includes("hot dog")) return { icon: "🌭", color: "from-orange-400 to-red-500" };
-  if (key.includes("salchipapa")) return { icon: "🍟", color: "from-yellow-500 to-amber-600" };
-  if (key.includes("papa")) return { icon: "🍟", color: "from-yellow-500 to-amber-600" };
-  if (key.includes("pollo") || key.includes("alitas") || key.includes("nugget")) return { icon: "🍗", color: "from-amber-500 to-orange-600" };
-  if (key.includes("pizza")) return { icon: "🍕", color: "from-red-500 to-amber-500" };
-  if (key.includes("combo")) return { icon: "🍱", color: "from-purple-400 to-purple-600" };
-  if (key.includes("bebida") || key.includes("gaseosa") || key.includes("jugo") || key.includes("refresco")) return { icon: "🥤", color: "from-blue-400 to-blue-600" };
-  if (key.includes("postre") || key.includes("torta") || key.includes("pastel")) return { icon: "🍰", color: "from-pink-400 to-rose-500" };
-  if (key.includes("helado")) return { icon: "🍦", color: "from-indigo-400 to-purple-500" };
-  if (key.includes("acompa")) return { icon: "🍟", color: "from-amber-400 to-orange-500" };
-  if (key.includes("ensalada")) return { icon: "🥗", color: "from-green-400 to-green-600" };
-  if (key.includes("entrada") || key.includes("snack") || key.includes("taco")) return { icon: "🌮", color: "from-emerald-400 to-teal-500" };
-  return defaultCategoryIcons[key] || { icon: "🍽️", color: "from-red-400 to-red-600" };
+  if (key.includes("hambur")) return { icon: "burger", color: "from-yellow-400 to-orange-500" };
+  if (key.includes("perro") || key.includes("hot dog")) return { icon: "hotdog", color: "from-orange-400 to-red-500" };
+  if (key.includes("salchipapa")) return { icon: "fries", color: "from-yellow-500 to-amber-600" };
+  if (key.includes("papa")) return { icon: "fries", color: "from-yellow-500 to-amber-600" };
+  if (key.includes("pollo") || key.includes("alitas") || key.includes("nugget")) return { icon: "chicken", color: "from-amber-500 to-orange-600" };
+  if (key.includes("pizza")) return { icon: "pizza", color: "from-red-500 to-amber-500" };
+  if (key.includes("combo")) return { icon: "combo", color: "from-purple-400 to-purple-600" };
+  if (key.includes("bebida") || key.includes("gaseosa") || key.includes("jugo") || key.includes("refresco")) return { icon: "drink", color: "from-blue-400 to-blue-600" };
+  if (key.includes("postre") || key.includes("torta") || key.includes("pastel")) return { icon: "cake", color: "from-pink-400 to-rose-500" };
+  if (key.includes("helado")) return { icon: "icecream", color: "from-indigo-400 to-purple-500" };
+  if (key.includes("acompa")) return { icon: "fries", color: "from-amber-400 to-orange-500" };
+  if (key.includes("ensalada")) return { icon: "salad", color: "from-green-400 to-green-600" };
+  if (key.includes("entrada") || key.includes("snack") || key.includes("taco")) return { icon: "taco", color: "from-emerald-400 to-teal-500" };
+  return defaultCategoryIcons[key] || { icon: "plate", color: "from-red-400 to-red-600" };
 };
 
 const categoriasDefault = [
-  { id: 1, nombre: "Perros Calientes", icon: "🌭", color: "from-orange-400 to-red-500" },
-  { id: 2, nombre: "Combos", icon: "🍱", color: "from-purple-400 to-purple-600" },
-  { id: 3, nombre: "Hamburguesas", icon: "🍔", color: "from-yellow-400 to-orange-500" },
-  { id: 4, nombre: "Bebidas", icon: "🥤", color: "from-blue-400 to-blue-600" },
-  { id: 5, nombre: "Salchipapas Gourmet", icon: "🍟", color: "from-yellow-500 to-amber-600" },
-  { id: 6, nombre: "Acompañamientos", icon: "🍟", color: "from-amber-400 to-orange-600" }
+  { id: 1, nombre: "Perros Calientes", icon: "hotdog", color: "from-orange-400 to-red-500" },
+  { id: 2, nombre: "Combos", icon: "combo", color: "from-purple-400 to-purple-600" },
+  { id: 3, nombre: "Hamburguesas", icon: "burger", color: "from-yellow-400 to-orange-500" },
+  { id: 4, nombre: "Bebidas", icon: "drink", color: "from-blue-400 to-blue-600" },
+  { id: 5, nombre: "Salchipapas Gourmet", icon: "fries", color: "from-yellow-500 to-amber-600" },
+  { id: 6, nombre: "Acompañamientos", icon: "fries", color: "from-amber-400 to-orange-600" }
 ];
 
 const productosDefault = [
-  { id: 10, idProducto: 10, nombre: "Hamburguesa Clásica Chazin", precio: 18000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Pan brioche artesanal, carne 80/20, tocineta ahumada, queso cheddar, tomate, lechuga y salsas", stock: 25 },
-  { id: 11, idProducto: 11, nombre: "Hamburguesa Doble Carne & Tocineta", precio: 25000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Pan brioche, doble carne 80/20, doble tocineta ahumada, queso cheddar y cebolla blanca", stock: 20 },
-  { id: 12, idProducto: 12, nombre: "Hamburguesa Pollo Crispy Gourmet", precio: 21000, categoria: 3, idCategoriaProducto: 3, imagen: "🍗", descripcion: "Pan brioche, pechuga de pollo crispy, queso mozzarella, lechuga, tomate y salsas", stock: 18 },
-  { id: 28, idProducto: 28, nombre: "Hamburguesa BBQ Bacon Chazin", precio: 22000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Carne res 150g, abundante salsa BBQ ahumada, tocineta crujiente, doble queso cheddar y cebolla caramelizada", stock: 30 },
-  { id: 29, idProducto: 29, nombre: "Hamburguesa Mexicana Chazin", precio: 23500, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Carne 150g, guacamole artesanal fresco, rodajas de jalapeños, queso mozzarella y lechuga", stock: 25 },
-  { id: 30, idProducto: 30, nombre: "Hamburguesa Campesina Chazin", precio: 23000, categoria: 3, idCategoriaProducto: 3, imagen: "🍔", descripcion: "Carne 150g, queso mozzarella derretido, tocineta ahumada, cebolla salteada, tomate y salsa tártara", stock: 25 },
-  { id: 13, idProducto: 13, nombre: "Perro Caliente Especial Americano", precio: 14000, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Pan perro, salchicha americana, tocineta crujiente, queso mozzarella y ripio", stock: 22 },
-  { id: 14, idProducto: 14, nombre: "Perro Suizo Chazin", precio: 17000, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Pan perro, salchicha suiza ahumada, tocineta, queso mozzarella y cebolla blanca", stock: 20 },
-  { id: 31, idProducto: 31, nombre: "Perro Caliente Mexicano", precio: 16000, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Pan tierno, salchicha americana, guacamole artesanal, salsa cheddar fundido, tocineta y jalapeños", stock: 20 },
-  { id: 32, idProducto: 32, nombre: "Perro Criollo Especial Chazin", precio: 16500, categoria: 1, idCategoriaProducto: 1, imagen: "🌭", descripcion: "Salchicha americana y suiza ahumada, lluvia de tocineta, queso mozzarella gratinado y suero costeño", stock: 20 },
-  { id: 15, idProducto: 15, nombre: "Salchipapa Salvaje Gourmet", precio: 23000, categoria: 5, idCategoriaProducto: 5, imagen: "🍟", descripcion: "Papas francesas doradas, salchicha americana, salchicha suiza, tocineta y queso", stock: 25 },
-  { id: 33, idProducto: 33, nombre: "Salchipapa Criolla Chazin", precio: 21000, categoria: 5, idCategoriaProducto: 5, imagen: "🍟", descripcion: "Papas a la francesa, salchicha americana, tocineta crujiente, queso mozzarella, cheddar fundido y suero", stock: 25 },
-  { id: 34, idProducto: 34, nombre: "Salchipapa Costeña Chazin", precio: 22500, categoria: 5, idCategoriaProducto: 5, imagen: "🍟", descripcion: "Papas francesas doraditas, salchicha suiza ahumada, generoso suero costeño, tocineta y queso mozzarella", stock: 25 },
-  { id: 16, idProducto: 16, nombre: "Combo Pareja Chazin", precio: 38000, categoria: 2, idCategoriaProducto: 2, imagen: "🍱", descripcion: "2 hamburguesas clásicas con queso cheddar, papas a la francesa y 2 Coca-Cola 400ml", stock: 15 },
-  { id: 35, idProducto: 35, nombre: "Combo Personal Chazin", precio: 24500, categoria: 2, idCategoriaProducto: 2, imagen: "🍱", descripcion: "1 Hamburguesa Clásica Chazin + Papas a la Francesa individuales (150g) + 1 Gaseosa 400ml fría", stock: 25 },
-  { id: 36, idProducto: 36, nombre: "Combo Familiar Chazin (4 Personas)", precio: 68000, categoria: 2, idCategoriaProducto: 2, imagen: "🍱", descripcion: "2 Hamburguesas Clásicas + 2 Perros Especiales Americanos + 2 Papas Grandes + 4 Gaseosas 400ml", stock: 15 },
-  { id: 37, idProducto: 37, nombre: "Combo Perro Amigos (2 Personas)", precio: 32000, categoria: 2, idCategoriaProducto: 2, imagen: "🍱", descripcion: "2 Perros Especiales Americanos con mozzarella y tocineta + Porción doble de Papas + 2 Bebidas 400ml", stock: 20 },
-  { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, categoria: 4, idCategoriaProducto: 4, imagen: "🥤", descripcion: "Gaseosa Coca-Cola sabor original 400ml fría", stock: 60 },
-  { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, categoria: 4, idCategoriaProducto: 4, imagen: "🍎", descripcion: "Gaseosa sabor manzana Postobón 400ml refrescante", stock: 45 },
-  { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "💧", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
+  { id: 10, idProducto: 10, nombre: "Hamburguesa Clásica Chazin", precio: 18000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Pan brioche artesanal, carne 80/20, tocineta ahumada, queso cheddar, tomate, lechuga y salsas", stock: 25 },
+  { id: 11, idProducto: 11, nombre: "Hamburguesa Doble Carne & Tocineta", precio: 25000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Pan brioche, doble carne 80/20, doble tocineta ahumada, queso cheddar y cebolla blanca", stock: 20 },
+  { id: 12, idProducto: 12, nombre: "Hamburguesa Pollo Crispy Gourmet", precio: 21000, categoria: 3, idCategoriaProducto: 3, imagen: "chicken", descripcion: "Pan brioche, pechuga de pollo crispy, queso mozzarella, lechuga, tomate y salsas", stock: 18 },
+  { id: 28, idProducto: 28, nombre: "Hamburguesa BBQ Bacon Chazin", precio: 22000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne res 150g, abundante salsa BBQ ahumada, tocineta crujiente, doble queso cheddar y cebolla caramelizada", stock: 30 },
+  { id: 29, idProducto: 29, nombre: "Hamburguesa Mexicana Chazin", precio: 23500, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne 150g, guacamole artesanal fresco, rodajas de jalapeños, queso mozzarella y lechuga", stock: 25 },
+  { id: 30, idProducto: 30, nombre: "Hamburguesa Campesina Chazin", precio: 23000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne 150g, queso mozzarella derretido, tocineta ahumada, cebolla salteada, tomate y salsa tártara", stock: 25 },
+  { id: 13, idProducto: 13, nombre: "Perro Caliente Especial Americano", precio: 14000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan perro, salchicha americana, tocineta crujiente, queso mozzarella y ripio", stock: 22 },
+  { id: 14, idProducto: 14, nombre: "Perro Suizo Chazin", precio: 17000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan perro, salchicha suiza ahumada, tocineta, queso mozzarella y cebolla blanca", stock: 20 },
+  { id: 31, idProducto: 31, nombre: "Perro Caliente Mexicano", precio: 16000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan tierno, salchicha americana, guacamole artesanal, salsa cheddar fundido, tocineta y jalapeños", stock: 20 },
+  { id: 32, idProducto: 32, nombre: "Perro Criollo Especial Chazin", precio: 16500, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Salchicha americana y suiza ahumada, lluvia de tocineta, queso mozzarella gratinado y suero costeño", stock: 20 },
+  { id: 15, idProducto: 15, nombre: "Salchipapa Salvaje Gourmet", precio: 23000, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas francesas doradas, salchicha americana, salchicha suiza, tocineta y queso", stock: 25 },
+  { id: 33, idProducto: 33, nombre: "Salchipapa Criolla Chazin", precio: 21000, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas a la francesa, salchicha americana, tocineta crujiente, queso mozzarella, cheddar fundido y suero", stock: 25 },
+  { id: 34, idProducto: 34, nombre: "Salchipapa Costeña Chazin", precio: 22500, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas francesas doraditas, salchicha suiza ahumada, generoso suero costeño, tocineta y queso mozzarella", stock: 25 },
+  { id: 16, idProducto: 16, nombre: "Combo Pareja Chazin", precio: 38000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 hamburguesas clásicas con queso cheddar, papas a la francesa y 2 Coca-Cola 400ml", stock: 15 },
+  { id: 35, idProducto: 35, nombre: "Combo Personal Chazin", precio: 24500, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "1 Hamburguesa Clásica Chazin + Papas a la Francesa individuales (150g) + 1 Gaseosa 400ml fría", stock: 25 },
+  { id: 36, idProducto: 36, nombre: "Combo Familiar Chazin (4 Personas)", precio: 68000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 Hamburguesas Clásicas + 2 Perros Especiales Americanos + 2 Papas Grandes + 4 Gaseosas 400ml", stock: 15 },
+  { id: 37, idProducto: 37, nombre: "Combo Perro Amigos (2 Personas)", precio: 32000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 Perros Especiales Americanos con mozzarella y tocineta + Porción doble de Papas + 2 Bebidas 400ml", stock: 20 },
+  { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa Coca-Cola sabor original 400ml fría", stock: 60 },
+  { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa sabor manzana Postobón 400ml refrescante", stock: 45 },
+  { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
 ];
 
 const adicionesDisponibles = [
@@ -189,14 +191,14 @@ export const getIngredientesPersonalizables = (producto, ficha) => {
   if (!producto || isDrinkProduct(producto)) return [];
 
   const CANDIDATOS_BASE = [
-    { id: "cebolla", nombre: "Cebolla", icono: "🧅", aliases: ["cebolla", "onion"] },
-    { id: "salsas", nombre: "Salsas de la casa", icono: "🥫", aliases: ["salsa", "salsas", "sauce"] },
-    { id: "tomate", nombre: "Tomate", icono: "🍅", aliases: ["tomate", "tomato"] },
-    { id: "lechuga", nombre: "Lechuga", icono: "🥬", aliases: ["lechuga", "lettuce"] },
-    { id: "queso", nombre: "Queso", icono: "🧀", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
-    { id: "tocineta", nombre: "Tocineta", icono: "🥓", aliases: ["tocineta", "tocino", "bacon"] },
-    { id: "ripio", nombre: "Ripio de papa", icono: "🍟", aliases: ["ripio", "papas ripio", "chips"] },
-    { id: "jalapenos", nombre: "Jalapeños", icono: "🌶️", aliases: ["jalapeño", "jalapeno", "picante"] }
+    { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion"] },
+    { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce"] },
+    { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
+    { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
+    { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
+    { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
+    { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio", "papas ripio", "chips"] },
+    { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
   ];
 
   let allIngStrings = [];
@@ -277,9 +279,10 @@ function FichaTecnicaProductoCliente({ ficha, producto }) {
                 {listaIngredientes.map((ing, i) => (
                   <span
                     key={i}
-                    className="text-xs font-medium bg-red-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-red-100 dark:border-gray-700 px-2.5 py-1 rounded-xl shadow-2xs"
+                    className="text-xs font-medium bg-red-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-red-100 dark:border-gray-700 px-2.5 py-1 rounded-xl shadow-2xs flex items-center gap-1.5"
                   >
-                    🥗 {ing}
+                    <FoodIcon name="salad" size={13} className="text-emerald-500 shrink-0" />
+                    <span>{ing}</span>
                   </span>
                 ))}
               </div>
@@ -701,9 +704,9 @@ export function ClienteLanding() {
 
   // Las 3 bebidas oficiales listas para acompañar
   const fallbackBebidas = [
-    { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: "🥤", stock: 60 },
-    { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, imagen: "🍎", stock: 45 },
-    { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: "💧", stock: 50 }
+    { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: "drink", stock: 60 },
+    { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, imagen: "drink", stock: 45 },
+    { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: "drink", stock: 50 }
   ];
   const bebidasDisponibles = (() => {
     const list = activeProductos.filter(p => isDrinkProduct(p));
@@ -1056,7 +1059,7 @@ export function ClienteLanding() {
             nombre: bebida.nombre,
             precio: Number(bebida.precio || 0),
             cantidad: 1,
-            imagen: bebida.imagen || "🥤",
+            imagen: bebida.imagen || "drink",
             stock: Number(bebida.stock !== undefined ? bebida.stock : (bebida.stockActual !== undefined ? bebida.stockActual : 30))
           }
         ]
@@ -1172,7 +1175,7 @@ export function ClienteLanding() {
         nombre: a.nombre,
         precio: Number(a.precio) || 0,
         cantidad: Number(a.cantidad) || 1,
-        imagen: a.imagen || "🥫"
+        imagen: a.imagen || "sauce"
       }))
     };
 
@@ -1193,7 +1196,7 @@ export function ClienteLanding() {
         precio: Number(b.precio),
         cantidad: Number(b.cantidad) || 1,
         stock: Number(b.stock !== undefined ? b.stock : 30),
-        imagen: b.imagen || "🥤",
+        imagen: b.imagen || "drink",
         adiciones: []
       });
       if (!bRes || bRes.success !== false) {
@@ -1279,7 +1282,7 @@ export function ClienteLanding() {
             precio: Number(b.precio),
             cantidad: isComboProd ? extraQty : qty,
             stock: Number(b.stock !== undefined ? b.stock : 30),
-            imagen: b.imagen || "🥤",
+            imagen: b.imagen || "drink",
             adiciones: []
           });
           if (!bRes || bRes.success !== false) {
@@ -1885,8 +1888,8 @@ export function ClienteLanding() {
         <div className="w-full px-4 sm:px-6 lg:px-8 mt-6">
           <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-red-500/10 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-red-950/20 border border-amber-200 dark:border-amber-900/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center text-2xl shadow-xs shrink-0">
-                {tipoFidelidad === "VIP" ? "🥇" : tipoFidelidad === "Frecuente" ? "🥈" : tipoFidelidad === "Regular" ? "🥉" : "🌱"}
+              <div className="shrink-0">
+                <FidelidadBadge tipo={tipoFidelidad} size="lg" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1916,9 +1919,9 @@ export function ClienteLanding() {
                     Racha: <strong>{comprasCiclo} de 3</strong>
                   </span>
                   <span className="text-gray-400">•</span>
-                  <span className="text-[#f05454] font-bold">
+                  <span className="text-[#f05454] font-bold flex items-center gap-1">
                     {comprasFaltantes === 0 
-                      ? "¡Meta alcanzada! 🎉" 
+                      ? <><span>¡Meta alcanzada!</span> <Sparkles className="w-3.5 h-3.5 text-amber-500 inline" /></> 
                       : tipoFidelidad === "VIP"
                         ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para renovar`
                         : `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? 'compra' : 'compras'} para subir a ${siguienteNivel}`}
@@ -1994,9 +1997,12 @@ export function ClienteLanding() {
                   : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
               }`}
             >
-              <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-white/20 dark:bg-gray-800/60 shadow-xs">
-                <div className="text-3xl">🍽️</div>
-              </div>
+              <FoodIconBadge
+                name="todos"
+                category="todos"
+                size="lg"
+                isSelected={selectedCategoria === null}
+              />
               <p className="text-xs font-semibold truncate w-full">Todos</p>
             </button>
 
@@ -2015,8 +2021,12 @@ export function ClienteLanding() {
                 <div className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
                   {eventProductsCount} DROP
                 </div>
-                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-purple-500/20 dark:bg-purple-900/40 shadow-xs text-2xl">
-                  🔥
+                <div className={`flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shadow-xs transition-all ${
+                  selectedCategoria === "eventos"
+                    ? "bg-white text-purple-600"
+                    : "bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40"
+                }`}>
+                  <TablerFlame size={26} stroke={2} />
                 </div>
                 <p className="text-xs font-black truncate w-full" style={selectedCategoria === "eventos" ? { color: '#fff' } : { color: '#a855f7' }}>
                   Edición Evento
@@ -2038,13 +2048,18 @@ export function ClienteLanding() {
                       : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
                   }`}
                 >
-                  <div className="flex items-center justify-center h-12 w-12 rounded-xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
-                    {cat.icon?.includes("/") || cat.icon?.includes(".") ? (
+                  {cat.icon && (cat.icon.includes("/") || cat.icon.includes(".")) ? (
+                    <div className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
                       <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-3xl">{cat.icon || getCategoryMeta(cat.nombre).icon}</div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <FoodIconBadge
+                      name={cat.nombre}
+                      category={cat.nombre}
+                      size="lg"
+                      isSelected={isSelected}
+                    />
+                  )}
                   <p className="text-xs font-semibold leading-tight line-clamp-2 text-center w-full" title={cat.nombre}>
                     {cat.nombre}
                   </p>
@@ -2072,7 +2087,10 @@ export function ClienteLanding() {
             <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
               {selectedCategoria === "eventos" ? (
                 <>
-                  <span>🔥 Edición Especial & Eventos Gastronómicos</span>
+                  <span className="flex items-center gap-1.5">
+                    <TablerFlame className="w-5 h-5 text-amber-500 inline shrink-0" />
+                    Edición Especial & Eventos Gastronómicos
+                  </span>
                   <span className="text-xs font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
                     Tiempo Limitado
                   </span>
@@ -2143,15 +2161,21 @@ export function ClienteLanding() {
                       />
                     </>
                   ) : (
-                    <div className="text-7xl group-hover:scale-115 transition-transform duration-300 select-none drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)]">
-                      {producto.imagen || "🍔"}
+                    <div className="flex items-center justify-center w-28 h-28 rounded-3xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 group-hover:scale-110 transition-all duration-300 drop-shadow-md">
+                      <FoodIcon
+                        name={producto.nombre}
+                        category={producto.categoria?.nombre || producto.categoria}
+                        size={56}
+                        stroke={1.75}
+                        className="text-amber-500 dark:text-amber-400"
+                      />
                     </div>
                   )}
 
                 {/* Rediseño de Indicador de Evento Activo */}
                 {producto.eventos && producto.eventos.length > 0 && (() => {
                   const evt = producto.eventos[0];
-                  const evtIcon = evt.icono || "🎉";
+                  const evtIcon = evt.icono || "party";
                   let benefit = "OFERTA";
                   if (evt.tipoEvento === "Descuento" && evt.descuento) {
                     benefit = `-${Number(evt.descuento)}% OFF`;
@@ -2164,7 +2188,7 @@ export function ClienteLanding() {
                   }
                   return (
                     <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-lg border border-white/25 backdrop-blur-md animate-pulse">
-                      <span className="text-sm">{evtIcon}</span>
+                      <FoodIcon name={evt.icono || "party"} size={14} className="shrink-0" />
                       <span className="tracking-wide uppercase">{benefit}</span>
                     </div>
                   );
@@ -2233,7 +2257,7 @@ export function ClienteLanding() {
                       <>
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className="text-[10.5px] font-black text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <span>{producto.eventos[0]?.icono || "🎉"}</span>
+                            <FoodIcon name={producto.eventos[0]?.icono || "party"} size={13} className="shrink-0" />
                             <span className="truncate max-w-[150px]">{producto.eventos[0]?.nombreEvento || producto.eventos[0]?.tipoEvento || "Evento Activo"}</span>
                           </span>
                         </div>
@@ -2373,7 +2397,7 @@ export function ClienteLanding() {
                           {item.imagen && typeof item.imagen === "string" && item.imagen.startsWith("http") ? (
                             <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700" />
                           ) : (
-                            <div className="text-3xl shrink-0">{item.imagen || "🍔"}</div>
+                            <FoodIconBadge name={item.nombre} size="md" />
                           )}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
@@ -2390,8 +2414,9 @@ export function ClienteLanding() {
                             {item.personalizaciones && item.personalizaciones.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {item.personalizaciones.map((p, pIdx) => (
-                                  <span key={pIdx} className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-0.5">
-                                    🚫 {p}
+                                  <span key={pIdx} className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                    <Ban className="w-3 h-3 text-red-500 shrink-0" />
+                                    <span>{p}</span>
                                   </span>
                                 ))}
                               </div>
@@ -2781,23 +2806,28 @@ export function ClienteLanding() {
                           <p className="text-[11px] text-gray-500 dark:text-gray-400">Paga al instante sin comisiones adicionales</p>
                         </div>
                       </div>
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
-                        🧪 Sandbox Activo
+                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                        <Beaker className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                        <span>Sandbox Activo</span>
                       </span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5 pt-1">
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-purple-700 dark:text-purple-400">
-                        🟣 Nequi
+                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-purple-700 dark:text-purple-400 flex items-center justify-center gap-1">
+                        <FoodIcon name="mobile" size={12} className="text-purple-600 dark:text-purple-400" />
+                        <span>Nequi</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-blue-700 dark:text-blue-400">
-                        🏛️ PSE
+                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1">
+                        <FoodIcon name="bank" size={12} className="text-blue-600 dark:text-blue-400" />
+                        <span>PSE</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                        💳 Tarjetas
+                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1">
+                        <FoodIcon name="card" size={12} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Tarjetas</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
-                        🟡 Bancolombia
+                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1">
+                        <FoodIcon name="bank" size={12} className="text-amber-600 dark:text-amber-400" />
+                        <span>Bancolombia</span>
                       </div>
                     </div>
 
@@ -2857,14 +2887,15 @@ export function ClienteLanding() {
 
                     {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
                       <div className="space-y-1.5 pt-1">
-                        <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400">
-                          💰 Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}
+                        <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400 flex items-center gap-1.5">
+                          <Coins className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}</span>
                         </p>
                         {vueltoEfectivo > 100000 && (
                           <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-start gap-1.5">
                             <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                             <span>
-                              ⚠️ Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
+                              Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
                             </span>
                           </div>
                         )}

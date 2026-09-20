@@ -4,6 +4,7 @@ import { adicionesService } from "../../servicios/adicionesService";
 import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
@@ -90,7 +91,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       idInsumo: insumos && insumos.length > 0 ? insumos[0].id || insumos[0].idInsumo : "",
       precio: "",
       descripcion: "",
-      imagen: "🥓",
+      imagen: "bacon",
     });
     setShowForm(true);
   };
@@ -305,11 +306,11 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     {/* Live Preview Avatar */}
-                    <div className="w-14 h-14 rounded-2xl bg-white dark:bg-gray-900 border-2 border-purple-300 dark:border-purple-850 flex items-center justify-center text-3xl shrink-0 shadow-xs overflow-hidden">
+                    <div className="w-14 h-14 rounded-2xl bg-white dark:bg-gray-900 border-2 border-purple-300 dark:border-purple-850 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
                       {formData.imagen && (formData.imagen.startsWith("http") || formData.imagen.startsWith("/")) ? (
                         <img src={formData.imagen} alt="Preview" className="w-full h-full object-cover" />
                       ) : (
-                        <span>{formData.imagen || getAdditionEmoji(formData.nombre, "")}</span>
+                        <FoodIcon name={formData.imagen || formData.nombre} size={28} stroke={1.75} className="text-purple-600 dark:text-purple-400" />
                       )}
                     </div>
 
@@ -320,7 +321,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                           value={formData.imagen}
                           onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
                           className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
-                          placeholder="Pega URL directa de imagen (.jpg, .png) o emoji..."
+                          placeholder="Pega URL directa de imagen (.jpg, .png) o slug (ej. bacon, cheese)..."
                         />
                         <button
                           type="button"
@@ -355,22 +356,22 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                         )}
                       </div>
 
-                      {/* Quick Food Emoji Palette */}
+                      {/* Quick Food Vector Slugs Palette */}
                       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                         <span className="text-[11px] font-black text-gray-400 mr-1">Rápidos:</span>
-                        {FOOD_EMOJI_LIST.map((item) => (
+                        {AVAILABLE_FOOD_SLUGS.map((item) => (
                           <button
-                            key={item.emoji}
+                            key={item.slug}
                             type="button"
-                            onClick={() => handleSelectEmoji(item.emoji)}
-                            className={`w-8 h-8 rounded-xl text-lg flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
-                              formData.imagen === item.emoji
-                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 scale-110 ring-2 ring-purple-300"
-                                : "bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750"
+                            onClick={() => handleSelectEmoji(item.slug)}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
+                              formData.imagen === item.slug
+                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 scale-110 ring-2 ring-purple-300 text-purple-600"
+                                : "bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 text-gray-600 dark:text-gray-300"
                             }`}
                             title={item.label}
                           >
-                            {item.emoji}
+                            <item.icon size={18} stroke={1.75} />
                           </button>
                         ))}
                       </div>
@@ -438,9 +439,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                         {isUrl ? (
                           <img src={adicion.imagen} alt={adicion.nombre} className="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-gray-700" />
                         ) : (
-                          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center text-2xl border border-purple-100 dark:border-purple-800/40">
-                            {emojiChar}
-                          </div>
+                          <FoodIconBadge name={adicion.imagen || adicion.nombre} size="md" />
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">

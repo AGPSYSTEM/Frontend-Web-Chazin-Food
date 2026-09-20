@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
@@ -826,12 +826,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
                     Estructura de Variantes:
                   </span>
-                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5 ${
                     isDrink
                       ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
                       : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800"
                   }`}>
-                    {isDrink ? "🥤 Modo Bebidas (Tamaños y Sabores separados)" : "🍔 Modo Comidas (Presentaciones unificadas)"}
+                    <FoodIcon name={isDrink ? "drink" : "burger"} size={13} className="shrink-0" />
+                    <span>{isDrink ? "Modo Bebidas (Tamaños y Sabores separados)" : "Modo Comidas (Presentaciones unificadas)"}</span>
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
@@ -853,7 +854,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   }`}
                   title="Activar vista de variantes estándar para comidas"
                 >
-                  <span>🍔</span>
+                  <FoodIcon name="burger" size={14} />
                   <span>Comida</span>
                 </button>
                 <button
@@ -866,7 +867,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   }`}
                   title="Activar vista separada de Tamaños y Sabores para bebidas"
                 >
-                  <span>🥤</span>
+                  <FoodIcon name="drink" size={14} />
                   <span>Bebida</span>
                 </button>
               </div>
@@ -951,7 +952,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   )}
 
                   <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-amber-100 dark:border-amber-950">
-                    <span className="text-amber-500">💡</span>
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                     <span>
                       Estos tamaños aparecerán en el selector de <strong>"TAMAÑO & PRESENTACIÓN"</strong> del modal del comensal.
                     </span>
@@ -1058,7 +1059,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   )}
 
                   <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-purple-100 dark:border-purple-950">
-                    <span className="text-purple-500">💡</span>
+                    <Lightbulb className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                     <span>
                       Estos sabores aparecerán en la sección <strong>"VARIANTE O FÓRMULA"</strong> del modal del comensal.
                     </span>
@@ -1119,7 +1120,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 )}
 
                 <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-orange-100 dark:border-orange-950">
-                  <span className="text-orange-500">💡</span>
+                  <Lightbulb className="w-3.5 h-3.5 text-orange-500 shrink-0" />
                   <span>
                     Tus clientes podrán seleccionar estas opciones con sus propios precios y fotos al ordenar.
                   </span>
@@ -1191,7 +1192,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             <div className="sm:col-span-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl shrink-0">🥤</span>
+                  <FoodIconBadge name="drink" size="sm" />
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
                       Configuración de Combo: Bebidas Incluidas
@@ -1359,13 +1360,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         onChange={() => toggleAdicion(adicion)}
                         className="rounded text-[#F05454] focus:ring-[#F05454] cursor-pointer"
                       />
-                      <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
-                        {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
-                          <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
-                        ) : (
-                          getAdditionEmoji(adicion.nombre, adicion.imagen)
-                        )}
-                      </span>
+                        <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
+                          {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
+                            <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
+                          ) : (
+                            <FoodIcon name={adicion.nombre} size={18} stroke={1.75} />
+                          )}
+                        </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {adicion.nombre}
