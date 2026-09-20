@@ -48,7 +48,7 @@ import {
   Globe
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";

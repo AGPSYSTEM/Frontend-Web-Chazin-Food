@@ -14,6 +14,7 @@ import {
   MapPin
 } from "lucide-react";
 import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
+import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function VerOrdenModal({ isOpen, onClose, orden }) {
   if (!isOpen || !orden) return null;

@@ -46,7 +46,7 @@ import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { produccionService } from "@/features/produccion/servicios/produccionService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import LoadingSpinner from "@/shared/components/ui/LoadingSpinner";
 import { HistorialComandasLista } from "../componentes/HistorialComandasLista";
 import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
