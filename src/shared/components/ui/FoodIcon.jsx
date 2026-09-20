@@ -90,6 +90,81 @@ export const IconBaconStrip = ({ size = 20, stroke = 1.75, className = "", ...pr
 );
 
 /**
+ * Icono de cebolla (estilo Tabler Grid 24x24)
+ */
+export const IconOnion = ({ size = 20, stroke = 1.75, className = "", ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={stroke}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M12 3v3" />
+    <path d="M12 6c3.5 0 6.5 3 6.5 7.5a6.5 6.5 0 0 1 -13 0c0 -4.5 3 -7.5 6.5 -7.5z" />
+    <path d="M9.5 9c1.8 1.5 2.5 3.5 2.5 7" />
+    <path d="M14.5 9c-1.8 1.5 -2.5 3.5 -2.5 7" />
+    <path d="M10 20.5l-1 2" />
+    <path d="M12 20.5v2" />
+    <path d="M14 20.5l1 2" />
+  </svg>
+);
+
+/**
+ * Icono de tomate fresco (estilo Tabler Grid 24x24)
+ */
+export const IconTomato = ({ size = 20, stroke = 1.75, className = "", ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={stroke}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M12 3v2" />
+    <path d="M12 5c-1.5 -1.2 -3 -.8 -4 0c.8 1.2 2 1.5 4 1c2 .5 3.2 .2 4 -1c-1 -.8 -2.5 -1.2 -4 0z" />
+    <path d="M12 6c-4.5 0 -8 3.2 -8 7.5a7.5 7.5 0 0 0 16 0c0 -4.3 -3.5 -7.5 -8 -7.5z" />
+    <path d="M9 13a3 3 0 0 0 3 3" />
+  </svg>
+);
+
+/**
+ * Icono de lechuga / hojas verdes (estilo Tabler Grid 24x24)
+ */
+export const IconLettuce = ({ size = 20, stroke = 1.75, className = "", ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={stroke}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    {...props}
+  >
+    <path d="M5 11c0 -3.5 2.5 -6 6 -6c2.5 0 4 1.5 5 3.5c2 0 4 1.5 4 4.5c0 4 -3.5 7 -8 7s-7 -3 -7 -9z" />
+    <path d="M10 19c1 -2.5 2 -6 2 -11" />
+    <path d="M12 12c2 -1 3.5 -1.5 5 -1" />
+    <path d="M8 14c1.5 -1 2.5 -1.5 4 -1" />
+  </svg>
+);
+
+/**
  * Resuelve la paleta de colores del soft container por tipo de alimento o categoría
  */
 export const getFoodColorTheme = (nameOrCategory = "") => {
@@ -234,9 +309,14 @@ export const ICON_MAP = {
   salsa: IconBottleFilled,
   salad: IconSalad,
   ensalada: IconSalad,
+  onion: IconOnion,
+  cebolla: IconOnion,
+  tomato: IconTomato,
+  tomate: IconTomato,
+  lettuce: IconLettuce,
+  lechuga: IconLettuce,
   carrot: IconCarrot,
   zanahoria: IconCarrot,
-  cebolla: IconCarrot,
   bread: IconBread,
   pan: IconBread,
   apple: IconApple,
@@ -386,10 +466,19 @@ export function FoodIcon({ name = "", category = "", size = 20, stroke = 1.75, c
   if (k.includes("salsa") || k.includes("bbq") || k.includes("ajo") || k.includes("tartara") || k.includes("mayo") || k.includes("ketchup")) {
     return <IconBottleFilled size={size} stroke={stroke} className={className} {...props} />;
   }
-  if (k.includes("ensalada") || k.includes("lechuga") || k.includes("tomate") || k.includes("veggie")) {
+  if (k.includes("cebolla") || k.includes("onion")) {
+    return <IconOnion size={size} stroke={stroke} className={className} {...props} />;
+  }
+  if (k.includes("tomate") || k.includes("tomato")) {
+    return <IconTomato size={size} stroke={stroke} className={className} {...props} />;
+  }
+  if (k.includes("lechuga") || k.includes("lettuce")) {
+    return <IconLettuce size={size} stroke={stroke} className={className} {...props} />;
+  }
+  if (k.includes("ensalada") || k.includes("veggie")) {
     return <IconSalad size={size} stroke={stroke} className={className} {...props} />;
   }
-  if (k.includes("cebolla") || k.includes("crispy") || k.includes("zanahoria")) {
+  if (k.includes("zanahoria") || k.includes("carrot")) {
     return <IconCarrot size={size} stroke={stroke} className={className} {...props} />;
   }
   if (k.includes("pan") || k.includes("brioche")) {

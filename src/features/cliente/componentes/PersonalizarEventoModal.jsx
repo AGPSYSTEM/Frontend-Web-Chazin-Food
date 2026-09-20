@@ -851,8 +851,10 @@ export function PersonalizarEventoModal({
                               : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
                           }`}
                         >
-                          <span className="flex items-center gap-2 truncate">
-                            <span className="text-xl shrink-0">{ing.icono}</span>
+                          <span className="flex items-center gap-2.5 truncate">
+                            <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
+                              <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
+                            </span>
                             <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
                               {ing.nombre}
                             </span>
