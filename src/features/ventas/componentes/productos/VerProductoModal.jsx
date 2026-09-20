@@ -1,8 +1,9 @@
-import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers } from "lucide-react";
-import { useState, useEffect } from "react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
+import { isSizeVariantName } from "./ProductoModal";
 
 export function VerProductoModal({ isOpen, onClose, producto }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -72,6 +73,33 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
   const isDisponible = producto.estado !== "Inactivo" && producto.estado !== 0;
   const adiciones = producto.adiciones || [];
   const eventosActivos = producto.eventos || [];
+
+  const catName = String(producto.categoria || producto.categoriaNombre || "").toLowerCase();
+  const prodName = String(producto.nombre || "").toLowerCase();
+  const variantes = Array.isArray(producto.variantes) ? producto.variantes : [];
+  const sizeVariantes = variantes.filter((v) => isSizeVariantName(v.nombre));
+  const flavorVariantes = variantes.filter((v) => !isSizeVariantName(v.nombre));
+
+  const isDrink =
+    catName.includes("bebida") ||
+    catName.includes("gaseos") ||
+    catName.includes("refresco") ||
+    catName.includes("jugo") ||
+    catName.includes("líquido") ||
+    catName.includes("liquido") ||
+    prodName.includes("gaseosa") ||
+    prodName.includes("bebida") ||
+    prodName.includes("coca-cola") ||
+    prodName.includes("coca cola") ||
+    prodName.includes("pepsi") ||
+    prodName.includes("postobón") ||
+    prodName.includes("postobon") ||
+    prodName.includes("colombiana") ||
+    prodName.includes("sprite") ||
+    prodName.includes("cuatro") ||
+    prodName.includes("quatro") ||
+    prodName.includes("agua") ||
+    sizeVariantes.length > 0;
 
   return (
     <div
@@ -246,38 +274,145 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
             </div>
           </div>
 
-          {/* Variantes y Presentaciones */}
-          {Array.isArray(producto.variantes) && producto.variantes.length > 1 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-orange-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Variantes y Presentaciones ({producto.variantes.length})
-                </h3>
+          {/* Variantes y Presentaciones: Separadas para bebidas o estándar para comidas */}
+          {variantes.length > 0 && (
+            isDrink ? (
+              <div className="space-y-3">
+                {/* 1. Tamaños de Bebida */}
+                {sizeVariantes.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-amber-500" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        Tamaños y Presentaciones de Bebida ({sizeVariantes.length})
+                      </h3>
+                    </div>
+                    <div className="bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl p-3 sm:p-4 border border-amber-200/70 dark:border-amber-900/40">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {sizeVariantes.map((v, i) => (
+                          <div
+                            key={v.idVariante || v.id || i}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-amber-200/80 dark:border-amber-900/40 shadow-2xs text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {v.imagen ? (
+                                <img
+                                  src={v.imagen}
+                                  alt={v.nombre}
+                                  className="w-7 h-7 rounded-lg object-contain bg-amber-50 dark:bg-gray-900 p-0.5 border border-amber-100 dark:border-amber-900/50 shrink-0"
+                                />
+                              ) : (
+                                <span className="w-6 h-6 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {i + 1}
+                                </span>
+                              )}
+                              <div className="truncate">
+                                <span className="font-bold text-gray-800 dark:text-gray-200 block truncate">
+                                  {v.nombre}
+                                </span>
+                                <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                                  Tamaño adicional
+                                </span>
+                              </div>
+                            </div>
+                            <span className="font-black text-amber-600 dark:text-amber-400 shrink-0 ml-2 font-mono">
+                              ${Number(v.precio || 0).toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Sabores / Fórmulas de Bebida */}
+                {flavorVariantes.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                        Sabores y Fórmulas de Bebida ({flavorVariantes.length})
+                      </h3>
+                    </div>
+                    <div className="bg-purple-50/40 dark:bg-purple-950/20 rounded-2xl p-3 sm:p-4 border border-purple-200/70 dark:border-purple-900/40">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {flavorVariantes.map((v, i) => (
+                          <div
+                            key={v.idVariante || v.id || i}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-purple-200/80 dark:border-purple-900/40 shadow-2xs text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {v.imagen ? (
+                                <img
+                                  src={v.imagen}
+                                  alt={v.nombre}
+                                  className="w-7 h-7 rounded-lg object-contain bg-purple-50 dark:bg-gray-900 p-0.5 border border-purple-100 dark:border-purple-900/50 shrink-0"
+                                />
+                              ) : (
+                                <span className="w-6 h-6 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {i + 1}
+                                </span>
+                              )}
+                              <div className="truncate">
+                                <span className="font-bold text-gray-800 dark:text-gray-200 block truncate">
+                                  {v.nombre}
+                                </span>
+                                <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                                  Fórmula / Sabor
+                                </span>
+                              </div>
+                            </div>
+                            <span className="font-black text-purple-600 dark:text-purple-400 shrink-0 ml-2 font-mono">
+                              ${Number(v.precio || 0).toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="bg-orange-50/40 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-900/30">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {producto.variantes.map((v, i) => (
-                    <div
-                      key={v.idVariante || v.id || i}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-orange-150 dark:border-orange-900/40 shadow-2xs text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-bold text-[10px] flex items-center justify-center">
-                          {i + 1}
-                        </span>
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">
-                          {v.nombre}
+            ) : (
+              /* Comidas regulares */
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-orange-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                    Variantes y Presentaciones ({variantes.length})
+                  </h3>
+                </div>
+                <div className="bg-orange-50/40 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-900/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {variantes.map((v, i) => (
+                      <div
+                        key={v.idVariante || v.id || i}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-orange-150 dark:border-orange-900/40 shadow-2xs text-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {v.imagen ? (
+                            <img
+                              src={v.imagen}
+                              alt={v.nombre}
+                              className="w-7 h-7 rounded-lg object-contain bg-orange-50 dark:bg-gray-900 p-0.5 border border-orange-100 dark:border-orange-900/50 shrink-0"
+                            />
+                          ) : (
+                            <span className="w-5 h-5 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {i + 1}
+                            </span>
+                          )}
+                          <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">
+                            {v.nombre}
+                          </span>
+                        </div>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2 font-mono">
+                          ${Number(v.precio || 0).toLocaleString("es-CO")}
                         </span>
                       </div>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        ${Number(v.precio || 0).toLocaleString("es-CO")}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )
           )}
 
           {/* Eventos / Descuentos Activos */}

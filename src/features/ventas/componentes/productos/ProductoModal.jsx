@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -7,6 +7,55 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+
+export const isSizeVariantName = (name = "") => {
+  const vn = String(name || "").toLowerCase();
+  return (
+    (vn.includes("1.5") || vn.includes("1,5") || vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega") || vn.includes("botella 1.") || vn.includes("botella 2.") || vn.includes("familiar") || vn.includes("litro") || vn.includes("personal") || vn.includes("grande") || vn.includes("mediana") || vn.includes("pequeña")) &&
+    !vn.includes("sin azúcar") && !vn.includes("sin azucar") && !vn.includes("light") && !vn.includes("zero") && !vn.includes("black")
+  );
+};
+
+export const getDefaultDrinkImageForSize = (sizeName = "", prodName = "") => {
+  const sn = String(sizeName || "").toLowerCase();
+  const pn = String(prodName || "").toLowerCase();
+  if (sn.includes("1.5") || sn.includes("1,5")) {
+    if (pn.includes("coca")) return "/images/drinks/coca_cola_1.5-LITROS-removebg-preview.png";
+    if (pn.includes("pepsi")) return "/images/drinks/pepsi_1.5-removebg-preview.png";
+    if (pn.includes("manzana")) return "/images/drinks/manzana_1.5_L-removebg-preview.png";
+    if (pn.includes("naranja")) return "/images/drinks/naranga_1.5-removebg-preview.png";
+    if (pn.includes("uva")) return "/images/drinks/bebida-uva-1500ml_00-600x600-removebg-preview.png";
+    if (pn.includes("cuatro") || pn.includes("quatro")) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    if (pn.includes("colombiana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+    return "/images/drinks/pepsi_1.5-removebg-preview.png";
+  }
+  if (sn.includes("2.5") || sn.includes("2,5") || sn.includes("mega")) {
+    if (pn.includes("coca")) return "/images/drinks/mega_coca_cola-removebg-preview.png";
+    if (pn.includes("pepsi")) return "/images/drinks/mega_pepsi-removebg-preview.png";
+    if (pn.includes("manzana")) return "/images/drinks/Manzana-Super-Gigante-25-Litros-223182_a-removebg-preview.png";
+    if (pn.includes("naranja")) return "/images/drinks/postob_n_naranja_2.5l_1_-removebg-preview.png";
+    if (pn.includes("uva")) return "/images/drinks/Uva_mega-removebg-preview.png";
+    if (pn.includes("cuatro") || pn.includes("quatro")) return "/images/drinks/quatro_mega-removebg-preview.png";
+    if (pn.includes("colombiana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+    return "/images/drinks/mega_pepsi-removebg-preview.png";
+  }
+  return "";
+};
+
+export const getDefaultDrinkImageForFlavor = (flavorName = "", prodName = "") => {
+  const fn = String(flavorName || "").toLowerCase();
+  const pn = String(prodName || "").toLowerCase();
+  if (fn.includes("sin azúcar") || fn.includes("sin azucar") || fn.includes("light") || fn.includes("zero") || fn.includes("black")) {
+    if (pn.includes("coca")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+    if (pn.includes("pepsi")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789872832/akjyapmemvunluyjl0vo.png";
+    return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+  }
+  if (fn.includes("uva")) return "/images/drinks/uva_postobon-removebg-preview.png";
+  if (fn.includes("naranja")) return "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+  if (fn.includes("manzana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1788966650/qgto4wgmnjpfrns3zl8c.jpg";
+  if (fn.includes("colombiana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+  return "";
+};
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
@@ -36,6 +85,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [uploading, setUploading] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [modoVariantesManual, setModoVariantesManual] = useState(null); // null = automático, "bebida", "comida"
   const fileInputRef = useRef(null);
 
   const handleCancelOrClose = () => {
@@ -58,6 +108,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   useEffect(() => {
     setFileToUpload(null);
     setPreviewUrl(producto?.imagen || "");
+    setModoVariantesManual(null);
 
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
@@ -124,26 +175,24 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         bebidasPermitidas: []
       });
 
-      // Inicializar variantes existentes o crear una por defecto basada en el producto
+      // Inicializar variantes existentes si tiene registradas
       const rawVars = Array.isArray(producto.variantes) && producto.variantes.length > 0
         ? producto.variantes
         : [];
       
-      if (rawVars.length > 0) {
-        setVariantes(rawVars.map((v) => ({
+      setVariantes(rawVars.map((v, i) => {
+        const isSize = isSizeVariantName(v.nombre);
+        return {
+          _key: v.idVariante ? `id-${v.idVariante}` : `var-${i}-${Date.now()}`,
           idVariante: v.idVariante || v.id || null,
           nombre: v.nombre || "",
-          precio: v.precio !== undefined ? v.precio : (producto.precio || "")
-        })));
-      } else {
-        setVariantes([
-          {
-            idVariante: null,
-            nombre: producto.nombre ? `${producto.nombre} - Estándar` : "Estándar",
-            precio: producto.precio !== undefined ? producto.precio : ""
-          }
-        ]);
-      }
+          precio: v.precio !== undefined ? v.precio : "",
+          imagen: v.imagen || "",
+          tipo: isSize ? "tamano" : "sabor",
+          fileToUpload: null,
+          previewUrl: v.imagen || ""
+        };
+      }));
     } else {
       const firstCat = categorias[0]?.nombre || "";
       const isFirstCombo = firstCat.toLowerCase().includes("combo");
@@ -163,15 +212,71 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         cantidadBebidas: 1,
         bebidasPermitidas: []
       });
-      setVariantes([
-        {
-          idVariante: null,
-          nombre: "Estándar",
-          precio: ""
-        }
-      ]);
+      setVariantes([]);
     }
   }, [producto, isOpen, categorias]);
+
+  const autoIsDrink = useMemo(() => {
+    const catName = String(form.categoria || "").toLowerCase();
+    const catId = Number(form.idCategoriaProducto || 0);
+    const prodName = String(form.nombre || "").toLowerCase();
+    const desc = String(form.descripcion || "").toLowerCase();
+    return (
+      catId === 4 ||
+      catName.includes("bebida") ||
+      catName.includes("gaseos") ||
+      catName.includes("refresco") ||
+      catName.includes("jugo") ||
+      catName.includes("líquido") ||
+      catName.includes("liquido") ||
+      catName.includes("cerveza") ||
+      catName.includes("licor") ||
+      catName.includes("coctel") ||
+      catName.includes("cóctel") ||
+      catName.includes("bar") ||
+      prodName.includes("gaseosa") ||
+      prodName.includes("bebida") ||
+      prodName.includes("coca-cola") ||
+      prodName.includes("coca cola") ||
+      prodName.includes("pepsi") ||
+      prodName.includes("postobón") ||
+      prodName.includes("postobon") ||
+      prodName.includes("colombiana") ||
+      prodName.includes("manzana postobon") ||
+      prodName.includes("sprite") ||
+      prodName.includes("cuatro") ||
+      prodName.includes("quatro") ||
+      prodName.includes("agua") ||
+      prodName.includes("jugo") ||
+      prodName.includes("cerveza") ||
+      prodName.includes("limonada") ||
+      prodName.includes("malteada") ||
+      prodName.includes("smoothie") ||
+      prodName.includes("mr tea") ||
+      prodName.includes("h2oh") ||
+      desc.includes("refrescante") ||
+      desc.includes("bebida fría") ||
+      variantes.some((v) => isSizeVariantName(v.nombre))
+    );
+  }, [form.categoria, form.idCategoriaProducto, form.nombre, form.descripcion, variantes]);
+
+  const isDrink = modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink;
+
+  const sizeVariantes = useMemo(() => {
+    return variantes.filter((v) => {
+      if (v.tipo === "tamano") return true;
+      if (v.tipo === "sabor") return false;
+      return isDrink && isSizeVariantName(v.nombre);
+    });
+  }, [variantes, isDrink]);
+
+  const flavorVariantes = useMemo(() => {
+    return variantes.filter((v) => {
+      if (v.tipo === "sabor") return true;
+      if (v.tipo === "tamano") return false;
+      return isDrink && !isSizeVariantName(v.nombre);
+    });
+  }, [variantes, isDrink]);
 
   const toggleAdicion = (adicion) => {
     const adId = adicion.idAdicion || adicion.id;
@@ -193,51 +298,261 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     setForm({ ...form, adiciones: nuevasAdiciones });
   };
 
-  // Administrador de variantes y presentaciones
-  const handleAddVariante = () => {
+  // Administradores de variantes
+  const handleAddTamano = (suggestedName = "", suggestedPrice = "", suggestedImg = "") => {
+    const isCoca = String(form.nombre || "").toLowerCase().includes("coca");
+    let defaultPrice = suggestedPrice;
+    let defaultImg = suggestedImg;
+
+    if (!defaultPrice) {
+      if (suggestedName.includes("1.5")) {
+        defaultPrice = isCoca ? 9500 : 8500;
+      } else if (suggestedName.includes("2.5")) {
+        defaultPrice = isCoca ? 13500 : 12000;
+      } else {
+        defaultPrice = "";
+      }
+    }
+
+    if (!defaultImg && suggestedName) {
+      defaultImg = getDefaultDrinkImageForSize(suggestedName, form.nombre);
+    }
+
     setVariantes((prev) => [
       ...prev,
       {
+        _key: `tamano-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         idVariante: null,
-        nombre: "",
-        precio: form.precio !== "" ? form.precio : ""
+        nombre: suggestedName || "",
+        precio: defaultPrice,
+        imagen: defaultImg || "",
+        tipo: "tamano",
+        fileToUpload: null,
+        previewUrl: defaultImg || ""
       }
     ]);
   };
 
-  const handleUpdateVariante = (index, field, value) => {
-    setVariantes((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      // Mantener sincronizado el precio base del formulario con la primera variante
-      if (field === "precio" && index === 0) {
-        setForm((f) => ({ ...f, precio: value }));
+  const handleAddSabor = (suggestedName = "", suggestedPrice = "", suggestedImg = "") => {
+    let defaultPrice = suggestedPrice !== "" ? suggestedPrice : (form.precio || "");
+    let defaultImg = suggestedImg;
+
+    if (!defaultImg && suggestedName) {
+      defaultImg = getDefaultDrinkImageForFlavor(suggestedName, form.nombre);
+    }
+
+    setVariantes((prev) => [
+      ...prev,
+      {
+        _key: `sabor-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        idVariante: null,
+        nombre: suggestedName || "",
+        precio: defaultPrice,
+        imagen: defaultImg || "",
+        tipo: "sabor",
+        fileToUpload: null,
+        previewUrl: defaultImg || ""
       }
-      return updated;
-    });
+    ]);
   };
 
-  const handleRemoveVariante = (index) => {
-    if (variantes.length <= 1) return;
-    setVariantes((prev) => {
-      const updated = prev.filter((_, i) => i !== index);
-      if (index === 0 && updated.length > 0) {
-        setForm((f) => ({ ...f, precio: updated[0].precio }));
+  const handleAddVariante = () => {
+    setVariantes((prev) => [
+      ...prev,
+      {
+        _key: `generic-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        idVariante: null,
+        nombre: "",
+        precio: form.precio !== "" ? form.precio : "",
+        imagen: "",
+        tipo: "general",
+        fileToUpload: null,
+        previewUrl: ""
       }
-      return updated;
-    });
+    ]);
+  };
+
+  const handleUpdateVarianteByKey = (key, field, value) => {
+    setVariantes((prev) =>
+      prev.map((v) => (v._key === key ? { ...v, [field]: value } : v))
+    );
+  };
+
+  const handleRemoveVarianteByKey = (key) => {
+    setVariantes((prev) => prev.filter((v) => v._key !== key));
+  };
+
+  const handleVariantImageSelectedByKey = (key, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      notify.warning("Formato Inválido", "El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      notify.warning("Tamaño Excedido", "La imagen de la variante no debe superar los 5 MB.");
+      return;
+    }
+
+    const localBlobUrl = URL.createObjectURL(file);
+    setVariantes((prev) =>
+      prev.map((v) =>
+        v._key === key
+          ? { ...v, fileToUpload: file, previewUrl: localBlobUrl }
+          : v
+      )
+    );
+
+    e.target.value = "";
+  };
+
+  const handleRemoveVariantImageByKey = (key) => {
+    setVariantes((prev) =>
+      prev.map((v) =>
+        v._key === key
+          ? { ...v, imagen: "", fileToUpload: null, previewUrl: "" }
+          : v
+      )
+    );
   };
 
   const handleMainPriceChange = (newPrice) => {
     setForm((f) => ({ ...f, precio: newPrice }));
-    setVariantes((prev) => {
-      if (prev.length === 0) {
-        return [{ idVariante: null, nombre: "Estándar", precio: newPrice }];
-      }
-      const updated = [...prev];
-      updated[0] = { ...updated[0], precio: newPrice };
-      return updated;
-    });
+  };
+
+  const renderVariantRow = (v, idx, type) => {
+    const isTamano = type === "tamano";
+    const isSabor = type === "sabor";
+    const placeholderText = isTamano
+      ? "Ej. Botella 1.5 Litros / Familiar"
+      : isSabor
+      ? "Ej. Pepsi Light / Black 400ml"
+      : "Ej. Doble Carne / Con Queso Extra";
+
+    const badgeCls = isTamano
+      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
+      : isSabor
+      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200"
+      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300";
+
+    const borderFocusCls = isTamano
+      ? "focus:ring-amber-500 hover:border-amber-300"
+      : isSabor
+      ? "focus:ring-purple-500 hover:border-purple-300"
+      : "focus:ring-[#F05454] hover:border-orange-200";
+
+    return (
+      <div
+        key={v._key}
+        className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700/80 shadow-2xs hover:shadow-xs transition-all"
+      >
+        {/* Index & Type Tag */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${badgeCls}`}>
+            {idx + 1}
+          </span>
+          {isTamano && (
+            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              Tamaño
+            </span>
+          )}
+          {isSabor && (
+            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+              Sabor
+            </span>
+          )}
+        </div>
+
+        {/* Variant Image Selector / Preview */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          <label
+            htmlFor={`variant-img-${v._key}`}
+            className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer relative group transition-all shrink-0 ${
+              v.previewUrl || v.imagen
+                ? "border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-850 shadow-2xs"
+                : "border-dashed border-gray-300 dark:border-gray-600 hover:border-[#F05454] bg-gray-50 dark:bg-gray-800/60"
+            }`}
+            title={v.previewUrl || v.imagen ? "Cambiar foto" : "Subir foto"}
+          >
+            {v.previewUrl || v.imagen ? (
+              <>
+                <img
+                  src={v.previewUrl || v.imagen}
+                  alt={v.nombre || "Variante"}
+                  className="w-full h-full object-contain p-0.5"
+                />
+                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity">
+                  <Camera className="w-4 h-4" />
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#F05454] transition-colors">
+                <Camera className="w-4 h-4" />
+                <span className="text-[8px] font-bold mt-0.5 leading-none">Foto</span>
+              </div>
+            )}
+            <input
+              id={`variant-img-${v._key}`}
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleVariantImageSelectedByKey(v._key, e)}
+              className="hidden"
+            />
+          </label>
+
+          {(v.previewUrl || v.imagen) && (
+            <button
+              type="button"
+              onClick={() => handleRemoveVariantImageByKey(v._key)}
+              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors cursor-pointer"
+              title="Quitar foto"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Name input */}
+        <div className="flex-1 min-w-0">
+          <input
+            type="text"
+            value={v.nombre}
+            onChange={(e) => handleUpdateVarianteByKey(v._key, "nombre", e.target.value)}
+            placeholder={placeholderText}
+            className={`w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs focus:ring-2 focus:border-transparent transition-colors ${borderFocusCls}`}
+          />
+        </div>
+
+        {/* Price input */}
+        <div className="w-full sm:w-36 shrink-0">
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
+            <NumberInput
+              min="0"
+              value={v.precio}
+              onChange={(e) => handleUpdateVarianteByKey(v._key, "precio", e.target.value)}
+              placeholder="Precio"
+              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs font-semibold focus:ring-2 focus:border-transparent transition-colors ${borderFocusCls}`}
+            />
+          </div>
+        </div>
+
+        {/* Delete row button */}
+        <div className="shrink-0 flex justify-end">
+          <button
+            type="button"
+            onClick={() => handleRemoveVarianteByKey(v._key)}
+            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
+            title="Eliminar opción"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
   };
 
   if (!isOpen) return null;
@@ -255,20 +570,20 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
 
     // Validar variantes
-    if (variantes.length === 0) {
-      notify.warning("Variantes Requeridas", "El producto debe tener al menos una variante o presentación registrada");
-      return;
-    }
-
-    for (let i = 0; i < variantes.length; i++) {
-      const v = variantes[i];
-      if (!v.nombre || !v.nombre.trim()) {
-        notify.warning("Campo Requerido", `Por favor escribe el nombre de la variante o presentación #${i + 1} (ej. "Original 400ml" o "Estándar")`);
-        return;
-      }
-      if (v.precio === "" || v.precio === null || isNaN(Number(v.precio)) || Number(v.precio) < 0) {
-        notify.warning("Campo Requerido", `Por favor ingresa un precio válido para la variante "${v.nombre}"`);
-        return;
+    if (variantes.length > 0) {
+      for (let i = 0; i < variantes.length; i++) {
+        const v = variantes[i];
+        if (!v.nombre || !v.nombre.trim()) {
+          const typeLabel = isDrink 
+            ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / fórmula")
+            : "de variante";
+          notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
+          return;
+        }
+        if (v.precio === "" || v.precio === null || isNaN(Number(v.precio)) || Number(v.precio) < 0) {
+          notify.warning("Campo Requerido", `Por favor ingresa un precio válido para "${v.nombre}"`);
+          return;
+        }
       }
     }
 
@@ -331,18 +646,34 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
 
       const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
-      const basePrice = Number(variantes[0]?.precio !== undefined && variantes[0]?.precio !== "" ? variantes[0].precio : form.precio) || 0;
+      const basePrice = Number(form.precio) || 0;
+
+      // SUBIDA DIFERIDA DE IMÁGENES DE VARIANTES (Si se seleccionaron archivos locales)
+      const processedVariants = await Promise.all(
+        variantes.map(async (v) => {
+          let varImg = v.imagen || "";
+          if (v.fileToUpload) {
+            try {
+              varImg = await uploadImageToCloudinary(v.fileToUpload);
+            } catch (err) {
+              console.warn(`Error al subir imagen de variante "${v.nombre}":`, err);
+            }
+          }
+          return {
+            idVariante: v.idVariante || null,
+            nombre: v.nombre.trim(),
+            precio: Number(v.precio) >= 0 ? Number(v.precio) : basePrice,
+            imagen: varImg || null
+          };
+        })
+      );
 
       await onSave({
         ...form,
         imagen: finalImageUrl,
         idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
         precio: basePrice,
-        variantes: variantes.map((v) => ({
-          idVariante: v.idVariante || null,
-          nombre: v.nombre.trim(),
-          precio: Number(v.precio) >= 0 ? Number(v.precio) : basePrice
-        })),
+        variantes: processedVariants,
         configuracionCombo: configCombo.esCombo
           ? {
               esCombo: true,
@@ -488,107 +819,313 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </select>
             </div>
 
-            {/* Sección de Variantes y Presentaciones */}
-            <div className="sm:col-span-2 border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10 rounded-2xl p-4 sm:p-5 space-y-3.5">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0 shadow-2xs">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                        Variantes y Presentaciones del Producto
-                      </h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
-                        {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Personaliza sabores (ej. Original, Sin Azúcar) o tamaños (ej. 400ml, 1.5L, Personal) y sus precios.
-                    </p>
-                  </div>
+            {/* ═══ CONTROL DE ESTRUCTURA DE VARIANTES (MODO MANUAL O AUTOMÁTICO) ═══ */}
+            <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl border border-gray-200/80 dark:border-gray-700/80">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    Estructura de Variantes:
+                  </span>
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    isDrink
+                      ? "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800"
+                      : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800"
+                  }`}>
+                    {isDrink ? "🥤 Modo Bebidas (Tamaños y Sabores separados)" : "🍔 Modo Comidas (Presentaciones unificadas)"}
+                  </span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddVariante}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-[#F05454] border border-[#F05454]/30 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Agregar Variante
-                </button>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  {isDrink
+                    ? "Organiza botellas/tamaños (1.5L, 2.5L) y fórmulas/sabores (Light, Zero, Frutales) por separado."
+                    : "Organiza presentaciones generales (ej. Doble Carne, Tamaño Grande, Porción Extra)."}
+                </p>
               </div>
 
-              <div className="space-y-2.5 pt-1">
-                {variantes.map((v, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col sm:flex-row sm:items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700/80 shadow-2xs"
-                  >
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="w-6 h-6 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      {idx === 0 && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          Base
-                        </span>
-                      )}
-                    </div>
+              {/* Botones de conmutación manual para máxima flexibilidad */}
+              <div className="inline-flex p-1 bg-white dark:bg-gray-850 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold shrink-0 shadow-2xs self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setModoVariantesManual("comida")}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    !isDrink
+                      ? "bg-[#F05454] text-white shadow-xs"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  title="Activar vista de variantes estándar para comidas"
+                >
+                  <span>🍔</span>
+                  <span>Comida</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoVariantesManual("bebida")}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isDrink
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  }`}
+                  title="Activar vista separada de Tamaños y Sabores para bebidas"
+                >
+                  <span>🥤</span>
+                  <span>Bebida</span>
+                </button>
+              </div>
+            </div>
 
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={v.nombre}
-                        onChange={(e) => handleUpdateVariante(idx, "nombre", e.target.value)}
-                        placeholder={idx === 0 ? "Nombre presentación base (ej. Sabor Original 400ml)" : "Ej. Sin Azúcar / Light 400ml"}
-                        className="w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
-                      />
-                    </div>
-
-                    <div className="w-full sm:w-36 shrink-0">
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
-                        <NumberInput
-                          min="0"
-                          value={v.precio}
-                          onChange={(e) => handleUpdateVariante(idx, "precio", e.target.value)}
-                          placeholder="Precio"
-                          className="w-full pl-6 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
-                        />
+            {/* ═══ SECCIÓN DE VARIANTES: SEPARADA PARA BEBIDAS O GENERAL PARA COMIDAS ═══ */}
+            {isDrink ? (
+              <>
+                {/* ── 1. TAMAÑOS & PRESENTACIONES DE BEBIDA (1.5L, 2.5L, etc.) ── */}
+                <div className="sm:col-span-2 border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/15 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0 shadow-2xs">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            Tamaños y Presentaciones de Bebida
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
+                            {sizeVariantes.length} {sizeVariantes.length === 1 ? "presentación" : "presentaciones"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Configura las botellas y tamaños adicionales (ej. Botella 1.5 Litros, Mega 2.5 Litros) con sus precios y fotos individuales.
+                        </p>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex justify-end">
-                      {variantes.length > 1 ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVariante(idx)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar variante"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <span className="w-7 h-7 flex items-center justify-center text-gray-300 dark:text-gray-600 text-xs" title="Debe existir al menos 1 presentación">
-                          —
+                    <button
+                      type="button"
+                      onClick={() => handleAddTamano()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-amber-50 dark:hover:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Agregar Tamaño
+                    </button>
+                  </div>
+
+                  {/* Sugerencias Rápidas de Tamaños */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
+                      Sugerencias de tamaño:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTamano("Botella 1.5 Litros")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-amber-600" />
+                      Botella 1.5 Litros
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddTamano("Mega Botella 2.5 Litros")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-amber-600" />
+                      Mega Botella 2.5 Litros
+                    </button>
+                  </div>
+
+                  {sizeVariantes.length === 0 ? (
+                    <div className="text-center py-4 px-4 rounded-xl border border-dashed border-amber-200/90 dark:border-amber-900/40 bg-white/50 dark:bg-gray-800/30">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        No hay tamaños adicionales registrados. La bebida se venderá únicamente en su tamaño personal estándar (400 ml).
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTamano("Botella 1.5 Litros")}
+                        className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Añadir Botella 1.5 Litros
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 pt-1">
+                      {sizeVariantes.map((v, idx) => renderVariantRow(v, idx, "tamano"))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-amber-100 dark:border-amber-950">
+                    <span className="text-amber-500">💡</span>
+                    <span>
+                      Estos tamaños aparecerán en el selector de <strong>"TAMAÑO & PRESENTACIÓN"</strong> del modal del comensal.
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── 2. SABORES & FÓRMULAS DE BEBIDA (Sin Azúcar, Light, Zero, Frutales) ── */}
+                <div className="sm:col-span-2 border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/40 dark:bg-purple-950/15 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center text-purple-700 dark:text-purple-300 shrink-0 shadow-2xs">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            Sabores o Fórmulas de la Bebida
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
+                            {flavorVariantes.length} {flavorVariantes.length === 1 ? "fórmula" : "fórmulas"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Agrega fórmulas alternativas (ej. Sin Azúcar / Light, Zero, Sabor Uva, Naranja, etc.) que el cliente puede conmutar.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Agregar Sabor / Fórmula
+                    </button>
+                  </div>
+
+                  {/* Sugerencias Rápidas de Sabores / Fórmulas */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
+                      Sugerencias de sabor:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor("Sin Azúcar / Light 400ml")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-purple-600" />
+                      Sin Azúcar / Light
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor("Zero Calorías 400ml")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-purple-600" />
+                      Zero Calorías
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor("Sabor Uva 400ml")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-purple-600" />
+                      Sabor Uva
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor("Sabor Naranja 400ml")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-purple-600" />
+                      Sabor Naranja
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSabor("Sabor Manzana 400ml")}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3 text-purple-600" />
+                      Sabor Manzana
+                    </button>
+                  </div>
+
+                  {flavorVariantes.length === 0 ? (
+                    <div className="text-center py-4 px-4 rounded-xl border border-dashed border-purple-200/90 dark:border-purple-900/40 bg-white/50 dark:bg-gray-800/30">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        No hay fórmulas alternativas registradas. La bebida se venderá en su sabor tradicional original.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleAddSabor("Sin Azúcar / Light 400ml")}
+                        className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Añadir opción Sin Azúcar / Light
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 pt-1">
+                      {flavorVariantes.map((v, idx) => renderVariantRow(v, idx, "sabor"))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-purple-100 dark:border-purple-950">
+                    <span className="text-purple-500">💡</span>
+                    <span>
+                      Estos sabores aparecerán en la sección <strong>"VARIANTE O FÓRMULA"</strong> del modal del comensal.
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ── SECCIÓN GENERAL PARA COMIDAS (Hamburguesas, Perros, Salchipapas, etc.) ── */
+              <div className="sm:col-span-2 border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10 rounded-2xl p-4 sm:p-5 space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0 shadow-2xs">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                          Variantes y Presentaciones del Producto
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                          {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
                         </span>
-                      )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Personaliza opciones de presentación (ej. Doble Carne, Tamaño Grande, Porción Extra) y sus precios.
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-orange-100 dark:border-orange-950">
-                <span className="text-orange-500">💡</span>
-                <span>
-                  {variantes.length > 1
-                    ? "Tus clientes verán automáticamente estas opciones para elegir su sabor o tamaño favorito al ordenar en la carta."
-                    : "Si tu producto tiene diferentes sabores (ej. Coca-Cola Original y Sin Azúcar) o tamaños, haz clic en \"Agregar Variante\"."}
-                </span>
+                  <button
+                    type="button"
+                    onClick={handleAddVariante}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 text-[#F05454] border border-[#F05454]/30 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Agregar Variante
+                  </button>
+                </div>
+
+                {variantes.length === 0 ? (
+                  <div className="text-center py-5 px-4 rounded-xl border border-dashed border-orange-200/90 dark:border-orange-900/40 bg-white/50 dark:bg-gray-800/30">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      No hay variantes adicionales registradas. El producto se venderá con su presentación estándar y precio base.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddVariante}
+                      className="mt-2 text-xs font-bold text-[#F05454] hover:underline cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Añadir variante
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 pt-1">
+                    {variantes.map((v, idx) => renderVariantRow(v, idx, "general"))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-orange-100 dark:border-orange-950">
+                  <span className="text-orange-500">💡</span>
+                  <span>
+                    Tus clientes podrán seleccionar estas opciones con sus propios precios y fotos al ordenar.
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="sm:col-span-2">
               <label className={labelCls}>Imagen del Producto</label>

@@ -10,8 +10,10 @@ import {
   Check, 
   Clock, 
   User, 
-  Layers 
+  Layers,
+  MapPin
 } from "lucide-react";
+import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
 
 export function VerOrdenModal({ isOpen, onClose, orden }) {
   if (!isOpen || !orden) return null;
@@ -30,6 +32,8 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
       }
     ];
   }, [orden]);
+
+  const parsedNotes = useMemo(() => parseKitchenOrderNotes(orden.observaciones), [orden.observaciones]);
 
   const totalUnidades = useMemo(() => {
     return productos.reduce((sum, p) => sum + (Number(p.cantidad) || 1), 0) || orden.cantidad || 1;
@@ -392,13 +396,25 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
           </div>
 
           {/* OBSERVACIONES GENERALES DE LA ORDEN SI EXISTEN */}
-          {orden.observaciones && typeof orden.observaciones === "string" && orden.observaciones.trim() && (
-            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 p-3 rounded-2xl text-xs text-blue-900 dark:text-blue-200 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
-                <FileText className="w-3.5 h-3.5" />
-                <span>Nota General del Pedido:</span>
-              </div>
-              <p className="italic pl-5">{orden.observaciones}</p>
+          {parsedNotes.hasNotes && (
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 p-3.5 rounded-2xl text-xs text-blue-900 dark:text-blue-200 space-y-2">
+              {parsedNotes.notaCliente && (
+                <div>
+                  <div className="font-bold flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Nota General del Pedido:</span>
+                  </div>
+                  <p className="italic pl-5 font-medium">"{parsedNotes.notaCliente}"</p>
+                </div>
+              )}
+
+              {parsedNotes.direccion && (
+                <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-medium">
+                  <MapPin className="w-3.5 h-3.5 text-purple-600" />
+                  <span className="font-bold">Dirección de Entrega:</span>
+                  <span>{parsedNotes.direccion}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

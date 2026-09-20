@@ -26,6 +26,8 @@ import {
 import { getProductEmoji, getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import postobonUvaImg from "@/shared/assets/drinks/postobon_uva.jpg";
+import postobonNaranjaImg from "@/shared/assets/drinks/postobon_naranja.jpg";
 
 const FALLBACK_ADICION_IMAGES = {
   tocineta: "https://images.unsplash.com/photo-1528607929212-2636ec44253e?w=500&auto=format&fit=crop&q=80",
@@ -95,11 +97,17 @@ export const getDrinkBrandMeta = (name = "") => {
   if (n.includes("pepsi")) {
     return { color: "#004B93", badge: "Pepsi Regular", badgeColor: "bg-blue-700 text-white", marca: "PepsiCo" };
   }
+  if (n.includes("uva")) {
+    return { color: "#7B1FA2", badge: "Uva Dulce", badgeColor: "bg-purple-600 text-white", marca: "Postobón" };
+  }
+  if (n.includes("naranja")) {
+    return { color: "#FF6D00", badge: "Cítrica", badgeColor: "bg-orange-500 text-white", marca: "Postobón" };
+  }
   if (n.includes("manzana")) {
-    return { color: "#E11D48", badge: "Postobón", badgeColor: "bg-rose-500 text-white", marca: "Postobón" };
+    return { color: "#E11D48", badge: "Rosada", badgeColor: "bg-rose-500 text-white", marca: "Postobón" };
   }
   if (n.includes("colombiana")) {
-    return { color: "#EA580C", badge: "La Nuestra", badgeColor: "bg-orange-600 text-white", marca: "Postobón" };
+    return { color: "#EA580C", badge: "La Nuestra", badgeColor: "bg-amber-600 text-white", marca: "Postobón" };
   }
   if (n.includes("sprite")) {
     return { color: "#059669", badge: "Lima-Limón", badgeColor: "bg-emerald-600 text-white", marca: "The Coca-Cola Company" };
@@ -113,11 +121,127 @@ export const getDrinkBrandMeta = (name = "") => {
   return { color: "#f05454", badge: "Refrescante", badgeColor: "bg-red-500 text-white", marca: "Bebida Chazin" };
 };
 
+export const isWaterProduct = (item) => {
+  if (!item) return false;
+  const name = String(item.nombre || "").toLowerCase();
+  const desc = String(item.descripcion || "").toLowerCase();
+  return (
+    name.includes("agua") ||
+    name.includes("cristal") ||
+    desc.includes("agua pura") ||
+    desc.includes("agua cristal")
+  );
+};
+
+export const hasDrinkSizes = (item) => {
+  if (!item) return false;
+  if (isWaterProduct(item)) return false;
+  return isDrinkProduct(item);
+};
+
+export const STANDARD_DRINK_SIZES = [
+  {
+    id: "400ml",
+    sizeKey: "400",
+    label: "400 ml",
+    title: "Botella 400 ml",
+    tag: "Personal",
+    porciones: "1 porción (400ml)",
+    subtext: "Personal • 400 ml bien fría",
+    defaultPostobonPrice: 4000,
+    defaultPremiumPrice: 4500
+  },
+  {
+    id: "1.5L",
+    sizeKey: "1.5",
+    label: "1.5 Litros",
+    title: "Botella 1.5 Litros",
+    tag: "Familiar",
+    porciones: "4 a 5 vasos (1.5L)",
+    subtext: "Familiar • 1.5 L para compartir",
+    defaultPostobonPrice: 8500,
+    defaultPremiumPrice: 9500
+  },
+  {
+    id: "2.5L",
+    sizeKey: "2.5",
+    label: "2.5 Litros",
+    title: "Mega Botella 2.5 Litros",
+    tag: "Mega Familiar",
+    porciones: "7 a 8 vasos (2.5L)",
+    subtext: "Mega familiar • 2.5 L máximo ahorro",
+    defaultPostobonPrice: 12000,
+    defaultPremiumPrice: 13500
+  }
+];
+
+export const getDrinkBottleImage = (sizeId, prod, matchedVar = null, isDiet = false) => {
+  const name = String(prod?.nombre || "").toLowerCase();
+  const dietActive = isDiet || name.includes("light") || name.includes("sin az") || name.includes("zero");
+
+  if (name.includes("coca") && dietActive) {
+    if (sizeId === "400ml") return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+    if (sizeId === "1.5L") return "/images/drinks/coca_cola_zero_1.5L.jpg";
+    if (sizeId === "2.5L") return "/images/drinks/coca_cola_zero_2.5L.jpg";
+  }
+
+  if (sizeId === "400ml") {
+    if (name.includes("coca")) {
+      if (dietActive) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+      return "/images/drinks/coca_cola-removebg-preview.png";
+    }
+    if (name.includes("pepsi")) {
+      if (dietActive) return "/images/drinks/pepsi_light-removebg-preview.png";
+      return "/images/drinks/pepsi_400ml-removebg-preview.png";
+    }
+    if (name.includes("sprite")) return "/images/drinks/sprite-removebg-preview.png";
+    if (name.includes("manzana")) return "/images/drinks/manzana_400ml-removebg-preview.png";
+    if (name.includes("naranja")) return "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+    if (name.includes("colombiana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+    if (name.includes("uva")) return "/images/drinks/uva_postobon-removebg-preview.png";
+    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    return prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
+  }
+
+  if (sizeId === "1.5L") {
+    if (name.includes("coca")) {
+      if (dietActive) return "/images/drinks/coca_cola_zero_1.5L.jpg";
+      return "/images/drinks/coca_cola_1.5-LITROS-removebg-preview.png";
+    }
+    if (name.includes("pepsi")) return "/images/drinks/pepsi_1.5-removebg-preview.png";
+    if (name.includes("sprite")) return "/images/drinks/komx_mx_sprite_15.webp";
+    if (name.includes("manzana")) return "/images/drinks/manzana_1.5_L-removebg-preview.png";
+    if (name.includes("naranja")) return "/images/drinks/naranga_1.5-removebg-preview.png";
+    if (name.includes("uva")) return "/images/drinks/bebida-uva-1500ml_00-600x600-removebg-preview.png";
+    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    if (name.includes("colombiana")) return "/images/drinks/colombiana_1.5_L-removebg-preview.png";
+    return matchedVar?.imagen || "/images/drinks/pepsi_1.5-removebg-preview.png";
+  }
+
+  if (sizeId === "2.5L") {
+    if (name.includes("coca")) {
+      if (dietActive) return "/images/drinks/coca_cola_zero_2.5L.jpg";
+      return "/images/drinks/mega_coca_cola-removebg-preview.png";
+    }
+    if (name.includes("pepsi")) return "/images/drinks/mega_pepsi-removebg-preview.png";
+    if (name.includes("sprite")) return "/images/drinks/spr-limalimo-nor-pet-2.5l-removebg-preview.png";
+    if (name.includes("manzana")) return "/images/drinks/Manzana-Super-Gigante-25-Litros-223182_a-removebg-preview.png";
+    if (name.includes("naranja")) return "/images/drinks/postob_n_naranja_2.5l_1_-removebg-preview.png";
+    if (name.includes("uva")) return "/images/drinks/Uva_mega-removebg-preview.png";
+    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/quatro_mega-removebg-preview.png";
+    if (name.includes("colombiana")) return "/images/drinks/colombiana_pet_2.5l-removebg-preview.png";
+    return matchedVar?.imagen || "/images/drinks/mega_pepsi-removebg-preview.png";
+  }
+
+  return prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
+};
 
 export const SODA_FLAVORS = [
   { id: "coca-cola", nombre: "Coca-Cola Original", color: "#E61C24" },
   { id: "coca-cola-light", nombre: "Coca-Cola Light", color: "#C0C0C0" },
   { id: "manzana-postobon", nombre: "Manzana Postobón", color: "#E11D48" },
+  { id: "uva-postobon", nombre: "Uva Postobón", color: "#7B1FA2" },
+  { id: "naranja-postobon", nombre: "Naranja Postobón", color: "#FF6D00" },
   { id: "colombiana-postobon", nombre: "Colombiana Postobón", color: "#EA580C" },
   { id: "pepsi", nombre: "Pepsi", color: "#004B93" },
   { id: "pepsi-light", nombre: "Pepsi Light", color: "#0F172A" },
@@ -129,19 +253,42 @@ export const SODA_FLAVORS = [
 export const detectDefaultFlavor = (prod) => {
   if (!prod) return SODA_FLAVORS[0];
   const name = String(prod.nombre || "").toLowerCase();
-  if (name.includes("manzana")) return SODA_FLAVORS.find((f) => f.id === "manzana-postobon") || SODA_FLAVORS[0];
-  if (name.includes("colombiana")) return SODA_FLAVORS.find((f) => f.id === "colombiana-postobon") || SODA_FLAVORS[0];
+  if (name.includes("uva")) return SODA_FLAVORS.find((f) => f.id === "uva-postobon") || SODA_FLAVORS[3];
+  if (name.includes("naranja")) return SODA_FLAVORS.find((f) => f.id === "naranja-postobon") || SODA_FLAVORS[4];
+  if (name.includes("manzana")) return SODA_FLAVORS.find((f) => f.id === "manzana-postobon") || SODA_FLAVORS[2];
+  if (name.includes("colombiana")) return SODA_FLAVORS.find((f) => f.id === "colombiana-postobon") || SODA_FLAVORS[5];
   if (name.includes("pepsi") && (name.includes("light") || name.includes("black") || name.includes("zero"))) {
-    return SODA_FLAVORS.find((f) => f.id === "pepsi-light") || SODA_FLAVORS[3];
+    return SODA_FLAVORS.find((f) => f.id === "pepsi-light") || SODA_FLAVORS[7];
   }
-  if (name.includes("pepsi")) return SODA_FLAVORS.find((f) => f.id === "pepsi") || SODA_FLAVORS[3];
-  if (name.includes("sprite")) return SODA_FLAVORS.find((f) => f.id === "sprite") || SODA_FLAVORS[0];
-  if (name.includes("cuatro")) return SODA_FLAVORS.find((f) => f.id === "cuatro") || SODA_FLAVORS[0];
-  if (name.includes("agua") || name.includes("cristal")) return SODA_FLAVORS.find((f) => f.id === "agua-cristal") || SODA_FLAVORS[0];
+  if (name.includes("pepsi")) return SODA_FLAVORS.find((f) => f.id === "pepsi") || SODA_FLAVORS[6];
+  if (name.includes("sprite")) return SODA_FLAVORS.find((f) => f.id === "sprite") || SODA_FLAVORS[8];
+  if (name.includes("cuatro")) return SODA_FLAVORS.find((f) => f.id === "cuatro") || SODA_FLAVORS[9];
+  if (name.includes("agua") || name.includes("cristal")) return SODA_FLAVORS.find((f) => f.id === "agua-cristal") || SODA_FLAVORS[10];
   if (name.includes("light") || name.includes("zero") || name.includes("sin azucar")) {
     return SODA_FLAVORS.find((f) => f.id === "coca-cola-light") || SODA_FLAVORS[1];
   }
   return SODA_FLAVORS[0];
+};
+
+export const isPostobonDrinkProduct = (item) => {
+  if (!item) return false;
+  const name = String(item.nombre || "").toLowerCase();
+  const desc = String(item.descripcion || "").toLowerCase();
+  return (
+    name.includes("postob") ||
+    name.includes("colombiana") ||
+    name.includes("manzana") ||
+    name.includes("uva") ||
+    name.includes("naranja") ||
+    desc.includes("postob")
+  );
+};
+
+export const detectDefaultDrinkSize = (prod) => {
+  const name = String(prod?.nombre || "").toLowerCase();
+  if (name.includes("2.5") || name.includes("2,5") || name.includes("mega")) return "2.5L";
+  if (name.includes("1.5") || name.includes("1,5") || name.includes("familiar")) return "1.5L";
+  return "400ml";
 };
 
 const INGREDIENTES_CANDIDATOS = [
@@ -352,8 +499,13 @@ export function FastFoodProductModal({
 }) {
   const { user, isAuthenticated } = useAuth?.() || {};
   const isDrink = isDrinkProduct(producto);
+  const drinkHasSizes = hasDrinkSizes(producto);
   const specs = useMemo(() => resolveNutritionalSpecs(producto, ficha), [producto, ficha]);
-  const [activeTab, setActiveTab] = useState(isDrink ? "sabores" : (initialTab || "personalizar")); // "sabores" | "personalizar" | "adiciones" | "bebidas" | "ficha" | "resenas"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (drinkHasSizes) return "presentacion";
+    if (isDrink) return "ficha";
+    return initialTab || "personalizar";
+  });
   const [quantity, setQuantity] = useState(1);
   const [removedIngredients, setRemovedIngredients] = useState([]);
   const [selectedAdditions, setSelectedAdditions] = useState([]); // [{ idAdicion, nombre, precio, cantidad, imagen }]
@@ -362,26 +514,212 @@ export function FastFoodProductModal({
     if (Array.isArray(producto?.variantes) && producto.variantes.length > 0) {
       return producto.variantes.map((v) => ({
         idVariante: v.idVariante || v.id,
+        idProducto: v.idProducto || producto?.id || producto?.idProducto,
         nombre: v.nombre,
-        precio: Number(v.precio || producto.precio || 0)
+        precio: Number(v.precio || producto.precio || 0),
+        imagen: v.imagen || null
       }));
     }
     return [
       {
         idVariante: producto?.id || producto?.idProducto || 1,
+        idProducto: producto?.id || producto?.idProducto || 1,
         nombre: producto?.nombre || "Estándar",
-        precio: Number(producto?.precio || 0)
+        precio: Number(producto?.precio || 0),
+        imagen: producto?.imagen || null
       }
     ];
   }, [producto]);
 
-  const [selectedVariant, setSelectedVariant] = useState(() => realVariants[0]);
+  // Variantes de fórmula o sabor para bebidas (excluyendo tamaños como 1.5L, 2.5L que pertenecen al selector de tamaños)
+  const drinkFormulaVariants = useMemo(() => {
+    if (!isDrink) return [];
 
-  useEffect(() => {
-    if (realVariants.length > 0) {
-      setSelectedVariant(realVariants[0]);
+    const isSizeVariant = (v) => {
+      const vn = (v.nombre || "").toLowerCase();
+      return (
+        (vn.includes("1.5") || vn.includes("1,5") || vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega") || vn.includes("botella 1.") || vn.includes("botella 2.")) &&
+        !vn.includes("sin azúcar") && !vn.includes("sin azucar") && !vn.includes("light") && !vn.includes("zero") && !vn.includes("black")
+      );
+    };
+
+    const baseName = String(producto?.nombre || "").toLowerCase();
+    const cleanBaseName = baseName.replace(/\s*400\s*ml/gi, "").trim();
+    const isCoca = baseName.includes("coca");
+    const isPepsi = baseName.includes("pepsi");
+
+    // Filtrar las que son tamaños de botella
+    const nonSizeVariants = realVariants.filter((v) => !isSizeVariant(v));
+
+    // Filtrar variantes redundantes que simplemente repiten el nombre del producto base
+    const distinctFlavorVariants = nonSizeVariants.filter((v) => {
+      const vn = String(v.nombre || "").toLowerCase().replace(/\s*400\s*ml/gi, "").trim();
+      if (vn === cleanBaseName || vn === baseName || vn === "estándar" || vn === "estandar") return false;
+      return true;
+    });
+
+    if (distinctFlavorVariants.length > 0) {
+      const originalOption = {
+        idVariante: producto?.id || producto?.idProducto || (isCoca ? 8 : (isPepsi ? 11 : 1)),
+        idProducto: producto?.id || producto?.idProducto || (isCoca ? 8 : (isPepsi ? 11 : 1)),
+        nombre: isCoca ? "Coca-Cola Original" : (isPepsi ? "Pepsi Regular" : `${producto?.nombre || "Sabor Original"} (Original)`),
+        esOriginal: true,
+        precio: Number(producto?.precio || 0),
+        imagen: (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
+                (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                producto?.imagen || null
+      };
+
+      const customFlavorVars = distinctFlavorVariants.map((v) => {
+        const vLower = String(v.nombre || "").toLowerCase();
+        let fallbackImg = v.imagen;
+        if (!fallbackImg) {
+          if (isPepsi && (vLower.includes("light") || vLower.includes("black") || vLower.includes("zero"))) {
+            fallbackImg = "/images/drinks/pepsi_light-removebg-preview.png";
+          } else if (isCoca && (vLower.includes("light") || vLower.includes("zero") || vLower.includes("sin az"))) {
+            fallbackImg = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+          }
+        }
+        return {
+          ...v,
+          idProducto: isCoca ? 16 : (v.idProducto || producto?.id || producto?.idProducto),
+          imagen: fallbackImg || v.imagen,
+          esOriginal: false
+        };
+      });
+
+      return [originalOption, ...customFlavorVars];
     }
-  }, [realVariants]);
+
+    return distinctFlavorVariants;
+  }, [isDrink, realVariants, producto]);
+
+  const [selectedVariant, setSelectedVariant] = useState(() => {
+    if (isDrink && drinkFormulaVariants.length > 0) {
+      return drinkFormulaVariants[0];
+    }
+    return realVariants[0];
+  });
+
+  const isPostobonDrink = useMemo(() => isDrink && isPostobonDrinkProduct(producto), [isDrink, producto]);
+  const [selectedSizeId, setSelectedSizeId] = useState(() => detectDefaultDrinkSize(producto));
+
+  // Detección si la fórmula seleccionada está restringida a tamaño personal de 400ml
+  // (Ejemplo: Pepsi Light / Black únicamente existe en 400 ml; los tamaños 1.5L y 2.5L son de Pepsi Regular con azúcar)
+  const isFormulaLimitedTo400ml = useMemo(() => {
+    if (!isDrink) return false;
+    if (!selectedVariant || selectedVariant.esOriginal) return false;
+
+    const vName = String(selectedVariant.nombre || "").toLowerCase();
+    const pName = String(producto?.nombre || "").toLowerCase();
+
+    // Pepsi Light / Black únicamente existe en botella de 400 ml
+    if (pName.includes("pepsi") && (vName.includes("light") || vName.includes("black") || vName.includes("zero"))) {
+      return true;
+    }
+
+    // Cualquier otra bebida con variante que no tenga presentaciones 1.5L o 2.5L
+    const isDietOrSpecific = vName.includes("light") || vName.includes("black") || vName.includes("zero") || vName.includes("sin az");
+    if (isDietOrSpecific && !pName.includes("coca")) {
+      const hasLargeDiet = realVariants.some((v) => {
+        const vn = (v.nombre || "").toLowerCase();
+        return (vn.includes("1.5") || vn.includes("2.5")) && (vn.includes("light") || vn.includes("black") || vn.includes("zero") || vn.includes("sin az"));
+      });
+      if (!hasLargeDiet) return true;
+    }
+
+    return false;
+  }, [isDrink, selectedVariant, producto, realVariants]);
+
+  const displayedDrinkSizes = useMemo(() => {
+    if (isFormulaLimitedTo400ml) {
+      return STANDARD_DRINK_SIZES.filter((s) => s.id === "400ml");
+    }
+    return STANDARD_DRINK_SIZES;
+  }, [isFormulaLimitedTo400ml]);
+
+  // Si la fórmula activa está limitada a 400ml y el tamaño actual es 1.5L o 2.5L, forzar a "400ml"
+  useEffect(() => {
+    if (isFormulaLimitedTo400ml && selectedSizeId !== "400ml") {
+      setSelectedSizeId("400ml");
+    }
+  }, [isFormulaLimitedTo400ml, selectedSizeId]);
+
+  const selectedSizeObj = useMemo(() => {
+    return displayedDrinkSizes.find((s) => s.id === selectedSizeId) || displayedDrinkSizes[0] || STANDARD_DRINK_SIZES[0];
+  }, [displayedDrinkSizes, selectedSizeId]);
+
+  const handleSelectDrinkSize = useCallback((sizeId) => {
+    setSelectedSizeId(sizeId);
+    // Si selecciona un tamaño familiar (1.5L o 2.5L) y la fórmula seleccionada era Pepsi Light,
+    // cambiar automáticamente a la versión regular con azúcar
+    if (sizeId !== "400ml" && isFormulaLimitedTo400ml) {
+      const origVar = drinkFormulaVariants.find((v) => v.esOriginal) || drinkFormulaVariants[0];
+      if (origVar) {
+        setSelectedVariant(origVar);
+      }
+    }
+  }, [isFormulaLimitedTo400ml, drinkFormulaVariants]);
+
+  const handleSelectDrinkFormula = useCallback((variant) => {
+    setSelectedVariant(variant);
+    const vn = String(variant.nombre || "").toLowerCase();
+    const pn = String(producto?.nombre || "").toLowerCase();
+    const isLimited = pn.includes("pepsi") && (vn.includes("light") || vn.includes("black") || vn.includes("zero"));
+    if (isLimited && selectedSizeId !== "400ml") {
+      setSelectedSizeId("400ml");
+    }
+  }, [producto, selectedSizeId]);
+
+  // Sincronizar selectedVariant cuando cambia selectedSizeId o realVariants para bebidas
+  useEffect(() => {
+    if (!drinkHasSizes) {
+      if (drinkFormulaVariants.length > 0) {
+        setSelectedVariant((prev) => {
+          const match = drinkFormulaVariants.find((v) => (v.idVariante || v.id) === (prev?.idVariante || prev?.id));
+          return match || drinkFormulaVariants[0];
+        });
+      } else if (realVariants.length > 0) {
+        setSelectedVariant(realVariants[0]);
+      }
+      return;
+    }
+
+    // Si la bebida tiene variantes de fórmula (ej: Original vs Sin Azúcar), preservar la fórmula seleccionada
+    if (drinkFormulaVariants.length > 0) {
+      setSelectedVariant((prev) => {
+        if (!prev) return drinkFormulaVariants[0];
+        const match = drinkFormulaVariants.find((v) => (v.idVariante || v.id) === (prev?.idVariante || prev?.id) || (prev.esOriginal && v.esOriginal));
+        return match || drinkFormulaVariants[0];
+      });
+      return;
+    }
+
+    const sizeObj = STANDARD_DRINK_SIZES.find((s) => s.id === selectedSizeId) || STANDARD_DRINK_SIZES[0];
+    const match = realVariants.find((v) => {
+      const vn = (v.nombre || "").toLowerCase();
+      if (selectedSizeId === "400ml") return vn.includes("400") && !vn.includes("1.5") && !vn.includes("2.5");
+      if (selectedSizeId === "1.5L") return vn.includes("1.5") || vn.includes("1,5");
+      if (selectedSizeId === "2.5L") return vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega");
+      return false;
+    });
+
+    if (match) {
+      setSelectedVariant(match);
+    } else {
+      let defaultPrice;
+      if (selectedSizeId === "400ml" && Number(producto?.precio) > 0) {
+        defaultPrice = Number(producto.precio);
+      } else {
+        defaultPrice = isPostobonDrink ? sizeObj.defaultPostobonPrice : sizeObj.defaultPremiumPrice;
+      }
+      setSelectedVariant({
+        idVariante: `${selectedSizeId}-${producto?.id || producto?.idProducto || 1}`,
+        nombre: sizeObj.title,
+        precio: defaultPrice
+      });
+    }
+  }, [selectedSizeId, drinkHasSizes, realVariants, drinkFormulaVariants, isPostobonDrink, producto]);
 
   // Detección si el producto es acompañamiento o plato de papas
   const isPapaOrAccompaniment = useMemo(() => {
@@ -407,7 +745,7 @@ export function FastFoodProductModal({
   const getVariantImage = useCallback((varName) => {
     const vn = String(varName || "").toLowerCase();
     if (vn.includes("light") || vn.includes("sin azúcar") || vn.includes("sin azucar") || vn.includes("zero")) {
-      return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789007797/vj583pwufluqm708i5af.jpg";
+      return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
     }
     return null;
   }, []);
@@ -415,6 +753,11 @@ export function FastFoodProductModal({
   const [selectedFlavor, setSelectedFlavor] = useState(() => isDrink ? detectDefaultFlavor(producto) : null);
   const [customObservation, setCustomObservation] = useState("");
   const [imageError, setImageError] = useState(false);
+
+  // Reiniciar estado de error de imagen al cambiar presentación o variante
+  useEffect(() => {
+    setImageError(false);
+  }, [selectedSizeId, selectedVariant, producto]);
 
   // Detección y resolución de configuración de Combo con bebidas incluidas
   const comboConfig = useMemo(() => {
@@ -624,10 +967,17 @@ export function FastFoodProductModal({
   useEffect(() => {
     if (producto && isOpen) {
       const drinkMode = isDrinkProduct(producto);
+      const hasSizes = hasDrinkSizes(producto);
       if (drinkMode) {
         const defFlavor = detectDefaultFlavor(producto);
         setSelectedFlavor(defFlavor);
-        setActiveTab("sabores");
+        if (hasSizes) {
+          const defSize = detectDefaultDrinkSize(producto);
+          setSelectedSizeId(defSize);
+          setActiveTab("presentacion");
+        } else {
+          setActiveTab("ficha");
+        }
       } else {
         const canPersonalize = extractPersonalizables(producto, ficha).length > 0;
         setActiveTab(initialTab || (canPersonalize ? "personalizar" : "adiciones"));
@@ -730,9 +1080,25 @@ export function FastFoodProductModal({
 
   // Calculo de precio base con posibles eventos o promociones
   const { basePrice, originalPrice, hasDiscount, discountLabel } = (() => {
-    const rawPrice = selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0
-      ? Number(selectedVariant.precio)
-      : Number(producto.precio || 0);
+    let rawPrice = Number(producto.precio || 0);
+    if (drinkHasSizes) {
+      const sizeMatchedVar = realVariants.find((v) => {
+        const vn = (v.nombre || "").toLowerCase();
+        if (selectedSizeId === "400ml") return vn.includes("400") && !vn.includes("1.5") && !vn.includes("2.5");
+        if (selectedSizeId === "1.5L") return vn.includes("1.5") || vn.includes("1,5");
+        if (selectedSizeId === "2.5L") return vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega");
+        return false;
+      });
+      if (sizeMatchedVar && Number(sizeMatchedVar.precio) > 0) {
+        rawPrice = Number(sizeMatchedVar.precio);
+      } else if (selectedSizeId === "400ml" && Number(producto?.precio) > 0) {
+        rawPrice = Number(producto.precio);
+      } else {
+        rawPrice = isPostobonDrink ? selectedSizeObj.defaultPostobonPrice : selectedSizeObj.defaultPremiumPrice;
+      }
+    } else if (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0) {
+      rawPrice = Number(selectedVariant.precio);
+    }
     let original = rawPrice;
     let final = original;
     let discount = false;
@@ -896,13 +1262,65 @@ export function FastFoodProductModal({
       return;
     }
 
-    const variantName = selectedVariant?.nombre && selectedVariant.nombre !== producto.nombre && selectedVariant.nombre !== "Estándar"
-      ? selectedVariant.nombre
-      : "";
+    const isDietFormula = Boolean(
+      selectedVariant && (
+        selectedVariant.idVariante === 20 ||
+        selectedVariant.idVariante === 76 ||
+        selectedVariant.idVariante === 77 ||
+        /sin azúcar|sin azucar|light|zero/i.test(selectedVariant.nombre || "")
+      )
+    );
+    const isCoca = (producto?.nombre || "").toLowerCase().includes("coca");
+
+    let formulaTitle = "";
+    if (drinkFormulaVariants.length > 1) {
+      formulaTitle = selectedVariant?.nombre || (isCoca ? "Coca-Cola Original" : "Original");
+    } else if (selectedVariant?.nombre && selectedVariant.nombre !== producto.nombre && selectedVariant.nombre !== "Estándar") {
+      formulaTitle = selectedVariant.nombre;
+    }
+
+    let targetProdId = producto?.id || producto?.idProducto;
+    let chosenVarId;
+
+    if (selectedSizeId === "1.5L" || selectedSizeId === "2.5L") {
+      const sizeMatchedVar = realVariants.find((v) => {
+        const vn = (v.nombre || "").toLowerCase();
+        if (selectedSizeId === "1.5L") return vn.includes("1.5") || vn.includes("1,5");
+        if (selectedSizeId === "2.5L") return vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega");
+        return false;
+      });
+      if (isCoca && isDietFormula) {
+        targetProdId = 16;
+        chosenVarId = selectedSizeId === "1.5L" ? 76 : 77;
+        formulaTitle = `Coca-Cola Sin Azúcar / Light (${selectedSizeObj.label})`;
+      } else {
+        chosenVarId = sizeMatchedVar?.idVariante || selectedVariant?.idVariante || producto?.id || producto?.idProducto;
+        formulaTitle = selectedVariant && !selectedVariant.esOriginal ? selectedVariant.nombre : null;
+      }
+    } else {
+      // 400ml
+      if (isCoca && isDietFormula) {
+        targetProdId = 16;
+        chosenVarId = 20;
+        formulaTitle = "Coca-Cola Sin Azúcar / Light 400ml";
+      } else {
+        chosenVarId = selectedVariant?.idVariante || producto?.id || producto?.idProducto;
+        formulaTitle = selectedVariant && !selectedVariant.esOriginal ? selectedVariant.nombre : null;
+      }
+    }
+
+    const cleanBaseName = drinkHasSizes ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : producto.nombre;
+    let customName = cleanBaseName;
+    if (formulaTitle) {
+      customName = drinkHasSizes ? `${formulaTitle} (${selectedSizeObj.label})` : formulaTitle;
+    } else if (drinkHasSizes) {
+      customName = `${cleanBaseName} (${selectedSizeObj.label})`;
+    }
 
     const personalizacionesFormatted = isDrink
       ? [
-          variantName ? `Variante: ${variantName}` : null
+          formulaTitle ? `Sabor: ${formulaTitle}` : null,
+          drinkHasSizes ? `Presentación: ${selectedSizeObj.label}` : null
         ].filter(Boolean)
       : removedIngredients.map((r) => `Sin ${r}`);
 
@@ -911,7 +1329,7 @@ export function FastFoodProductModal({
       const drinksSummary = selectedDrinks
         .map((d) => `${d.cantidad || 1}x ${d.nombre}`)
         .join(", ");
-      fullNotes.push(`🥤 Bebidas combo: ${drinksSummary}`);
+      fullNotes.push(`Bebidas combo: ${drinksSummary}`);
     }
     if (personalizacionesFormatted.length > 0) {
       fullNotes.push(personalizacionesFormatted.join(", "));
@@ -921,28 +1339,25 @@ export function FastFoodProductModal({
     }
     const finalObservationString = fullNotes.join(" • ");
 
-    let customName = producto.nombre;
-    if (isDrink && variantName) {
-      customName = `${producto.nombre} (${variantName})`;
-    }
-
-    const chosenVarId = selectedVariant?.idVariante || selectedVariant?.id || producto.variantes?.[0]?.idVariante || producto.id || producto.idProducto;
-
     onConfirm({
       producto: {
         ...producto,
         idVariante: chosenVarId,
+        idProducto: targetProdId,
         nombrePersonalizado: customName,
-        saborSeleccionado: variantName,
-        configuracionCombo: comboConfig
+        saborSeleccionado: formulaTitle || cleanBaseName,
+        configuracionCombo: comboConfig,
+        precio: basePrice,
+        imagen: heroImage
       },
       idVariante: chosenVarId,
+      idProducto: targetProdId,
       cantidad: quantity,
       adiciones: isDrink ? [] : selectedAdditions,
       bebidas: isDrink ? [] : selectedDrinks,
       bebidasDelCombo: isComboWithDrinks ? selectedDrinks : [],
       isCombo: isComboWithDrinks,
-      sabor: variantName,
+      sabor: formulaTitle || cleanBaseName,
       personalizaciones: personalizacionesFormatted,
       ingredientesRemovidos: isDrink ? [] : removedIngredients,
       observacion: finalObservationString,
@@ -959,9 +1374,61 @@ export function FastFoodProductModal({
     producto.foto ||
     producto.img;
 
-  const selectedVariantSpecificImg = getVariantImage(selectedVariant?.nombre) || selectedVariant?.imagen;
-  const brandMeta = getDrinkBrandMeta(selectedVariant?.nombre || producto.nombre);
-  const heroImage = selectedVariantSpecificImg || productImage;
+  const isPepsi = String(producto?.nombre || "").toLowerCase().includes("pepsi");
+  const isCoca = String(producto?.nombre || "").toLowerCase().includes("coca");
+
+  const isDietSelected = Boolean(
+    selectedVariant && (
+      selectedVariant.idVariante === 20 ||
+      selectedVariant.idVariante === 22 ||
+      /sin azúcar|sin azucar|light|zero|black/i.test(selectedVariant.nombre || "")
+    )
+  );
+
+  const matchedSizeVariant = drinkHasSizes
+    ? (realVariants.find((v) => {
+        const vn = (v.nombre || "").toLowerCase();
+        if (selectedSizeId === "400ml") return vn.includes("400") && !vn.includes("1.5") && !vn.includes("2.5") && !vn.includes("light") && !vn.includes("zero") && !vn.includes("sin az");
+        if (selectedSizeId === "1.5L") return vn.includes("1.5") || vn.includes("1,5");
+        if (selectedSizeId === "2.5L") return vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega");
+        return false;
+      }) || null)
+    : null;
+
+  const brandMeta = getDrinkBrandMeta(
+    isDietSelected 
+      ? (isPepsi ? "Pepsi Light" : "Coca-Cola Sin Azúcar Light")
+      : (selectedVariant?.nombre || producto?.nombre || "")
+  );
+
+  // Determinar la imagen de la botella según tamaño y fórmula seleccionada
+  let heroImage = productImage;
+  if (isDrink && drinkHasSizes) {
+    if (selectedSizeId === "400ml") {
+      if (isPepsi && isDietSelected) {
+        heroImage = "/images/drinks/pepsi_light-removebg-preview.png";
+      } else if (isCoca && isDietSelected) {
+        heroImage = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+      } else {
+        heroImage = getDrinkBottleImage("400ml", producto, null, false) || productImage;
+      }
+    } else if (selectedSizeId === "1.5L") {
+      if (isCoca && isDietSelected) {
+        heroImage = "/images/drinks/coca_cola_zero_1.5L.jpg";
+      } else {
+        heroImage = getDrinkBottleImage("1.5L", producto, matchedSizeVariant, false) || matchedSizeVariant?.imagen || productImage;
+      }
+    } else if (selectedSizeId === "2.5L") {
+      if (isCoca && isDietSelected) {
+        heroImage = "/images/drinks/coca_cola_zero_2.5L.jpg";
+      } else {
+        heroImage = getDrinkBottleImage("2.5L", producto, matchedSizeVariant, false) || matchedSizeVariant?.imagen || productImage;
+      }
+    }
+  } else {
+    heroImage = selectedVariant?.imagen || productImage;
+  }
+
   const ambientGlowColor = isDrink ? brandMeta.color : "#f05454";
 
   const hasRealRatings = reviewsData.total > 0;
@@ -1080,13 +1547,22 @@ export function FastFoodProductModal({
             <div className="absolute bottom-3 left-4 right-4 z-20 flex items-end justify-between gap-3 text-white">
               <div className="min-w-0 flex-1">
                 <h2 className="text-xl sm:text-2xl font-black leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] text-white tracking-tight">
-                  {producto.nombre}
+                  {drinkHasSizes
+                    ? `${producto.nombre.replace(/\s*400\s*ml/gi, "").trim()} ${selectedSizeObj.label}`
+                    : producto.nombre}
                 </h2>
-                {isDrink && selectedFlavor && (
-                  <p className="text-xs text-amber-300 drop-shadow-md font-bold mt-1 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full inline-block border border-white/40" style={{ backgroundColor: selectedFlavor.color }} />
-                    <span>{selectedVariant?.nombre || selectedFlavor.nombre}</span>
-                  </p>
+                {isDrink && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${brandMeta.badgeColor} shadow-sm`}>
+                      {brandMeta.badge}
+                    </span>
+                    {drinkHasSizes && (
+                      <span className="text-xs text-amber-200 drop-shadow-md font-bold flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <span>{selectedSizeObj.title}</span>
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1142,7 +1618,7 @@ export function FastFoodProductModal({
               <span>•</span>
               <span className="flex items-center gap-1">
                 <Utensils className="w-3.5 h-3.5 text-amber-500" />
-                {ficha?.rendimiento || "1 porción"}
+                {isDrink ? selectedSizeObj.porciones : (ficha?.rendimiento || "1 porción")}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
@@ -1247,50 +1723,56 @@ export function FastFoodProductModal({
             <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl overflow-x-auto no-scrollbar">
               {isDrink ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("sabores")}
-                    className={`flex-1 min-w-[120px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
-                      activeTab === "sabores"
-                        ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
-                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    <span>🥤</span>
-                    <span>Sabores Gaseosas</span>
-                    {selectedFlavor && (
-                      <span className="h-4 px-1.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
-                        1/1
+                  {drinkHasSizes && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("presentacion")}
+                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer select-none whitespace-nowrap ${
+                        activeTab === "presentacion"
+                          ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">Tamaño & Presentación</span>
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-black leading-none whitespace-nowrap inline-flex items-center justify-center transition-colors ${
+                          activeTab === "presentacion"
+                            ? "bg-[#f05454] text-white shadow-xs"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        {selectedSizeObj?.label || "400 ml"}
                       </span>
-                    )}
-                  </button>
+                    </button>
+                  )}
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Ficha Técnica</span>
+                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-[95px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    <span>Reseñas</span>
+                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                    <span className="whitespace-nowrap">Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black">
+                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}
@@ -1302,16 +1784,16 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("personalizar")}
-                      className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "personalizar"
                           ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
-                      <Sliders className="w-3.5 h-3.5" />
-                      <span>Personalizar</span>
+                      <Sliders className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">Personalizar</span>
                       {removedIngredients.length > 0 && (
-                        <span className="h-4 w-4 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
+                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                           {removedIngredients.length}
                         </span>
                       )}
@@ -1321,16 +1803,16 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("adiciones")}
-                    className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "adiciones"
                         ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    <Flame className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Adiciones</span>
+                    <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="whitespace-nowrap">Adiciones</span>
                     {selectedAdditions.length > 0 && (
-                      <span className="h-4 min-w-[16px] px-1 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
+                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {selectedAdditions.length}
                       </span>
                     )}
@@ -1340,7 +1822,7 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("bebidas")}
-                      className={`flex-1 min-w-[95px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "bebidas"
                           ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm"
                           : isComboWithDrinks && !isComboDrinkComplete
@@ -1348,16 +1830,16 @@ export function FastFoodProductModal({
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
-                      <span>🥤</span>
-                      <span>{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
+                      <span className="shrink-0">🥤</span>
+                      <span className="whitespace-nowrap">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
                       {isComboWithDrinks ? (
-                        <span className={`h-4 min-w-[16px] px-1.5 rounded-full text-[10px] flex items-center justify-center font-black ${
+                        <span className={`shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
                           isComboDrinkComplete ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
                         }`}>
                           {totalSelectedDrinkQty}/{requiredDrinkCount}
                         </span>
                       ) : selectedDrinks.length > 0 ? (
-                        <span className="h-4 min-w-[16px] px-1 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black">
+                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                           {selectedDrinks.length}
                         </span>
                       ) : null}
@@ -1367,29 +1849,29 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Ficha Técnica</span>
+                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-[95px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
-                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    <span>Reseñas</span>
+                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                    <span className="whitespace-nowrap">Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black">
+                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}
@@ -1401,88 +1883,232 @@ export function FastFoodProductModal({
 
           {/* ═══ 3. TAB CONTENT PANELS ═══ */}
           <div className="p-4 sm:p-6 space-y-5">
-            {/* ─── TAB 0: SABORES Y VARIANTES DE GASEOSAS (ESTILO EL CORRAL) ─── */}
-            {isDrink && activeTab === "sabores" && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-gray-150 dark:border-gray-800 pb-3">
-                  <div>
-                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5 uppercase tracking-wide">
-                      <span>🥤</span>
-                      Variantes de Bebida
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {realVariants.length > 1
-                        ? "Selecciona la variante de tu preferencia:"
-                        : "Elige la temperatura de servicio para tu bebida:"}
-                    </p>
+            {/* ─── TAB 0: TAMAÑOS DE BEBIDA (ULTRA PREMIUM FAST FOOD SELECTOR) ─── */}
+            {drinkHasSizes && activeTab === "presentacion" && (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                {/* 1. SECCIÓN: TAMAÑO & PRESENTACIÓN (400 ml, 1.5 Litros, 2.5 Litros) */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div>
+                      <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5 uppercase tracking-wide">
+                        <Layers className="w-4 h-4 text-[#f05454]" />
+                        Tamaño & Presentación
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isFormulaLimitedTo400ml
+                          ? "Presentación disponible para esta versión:"
+                          : "Selecciona el tamaño ideal para refrescarte:"}
+                      </p>
+                    </div>
+                    <span className="text-[10.5px] font-black px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-[#f05454] dark:text-red-400 border border-red-200 dark:border-red-900/40 whitespace-nowrap shrink-0">
+                      {selectedSizeObj.label}
+                    </span>
                   </div>
-                  {realVariants.length > 1 && (
-                    <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-900/50">
-                      <span className="text-[11px] font-black text-[#f05454] dark:text-red-400 uppercase tracking-wider">
-                        Elegir uno
-                      </span>
-                      <span className="text-[11px] font-black text-white bg-[#f05454] px-1.5 py-0.2 rounded-full">
-                        1/1
-                      </span>
+
+                  <div className={`grid grid-cols-1 gap-3 ${displayedDrinkSizes.length === 1 ? "sm:grid-cols-1 max-w-xs" : "sm:grid-cols-3"}`}>
+                    {displayedDrinkSizes.map((size) => {
+                      const isSelected = selectedSizeId === size.id;
+                      const matchedVar = realVariants.find((v) => {
+                        const vn = (v.nombre || "").toLowerCase();
+                        if (size.id === "400ml") return vn.includes("400") && !vn.includes("1.5") && !vn.includes("2.5") && !vn.includes("light") && !vn.includes("zero") && !vn.includes("sin az");
+                        if (size.id === "1.5L") return vn.includes("1.5") || vn.includes("1,5");
+                        if (size.id === "2.5L") return vn.includes("2.5") || vn.includes("2,5") || vn.includes("mega");
+                        return false;
+                      });
+                      const displayPrice = matchedVar
+                        ? Number(matchedVar.precio)
+                        : (size.id === "400ml"
+                            ? (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0 ? Number(selectedVariant.precio) : Number(producto?.precio || 0))
+                            : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice));
+                      const bottleImg = (() => {
+                        if (size.id === "400ml") {
+                          if (isPepsi && isDietSelected) return "/images/drinks/pepsi_light-removebg-preview.png";
+                          if (isCoca && isDietSelected) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+                          return getDrinkBottleImage("400ml", producto, null, false);
+                        }
+                        if (size.id === "1.5L") {
+                          if (isCoca && isDietSelected) return "/images/drinks/coca_cola_zero_1.5L.jpg";
+                          return getDrinkBottleImage("1.5L", producto, matchedVar, false);
+                        }
+                        if (size.id === "2.5L") {
+                          if (isCoca && isDietSelected) return "/images/drinks/coca_cola_zero_2.5L.jpg";
+                          return getDrinkBottleImage("2.5L", producto, matchedVar, false);
+                        }
+                        return getDrinkBottleImage(size.id, producto, matchedVar, isDietSelected);
+                      })();
+
+                      return (
+                        <div
+                          key={size.id}
+                          onClick={() => handleSelectDrinkSize(size.id)}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer select-none relative flex flex-col justify-between group ${
+                            isSelected
+                              ? "border-[#f05454] bg-red-50/70 dark:bg-red-950/30 shadow-md ring-2 ring-red-400/30 scale-[1.01]"
+                              : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750"
+                          }`}
+                        >
+                          {/* Top Row: Bottle Thumbnail + Tag + Radio Check */}
+                          <div className="flex items-center justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-11 h-14 rounded-xl flex items-center justify-center p-1 border transition-all shrink-0 ${
+                                isSelected
+                                  ? "bg-white dark:bg-gray-900 border-red-300 dark:border-red-900 shadow-sm"
+                                  : "bg-gray-50 dark:bg-gray-850 border-gray-200 dark:border-gray-700"
+                              }`}>
+                                <img
+                                  src={bottleImg}
+                                  alt={size.label}
+                                  className="max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-200 group-hover:scale-110"
+                                />
+                              </div>
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                                isSelected
+                                  ? "bg-[#f05454] text-white shadow-xs"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                              }`}>
+                                {size.tag}
+                              </span>
+                            </div>
+
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                                isSelected
+                                  ? "border-[#f05454] bg-[#f05454] text-white"
+                                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                          </div>
+
+                          {/* Middle: Title & Subtext */}
+                          <div className="my-1">
+                            <h4 className="font-black text-sm text-gray-900 dark:text-gray-100">
+                              {size.label}
+                            </h4>
+                            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                              {size.subtext}
+                            </p>
+                          </div>
+
+                          {/* Bottom: Price */}
+                          <div className="mt-2.5 pt-2 border-t border-gray-150 dark:border-gray-700/60 flex items-center justify-between">
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500 font-bold">Precio</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-gray-100">
+                              ${displayPrice.toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Banner explicativo amigable cuando la fórmula está restringida a 400ml */}
+                  {isFormulaLimitedTo400ml && (
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-xs mt-3 animate-in fade-in duration-200">
+                      <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Presentación exclusiva de 400 ml</p>
+                        <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-0.5">
+                          La versión <strong>Light / Cero Azúcar</strong> únicamente está disponible en botella personal de 400 ml. Los tamaños 1.5 L y 2.5 L corresponden a la fórmula tradicional de <strong>Pepsi Regular con azúcar</strong>.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Radio List of Real Variants */}
-                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin">
-                  {realVariants.map((variant) => {
-                    const isSelected = (selectedVariant?.idVariante || selectedVariant?.id) === (variant.idVariante || variant.id);
-                    const meta = getDrinkBrandMeta(variant.nombre || producto.nombre);
-                    return (
-                      <div
-                        key={variant.idVariante || variant.id || variant.nombre}
-                        onClick={() => setSelectedVariant(variant)}
-                        className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 transition-all cursor-pointer select-none active:scale-[0.99] ${
-                          isSelected
-                            ? "border-[#f05454] bg-red-50/70 dark:bg-red-950/30 shadow-xs ring-2 ring-red-400/40"
-                            : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
-                        }`}
-                      >
-                        {/* Flavor Thumbnail + Brand & Name */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0 border border-gray-200/80 dark:border-gray-700 shadow-2xs flex items-center justify-center p-1">
-                            <img
-                              src={getVariantImage(variant.nombre) || variant.imagen || productImage}
-                              alt={variant.nombre}
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-gray-900 dark:text-gray-100 font-black text-xs sm:text-sm truncate">
-                                {variant.nombre}
-                              </p>
-                              <span className={`text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0 ${meta.badgeColor}`}>
-                                {meta.badge}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                              {meta.marca} • ${Number(variant.precio || producto.precio).toLocaleString("es-CO")}
-                            </p>
-                          </div>
-                        </div>
+                {/* Variantes de Fórmula o Sabor (ej. Pepsi Regular vs Pepsi Light) */}
+                {drinkFormulaVariants.length > 1 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5 uppercase tracking-wide">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        Variante o Fórmula
+                      </h3>
+                      <span className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">
+                        {selectedVariant?.nombre || "Selecciona tu fórmula preferida"}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {drinkFormulaVariants.map((variant) => {
+                        const isSelected = (selectedVariant?.idVariante || selectedVariant?.id) === (variant.idVariante || variant.id) ||
+                          (variant.esOriginal && (!selectedVariant || selectedVariant.esOriginal || selectedVariant.idVariante === (producto?.id || producto?.idProducto)));
+                        const meta = getDrinkBrandMeta(variant.nombre || producto.nombre);
+                        const isDietVar = /sin azúcar|sin azucar|light|zero|black/i.test(variant.nombre || "");
+                        const isPepsiVariantLimited = isPepsi && isDietVar;
 
-                        {/* Radio circle button */}
-                        <div className="shrink-0 flex items-center justify-center">
+                        const varImg = variant.esOriginal
+                          ? (
+                              (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
+                              (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                              producto.imagen ||
+                              getDrinkBottleImage("400ml", producto, null, false)
+                            )
+                          : (
+                              variant.imagen ||
+                              (isPepsi && isDietVar ? "/images/drinks/pepsi_light-removebg-preview.png" : null) ||
+                              (isCoca && isDietVar ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
+                              getVariantImage(variant.nombre) ||
+                              producto.imagen
+                            );
+
+                        const subtitle = variant.esOriginal
+                          ? (isPepsi ? "Fórmula clásica con azúcar • Tamaños 400 ml, 1.5 L y 2.5 L" : "Sabor clásico tradicional")
+                          : (isPepsiVariantLimited
+                              ? "Cero azúcar • Disponible exclusivamente en 400 ml"
+                              : (isDietVar ? "Cero azúcar, sin calorías y con todo el sabor" : "Fórmula y sabor especial refrescante"));
+
+                        return (
                           <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            key={variant.idVariante || variant.id || variant.nombre}
+                            onClick={() => handleSelectDrinkFormula(variant)}
+                            className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-3 transition-all cursor-pointer select-none active:scale-[0.99] ${
                               isSelected
-                                ? "border-[#f05454] bg-[#f05454]"
-                                : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                                ? "border-[#f05454] bg-red-50/70 dark:bg-red-950/30 shadow-xs ring-2 ring-red-400/40"
+                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
                             }`}
                           >
-                            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0 border border-gray-200 dark:border-gray-700 flex items-center justify-center p-1">
+                                <img
+                                  src={varImg}
+                                  alt={variant.nombre}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-gray-900 dark:text-gray-100 font-black text-xs sm:text-sm truncate">
+                                    {variant.nombre}
+                                  </p>
+                                  <span className={`text-[9.5px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0 ${
+                                    isPepsiVariantLimited
+                                      ? "bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+                                      : meta.badgeColor
+                                  }`}>
+                                    {isPepsiVariantLimited ? "Solo 400 ml" : (variant.esOriginal ? "Original" : (meta.badge || "Especial"))}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                                  {subtitle}
+                                </p>
+                              </div>
+                            </div>
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? "border-[#f05454] bg-[#f05454] text-white"
+                                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2348,9 +2974,17 @@ export function FastFoodProductModal({
 
           {/* Center: Detailed Breakdown on Desktop */}
           <div className="hidden sm:flex flex-col text-right">
-            {isDrink ? (
+            {drinkHasSizes ? (
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 dark:text-gray-400 justify-end">
-                <span className="text-[#f05454] dark:text-red-400 font-black">{selectedVariant?.nombre || selectedFlavor?.nombre}</span>
+                <span className="text-[#f05454] dark:text-red-400 font-black">
+                  {producto.nombre.replace(/\s*400\s*ml/gi, "").trim()} • {selectedSizeObj.label}
+                </span>
+              </div>
+            ) : isDrink ? (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 dark:text-gray-400 justify-end">
+                <span className="text-[#f05454] dark:text-red-400 font-black">
+                  {producto.nombre}
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-gray-500 dark:text-gray-400 justify-end">

@@ -122,8 +122,8 @@ export default function PosVendedor() {
   }) => {
     const displayName = producto.nombrePersonalizado || producto.nombre;
     addProduct({
-      productoId: producto.id || producto.idProducto,
-      varianteId: producto.id || producto.idProducto,
+      productoId: producto.idProducto || producto.id,
+      varianteId: producto.idVariante || producto.id || producto.idProducto,
       nombre: displayName,
       precio: producto.precio,
       adiciones: (adiciones || []).map((a) => ({

@@ -21,9 +21,11 @@ import {
   Layers,
   BookOpen,
   Sparkles,
-  CheckCheck
+  CheckCheck,
+  MapPin
 } from "lucide-react";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
 
 export function HistorialComandasLista({
   pedidos = [],
@@ -272,6 +274,7 @@ export function HistorialComandasLista({
                   const isExpanded = Boolean(expandedOrders[orderId]);
                   const items = Array.isArray(ped.productos) ? ped.productos : [];
                   const totalPlatillos = items.reduce((s, i) => s + (i.cantidad || 1), 0);
+                  const parsedNotes = parseKitchenOrderNotes(ped.observaciones);
 
                   // Delivery badge styling
                   const isDomicilio = String(ped.tipoEntrega || ped.mesa || "").toLowerCase().includes("domicilio");
@@ -375,27 +378,76 @@ export function HistorialComandasLista({
                             <p className="font-bold text-[11px] text-gray-500 uppercase tracking-wide">
                               Detalle de platillos despachados:
                             </p>
-                            {items.map((it, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-gray-200/50 dark:border-gray-700/50 last:border-0">
-                                <span className="font-bold text-gray-800 dark:text-gray-200">
-                                  {it.cantidad}x {it.nombre}
-                                </span>
-                                {onVerReceta && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onVerReceta(ped, it)}
-                                    className="text-[10px] text-[#F05454] font-bold hover:underline cursor-pointer flex items-center gap-1"
-                                  >
-                                    <BookOpen className="w-3 h-3" />
-                                    Receta
-                                  </button>
+                            {items.map((it, idx) => {
+                              const itemNote = (
+                                it.observaciones ||
+                                it.observacion ||
+                                it.especificaciones ||
+                                parsedNotes.productosObs.find(p => p.nombre === it.nombre)?.obs ||
+                                ""
+                              ).trim();
+
+                              return (
+                                <div key={idx} className="py-1.5 border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-bold text-gray-800 dark:text-gray-200">
+                                      {it.cantidad}x {it.nombre}
+                                    </span>
+                                    {onVerReceta && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onVerReceta(ped, it)}
+                                        className="text-[10px] text-[#F05454] font-bold hover:underline cursor-pointer flex items-center gap-1"
+                                      >
+                                        <BookOpen className="w-3 h-3" />
+                                        Receta
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Adiciones si existen */}
+                                  {Array.isArray(it.adiciones) && it.adiciones.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 pl-3">
+                                      {it.adiciones.map((ad, aIdx) => (
+                                        <span key={aIdx} className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-200/60 dark:bg-gray-700/60 px-1.5 py-0.5 rounded">
+                                          + {typeof ad === "object" ? ad.nombre : ad}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Nota individual del plato si existe */}
+                                  {itemNote && (
+                                    <p className="text-[10.5px] text-amber-800 dark:text-amber-300 pl-3 italic flex items-center gap-1">
+                                      <span>↳</span>
+                                      <span>Nota: "{itemNote}"</span>
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {/* Observaciones generales de cocina y entrega */}
+                            {parsedNotes.hasNotes && (
+                              <div className="mt-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60 space-y-1.5">
+                                {parsedNotes.notaCliente && (
+                                  <div className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg flex items-start gap-1.5">
+                                    <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <span className="font-black">Nota de Cocina: </span>
+                                      <span className="italic font-medium">"{parsedNotes.notaCliente}"</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {parsedNotes.direccion && (
+                                  <div className="text-[11px] text-purple-800 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 p-2 rounded-lg flex items-center gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                    <span className="font-bold">Dirección de Entrega: </span>
+                                    <span className="font-medium">{parsedNotes.direccion}</span>
+                                  </div>
                                 )}
                               </div>
-                            ))}
-                            {ped.observaciones && (
-                              <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg italic">
-                                Nota: {ped.observaciones}
-                              </p>
                             )}
                           </div>
                         )}

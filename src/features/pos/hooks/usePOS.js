@@ -213,6 +213,7 @@ export function usePOS({ initialClienteId = null } = {}) {
             const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
             const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
             return {
+              idProducto: it.productoId,
               idVariante: it.varianteId,
               nombre: it.nombre,
               cantidad: it.cantidad,
@@ -229,6 +230,7 @@ export function usePOS({ initialClienteId = null } = {}) {
           const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
           const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
           return {
+            idProducto: it.productoId,
             idVariante: it.varianteId,
             cantidad: it.cantidad,
             precioUnitario: Number(it.precio) || 0,

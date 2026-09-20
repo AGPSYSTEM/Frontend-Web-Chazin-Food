@@ -1233,6 +1233,8 @@ export function ClienteLanding() {
     const itemToAdd = {
       id: producto.id || producto.idProducto,
       idProducto: producto.idProducto || producto.id,
+      idVariante: producto.idVariante || producto.id || producto.idProducto,
+      sabor: sabor || producto.saborSeleccionado || null,
       nombre: finalProdName,
       precio: basePrice,
       cantidad: Number(cantidad) || 1,
@@ -1661,7 +1663,9 @@ export function ClienteLanding() {
             const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
             return {
-              idVariante: item.id || 1,
+              idProducto: item.idProducto || item.id,
+              idVariante: item.idVariante || item.id || 1,
+              sabor: item.sabor || null,
               cantidad: item.cantidad,
               precioUnitario: Number(item.precio) || 0,
               subtotal: lineTotal,
