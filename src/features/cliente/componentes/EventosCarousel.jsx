@@ -11,8 +11,6 @@ import {
   Star,
   CheckCircle2,
   Percent,
-  Play,
-  Pause,
   ChefHat
 } from "lucide-react";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
@@ -575,16 +573,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                         <Sparkles className="w-4 h-4 text-white" />
                         <span>Personalizar & Pedir Promo</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover/cta:translate-x-1" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsPaused((prev) => !prev)}
-                        aria-label={isPaused ? "Reanudar reproducción" : "Pausar reproducción"}
-                        className="w-11 h-11 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                        title={isPaused ? "Reanudar carrusel" : "Pausar carrusel"}
-                      >
-                        {isPaused ? <Play className="w-4 h-4 fill-white" /> : <Pause className="w-4 h-4 fill-white" />}
                       </button>
                     </div>
 
