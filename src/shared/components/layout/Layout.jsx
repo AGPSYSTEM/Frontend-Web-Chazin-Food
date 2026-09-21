@@ -183,8 +183,8 @@ export function Layout() {
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5 mt-1">Administración</p>
+          <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden sidebar-scroll-container" style={{ overflowX: "hidden" }}>
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-3 mb-1.5 mt-1">Administración</p>
             <ul className="space-y-1">
               {/* Dashboard */}
               {hasPerm("Dashboard") && (
@@ -258,32 +258,34 @@ export function Layout() {
             </ul>
 
             {/* CUENTA */}
-            <div className="mx-2 my-3 h-px bg-gray-100 dark:bg-gray-800" />
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
-            <button
-              onClick={() => { setPerfilOpen(true); }}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-[calc(100%-1rem)] text-left cursor-pointer"
-            >
-              <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
-              <span className="font-medium">Perfil</span>
-            </button>
-            <button
-              onClick={() => toggleDarkMode()}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 w-[calc(100%-1rem)] cursor-pointer"
-            >
-              {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
-              <span className="font-medium flex-1 text-left">Modo Oscuro</span>
-              <div className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${darkMode ? "bg-red-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${darkMode ? "translate-x-5" : "translate-x-1"}`} />
-              </div>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-[calc(100%-1rem)] cursor-pointer"
-            >
-              <LogOut className="w-5 h-5 shrink-0" />
-              <span className="font-medium">Cerrar Sesión</span>
-            </button>
+            <div className="my-3 h-px bg-gray-100 dark:bg-gray-800" />
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-3 mb-1.5">Cuenta</p>
+            <div className="space-y-1">
+              <button
+                onClick={() => { setPerfilOpen(true); }}
+                className="flex items-center gap-3 w-full px-3 py-3 rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] text-left cursor-pointer"
+              >
+                <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
+                <span className="font-medium">Perfil</span>
+              </button>
+              <button
+                onClick={() => toggleDarkMode()}
+                className="flex items-center gap-3 w-full px-3 py-3 rounded-lg transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+              >
+                {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
+                <span className="font-medium flex-1 text-left">Modo Oscuro</span>
+                <div className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${darkMode ? "bg-red-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${darkMode ? "translate-x-5" : "translate-x-1"}`} />
+                </div>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 w-full px-3 py-3 rounded-lg transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+              >
+                <LogOut className="w-5 h-5 shrink-0" />
+                <span className="font-medium">Cerrar Sesión</span>
+              </button>
+            </div>
           </nav>
         </aside>
       )}
@@ -323,14 +325,14 @@ export function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3">
-          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5 mt-1">Administración</p>
+        <nav className="flex-1 px-3 py-3 overflow-y-auto overflow-x-hidden sidebar-scroll-container space-y-1" style={{ overflowX: "hidden" }}>
+          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-3 mb-1.5 mt-1">Administración</p>
 
           {hasPerm("Dashboard") && (
             <Link
               to="/"
               onClick={handleNavClick}
-              className={`flex items-center gap-3 mx-2 px-3 py-3 rounded-xl transition-colors active:scale-[0.98] w-[calc(100%-1rem)] ${isActive("/") ? "bg-red-600 text-white shadow-sm" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors active:scale-[0.98] ${isActive("/") ? "bg-red-600 text-white shadow-sm" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
             >
               <LayoutDashboard className="w-5 h-5 shrink-0" />
               <span className="font-medium">Dashboard</span>
@@ -338,16 +340,16 @@ export function Layout() {
           )}
 
           {showConfig && (
-            <div className="mx-2">
+            <div className="w-full">
               <button
                 onClick={() => handleMobileSectionClick("config", configExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" /><span className="font-medium">Configuración</span></div>
                 {configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               {configExpanded && (
-                <ul className="ml-9 mb-1 space-y-0.5">
+                <ul className="ml-8 mt-1 space-y-0.5">
                   {configItems.map(({ to, label }) => {
                     const Icon = label === "Roles" ? Shield : Users;
                     return (
@@ -369,16 +371,16 @@ export function Layout() {
           )}
 
           {showCompras && (
-            <div className="mx-2">
+            <div className="w-full">
               <button
                 onClick={() => handleMobileSectionClick("compras", comprasExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/compras") ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" /><span className="font-medium">Compras</span></div>
                 {comprasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               {comprasExpanded && (
-                <ul className="ml-9 mb-1 space-y-0.5">
+                <ul className="ml-8 mt-1 space-y-0.5">
                   {comprasItems.map(({ to, label }) => (
                     <li key={to}>
                       <Link
@@ -396,16 +398,16 @@ export function Layout() {
           )}
 
           {showProduccion && (
-            <div className="mx-2">
+            <div className="w-full">
               <button
                 onClick={() => handleMobileSectionClick("produccion", produccionExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/produccion") || produccionPaths.some((p) => isActive(p)) ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/produccion") || produccionPaths.some((p) => isActive(p)) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" /><span className="font-medium">Producción</span></div>
                 {produccionExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               {produccionExpanded && (
-                <ul className="ml-9 mb-1 space-y-0.5">
+                <ul className="ml-8 mt-1 space-y-0.5">
                   {produccionItems.map(({ to, label }) => (
                     <li key={to}>
                       <Link
@@ -423,16 +425,16 @@ export function Layout() {
           )}
 
           {showVentas && (
-            <div className="mx-2">
+            <div className="w-full">
               <button
                 onClick={() => handleMobileSectionClick("ventas", ventasExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" /><span className="font-medium">Ventas</span></div>
                 {ventasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
               </button>
               {ventasExpanded && (
-                <ul className="ml-9 mb-1 space-y-0.5">
+                <ul className="ml-8 mt-1 space-y-0.5">
                   {ventasItems.map(({ to, label }) => (
                     <li key={to}>
                       <Link
@@ -449,35 +451,37 @@ export function Layout() {
             </div>
           )}
 
-          <div className="mx-2 my-3 h-px bg-gray-100 dark:bg-gray-800" />
-          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
+          <div className="my-3 h-px bg-gray-100 dark:bg-gray-800" />
+          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-3 mb-1.5">Cuenta</p>
 
-          <button
-            onClick={() => { setSidebarOpen(false); setPerfilOpen(true); }}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-[calc(100%-1rem)] text-left cursor-pointer"
-          >
-            <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
-            <span className="font-medium">Perfil</span>
-          </button>
+          <div className="space-y-1">
+            <button
+              onClick={() => { setSidebarOpen(false); setPerfilOpen(true); }}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] text-left cursor-pointer"
+            >
+              <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
+              <span className="font-medium">Perfil</span>
+            </button>
 
-          <button
-            onClick={() => toggleDarkMode()}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 w-[calc(100%-1rem)] cursor-pointer"
-          >
-            {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
-            <span className="font-medium flex-1 text-left">Modo Oscuro</span>
-            <div className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${darkMode ? "bg-red-600" : "bg-gray-200 dark:bg-gray-700"}`}>
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${darkMode ? "translate-x-5" : "translate-x-1"}`} />
-            </div>
-          </button>
+            <button
+              onClick={() => toggleDarkMode()}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+            >
+              {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
+              <span className="font-medium flex-1 text-left">Modo Oscuro</span>
+              <div className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${darkMode ? "bg-red-600" : "bg-gray-200 dark:bg-gray-700"}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${darkMode ? "translate-x-5" : "translate-x-1"}`} />
+              </div>
+            </button>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-[calc(100%-1rem)] cursor-pointer"
-          >
-            <LogOut className="w-5 h-5 shrink-0" />
-            <span className="font-medium">Cerrar Sesión</span>
-          </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span className="font-medium">Cerrar Sesión</span>
+            </button>
+          </div>
 
           <div className="h-4" />
         </nav>

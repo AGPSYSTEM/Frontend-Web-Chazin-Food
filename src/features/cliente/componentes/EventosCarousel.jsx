@@ -293,20 +293,13 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
     }
   };
 
-<<<<<<< HEAD
   if (!combinedEventos || combinedEventos.length === 0) {
     return null;
   }
 
   const currentEvt = combinedEventos[currentIndex] || combinedEventos[0];
   const activeTheme = THEMES[currentEvt.theme] || THEMES.fire;
-=======
-  const currentEvt = activeEventos[currentIndex];
-  const targetProduct = productos.find(
-    (p) => String(p.id || p.idProducto) === String(currentEvt?.idProducto)
-  );
-  const badgeConfig = getEventBadgeConfig(currentEvt, targetProduct);
->>>>>>> 46b01a3 (feat(ventas): edicion de eventos activos, catalogo completo de 27 iconos y correccion de scroll horizontal en menu)
+
 
   return (
     <section
@@ -428,7 +421,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
           style={{ backgroundColor: activeTheme.glow }}
         />
 
-<<<<<<< HEAD
         {/* Ventana de visualización con esquinas redondeadas y overflow hidden */}
         <div className="relative overflow-hidden rounded-3xl sm:rounded-4xl border border-white/10 shadow-2xl bg-stone-950">
           {/* TRACK DESLIZANTE CON TRANSICIÓN HORIZONTAL SILKY SMOOTH */}
@@ -441,32 +433,11 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
               const prod = productos.find(
                 (p) => String(p.id || p.idProducto) === String(evt.idProducto)
               );
+              const badgeConfig = getEventBadgeConfig(evt, prod);
               const origPrice = evt.precioOriginal || (prod ? Number(prod.precio) : 25000);
               const curPrice = evt.nuevoPrecio || (prod ? Number(prod.precio) : 20000);
               const saveAmount = Math.max(0, origPrice - curPrice);
               const savePct = origPrice > 0 ? Math.round((saveAmount / origPrice) * 100) : (evt.descuento || 20);
-=======
-        {/* Slide Content */}
-        <div 
-          onClick={() => onSelectEvento && onSelectEvento(currentEvt, targetProduct)}
-          className="w-full p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 cursor-pointer group z-10 transition-all"
-        >
-          {/* Left / Info column */}
-          <div className="flex-1 space-y-4 text-center md:text-left">
-            {/* Badges row */}
-            <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-              {badgeConfig ? (
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-gradient-to-r ${badgeConfig.gradient} text-white shadow-md border ${badgeConfig.border} backdrop-blur-md`}>
-                  <badgeConfig.Icon size={14} stroke={2.2} className="shrink-0 drop-shadow-xs" />
-                  <span>{badgeConfig.label}</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white/20 backdrop-blur-md border border-white/20 text-white shadow-xs">
-                  <FoodIcon name={currentEvt.icono || "party"} size={16} />
-                  <span>{stripEmojis(currentEvt.tipoEvento || "Evento Activo")}</span>
-                </span>
-              )}
->>>>>>> 46b01a3 (feat(ventas): edicion de eventos activos, catalogo completo de 27 iconos y correccion de scroll horizontal en menu)
 
               const cardImage =
                 prod?.imagen ||
@@ -477,7 +448,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   ? "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=800&auto=format&fit=crop&q=80"
                   : "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80");
 
-<<<<<<< HEAD
               return (
                 <div
                   key={evt.idEvento || idx}
@@ -489,12 +459,21 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   {/* Top Bar de la diapositiva */}
                   <div className="relative z-10 px-5 sm:px-8 pt-5 sm:pt-6 flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
-                      >
-                        <Zap className="w-3.5 h-3.5 fill-current" />
-                        <span>{evt.tipoEvento || "Evento Activo"}</span>
-                      </span>
+                      {badgeConfig ? (
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-gradient-to-r ${badgeConfig.gradient} text-white shadow-md border ${badgeConfig.border} backdrop-blur-md`}
+                        >
+                          <badgeConfig.Icon size={14} stroke={2.2} className="shrink-0 drop-shadow-xs" />
+                          <span>{badgeConfig.label}</span>
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-current" />
+                          <span>{stripEmojis(evt.tipoEvento || "Evento Activo")}</span>
+                        </span>
+                      )}
 
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20">
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
@@ -506,25 +485,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                         <span>{evt.tiempoPrep || "10-15 min"}</span>
                       </span>
                     </div>
-=======
-              {currentEvt.tipoEvento === "Descuento" && currentEvt.descuento && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500 text-white shadow-md animate-pulse">
-                  <Zap className="w-3 h-3" />
-                  <span>-{Number(currentEvt.descuento)}% OFF</span>
-                </span>
-              )}
-            </div>
-
-            {/* Title */}
-            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight group-hover:text-purple-200 transition-colors">
-              {stripEmojis(currentEvt.nombreEvento || currentEvt.nombre)}
-            </h3>
-
-            {/* Description */}
-            <p className="text-xs sm:text-sm text-purple-100/80 max-w-xl line-clamp-2 leading-relaxed font-medium">
-              {stripEmojis(currentEvt.descripcion) || (targetProduct ? `Promoción exclusiva aplicada a ${targetProduct.nombre}. ¡Añádelo ahora y personalízalo!` : "Oferta especial de tiempo limitado. Descubre todas las opciones disponibles.")}
-            </p>
->>>>>>> 46b01a3 (feat(ventas): edicion de eventos activos, catalogo completo de 27 iconos y correccion de scroll horizontal en menu)
 
                     {savePct > 0 && (
                       <div className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-lg shadow-red-950/60">
@@ -543,13 +503,12 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                           {theme.tag}
                         </span>
                         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight">
-                          {evt.nombreEvento || evt.nombre}
+                          {stripEmojis(evt.nombreEvento || evt.nombre)}
                         </h3>
                       </div>
 
-<<<<<<< HEAD
                       <p className="text-xs sm:text-sm text-gray-200/90 leading-relaxed font-normal max-w-xl line-clamp-2 sm:line-clamp-3">
-                        {evt.descripcion}
+                        {stripEmojis(evt.descripcion)}
                       </p>
 
                       {/* Perks e ingredientes clave */}
@@ -670,43 +629,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                 </div>
               );
             })}
-=======
-          {/* Right / Visual Product or Showcase Card */}
-          <div className="shrink-0 flex items-center justify-center relative">
-            <div className="w-36 h-36 sm:w-48 sm:h-48 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center p-3 shadow-2xl relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
-              {targetProduct?.imagen ? (
-                <img
-                  src={targetProduct.imagen}
-                  alt={targetProduct.nombre}
-                  className="w-full h-full object-contain filter drop-shadow-2xl"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center relative z-10 p-2">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-white/20 to-white/5 border border-white/30 flex items-center justify-center shadow-inner mb-2 relative group-hover:rotate-3 transition-transform">
-                    {badgeConfig ? (
-                      <badgeConfig.Icon size={44} stroke={1.8} className="text-amber-300 drop-shadow-md" />
-                    ) : (
-                      <FoodIcon name={currentEvt.icono || "party"} size={44} stroke={1.8} className="text-amber-300" />
-                    )}
-                    <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 text-gray-950 flex items-center justify-center font-black text-[10px] shadow-md">
-                      <Star className="w-3 h-3 text-gray-950 fill-current" />
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-white tracking-wide uppercase">
-                    {badgeConfig?.label || "OFERTA"}
-                  </span>
-                  <span className="text-[10px] text-purple-200 font-bold truncate max-w-[130px] mt-0.5">
-                    {stripEmojis(currentEvt.nombreEvento || currentEvt.nombre)}
-                  </span>
-                </div>
-              )}
-
-              {/* Glowing Corner Badge */}
-              <div className={`absolute top-2 right-2 bg-gradient-to-r ${badgeConfig?.gradient || "from-purple-600 to-indigo-600"} backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-black text-white shadow-md border border-white/25`}>
-                {badgeConfig?.label || "OFERTA"}
-              </div>
-            </div>
->>>>>>> 46b01a3 (feat(ventas): edicion de eventos activos, catalogo completo de 27 iconos y correccion de scroll horizontal en menu)
           </div>
         </div>
       </div>
