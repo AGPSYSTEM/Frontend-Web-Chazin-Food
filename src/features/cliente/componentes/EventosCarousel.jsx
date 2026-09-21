@@ -13,8 +13,7 @@ import {
   Percent,
   ChefHat
 } from "lucide-react";
-import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 // Paletas de color premium cinematográficas para cada evento
 const THEMES = {
@@ -26,7 +25,7 @@ const THEMES = {
     accent: "text-amber-400",
     btnGrad: "from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-lg shadow-orange-950/60",
     pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
-    tag: "SUPER PROMO FLASH"
+    tag: "🔥 SUPER PROMO FLASH"
   },
   violet: {
     bg: "from-purple-950 via-indigo-950 to-stone-950",
@@ -36,7 +35,7 @@ const THEMES = {
     accent: "text-purple-300",
     btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
     pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
-    tag: "COMBO EXCLUSIVO"
+    tag: "⚡ COMBO EXCLUSIVO"
   },
   emerald: {
     bg: "from-emerald-950 via-teal-950 to-stone-950",
@@ -46,7 +45,7 @@ const THEMES = {
     accent: "text-emerald-300",
     btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
     pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
-    tag: "EDICIÓN ESPECIAL"
+    tag: "🌿 EDICIÓN ESPECIAL"
   },
   gold: {
     bg: "from-amber-950 via-yellow-950 to-stone-950",
@@ -56,7 +55,7 @@ const THEMES = {
     accent: "text-amber-300",
     btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
     pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
-    tag: "SELECCIÓN CHEF GOURMET"
+    tag: "👑 SELECCIÓN CHEF GOURMET"
   }
 };
 
@@ -300,7 +299,6 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
   const currentEvt = combinedEventos[currentIndex] || combinedEventos[0];
   const activeTheme = THEMES[currentEvt.theme] || THEMES.fire;
 
-
   return (
     <section
       aria-label="Eventos y Ofertas Exclusivas Chazin Food"
@@ -433,17 +431,17 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
               const prod = productos.find(
                 (p) => String(p.id || p.idProducto) === String(evt.idProducto)
               );
-              const badgeConfig = getEventBadgeConfig(evt, prod);
               const origPrice = evt.precioOriginal || (prod ? Number(prod.precio) : 25000);
               const curPrice = evt.nuevoPrecio || (prod ? Number(prod.precio) : 20000);
               const saveAmount = Math.max(0, origPrice - curPrice);
               const savePct = origPrice > 0 ? Math.round((saveAmount / origPrice) * 100) : (evt.descuento || 20);
 
+              const isRealUrl = (url) => typeof url === "string" && (url.startsWith("http") || url.startsWith("/"));
               const cardImage =
-                prod?.imagen ||
-                evt.imagen ||
+                (isRealUrl(prod?.imagen) ? prod.imagen : null) ||
+                (isRealUrl(evt?.imagen) ? evt.imagen : null) ||
                 (evt.icono === "fries"
-                  ? "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=800&auto=format&fit=crop&q=80"
+                  ? "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=800&auto=format&fit=crop&q=80"
                   : evt.icono === "hotdog"
                   ? "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=800&auto=format&fit=crop&q=80"
                   : "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80");
@@ -457,23 +455,14 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none animate-sweep" />
 
                   {/* Top Bar de la diapositiva */}
-                  <div className="relative z-10 px-5 sm:px-8 pt-5 sm:pt-6 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 pt-5 sm:pt-6 flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {badgeConfig ? (
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-gradient-to-r ${badgeConfig.gradient} text-white shadow-md border ${badgeConfig.border} backdrop-blur-md`}
-                        >
-                          <badgeConfig.Icon size={14} stroke={2.2} className="shrink-0 drop-shadow-xs" />
-                          <span>{badgeConfig.label}</span>
-                        </span>
-                      ) : (
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
-                        >
-                          <Zap className="w-3.5 h-3.5 fill-current" />
-                          <span>{stripEmojis(evt.tipoEvento || "Evento Activo")}</span>
-                        </span>
-                      )}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>{evt.tipoEvento || "Evento Activo"}</span>
+                      </span>
 
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20">
                         <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
@@ -495,7 +484,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   </div>
 
                   {/* Contenido Central: Información gastronómica + Plato fotográfico */}
-                  <div className="relative z-10 px-5 sm:px-8 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                     {/* Información y detalles */}
                     <div className="lg:col-span-7 space-y-3.5 text-left">
                       <div>
@@ -503,12 +492,12 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                           {theme.tag}
                         </span>
                         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight">
-                          {stripEmojis(evt.nombreEvento || evt.nombre)}
+                          {evt.nombreEvento || evt.nombre}
                         </h3>
                       </div>
 
                       <p className="text-xs sm:text-sm text-gray-200/90 leading-relaxed font-normal max-w-xl line-clamp-2 sm:line-clamp-3">
-                        {stripEmojis(evt.descripcion)}
+                        {evt.descripcion}
                       </p>
 
                       {/* Perks e ingredientes clave */}
@@ -561,6 +550,10 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                             alt={evt.nombreEvento || "Plato Chazin Food"}
                             className="w-full h-full object-cover rounded-2xl filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)]"
                             loading="eager"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80";
+                            }}
                           />
 
                           <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 flex items-center justify-between text-xs">
@@ -575,7 +568,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   </div>
 
                   {/* Footer de la diapositiva con Botón CTA directo */}
-                  <div className="relative z-10 px-5 sm:px-8 pb-5 sm:pb-6 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/10 bg-black/25 backdrop-blur-md">
+                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 pb-5 sm:pb-6 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/10 bg-black/25 backdrop-blur-md">
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                       <button
                         type="button"
@@ -583,53 +576,59 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                         className={`w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 bg-gradient-to-r ${theme.btnGrad} transition-all duration-200 shadow-xl hover:scale-[1.02] active:scale-98 cursor-pointer group/cta`}
                       >
                         <Sparkles className="w-4 h-4 text-white" />
-                        <span>Personalizar & Pedir Promo</span>
+                        <span>¡Aprovechar Oferta!</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover/cta:translate-x-1" />
                       </button>
                     </div>
 
-                    {/* Controles de diapositivas y flechas */}
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-                      <div className="flex items-center gap-1.5">
-                        {combinedEventos.map((_, dotIdx) => (
-                          <button
-                            key={dotIdx}
-                            type="button"
-                            onClick={() => goToSlide(dotIdx)}
-                            className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                              currentIndex === dotIdx
-                                ? "w-8 bg-white shadow-md shadow-white/50"
-                                : "w-2.5 bg-white/30 hover:bg-white/60"
-                            }`}
-                            aria-label={`Ir al slide ${dotIdx + 1}`}
-                          />
-                        ))}
-                      </div>
+                    {/* Indicadores de diapositivas totalmente centrados */}
+                    <div className="sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex items-center justify-center gap-2 py-1 sm:py-0">
+                      {combinedEventos.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          type="button"
+                          onClick={() => goToSlide(dotIdx)}
+                          className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                            currentIndex === dotIdx
+                              ? "w-8 bg-white shadow-lg shadow-white/60"
+                              : "w-2.5 bg-white/35 hover:bg-white/70"
+                          }`}
+                          aria-label={`Ir al slide ${dotIdx + 1}`}
+                        />
+                      ))}
+                    </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={prevSlide}
-                          aria-label="Slide anterior"
-                          className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
-                        >
-                          <ChevronLeft className="w-5 h-5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={nextSlide}
-                          aria-label="Siguiente slide"
-                          className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition-colors active:scale-95 cursor-pointer"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      </div>
+                    {/* Contador discreto a la derecha para equilibrio visual */}
+                    <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-white/50">
+                      <span>{currentIndex + 1}</span>
+                      <span>/</span>
+                      <span>{totalSlides}</span>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* BOTÓN NAVEGACIÓN IZQUIERDO (CENTRADO VERTICALMENTE EN EL EXTREMO IZQUIERDO) */}
+          <button
+            type="button"
+            onClick={prevSlide}
+            aria-label="Slide anterior"
+            className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/85 backdrop-blur-md border border-white/25 text-white flex items-center justify-center transition-all duration-200 shadow-2xl hover:scale-110 active:scale-95 cursor-pointer group"
+          >
+            <ChevronLeft className="w-6 h-6 transition-transform group-hover:-translate-x-0.5" />
+          </button>
+
+          {/* BOTÓN NAVEGACIÓN DERECHO (CENTRADO VERTICALMENTE EN EL EXTREMO DERECHO) */}
+          <button
+            type="button"
+            onClick={nextSlide}
+            aria-label="Siguiente slide"
+            className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/85 backdrop-blur-md border border-white/25 text-white flex items-center justify-center transition-all duration-200 shadow-2xl hover:scale-110 active:scale-95 cursor-pointer group"
+          >
+            <ChevronRight className="w-6 h-6 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </div>
 
