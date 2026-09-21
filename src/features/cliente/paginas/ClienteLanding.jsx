@@ -2282,8 +2282,8 @@ export function ClienteLanding() {
                       </>
                     ) : (
                       <>
-                        <ShoppingCart className="w-4 h-4" />
-                        <span>Inspeccionar y Agregar</span>
+                        <Plus className="w-4 h-4" />
+                        <span>Agregar</span>
                       </>
                     )}
                   </button>
