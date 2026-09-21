@@ -673,10 +673,10 @@ export function ClienteLanding() {
                   </div>
                   <button
                     onClick={() => handleProductClick(producto)}
-                    className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md"
+                    className="w-full py-3 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
-                    <ShoppingCart className="w-4 h-4" />
-                    Agregar al carrito
+                    <Plus className="w-4 h-4" />
+                    Agregar
                   </button>
                 </div>
               </div>
