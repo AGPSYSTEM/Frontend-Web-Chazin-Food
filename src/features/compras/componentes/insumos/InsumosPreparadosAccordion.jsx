@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FlaskConical, ChevronDown, ChevronUp, Search, Edit, Trash2, Package } from "lucide-react";
+import { FlaskConical, ChevronDown, ChevronUp, Search, Edit, Trash2, Package, Sparkles } from "lucide-react";
 
 export function InsumosPreparadosAccordion({
   insumosPreparados = [],
@@ -58,6 +58,12 @@ export function InsumosPreparadosAccordion({
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${item.estado === 'Inactivo' || item.estado === 0 || item.estado === '0' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'}`}>
                       {item.estado === 'Inactivo' || item.estado === 0 || item.estado === '0' ? 'Inactivo' : 'Activo'}
                     </span>
+                    {(item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1") && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        <Sparkles className="w-3 h-3 text-purple-500" />
+                        <span>Adición (+${Number(item.precioAdicion || 0).toLocaleString("es-CO")})</span>
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {item.descripcion || "Receta artesanal de la casa"}

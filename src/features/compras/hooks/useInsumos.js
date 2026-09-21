@@ -170,6 +170,9 @@ export function useInsumos() {
           precioUnitario: Number(data.precioUnitario) || 0,
           idProveedor: data.idProveedor || null,
           descripcion: data.descripcion || "",
+          esAdicion: data.esAdicion ? 1 : 0,
+          precioAdicion: Number(data.precioAdicion) || 0,
+          imagen: data.imagen || "",
           estado: data.estado || "Activo",
           fechaExpedicion: data.fechaExpedicion || null,
           fechaVencimiento: data.fechaVencimiento || null
@@ -225,6 +228,9 @@ export function useInsumos() {
           precioUnitario: Number(data.precioUnitario),
           idProveedor: data.idProveedor,
           descripcion: data.descripcion,
+          esAdicion: data.esAdicion ? 1 : 0,
+          precioAdicion: Number(data.precioAdicion) || 0,
+          imagen: data.imagen || "",
           estado: data.estado !== undefined ? data.estado : "Activo",
           fechaExpedicion: data.fechaExpedicion || null,
           fechaVencimiento: data.fechaVencimiento || null
