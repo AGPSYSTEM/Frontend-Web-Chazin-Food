@@ -12,7 +12,27 @@ import {
   ChevronsLeft,
   ChevronsRight
 } from "lucide-react";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
+
+export const getActiveProductEvent = (producto) => {
+  if (!producto || !producto.eventos || !Array.isArray(producto.eventos) || producto.eventos.length === 0) {
+    return null;
+  }
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  return (
+    producto.eventos.find((e) => {
+      const isActivo = e.estado === 1 || e.estado === "Activo" || e.estado === undefined;
+      if (!isActivo) return false;
+      if (e.fechaFin) {
+        const finStr = String(e.fechaFin).split("T")[0];
+        if (todayStr > finStr) return false; // Ya finalizó
+      }
+      return true;
+    }) || null
+  );
+};
 
 export function ProductosTable({
   productos = [],
@@ -127,20 +147,9 @@ export function ProductosTable({
                           <span className="font-semibold text-gray-900 dark:text-gray-100">
                             {p.nombre}
                           </span>
-                          {p.eventos && p.eventos.length > 0 && (() => {
-                            const evt = p.eventos[0];
-                            const evtIcon = evt.icono || "party";
-                            const evtLabel = evt.nombreEvento || evt.tipoEvento || "Evento Activo";
-                            return (
-                              <span
-                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white shadow-xs"
-                                title={`Evento: ${evtLabel} (${evt.tipoEvento || ''})`}
-                              >
-                                <FoodIcon name={evtIcon} size={12} className="shrink-0" />
-                                <span className="max-w-[130px] truncate">{evtLabel}</span>
-                              </span>
-                            );
-                          })()}
+                          {p.eventos && p.eventos.length > 0 && (
+                            <EventBadge event={p.eventos[0]} product={p} variant="pill" className="text-[10px] py-0.5" />
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
                           <span>{p.codigo || `PRD-${p.id}`}</span>
@@ -237,14 +246,31 @@ export function ProductosTable({
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-1.5">
-                      {/* Crear Evento */}
-                      <button
-                        onClick={() => onCreateEvento && onCreateEvento(p)}
-                        title="Crear Evento / Promoción"
-                        className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
-                      >
-                        <Zap className="w-4 h-4" />
-                      </button>
+                      {/* Evento: Editar si está activo y vigente, o Crear si no tiene */}
+                      {(() => {
+                        const activeEvt = getActiveProductEvent(p);
+                        if (activeEvt) {
+                          return (
+                            <button
+                              onClick={() => onCreateEvento && onCreateEvento(p, activeEvt)}
+                              title={`Editar Evento Activo: ${activeEvt.nombreEvento || activeEvt.nombre || "Evento"}`}
+                              className="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
+                            >
+                              <Zap className="w-4 h-4 fill-purple-600 dark:fill-purple-400 drop-shadow-xs" />
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900 animate-pulse" title="Evento Activo y Vigente" />
+                            </button>
+                          );
+                        }
+                        return (
+                          <button
+                            onClick={() => onCreateEvento && onCreateEvento(p, null)}
+                            title="Crear Evento / Promoción"
+                            className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
+                          >
+                            <Zap className="w-4 h-4" />
+                          </button>
+                        );
+                      })()}
                       {/* Ver */}
                       <button
                         onClick={() => onView && onView(p)}

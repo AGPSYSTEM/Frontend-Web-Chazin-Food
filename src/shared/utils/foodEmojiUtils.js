@@ -3,6 +3,20 @@
  */
 import { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip } from "../components/ui/FoodIcon";
 
+/**
+ * Sanitiza textos de productos y eventos removiendo cualquier emoji unicode
+ * para garantizar una interfaz 100% limpia con iconografía vectorial SVG profesional.
+ */
+export const stripEmojis = (str) => {
+  if (!str || typeof str !== "string") return "";
+  return str
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+    .replace(/^\s*[-–—:]\s*/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+};
+
 export { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip };
 
 export const FOOD_EMOJI_LIST = [

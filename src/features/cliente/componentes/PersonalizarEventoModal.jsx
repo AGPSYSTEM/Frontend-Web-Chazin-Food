@@ -21,6 +21,7 @@ import { extractPersonalizables, resolveNutritionalSpecs } from "@/shared/compon
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 const QUICK_KITCHEN_TAGS = [
   "Salsas aparte",
@@ -429,7 +430,7 @@ export function PersonalizarEventoModal({
   const handleConfirmAddToCart = () => {
     if (!selectedProduct) return;
 
-    const eventNameTag = evento.nombreEvento || evento.nombre || "Evento Especial";
+    const eventNameTag = stripEmojis(evento.nombreEvento || evento.nombre || "Evento Especial");
     const kitchenNotes = [
       removedIngredients.length > 0 ? `Sin ${removedIngredients.join(", Sin ")}` : "",
       customObservation.trim()
@@ -501,7 +502,7 @@ export function PersonalizarEventoModal({
         <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
           <div className="flex items-center gap-2 min-w-0">
             <FoodIcon name={evento.icono || "party"} size={16} className="shrink-0 animate-pulse" />
-            <span className="truncate">{evento.nombreEvento || evento.nombre || "Promoción Especial"}</span>
+            <span className="truncate">{stripEmojis(evento.nombreEvento || evento.nombre || "Promoción Especial")}</span>
             <span className="hidden sm:inline-flex bg-white/20 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
               {evento.tipoEvento || "EVENTO ESPECIAL"}
             </span>
@@ -1123,11 +1124,11 @@ export function PersonalizarEventoModal({
                         Tu Calificación
                       </span>
                       <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                        {newRating === 5 && "⭐⭐⭐⭐⭐ ¡Excelente!"}
-                        {newRating === 4 && "⭐⭐⭐⭐ Muy bueno"}
-                        {newRating === 3 && "⭐⭐⭐ Bueno"}
-                        {newRating === 2 && "⭐⭐ Regular"}
-                        {newRating === 1 && "⭐ No me gustó"}
+                        {newRating === 5 && "¡Excelente!"}
+                        {newRating === 4 && "Muy bueno"}
+                        {newRating === 3 && "Bueno"}
+                        {newRating === 2 && "Regular"}
+                        {newRating === 1 && "No me gustó"}
                       </span>
                     </div>
 

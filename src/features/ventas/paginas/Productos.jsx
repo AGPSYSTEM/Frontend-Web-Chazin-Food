@@ -32,6 +32,7 @@ export function Productos() {
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
+  const [eventoParaEditar, setEventoParaEditar] = useState(null);
   const [eventos, setEventos] = useState([]);
 
   const fetchEventos = useCallback(async () => {
@@ -96,8 +97,9 @@ export function Productos() {
     }
   };
 
-  const handleCreateEvento = (producto) => {
+  const handleCreateEvento = (producto, existingEvento = null) => {
     setProductoParaEvento(producto);
+    setEventoParaEditar(existingEvento);
     setCrearEventoModalOpen(true);
   };
 
@@ -262,6 +264,14 @@ export function Productos() {
         onOpenCrearEvento={() => {
           setEventosModalOpen(false);
           setProductoParaEvento(null);
+          setEventoParaEditar(null);
+          setCrearEventoModalOpen(true);
+        }}
+        onEditEvento={(evt) => {
+          setEventosModalOpen(false);
+          const relatedProd = productos.find(p => p.id === (evt.idProducto || evt.producto?.id)) || evt.producto || null;
+          setProductoParaEvento(relatedProd);
+          setEventoParaEditar(evt);
           setCrearEventoModalOpen(true);
         }}
         onRefresh={() => {
@@ -270,11 +280,16 @@ export function Productos() {
         }}
       />
 
-      {/* Crear Evento Modal */}
+      {/* Crear / Editar Evento Modal */}
       <CrearEventoModal
         isOpen={crearEventoModalOpen}
-        onClose={() => setCrearEventoModalOpen(false)}
+        onClose={() => {
+          setCrearEventoModalOpen(false);
+          setProductoParaEvento(null);
+          setEventoParaEditar(null);
+        }}
         producto={productoParaEvento}
+        eventoToEdit={eventoParaEditar}
         onCreated={handleEventoCreated}
       />
     </div>

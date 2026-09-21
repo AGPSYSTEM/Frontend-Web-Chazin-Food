@@ -24,7 +24,7 @@ import {
   User as UserIcon,
   UtensilsCrossed
 } from "lucide-react";
-import { getProductEmoji, getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
@@ -1063,8 +1063,8 @@ export function FastFoodProductModal({
 
     return {
       ...evt,
-      nombre: evt.nombreEvento || evt.nombre || "Edición Especial",
-      descripcion: evt.descripcion || "Receta conmemorativa de edición limitada con precio y presentación especial.",
+      nombre: stripEmojis(evt.nombreEvento || evt.nombre || "Edición Especial"),
+      descripcion: stripEmojis(evt.descripcion) || "Receta conmemorativa de edición limitada con precio y presentación especial.",
       regularPrice: rawPrice,
       eventPrice: final,
       savings,
@@ -2712,11 +2712,11 @@ export function FastFoodProductModal({
                         Deja tu Calificación Gastronómica
                       </span>
                       <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400">
-                        {newRating === 5 && "⭐⭐⭐⭐⭐ ¡Excepcional! Lo amé"}
-                        {newRating === 4 && "⭐⭐⭐⭐ Muy bueno y sabroso"}
-                        {newRating === 3 && "⭐⭐⭐ Bueno / Aceptable"}
-                        {newRating === 2 && "⭐⭐ Regular"}
-                        {newRating === 1 && "⭐ No me gustó"}
+                        {newRating === 5 && "¡Excepcional! Lo amé"}
+                        {newRating === 4 && "Muy bueno y sabroso"}
+                        {newRating === 3 && "Bueno / Aceptable"}
+                        {newRating === 2 && "Regular"}
+                        {newRating === 1 && "No me gustó"}
                       </span>
                     </div>
 

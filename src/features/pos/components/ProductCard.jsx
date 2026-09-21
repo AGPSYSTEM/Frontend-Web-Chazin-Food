@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Plus, Minus, Check, ChevronDown, ChevronUp, Layers, Sliders, Sparkles, FileText, Flame } from "lucide-react";
-import { getAdditionEmoji, getProductEmoji } from "@/shared/utils/foodEmojiUtils";
+import { getAdditionEmoji, getProductEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function ProductCard({ producto, onAdd, onCustomize }) {
@@ -50,7 +50,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
 
     return {
       ...evt,
-      nombre: evt.nombreEvento || evt.nombre || "Evento Especial",
+      nombre: stripEmojis(evt.nombreEvento || evt.nombre || "Evento Especial"),
       rawPrice,
       finalPrice,
       savings,

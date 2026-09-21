@@ -20,7 +20,7 @@ import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
 import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
-import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
 import { IconFlame as TablerFlame } from "@tabler/icons-react";
 
 const defaultCategoryIcons = {
@@ -933,7 +933,7 @@ export function ClienteLanding() {
 
     return {
       ...evt,
-      nombre: evt.nombreEvento || evt.nombre || "Edición Especial",
+      nombre: stripEmojis(evt.nombreEvento || evt.nombre || "Edición Especial"),
       regularPrice,
       eventPrice,
       savings,
@@ -2172,27 +2172,10 @@ export function ClienteLanding() {
                     </div>
                   )}
 
-                {/* Rediseño de Indicador de Evento Activo */}
-                {producto.eventos && producto.eventos.length > 0 && (() => {
-                  const evt = producto.eventos[0];
-                  const evtIcon = evt.icono || "party";
-                  let benefit = "OFERTA";
-                  if (evt.tipoEvento === "Descuento" && evt.descuento) {
-                    benefit = `-${Number(evt.descuento)}% OFF`;
-                  } else if (evt.tipoEvento === "Promoción Precio") {
-                    benefit = "PROMO";
-                  } else if (evt.tipoEvento === "2x1 / Combo Especial") {
-                    benefit = "2x1";
-                  } else if (evt.tipoEvento === "Añadir Insumos") {
-                    benefit = "EXTRA";
-                  }
-                  return (
-                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-lg border border-white/25 backdrop-blur-md animate-pulse">
-                      <FoodIcon name={evt.icono || "party"} size={14} className="shrink-0" />
-                      <span className="tracking-wide uppercase">{benefit}</span>
-                    </div>
-                  );
-                })()}
+                {/* ═══ BADGE STREAMLINE DE ALTO IMPACTO (BURGER FEST / 2X1 / FLASH / DESCUENTO) ═══ */}
+                {producto.eventos && producto.eventos.length > 0 && (
+                  <EventBadge event={producto.eventos[0]} product={producto} variant="card" />
+                )}
 
                 {/* Badge Ver detalles */}
                 <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
@@ -2256,10 +2239,7 @@ export function ClienteLanding() {
                     {producto.eventos && producto.eventos.length > 0 ? (
                       <>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[10.5px] font-black text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <FoodIcon name={producto.eventos[0]?.icono || "party"} size={13} className="shrink-0" />
-                            <span className="truncate max-w-[150px]">{producto.eventos[0]?.nombreEvento || producto.eventos[0]?.tipoEvento || "Evento Activo"}</span>
-                          </span>
+                          <EventBadge event={producto.eventos[0]} product={producto} variant="pill" />
                         </div>
                         {producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento" || e.nuevoPrecio) ? (
                           <>

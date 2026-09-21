@@ -12,7 +12,8 @@ import {
   Tag,
   CheckCircle2,
   AlertCircle,
-  Package
+  Package,
+  Edit
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { eventosService } from "../../servicios/eventosService";
@@ -22,6 +23,7 @@ export function EventosModal({
   onClose,
   eventos = [],
   onOpenCrearEvento,
+  onEditEvento,
   onRefresh
 }) {
   const [activeTab, setActiveTab] = useState("todos"); // 'todos' | 'activos' | 'inactivos'
@@ -407,14 +409,24 @@ export function EventosModal({
                       <span>{isActivo ? "Pausar" : "Reanudar"}</span>
                     </button>
 
-                    <button
-                      onClick={() => handleDeleteEvento(evt)}
-                      disabled={deletingId === (evt.id || evt.idEvento)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition cursor-pointer"
-                      title="Eliminar evento de forma definitiva"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onEditEvento && onEditEvento(evt)}
+                        className="p-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl transition cursor-pointer"
+                        title="Editar evento"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteEvento(evt)}
+                        disabled={deletingId === (evt.id || evt.idEvento)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition cursor-pointer"
+                        title="Eliminar evento de forma definitiva"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

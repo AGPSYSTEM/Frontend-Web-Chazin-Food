@@ -11,41 +11,41 @@ import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/Fic
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
-import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import {
+  FoodIcon,
+  AVAILABLE_FOOD_SLUGS,
+  StreamlineFlame,
+  StreamlineBolt,
+  StreamlineDiscountTicket,
+  StreamlineDoubleBurger,
+  StreamlineGiftBox,
+  StreamlineCrown,
+  StreamlineCalendarCheck,
+  StreamlinePartyPopper,
+  StreamlineRocket,
+  IconBaconStrip
+} from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: PackagePlus, label: "Añadir Insumos", desc: "Modifica receta base" },
-  { value: "Promoción Precio", icon: Tag, label: "Promoción Precio", desc: "Rebaja temporal" },
-  { value: "Descuento", icon: ArrowDownUp, label: "Descuento %", desc: "Descuento directo" },
-  { value: "2x1 / Combo Especial", icon: Zap, label: "2x1 / Combo", desc: "Oferta por volumen" },
-  { value: "Lanzamiento / Novedad", icon: Sparkles, label: "Lanzamiento", desc: "Nuevo en carta" },
-  { value: "Happy Hour / Flash Sale", icon: Flame, label: "Flash Sale", desc: "Tiempo limitado" },
-  { value: "Edición Especial", icon: Crown, label: "Edición Especial", desc: "Temporada gourmet" },
-  { value: "Cortesía / Degustación", icon: Coffee, label: "Cortesía", desc: "Degustación / Regalo" }
+  { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Añadir Insumos", desc: "Modifica receta base" },
+  { value: "Promoción Precio", icon: StreamlineBolt, defaultIcon: "flash", label: "Promoción Precio", desc: "Rebaja temporal" },
+  { value: "Descuento", icon: StreamlineDiscountTicket, defaultIcon: "discount", label: "Descuento %", desc: "Descuento directo" },
+  { value: "2x1 / Combo Especial", icon: StreamlineDoubleBurger, defaultIcon: "2x1", label: "2x1 / Combo", desc: "Oferta por volumen" },
+  { value: "Lanzamiento / Novedad", icon: StreamlineRocket, defaultIcon: "rocket", label: "Lanzamiento", desc: "Nuevo en carta" },
+  { value: "Happy Hour / Flash Sale", icon: StreamlineBolt, defaultIcon: "flash", label: "Flash Sale", desc: "Tiempo limitado" },
+  { value: "Edición Especial", icon: StreamlineCrown, defaultIcon: "crown", label: "Edición Especial", desc: "Temporada gourmet" },
+  { value: "Cortesía / Degustación", icon: StreamlineGiftBox, defaultIcon: "gift", label: "Cortesía", desc: "Degustación / Regalo" }
 ];
 
-const ICONO_OPTIONS = [
-  { slug: "party", label: "Celebración" },
-  { slug: "fire", label: "En Llamas" },
-  { slug: "flash", label: "Flash" },
-  { slug: "tag", label: "Oferta" },
-  { slug: "burger", label: "Burger" },
-  { slug: "pizza", label: "Pizza" },
-  { slug: "vip", label: "Especial" },
-  { slug: "gift", label: "Combo" },
-  { slug: "rocket", label: "Lanzamiento" },
-  { slug: "star", label: "Estrella" },
-  { slug: "hotdog", label: "Hot Dog" },
-  { slug: "fries", label: "Papas" },
-];
+const ICONO_OPTIONS = AVAILABLE_FOOD_SLUGS;
 
 const PROD_EVENT_TYPES = [
-  { value: "EDICION_LIMITADA", label: "Edición Limitada", icon: Flame, desc: "Plato festivo único y conmemorativo", activeCls: "border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/40" },
-  { value: "COMBO_ESPECIAL", label: "Combo Festivo", icon: Gift, desc: "Platillo + acompañamiento + bebida", activeCls: "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-200 ring-2 ring-purple-400/40" },
-  { value: "PROMOCION_2X1", label: "Promoción 2x1", icon: Zap, desc: "Lleva 2 por el precio de 1", activeCls: "border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-2 ring-rose-400/40" },
-  { value: "DESCUENTO", label: "Precio Rebajado", icon: Tag, desc: "Descuento directo sobre precio regular", activeCls: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-400/40" }
+  { value: "EDICION_LIMITADA", label: "Edición Limitada", icon: StreamlineFlame, defaultIcon: "fire", desc: "Plato festivo único y conmemorativo", activeCls: "border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/40" },
+  { value: "COMBO_ESPECIAL", label: "Combo Festivo", icon: StreamlineGiftBox, defaultIcon: "gift", desc: "Platillo + acompañamiento + bebida", activeCls: "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-200 ring-2 ring-purple-400/40" },
+  { value: "PROMOCION_2X1", label: "Promoción 2x1", icon: StreamlineDoubleBurger, defaultIcon: "2x1", desc: "Lleva 2 por el precio de 1", activeCls: "border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-2 ring-rose-400/40" },
+  { value: "DESCUENTO", label: "Precio Rebajado", icon: StreamlineDiscountTicket, defaultIcon: "discount", desc: "Descuento directo sobre precio regular", activeCls: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-400/40" }
 ];
 
 const BADGES_GASTRONOMICOS = [
@@ -57,10 +57,27 @@ const BADGES_GASTRONOMICOS = [
   "Extra Queso"
 ];
 
-export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
+const normalizeTipoEvento = (raw) => {
+  if (!raw) return "Añadir Insumos";
+  const low = String(raw).toLowerCase().trim();
+  if (low.includes("2x1") || low.includes("dos por uno")) return "2x1 / Combo Especial";
+  if (low.includes("combo")) return "2x1 / Combo Especial";
+  if (low.includes("descuento") || low.includes("discount") || low.includes("%")) return "Descuento";
+  if (low.includes("happy")) return "Happy Hour / Flash Sale";
+  if (low.includes("precio") || low.includes("flash") || low.includes("relampago") || low.includes("relámpago")) return "Promoción Precio";
+  if (low.includes("insumo") || low.includes("topping")) return "Añadir Insumos";
+  if (low.includes("lanzamiento") || low.includes("novedad") || low.includes("rocket")) return "Lanzamiento / Novedad";
+  if (low.includes("edicion") || low.includes("edición") || low.includes("festival") || low.includes("limitada")) return "Edición Especial";
+  if (low.includes("cortesia") || low.includes("cortesía") || low.includes("regalo") || low.includes("degustacion")) return "Cortesía / Degustación";
+  return raw;
+};
+
+export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoToEdit = null }) {
   const { success, error: notifyError } = useNotifications();
+  const isEditing = Boolean(eventoToEdit);
+  const currentProducto = producto || eventoToEdit?.producto || null;
   const [tipoEvento, setTipoEvento] = useState("Añadir Insumos");
-  const [icono, setIcono] = useState("party");
+  const [icono, setIcono] = useState("fire");
   const [isTemporal, setIsTemporal] = useState(false);
   const [nombreEvento, setNombreEvento] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -142,60 +159,117 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
 
   useEffect(() => {
     if (isOpen) {
-      setTipoEvento("Añadir Insumos");
-      setIcono(producto?.icono || "party");
-      setIsTemporal(false);
-      setNombreEvento("");
-      setDescripcion("");
-      setAccion("Agregar");
-      setInsumoSearch("");
-      setInsumosSeleccionados([]);
-      setShowInsumoDropdown(false);
-      
-      const now = new Date();
-      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
-      setIcono("party");
-      setFechaInicio(localToday);
-      setFechaFin(localFuture);
-      
-      setNuevoPrecio("");
-      setDescuento("");
+      if (eventoToEdit) {
+        // ── MODO EDICIÓN DE EVENTO EXISTENTE ──
+        setModoCrearProducto(false);
+        const normTipo = normalizeTipoEvento(eventoToEdit.tipoEvento);
+        setTipoEvento(normTipo);
+        setIcono(eventoToEdit.icono || "party");
 
-      // Reset campos de producto nuevo
-      setModoCrearProducto(false);
-      setProdNombre("");
-      setProdCategoria(3);
-      setProdPrecioRegular("");
-      setProdPrecioEvento("");
-      setProdDescripcion("");
-      setProdImagen("");
-      setImagePreviewUrl("");
-      setUploadingImage(false);
-      setShowManualUrl(false);
-      setProdProcedimiento("");
-      setAdicionesSeleccionadas([]);
-      setAdicionesSearch("");
-      setConfigCombo({
-        esCombo: false,
-        cantidadBebidas: 1,
-        bebidasPermitidas: []
-      });
-      setProdVariantes([]);
-      setTiempoPreparacion(12);
-      setProdTipoEvento("EDICION_LIMITADA");
-      setProdEstadoInicial("Activo");
-      setProdRendimiento("1 porción");
-      setProdVigenciaTipo("temporal");
-      setProdEtiquetas(["Edición Festival"]);
-      setProdDestacadoWeb(true);
-      setProdInsumosReceta([]);
-      setProdFichaTecnica(null);
-      setSearchRecetaInsumo("");
-      setShowRecetaDropdown(false);
-      setTieneCortesia(false);
-      setToppingCortesia({ idInsumo: "", nombre: "", cantidad: 1, unidadMedida: "und" });
+        const hasDates = Boolean(eventoToEdit.fechaFin);
+        setIsTemporal(hasDates);
+
+        setNombreEvento(stripEmojis(eventoToEdit.nombreEvento || eventoToEdit.nombre || ""));
+        setDescripcion(stripEmojis(eventoToEdit.descripcion || ""));
+        setAccion(eventoToEdit.accionInsumo || eventoToEdit.accion || "Agregar");
+        setInsumoSearch("");
+        setShowInsumoDropdown(false);
+
+        const now = new Date();
+        const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+
+        setFechaInicio(eventoToEdit.fechaInicio ? String(eventoToEdit.fechaInicio).split("T")[0] : localToday);
+        setFechaFin(eventoToEdit.fechaFin ? String(eventoToEdit.fechaFin).split("T")[0] : localFuture);
+
+        setNuevoPrecio(eventoToEdit.nuevoPrecio != null ? String(eventoToEdit.nuevoPrecio) : "");
+        setDescuento(eventoToEdit.descuento != null ? String(eventoToEdit.descuento) : "");
+
+        let parsedInsumos = [];
+        if (eventoToEdit.insumosAsociados) {
+          try {
+            parsedInsumos = typeof eventoToEdit.insumosAsociados === "string"
+              ? JSON.parse(eventoToEdit.insumosAsociados)
+              : eventoToEdit.insumosAsociados;
+          } catch (e) {
+            parsedInsumos = [];
+          }
+        } else if (eventoToEdit.insumos) {
+          parsedInsumos = eventoToEdit.insumos;
+        }
+        setInsumosSeleccionados(Array.isArray(parsedInsumos) ? parsedInsumos : []);
+
+        let parsedProds = [];
+        if (eventoToEdit.productosAsociados) {
+          try {
+            parsedProds = typeof eventoToEdit.productosAsociados === "string"
+              ? JSON.parse(eventoToEdit.productosAsociados)
+              : eventoToEdit.productosAsociados;
+          } catch (e) {
+            parsedProds = [];
+          }
+        } else if (eventoToEdit.productos) {
+          parsedProds = eventoToEdit.productos;
+        }
+        setProductosSeleccionados(Array.isArray(parsedProds) ? parsedProds : []);
+      } else {
+        // ── MODO CREACIÓN (RESET) ──
+        setTipoEvento("Añadir Insumos");
+        setIcono(producto?.icono || "party");
+        setIsTemporal(false);
+        setNombreEvento("");
+        setDescripcion("");
+        setAccion("Agregar");
+        setInsumoSearch("");
+        setInsumosSeleccionados([]);
+        setShowInsumoDropdown(false);
+        
+        const now = new Date();
+        const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const future = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const localFuture = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(future.getDate()).padStart(2, '0')}`;
+        setIcono("party");
+        setFechaInicio(localToday);
+        setFechaFin(localFuture);
+        
+        setNuevoPrecio("");
+        setDescuento("");
+
+        // Reset campos de producto nuevo
+        setModoCrearProducto(false);
+        setProdNombre("");
+        setProdCategoria(3);
+        setProdPrecioRegular("");
+        setProdPrecioEvento("");
+        setProdDescripcion("");
+        setProdImagen("");
+        setImagePreviewUrl("");
+        setUploadingImage(false);
+        setShowManualUrl(false);
+        setProdProcedimiento("");
+        setAdicionesSeleccionadas([]);
+        setAdicionesSearch("");
+        setConfigCombo({
+          esCombo: false,
+          cantidadBebidas: 1,
+          bebidasPermitidas: []
+        });
+        setProdVariantes([]);
+        setTiempoPreparacion(12);
+        setProdTipoEvento("EDICION_LIMITADA");
+        setProdEstadoInicial("Activo");
+        setProdRendimiento("1 porción");
+        setProdVigenciaTipo("temporal");
+        setProdEtiquetas(["Edición Festival"]);
+        setProdDestacadoWeb(true);
+        setProdInsumosReceta([]);
+        setProdFichaTecnica(null);
+        setSearchRecetaInsumo("");
+        setShowRecetaDropdown(false);
+        setTieneCortesia(false);
+        setToppingCortesia({ idInsumo: "", nombre: "", cantidad: 1, unidadMedida: "und" });
+      }
 
       // Fetch insumos and productos
       eventosService.getInsumos().then((data) => {
@@ -625,6 +699,69 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
       return;
     }
 
+    // ── MODO EDICIÓN DE EVENTO ──
+    if (isEditing) {
+      if (!nombreEvento.trim()) {
+        notifyError("Validación Fallida", "El Título del Evento es obligatorio.");
+        return;
+      }
+      setSaving(true);
+      try {
+        const payload = {
+          productoId: producto?.id || producto?.idProducto || eventoToEdit.idProducto,
+          tipoEvento,
+          icono: icono || "party",
+          isTemporal,
+          nombreEvento: stripEmojis(nombreEvento.trim()),
+          descripcion: stripEmojis(descripcion.trim()),
+          estado: eventoToEdit.estado !== undefined ? eventoToEdit.estado : "Activo",
+        };
+
+        if (isTemporal) {
+          payload.fechaInicio = fechaInicio;
+          payload.fechaFin = fechaFin;
+        } else {
+          payload.fechaInicio = null;
+          payload.fechaFin = null;
+        }
+
+        if (tipoEvento === "Añadir Insumos") {
+          payload.accion = accion;
+          payload.insumos = insumosSeleccionados;
+          if (nuevoPrecio) {
+            payload.nuevoPrecio = Number(nuevoPrecio);
+          } else {
+            payload.nuevoPrecio = null;
+          }
+          payload.descuento = null;
+        } else if (tipoEvento === "Descuento") {
+          payload.descuento = Number(descuento);
+          payload.nuevoPrecio = null;
+          payload.insumos = null;
+        } else if (tipoEvento === "Promoción Precio") {
+          payload.nuevoPrecio = Number(nuevoPrecio);
+          payload.descuento = null;
+          payload.insumos = null;
+        } else {
+          if (nuevoPrecio) payload.nuevoPrecio = Number(nuevoPrecio);
+          if (descuento) payload.descuento = Number(descuento);
+          if (insumosSeleccionados.length > 0) payload.insumos = insumosSeleccionados;
+        }
+
+        const eventId = eventoToEdit.id || eventoToEdit.idEvento;
+        await eventosService.updateEvento(eventId, payload);
+        success("¡Evento Actualizado!", "Los parámetros del evento se han actualizado correctamente.");
+        if (onCreated) onCreated();
+        onClose();
+      } catch (err) {
+        console.error("Error al actualizar evento:", err);
+        notifyError("Error al actualizar evento", err.response?.data?.message || err.message || "Ocurrió un error inesperado.");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     // ── MODO VINCULAR A PRODUCTO(S) EXISTENTE(S) ──
     if (!nombreEvento.trim()) {
       notifyError("Validación Fallida", "El Título del Evento es obligatorio.");
@@ -637,8 +774,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         tipoEvento,
         icono: icono || "party",
         isTemporal,
-        nombreEvento: nombreEvento.trim(),
-        descripcion: descripcion.trim(),
+        nombreEvento: stripEmojis(nombreEvento.trim()),
+        descripcion: stripEmojis(descripcion.trim()),
         estado: "Activo",
       };
 
@@ -686,10 +823,18 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         {/* Purple Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-500 p-6 flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <div className="text-4xl bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center backdrop-blur-xs border border-white/20 shadow-inner">{icono}</div>
+            <div className="bg-white/15 w-14 h-14 rounded-2xl flex items-center justify-center backdrop-blur-xs border border-white/25 shadow-inner">
+              <StreamlineCalendarCheck size={32} stroke={2} className="text-white drop-shadow-md" />
+            </div>
             <div>
-              <h2 className="text-xl font-bold text-white">{producto ? "Crear Evento" : "Crear Evento Global"}</h2>
-              <p className="text-purple-200 text-sm">{producto?.nombre || "Múltiples productos"}</p>
+              <h2 className="text-xl font-bold text-white">
+                {isEditing ? "Editar Evento / Promoción" : currentProducto ? "Crear Evento" : "Crear Evento Global"}
+              </h2>
+              <p className="text-purple-200 text-sm">
+                {isEditing
+                  ? `Editando campaña activa para: ${currentProducto?.nombre || eventoToEdit?.nombreEvento || eventoToEdit?.nombre || "Producto"}`
+                  : currentProducto?.nombre || "Múltiples productos"}
+              </p>
             </div>
           </div>
           <button
@@ -703,7 +848,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
         {/* Scrollable Body */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           {/* Segmented Control: Modo Vincular Existente vs Crear Producto Nuevo */}
-          {!producto && (
+          {!currentProducto && !isEditing && (
             <div className="flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl">
               <button
                 type="button"
@@ -754,7 +899,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                         <button
                           key={t.value}
                           type="button"
-                          onClick={() => setProdTipoEvento(t.value)}
+                          onClick={() => {
+                            setProdTipoEvento(t.value);
+                            if (t.defaultIcon) setIcono(t.defaultIcon);
+                          }}
                           className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none ${
                             isSelected
                               ? t.activeCls
@@ -784,29 +932,34 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
                       Iconografía del Evento
                     </label>
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
-                      <span>Insignia:</span> <span className="text-base">{icono}</span>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-xs">
+                      <span>Insignia:</span>
+                      <FoodIcon name={icono || "fire"} size={16} stroke={2} className="text-purple-600 dark:text-purple-400" />
+                      <span className="font-semibold text-[11px] text-gray-700 dark:text-gray-200">
+                        {AVAILABLE_FOOD_SLUGS.find((i) => i.slug === icono)?.label || icono}
+                      </span>
                     </span>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
+                    Elige el icono vectorial que acompañará la promoción en el carrusel de clientes y en el menú.
                   </p>
-                  <div className="grid grid-cols-7 sm:grid-cols-14 gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-gray-400 mr-1 select-none">Rápidos:</span>
                     {ICONO_OPTIONS.map((item) => {
-                      const isSelected = icono === item.emoji;
+                      const isSelected = icono === item.slug;
                       return (
                         <button
-                          key={item.emoji}
+                          key={item.slug}
                           type="button"
-                          onClick={() => setIcono(item.emoji)}
+                          onClick={() => setIcono(item.slug)}
                           title={item.label}
-                          className={`h-10 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer select-none ${
                             isSelected
-                              ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
-                              : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105"
+                              ? "border-purple-500 bg-purple-600 text-white shadow-md ring-2 ring-purple-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-950/30"
                           }`}
                         >
-                          {item.emoji}
+                          <FoodIcon name={item.slug} size={18} stroke={1.75} />
                         </button>
                       );
                     })}
@@ -1505,7 +1658,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setTipoEvento(opt.value)}
+                        onClick={() => {
+                          setTipoEvento(opt.value);
+                          if (opt.defaultIcon) setIcono(opt.defaultIcon);
+                        }}
                         className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                           isActive
                             ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
@@ -1529,15 +1685,19 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                   <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
                     Iconografía del Evento
                   </label>
-                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-2.5 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5">
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-xs">
                     <span>Insignia:</span>
-                    <FoodIcon name={icono || "party"} size={16} className="text-purple-600 dark:text-purple-400" />
+                    <FoodIcon name={icono || "party"} size={16} stroke={2} className="text-purple-600 dark:text-purple-400" />
+                    <span className="font-semibold text-[11px] text-gray-700 dark:text-gray-200">
+                      {AVAILABLE_FOOD_SLUGS.find((i) => i.slug === icono)?.label || icono}
+                    </span>
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                   Elige el icono que acompañará la promoción en el carrusel de clientes y en el menú.
                 </p>
-                <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] font-bold text-gray-400 mr-1 select-none">Rápidos:</span>
                   {ICONO_OPTIONS.map((item) => {
                     const isSelected = icono === item.slug;
                     return (
@@ -1546,13 +1706,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                         type="button"
                         onClick={() => setIcono(item.slug)}
                         title={item.label}
-                        className={`h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer select-none ${
                           isSelected
-                            ? "bg-purple-600 text-white shadow-md scale-110 ring-2 ring-purple-400 ring-offset-2 dark:ring-offset-gray-900"
-                            : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105 text-gray-700 dark:text-gray-300"
+                            ? "border-purple-500 bg-purple-600 text-white shadow-md ring-2 ring-purple-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-950/30"
                         }`}
                       >
-                        <FoodIcon name={item.slug} size={18} stroke={2} />
+                        <FoodIcon name={item.slug} size={18} stroke={1.75} />
                       </button>
                     );
                   })}
@@ -1757,13 +1917,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
                     {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
                   </h3>
                   
-                  {producto ? (
+                  {currentProducto ? (
                     // Single product event
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
                         <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                          ${producto?.precio?.toLocaleString() || "0"}
+                          ${currentProducto?.precio ? currentProducto.precio.toLocaleString() : "0"}
                         </div>
                       </div>
                       
@@ -1877,10 +2037,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated }) {
           <button
             onClick={handleSubmit}
             disabled={saving || !nombreEvento.trim()}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-medium rounded-2xl text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-medium rounded-2xl text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Zap className="w-4 h-4" />
-            <span>{saving ? "Creando..." : "Crear Evento"}</span>
+            <span>{saving ? (isEditing ? "Guardando..." : "Creando...") : isEditing ? "Guardar Cambios" : "Crear Evento"}</span>
           </button>
         </div>
       </div>

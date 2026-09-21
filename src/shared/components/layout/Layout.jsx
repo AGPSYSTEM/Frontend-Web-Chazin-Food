@@ -157,7 +157,7 @@ export function Layout() {
          DESKTOP SIDEBAR  (lg+) — only visible when `sidebarOpen` is true
          ═══════════════════════════════════════════════════════════ */}
       {sidebarOpen && (
-        <aside className="hidden flex-col w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-800 transition-all duration-300">
+        <aside className="hidden flex-col w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-x-hidden">
           {/* Brand */}
           <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
             <div className="flex items-center justify-between mb-4">
@@ -183,7 +183,7 @@ export function Layout() {
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 p-3 overflow-y-auto">
+          <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5 mt-1">Administración</p>
             <ul className="space-y-1">
               {/* Dashboard */}
@@ -262,14 +262,14 @@ export function Layout() {
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5">Cuenta</p>
             <button
               onClick={() => { setPerfilOpen(true); }}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-full text-left cursor-pointer"
+              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-[calc(100%-1rem)] text-left cursor-pointer"
             >
               <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
               <span className="font-medium">Perfil</span>
             </button>
             <button
               onClick={() => toggleDarkMode()}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 w-[calc(100%-1rem)] cursor-pointer"
             >
               {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
               <span className="font-medium flex-1 text-left">Modo Oscuro</span>
@@ -279,7 +279,7 @@ export function Layout() {
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-[calc(100%-1rem)] cursor-pointer"
             >
               <LogOut className="w-5 h-5 shrink-0" />
               <span className="font-medium">Cerrar Sesión</span>
@@ -295,7 +295,7 @@ export function Layout() {
         className={`
           fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
           bg-white dark:bg-gray-900
-          shadow-2xl flex flex-col
+          shadow-2xl flex flex-col overflow-x-hidden
           transition-transform duration-300 ease-out
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -323,14 +323,14 @@ export function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3">
           <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-5 mb-1.5 mt-1">Administración</p>
 
           {hasPerm("Dashboard") && (
             <Link
               to="/"
               onClick={handleNavClick}
-              className={`flex items-center gap-3 mx-2 px-3 py-3 rounded-xl transition-colors active:scale-[0.98] ${isActive("/") ? "bg-red-600 text-white shadow-sm" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-3 mx-2 px-3 py-3 rounded-xl transition-colors active:scale-[0.98] w-[calc(100%-1rem)] ${isActive("/") ? "bg-red-600 text-white shadow-sm" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
             >
               <LayoutDashboard className="w-5 h-5 shrink-0" />
               <span className="font-medium">Dashboard</span>
@@ -454,7 +454,7 @@ export function Layout() {
 
           <button
             onClick={() => { setSidebarOpen(false); setPerfilOpen(true); }}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-full text-left cursor-pointer"
+            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] w-[calc(100%-1rem)] text-left cursor-pointer"
           >
             <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
             <span className="font-medium">Perfil</span>
@@ -462,7 +462,7 @@ export function Layout() {
 
           <button
             onClick={() => toggleDarkMode()}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 w-[calc(100%-1rem)] cursor-pointer"
           >
             {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
             <span className="font-medium flex-1 text-left">Modo Oscuro</span>
@@ -473,7 +473,7 @@ export function Layout() {
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="flex items-center gap-3 mx-2 px-5 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-[calc(100%-1rem)] cursor-pointer"
           >
             <LogOut className="w-5 h-5 shrink-0" />
             <span className="font-medium">Cerrar Sesión</span>
