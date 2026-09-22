@@ -22,6 +22,7 @@ import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal"
 import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
 import { IconFlame as TablerFlame } from "@tabler/icons-react";
+import { ClienteFooter } from "../componentes/ClienteFooter";
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "burger", color: "from-yellow-400 to-orange-500" },
@@ -3215,6 +3216,9 @@ export function ClienteLanding() {
         }}
         getProductQuantityInCart={getProductQuantityInCart}
       />
+
+      {/* Pie de Página / Sección de Créditos del Equipo */}
+      <ClienteFooter />
 
       {/* Modal Reseñas de Producto (renders over PersonalizarEventoModal) */}
       <ProductoResenasModal
