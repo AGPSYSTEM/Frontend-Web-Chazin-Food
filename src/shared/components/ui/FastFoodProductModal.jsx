@@ -879,6 +879,12 @@ export function FastFoodProductModal({
     });
   }, [allAdiciones, isPapaOrAccompaniment]);
 
+  // Insumos personalizables (Mise en place)
+  const personalizables = useMemo(
+    () => extractPersonalizables(producto, liveFicha),
+    [producto, liveFicha]
+  );
+
   // Imagen específica de variantes conocidas como Coca-Cola Sin Azúcar / Light
   const getVariantImage = useCallback((varName) => {
     const vn = String(varName || "").toLowerCase();
@@ -1144,6 +1150,16 @@ export function FastFoodProductModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Si la ficha técnica se carga de forma asíncrona y contiene personalizables, enfocar automáticamente la pestaña de personalizar
+  useEffect(() => {
+    if (isOpen && producto && !isDrink && liveFicha && (!initialTab || initialTab === "personalizar")) {
+      const items = extractPersonalizables(producto, liveFicha);
+      if (items.length > 0 && activeTab !== "resenas" && activeTab !== "bebidas") {
+        setActiveTab("personalizar");
+      }
+    }
+  }, [liveFicha, producto, isDrink, initialTab, isOpen, activeTab]);
+
   if (!isOpen || !producto) return null;
 
   // Helper de Evento Activo para el Producto (Fast-food LTO / Festival drops)
@@ -1280,22 +1296,6 @@ export function FastFoodProductModal({
       ? producto.stockActual
       : 99
   );
-
-  // Insumos personalizables (Mise en place)
-  const personalizables = useMemo(
-    () => extractPersonalizables(producto, liveFicha),
-    [producto, liveFicha]
-  );
-
-  // Si la ficha técnica se carga de forma asíncrona y contiene personalizables, enfocar automáticamente la pestaña de personalizar
-  useEffect(() => {
-    if (!isDrink && liveFicha && (!initialTab || initialTab === "personalizar")) {
-      const items = extractPersonalizables(producto, liveFicha);
-      if (items.length > 0 && activeTab !== "resenas" && activeTab !== "bebidas") {
-        setActiveTab("personalizar");
-      }
-    }
-  }, [liveFicha, producto, isDrink, initialTab]);
 
   // Toggle remover ingrediente
   const toggleRemoveIngredient = (nombre) => {
