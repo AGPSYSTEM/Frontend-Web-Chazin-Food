@@ -1487,7 +1487,7 @@ export function FastFoodProductModal({
     : null;
 
   // Determinar la imagen de la botella según tamaño y fórmula seleccionada
-  const heroImage = useMemo(() => {
+  const heroImage = (() => {
     if (isDrink && drinkHasSizes) {
       return getDrinkBottleImage(selectedSizeId, producto, selectedVariant, isDietSelected) || productImage;
     } else if (isDrink) {
@@ -1495,10 +1495,10 @@ export function FastFoodProductModal({
     } else {
       return selectedVariant?.imagen || productImage;
     }
-  }, [isDrink, drinkHasSizes, selectedSizeId, producto, selectedVariant, isDietSelected, productImage]);
+  })();
 
   // Título dinámico para bebidas que refleja fielmente la fórmula/sabor activo y la presentación seleccionada
-  const displayDrinkTitle = useMemo(() => {
+  const displayDrinkTitle = (() => {
     if (!isDrink) return producto?.nombre || "";
 
     const prodName = String(producto?.nombre || "").toLowerCase();
@@ -1558,7 +1558,7 @@ export function FastFoodProductModal({
       return `${baseName} (${selectedSizeObj.label})`;
     }
     return baseName;
-  }, [isDrink, producto, selectedVariant, drinkHasSizes, selectedSizeObj]);
+  })();
 
   const brandMeta = getDrinkBrandMeta(
     isDietSelected 
