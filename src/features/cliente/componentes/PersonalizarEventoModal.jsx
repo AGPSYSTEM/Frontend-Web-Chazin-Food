@@ -18,6 +18,7 @@ import {
   UtensilsCrossed
 } from "lucide-react";
 import { extractPersonalizables, resolveNutritionalSpecs } from "@/shared/components/ui/FastFoodProductModal";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -150,32 +151,32 @@ export function PersonalizarEventoModal({
 
   // Nutritional and preparation specs
   const prodId = selectedProduct?.id || selectedProduct?.idProducto;
-  const currentFicha = fichasMap[prodId] || selectedProduct?.ficha || null;
+  const [liveFicha, setLiveFicha] = useState(() => fichasMap[prodId] || selectedProduct?.ficha || null);
+
+  useEffect(() => {
+    const cached = fichasMap[prodId] || selectedProduct?.ficha || null;
+    if (cached) {
+      setLiveFicha(cached);
+    } else if (prodId && isOpen) {
+      fichasTecnicasService
+        .getFichaByProducto(prodId)
+        .then((data) => {
+          if (data && (data.detalles || data.idFicha)) setLiveFicha(data);
+        })
+        .catch(() => {});
+    }
+  }, [prodId, fichasMap, selectedProduct, isOpen]);
+
   const specs = useMemo(() => {
     if (!selectedProduct) return { peso: "350g", rendimiento: "1 porción", tiempoPrep: 8 };
-    return resolveNutritionalSpecs(selectedProduct, currentFicha);
-  }, [selectedProduct, currentFicha]);
+    return resolveNutritionalSpecs(selectedProduct, liveFicha);
+  }, [selectedProduct, liveFicha]);
 
   // Recipe ingredients extraction for Mise en Place
   const personalizables = useMemo(() => {
     if (!selectedProduct) return [];
-    const list = extractPersonalizables(selectedProduct, currentFicha);
-    if (list && list.length > 0) return list;
-
-    // Fallback candidates
-    const desc = String(selectedProduct.descripcion || "").toLowerCase();
-    const fallbackCandidates = [
-      { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla"] },
-      { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate"] },
-      { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga"] },
-      { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella"] },
-      { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino"] },
-      { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "tártara"] },
-      { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio"] },
-      { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
-    ];
-    return fallbackCandidates.filter((c) => c.aliases.some((alias) => desc.includes(alias)));
-  }, [selectedProduct, currentFicha]);
+    return extractPersonalizables(selectedProduct, liveFicha);
+  }, [selectedProduct, liveFicha]);
 
   // Fetch reviews for selected product
   const fetchReviews = useCallback(async () => {

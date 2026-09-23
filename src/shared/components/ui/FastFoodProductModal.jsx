@@ -27,6 +27,7 @@ import {
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import postobonUvaImg from "@/shared/assets/drinks/postobon_uva.jpg";
 import postobonNaranjaImg from "@/shared/assets/drinks/postobon_naranja.jpg";
@@ -177,65 +178,83 @@ export const STANDARD_DRINK_SIZES = [
   }
 ];
 
-export const getDrinkBottleImage = (sizeId, prod, matchedVar = null, isDiet = false) => {
-  const name = String(prod?.nombre || "").toLowerCase();
-  const dietActive = isDiet || name.includes("light") || name.includes("sin az") || name.includes("zero");
+export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, isDiet = false) => {
+  const variantName = activeFlavorOrVariant
+    ? (typeof activeFlavorOrVariant === "string"
+        ? activeFlavorOrVariant.toLowerCase()
+        : String(activeFlavorOrVariant.nombre || activeFlavorOrVariant.title || activeFlavorOrVariant.id || "").toLowerCase())
+    : "";
 
-  if (name.includes("coca") && dietActive) {
-    if (sizeId === "400ml") return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
-    if (sizeId === "1.5L") return "/images/drinks/coca_cola_zero_1.5L.jpg";
-    if (sizeId === "2.5L") return "/images/drinks/coca_cola_zero_2.5L.jpg";
-  }
+  const prodName = String(prod?.nombre || "").toLowerCase();
+
+  const dietActive =
+    isDiet ||
+    variantName.includes("light") ||
+    variantName.includes("sin az") ||
+    variantName.includes("zero") ||
+    variantName.includes("black") ||
+    prodName.includes("light") ||
+    prodName.includes("sin az") ||
+    prodName.includes("zero");
+
+  const hasUva = variantName.includes("uva") || (!variantName && prodName.includes("uva"));
+  const hasNaranja = variantName.includes("naranja") || (!variantName && prodName.includes("naranja"));
+  const hasColombiana = variantName.includes("colombiana") || (!variantName && prodName.includes("colombiana"));
+  const hasManzana = variantName.includes("manzana") || (!variantName && prodName.includes("manzana"));
+  const hasCoca = (variantName.includes("coca") || (!variantName && prodName.includes("coca"))) && !hasUva && !hasNaranja && !hasColombiana && !hasManzana;
+  const hasPepsi = (variantName.includes("pepsi") || (!variantName && prodName.includes("pepsi"))) && !hasUva && !hasNaranja && !hasColombiana && !hasManzana;
+  const hasSprite = variantName.includes("sprite") || (!variantName && prodName.includes("sprite"));
+  const hasQuatro = variantName.includes("cuatro") || variantName.includes("quatro") || (!variantName && (prodName.includes("cuatro") || prodName.includes("quatro")));
 
   if (sizeId === "400ml") {
-    if (name.includes("coca")) {
+    if (hasUva) return "/images/drinks/uva_postobon-removebg-preview.png";
+    if (hasNaranja) return "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+    if (hasColombiana) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+    if (hasManzana) return "/images/drinks/manzana_400ml-removebg-preview.png";
+    if (hasCoca) {
       if (dietActive) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
       return "/images/drinks/coca_cola-removebg-preview.png";
     }
-    if (name.includes("pepsi")) {
+    if (hasPepsi) {
       if (dietActive) return "/images/drinks/pepsi_light-removebg-preview.png";
       return "/images/drinks/pepsi_400ml-removebg-preview.png";
     }
-    if (name.includes("sprite")) return "/images/drinks/sprite-removebg-preview.png";
-    if (name.includes("manzana")) return "/images/drinks/manzana_400ml-removebg-preview.png";
-    if (name.includes("naranja")) return "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
-    if (name.includes("colombiana")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
-    if (name.includes("uva")) return "/images/drinks/uva_postobon-removebg-preview.png";
-    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
-    return prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
+    if (hasSprite) return "/images/drinks/sprite-removebg-preview.png";
+    if (hasQuatro) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    return (typeof activeFlavorOrVariant === "object" && activeFlavorOrVariant?.imagen) || prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
   }
 
   if (sizeId === "1.5L") {
-    if (name.includes("coca")) {
+    if (hasUva) return "/images/drinks/bebida-uva-1500ml_00-600x600-removebg-preview.png";
+    if (hasNaranja) return "/images/drinks/naranga_1.5-removebg-preview.png";
+    if (hasColombiana) return "/images/drinks/colombiana_1.5_L-removebg-preview.png";
+    if (hasManzana) return "/images/drinks/manzana_1.5_L-removebg-preview.png";
+    if (hasCoca) {
       if (dietActive) return "/images/drinks/coca_cola_zero_1.5L.jpg";
       return "/images/drinks/coca_cola_1.5-LITROS-removebg-preview.png";
     }
-    if (name.includes("pepsi")) return "/images/drinks/pepsi_1.5-removebg-preview.png";
-    if (name.includes("sprite")) return "/images/drinks/komx_mx_sprite_15.webp";
-    if (name.includes("manzana")) return "/images/drinks/manzana_1.5_L-removebg-preview.png";
-    if (name.includes("naranja")) return "/images/drinks/naranga_1.5-removebg-preview.png";
-    if (name.includes("uva")) return "/images/drinks/bebida-uva-1500ml_00-600x600-removebg-preview.png";
-    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
-    if (name.includes("colombiana")) return "/images/drinks/colombiana_1.5_L-removebg-preview.png";
-    return matchedVar?.imagen || "/images/drinks/pepsi_1.5-removebg-preview.png";
+    if (hasPepsi) return "/images/drinks/pepsi_1.5-removebg-preview.png";
+    if (hasSprite) return "/images/drinks/komx_mx_sprite_15.webp";
+    if (hasQuatro) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    return (typeof activeFlavorOrVariant === "object" && activeFlavorOrVariant?.imagen) || "/images/drinks/manzana_1.5_L-removebg-preview.png";
   }
 
   if (sizeId === "2.5L") {
-    if (name.includes("coca")) {
+    if (hasUva) return "/images/drinks/Uva_mega-removebg-preview.png";
+    if (hasNaranja) return "/images/drinks/postob_n_naranja_2.5l_1_-removebg-preview.png";
+    if (hasColombiana) return "/images/drinks/colombiana_pet_2.5l-removebg-preview.png";
+    if (hasManzana) return "/images/drinks/Manzana-Super-Gigante-25-Litros-223182_a-removebg-preview.png";
+    if (hasCoca) {
       if (dietActive) return "/images/drinks/coca_cola_zero_2.5L.jpg";
       return "/images/drinks/mega_coca_cola-removebg-preview.png";
     }
-    if (name.includes("pepsi")) return "/images/drinks/mega_pepsi-removebg-preview.png";
-    if (name.includes("sprite")) return "/images/drinks/spr-limalimo-nor-pet-2.5l-removebg-preview.png";
-    if (name.includes("manzana")) return "/images/drinks/Manzana-Super-Gigante-25-Litros-223182_a-removebg-preview.png";
-    if (name.includes("naranja")) return "/images/drinks/postob_n_naranja_2.5l_1_-removebg-preview.png";
-    if (name.includes("uva")) return "/images/drinks/Uva_mega-removebg-preview.png";
-    if (name.includes("cuatro") || name.includes("quatro")) return "/images/drinks/quatro_mega-removebg-preview.png";
-    if (name.includes("colombiana")) return "/images/drinks/colombiana_pet_2.5l-removebg-preview.png";
-    return matchedVar?.imagen || "/images/drinks/mega_pepsi-removebg-preview.png";
+    if (hasPepsi) return "/images/drinks/mega_pepsi-removebg-preview.png";
+    if (hasSprite) return "/images/drinks/spr-limalimo-nor-pet-2.5l-removebg-preview.png";
+    if (hasQuatro) return "/images/drinks/quatro_mega-removebg-preview.png";
+    return (typeof activeFlavorOrVariant === "object" && activeFlavorOrVariant?.imagen) || "/images/drinks/Manzana-Super-Gigante-25-Litros-223182_a-removebg-preview.png";
   }
 
-  return prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
+  return (typeof activeFlavorOrVariant === "object" && activeFlavorOrVariant?.imagen) || prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
 };
 
 export const SODA_FLAVORS = [
@@ -293,16 +312,70 @@ export const detectDefaultDrinkSize = (prod) => {
   return "400ml";
 };
 
-const INGREDIENTES_CANDIDATOS = [
-  { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion"] },
-  { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce"] },
-  { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
-  { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
-  { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
-  { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
-  { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio", "papas ripio", "chips"] },
-  { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
-];
+export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
+  const rawName = String(
+    detalleOrInsumo?.insumo?.nombre ||
+    detalleOrInsumo?.nombreInsumo ||
+    detalleOrInsumo?.nombre ||
+    detalleOrInsumo ||
+    ""
+  ).trim();
+
+  if (!rawName) return null;
+  const n = rawName.toLowerCase();
+
+  // Excluir bebidas o líquidos envasados si vienen en el combo de la ficha
+  if (
+    n.includes("gaseosa") ||
+    n.includes("bebida") ||
+    n.includes("refresco") ||
+    n.includes("postob") ||
+    n.includes("coca") ||
+    n.includes("pepsi") ||
+    n.includes("sprite") ||
+    n.includes("quatro") ||
+    n.includes("agua cristal") ||
+    n.includes("jugo")
+  ) {
+    return null;
+  }
+
+  // Mapeo semántico de icono vectorial FoodIcon
+  let icono = "kitchen";
+  if (n.includes("pan") || n.includes("brioche")) icono = "bread";
+  else if (n.includes("carne") || n.includes("res") || n.includes("hamburguesa")) icono = "meat";
+  else if (n.includes("pollo") || n.includes("pechuga") || n.includes("alitas")) icono = "chicken";
+  else if (n.includes("salchicha") || n.includes("chorizo") || n.includes("butifarra")) icono = "sausage";
+  else if (n.includes("papa") || n.includes("ripio") || n.includes("francesa")) icono = "fries";
+  else if (n.includes("queso") || n.includes("cheddar") || n.includes("mozzarella") || n.includes("costeño") || n.includes("costeno")) icono = "cheese";
+  else if (n.includes("tocineta") || n.includes("bacon") || n.includes("tocino")) icono = "bacon";
+  else if (n.includes("cebolla")) icono = "onion";
+  else if (n.includes("tomate")) icono = "tomato";
+  else if (n.includes("lechuga")) icono = "lettuce";
+  else if (n.includes("salsa") || n.includes("mayonesa") || n.includes("tartara") || n.includes("tártara") || n.includes("bbq") || n.includes("mostaza") || n.includes("ketchup")) icono = "sauce";
+  else if (n.includes("huevo") || n.includes("codorniz")) icono = "egg";
+  else if (n.includes("champiñon") || n.includes("champinon") || n.includes("hongo")) icono = "mushroom";
+  else if (n.includes("jalapeño") || n.includes("jalapeno") || n.includes("chile") || n.includes("picante")) icono = "pepper";
+  else if (n.includes("aguacate") || n.includes("guacamole")) icono = "avocado";
+  else if (n.includes("maiz") || n.includes("maíz") || n.includes("choclo")) icono = "salad";
+  else if (n.includes("pepinillo")) icono = "salad";
+  else if (n.includes("zanahoria")) icono = "carrot";
+
+  // ID único normalizado
+  const cleanId = rawName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+
+  return {
+    id: cleanId,
+    nombre: rawName,
+    icono
+  };
+};
 
 export const extractPersonalizables = (producto, ficha) => {
   if (!producto || isDrinkProduct(producto)) return [];
@@ -311,19 +384,66 @@ export const extractPersonalizables = (producto, ficha) => {
     return [];
   }
 
+  const items = [];
+  const seenNames = new Set();
+
+  // 1. EXTRAER DIRECTAMENTE DE LA FICHA TÉCNICA (DETALLES CON INSUMOS REALES)
+  if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
+    for (const d of ficha.detalles) {
+      const item = resolveInsumoPersonalizable(d);
+      if (item && !seenNames.has(item.nombre.toLowerCase())) {
+        seenNames.add(item.nombre.toLowerCase());
+        items.push(item);
+      }
+    }
+  }
+
+  // 2. EXTRAER DE FICHA.INGREDIENTES (SI EXISTE ARRAY DE INGREDIENTES)
+  if (ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
+    for (const s of ficha.ingredientes) {
+      const item = resolveInsumoPersonalizable(s);
+      if (item && !seenNames.has(item.nombre.toLowerCase())) {
+        seenNames.add(item.nombre.toLowerCase());
+        items.push(item);
+      }
+    }
+  }
+
+  // Si encontramos insumos reales en la receta técnica, retornarlos directamente
+  if (items.length > 0) {
+    return items;
+  }
+
+  // 3. FALLBACK INTELIGENTE: Si el producto aún no tiene ficha en BD, inferir sus ingredientes
   let allStrings = [];
-  if (ficha?.detalles && Array.isArray(ficha.detalles)) {
-    allStrings.push(...ficha.detalles.map(d => String(d.insumo?.nombre || d.nombreInsumo || "").toLowerCase()));
-  }
-  if (ficha?.ingredientes && Array.isArray(ficha.ingredientes)) {
-    allStrings.push(...ficha.ingredientes.map(s => String(s).toLowerCase()));
-  }
   if (producto?.descripcion) {
     allStrings.push(String(producto.descripcion).toLowerCase());
   }
+  if (producto?.nombre) {
+    allStrings.push(String(producto.nombre).toLowerCase());
+  }
   const combined = allStrings.join(" ");
 
-  return INGREDIENTES_CANDIDATOS.filter(c => c.aliases.some(alias => combined.includes(alias)));
+  const FALLBACK_CANDIDATES = [
+    { id: "pan", nombre: "Pan Brioche", icono: "bread", aliases: ["pan", "brioche", "artesanal"] },
+    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "res", "beef", "patty"] },
+    { id: "pollo", nombre: "Pechuga de Pollo", icono: "chicken", aliases: ["pollo", "chicken", "pechuga"] },
+    { id: "salchicha", nombre: "Salchicha", icono: "sausage", aliases: ["salchicha", "suiza", "americana", "hot dog", "perro"] },
+    { id: "papas", nombre: "Papas a la Francesa", icono: "fries", aliases: ["papa", "papas", "francesa", "salchipapa"] },
+    { id: "queso", nombre: "Queso Cheddar", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "costeño"] },
+    { id: "tocineta", nombre: "Tocineta Ahumada", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
+    { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion", "caramelizada"] },
+    { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
+    { id: "lechuga", nombre: "Lechuga Batavia", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
+    { id: "salsas", nombre: "Salsas de la Casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce", "tártara", "tartara", "bbq"] },
+    { id: "ripio", nombre: "Ripio de Papa", icono: "fries", aliases: ["ripio", "chips"] },
+    { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] },
+    { id: "huevo", nombre: "Huevo de Codorniz", icono: "egg", aliases: ["huevo", "codorniz"] },
+    { id: "champinones", nombre: "Champiñones", icono: "mushroom", aliases: ["champiñón", "champiñon", "champinon", "mushroom"] },
+    { id: "maiz", nombre: "Maíz Tierno", icono: "salad", aliases: ["maiz", "maíz", "choclo"] }
+  ];
+
+  return FALLBACK_CANDIDATES.filter((c) => c.aliases.some((alias) => combined.includes(alias)));
 };
 
 const QUICK_KITCHEN_TAGS = [
@@ -502,7 +622,30 @@ export function FastFoodProductModal({
   const { user, isAuthenticated } = useAuth?.() || {};
   const isDrink = isDrinkProduct(producto);
   const drinkHasSizes = hasDrinkSizes(producto);
-  const specs = useMemo(() => resolveNutritionalSpecs(producto, ficha), [producto, ficha]);
+
+  const [liveFicha, setLiveFicha] = useState(ficha);
+
+  useEffect(() => {
+    setLiveFicha(ficha);
+  }, [ficha]);
+
+  useEffect(() => {
+    if (isOpen && producto && !isDrink) {
+      const prodId = producto.id || producto.idProducto;
+      if (prodId && (!liveFicha || !liveFicha.detalles || liveFicha.detalles.length === 0)) {
+        fichasTecnicasService
+          .getFichaByProducto(prodId)
+          .then((f) => {
+            if (f && (f.detalles || f.idFicha)) setLiveFicha(f);
+          })
+          .catch((err) => {
+            console.warn("Ficha técnica fetch error in modal:", err);
+          });
+      }
+    }
+  }, [isOpen, producto, isDrink, liveFicha]);
+
+  const specs = useMemo(() => resolveNutritionalSpecs(producto, liveFicha), [producto, liveFicha]);
   const [activeTab, setActiveTab] = useState(() => {
     if (drinkHasSizes) return "presentacion";
     if (isDrink) return "ficha";
@@ -567,21 +710,14 @@ export function FastFoodProductModal({
         nombre: isCoca ? "Coca-Cola Original" : (isPepsi ? "Pepsi Regular" : `${producto?.nombre || "Sabor Original"} (Original)`),
         esOriginal: true,
         precio: Number(producto?.precio || 0),
-        imagen: (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
+        imagen: getDrinkBottleImage("400ml", producto, null, false) ||
+                (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
                 (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
                 producto?.imagen || null
       };
 
       const customFlavorVars = distinctFlavorVariants.map((v) => {
-        const vLower = String(v.nombre || "").toLowerCase();
-        let fallbackImg = v.imagen;
-        if (!fallbackImg) {
-          if (isPepsi && (vLower.includes("light") || vLower.includes("black") || vLower.includes("zero"))) {
-            fallbackImg = "/images/drinks/pepsi_light-removebg-preview.png";
-          } else if (isCoca && (vLower.includes("light") || vLower.includes("zero") || vLower.includes("sin az"))) {
-            fallbackImg = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
-          }
-        }
+        const fallbackImg = v.imagen || getDrinkBottleImage("400ml", producto, v, false);
         return {
           ...v,
           idProducto: isCoca ? 16 : (v.idProducto || producto?.id || producto?.idProducto),
@@ -981,7 +1117,7 @@ export function FastFoodProductModal({
           setActiveTab("ficha");
         }
       } else {
-        const canPersonalize = extractPersonalizables(producto, ficha).length > 0;
+        const canPersonalize = extractPersonalizables(producto, liveFicha).length > 0;
         setActiveTab(initialTab || (canPersonalize ? "personalizar" : "adiciones"));
       }
       setQuantity(1);
@@ -995,7 +1131,7 @@ export function FastFoodProductModal({
       setShowFullDesc(false);
       fetchReviews();
     }
-  }, [producto, isOpen, fetchReviews, initialTab]);
+  }, [producto, isOpen, fetchReviews, initialTab, liveFicha]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
@@ -1146,7 +1282,20 @@ export function FastFoodProductModal({
   );
 
   // Insumos personalizables (Mise en place)
-  const personalizables = extractPersonalizables(producto, ficha);
+  const personalizables = useMemo(
+    () => extractPersonalizables(producto, liveFicha),
+    [producto, liveFicha]
+  );
+
+  // Si la ficha técnica se carga de forma asíncrona y contiene personalizables, enfocar automáticamente la pestaña de personalizar
+  useEffect(() => {
+    if (!isDrink && liveFicha && (!initialTab || initialTab === "personalizar")) {
+      const items = extractPersonalizables(producto, liveFicha);
+      if (items.length > 0 && activeTab !== "resenas" && activeTab !== "bebidas") {
+        setActiveTab("personalizar");
+      }
+    }
+  }, [liveFicha, producto, isDrink, initialTab]);
 
   // Toggle remover ingrediente
   const toggleRemoveIngredient = (nombre) => {
@@ -1406,27 +1555,9 @@ export function FastFoodProductModal({
   // Determinar la imagen de la botella según tamaño y fórmula seleccionada
   let heroImage = productImage;
   if (isDrink && drinkHasSizes) {
-    if (selectedSizeId === "400ml") {
-      if (isPepsi && isDietSelected) {
-        heroImage = "/images/drinks/pepsi_light-removebg-preview.png";
-      } else if (isCoca && isDietSelected) {
-        heroImage = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
-      } else {
-        heroImage = getDrinkBottleImage("400ml", producto, null, false) || productImage;
-      }
-    } else if (selectedSizeId === "1.5L") {
-      if (isCoca && isDietSelected) {
-        heroImage = "/images/drinks/coca_cola_zero_1.5L.jpg";
-      } else {
-        heroImage = getDrinkBottleImage("1.5L", producto, matchedSizeVariant, false) || matchedSizeVariant?.imagen || productImage;
-      }
-    } else if (selectedSizeId === "2.5L") {
-      if (isCoca && isDietSelected) {
-        heroImage = "/images/drinks/coca_cola_zero_2.5L.jpg";
-      } else {
-        heroImage = getDrinkBottleImage("2.5L", producto, matchedSizeVariant, false) || matchedSizeVariant?.imagen || productImage;
-      }
-    }
+    heroImage = getDrinkBottleImage(selectedSizeId, producto, selectedVariant, isDietSelected) || productImage;
+  } else if (isDrink) {
+    heroImage = getDrinkBottleImage("400ml", producto, selectedVariant, isDietSelected) || selectedVariant?.imagen || productImage;
   } else {
     heroImage = selectedVariant?.imagen || productImage;
   }
@@ -1922,22 +2053,7 @@ export function FastFoodProductModal({
                         : (size.id === "400ml"
                             ? (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0 ? Number(selectedVariant.precio) : Number(producto?.precio || 0))
                             : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice));
-                      const bottleImg = (() => {
-                        if (size.id === "400ml") {
-                          if (isPepsi && isDietSelected) return "/images/drinks/pepsi_light-removebg-preview.png";
-                          if (isCoca && isDietSelected) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
-                          return getDrinkBottleImage("400ml", producto, null, false);
-                        }
-                        if (size.id === "1.5L") {
-                          if (isCoca && isDietSelected) return "/images/drinks/coca_cola_zero_1.5L.jpg";
-                          return getDrinkBottleImage("1.5L", producto, matchedVar, false);
-                        }
-                        if (size.id === "2.5L") {
-                          if (isCoca && isDietSelected) return "/images/drinks/coca_cola_zero_2.5L.jpg";
-                          return getDrinkBottleImage("2.5L", producto, matchedVar, false);
-                        }
-                        return getDrinkBottleImage(size.id, producto, matchedVar, isDietSelected);
-                      })();
+                      const bottleImg = getDrinkBottleImage(size.id, producto, selectedVariant, isDietSelected);
 
                       return (
                         <div
@@ -2012,7 +2128,7 @@ export function FastFoodProductModal({
                       <div>
                         <p className="font-bold">Presentación exclusiva de 400 ml</p>
                         <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-0.5">
-                          La versión <strong>Light / Cero Azúcar</strong> únicamente está disponible en botella personal de 400 ml. Los tamaños 1.5 L y 2.5 L corresponden a la fórmula tradicional de <strong>Pepsi Regular con azúcar</strong>.
+                          La versión <strong>{selectedVariant?.nombre || "Light / Cero Azúcar"}</strong> únicamente está disponible en botella personal de 400 ml. Los tamaños 1.5 L y 2.5 L corresponden a la fórmula tradicional de <strong>{isPepsi ? "Pepsi Regular con azúcar" : "fórmula tradicional"}</strong>.
                         </p>
                       </div>
                     </div>
@@ -2041,13 +2157,14 @@ export function FastFoodProductModal({
 
                         const varImg = variant.esOriginal
                           ? (
+                              getDrinkBottleImage("400ml", producto, null, false) ||
                               (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
                               (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
-                              producto.imagen ||
-                              getDrinkBottleImage("400ml", producto, null, false)
+                              producto.imagen
                             )
                           : (
                               variant.imagen ||
+                              getDrinkBottleImage("400ml", producto, variant, isDietVar) ||
                               (isPepsi && isDietVar ? "/images/drinks/pepsi_light-removebg-preview.png" : null) ||
                               (isCoca && isDietVar ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
                               getVariantImage(variant.nombre) ||
