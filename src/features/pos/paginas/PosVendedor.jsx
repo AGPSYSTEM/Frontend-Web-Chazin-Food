@@ -112,7 +112,9 @@ export default function PosVendedor() {
       })),
       observacion,
       cantidad: Number(cantidad) || 1,
-      stock: producto.stock
+      stock: producto.stock,
+      is2x1Promo: Boolean(producto.is2x1Promo),
+      cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1))
     });
 
     const isComboProd = Boolean(producto.configuracionCombo?.esCombo);

@@ -1243,6 +1243,8 @@ export function ClienteLanding() {
       nombre: finalProdName,
       precio: basePrice,
       cantidad: Number(cantidad) || 1,
+      cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1)),
+      is2x1Promo: Boolean(producto.is2x1Promo),
       stock: Number(producto.stock !== undefined ? producto.stock : 25),
       imagen: producto.imagen,
       personalizaciones: personalizaciones || [],
@@ -1647,11 +1649,15 @@ export function ClienteLanding() {
             productos: cart.map(item => {
               const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
               const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+              const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
+              const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
               return {
                 id: item.id,
                 idVariante: item.id,
                 nombre: item.nombre,
                 cantidad: item.cantidad,
+                cantidadCocina: kQty,
+                is2x1Promo: is2x1,
                 precioUnitario: Number(item.precio) || 0,
                 total: lineTotal,
                 observaciones: item.observacion || item.observaciones || item.especificaciones || "",
@@ -1667,11 +1673,15 @@ export function ClienteLanding() {
           detalles: cart.map(item => {
             const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+            const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
+            const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
             return {
               idProducto: item.idProducto || item.id,
               idVariante: item.idVariante || item.id || 1,
               sabor: item.sabor || null,
               cantidad: item.cantidad,
+              cantidadCocina: kQty,
+              is2x1Promo: is2x1,
               precioUnitario: Number(item.precio) || 0,
               subtotal: lineTotal,
               idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),

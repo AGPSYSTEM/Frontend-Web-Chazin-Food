@@ -444,12 +444,24 @@ export function PersonalizarEventoModal({
     if (!selectedProduct) return;
 
     const eventNameTag = stripEmojis(evento.nombreEvento || evento.nombre || "Evento Especial");
-    const kitchenNotes = [
+    const is2x1 = Boolean(
+      evento.tipoEvento === "PROMOCION_2X1" ||
+      (evento.nombreEvento && evento.nombreEvento.toLowerCase().includes("2x1")) ||
+      (evento.descripcion && (evento.descripcion.toLowerCase().includes("lleva 2") || evento.descripcion.toLowerCase().includes("paga 1")))
+    );
+    const kitchenPrepQty = is2x1 ? cantidad * 2 : cantidad;
+
+    let kitchenNotes = [
       removedIngredients.length > 0 ? `Sin ${removedIngredients.join(", Sin ")}` : "",
       customObservation.trim()
     ]
       .filter(Boolean)
       .join(". ");
+
+    if (is2x1) {
+      const promoTag = `🔥 ¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${cantidad} pagada + ${kitchenPrepQty - cantidad} gratis)`;
+      kitchenNotes = kitchenNotes ? `${promoTag} • ${kitchenNotes}` : promoTag;
+    }
 
     const itemToAdd = {
       id: selectedProduct.id || selectedProduct.idProducto,
@@ -458,6 +470,8 @@ export function PersonalizarEventoModal({
       nombreOriginal: selectedProduct.nombre,
       precio: promoPrice,
       cantidad: cantidad,
+      cantidadCocina: kitchenPrepQty,
+      is2x1Promo: is2x1,
       stock: Number(selectedProduct.stock || selectedProduct.stockActual || 50),
       imagen: selectedProduct.imagen,
       isEvento: true,
@@ -475,7 +489,8 @@ export function PersonalizarEventoModal({
         imagen: a.imagen || "sauce"
       })),
       ingredientesRemovidos: removedIngredients.filter((r) => !isEssentialIngredient(r, selectedProduct)),
-      observaciones: kitchenNotes || undefined
+      observaciones: kitchenNotes || undefined,
+      observacion: kitchenNotes || undefined
     };
 
     onAddToCart(itemToAdd, selectedDrinks);

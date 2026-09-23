@@ -343,35 +343,80 @@ export const isEssentialIngredient = (ingredientName, producto) => {
     ""
   ).toLowerCase().trim();
 
-  // 1. HAMBURGUESAS: La carne o pechuga de pollo principal es la base estructural insustituible
+  // INGREDIENTES GENERALES PERSONALIZABLES / REMOVIBLES POR EXCELENCIA:
+  // Lechuga, tomate, tocineta, queso, cebolla, salsas, ripio, guacamole, etc. NUNCA son obligatorios
+  if (
+    ingName.includes("lechuga") ||
+    ingName.includes("tomate") ||
+    ingName.includes("tocineta") ||
+    ingName.includes("bacon") ||
+    ingName.includes("tocino") ||
+    ingName.includes("queso") ||
+    ingName.includes("cheddar") ||
+    ingName.includes("mozzarella") ||
+    ingName.includes("costeño") ||
+    ingName.includes("costeno") ||
+    ingName.includes("cebolla") ||
+    ingName.includes("salsa") ||
+    ingName.includes("tártara") ||
+    ingName.includes("tartara") ||
+    ingName.includes("bbq") ||
+    ingName.includes("mayonesa") ||
+    ingName.includes("mostaza") ||
+    ingName.includes("ketchup") ||
+    ingName.includes("piña") ||
+    ingName.includes("pina") ||
+    ingName.includes("ripio") ||
+    ingName.includes("guacamole") ||
+    ingName.includes("aguacate") ||
+    ingName.includes("jalapeño") ||
+    ingName.includes("jalapeno") ||
+    ingName.includes("suero") ||
+    ingName.includes("maiz") ||
+    ingName.includes("maíz") ||
+    ingName.includes("champiñon") ||
+    ingName.includes("champinon")
+  ) {
+    return false;
+  }
+
+  // 1. HAMBURGUESAS: La base insustituible es tanto el PAN como la CARNE (o pechuga de pollo)
   const isBurger = catName.includes("hamburguesa") || prodName.includes("hamburguesa") || prodName.includes("burger");
   if (isBurger) {
     if (
+      ingName.includes("pan") ||
+      ingName.includes("brioche") ||
+      ingName.includes("artesanal") ||
       ingName.includes("carne") ||
       ingName.includes("res") ||
       ingName.includes("beef") ||
       ingName.includes("patty") ||
-      (prodName.includes("pollo") && (ingName.includes("pollo") || ingName.includes("pechuga")))
+      ingName.includes("pollo") ||
+      ingName.includes("pechuga")
     ) {
       return true;
     }
   }
 
-  // 2. PERROS CALIENTES: La salchicha es la esencia del perro caliente
+  // 2. PERROS CALIENTES: La base insustituible es tanto el PAN como la SALCHICHA (o embutido)
   const isHotDog = catName.includes("perro") || prodName.includes("perro") || prodName.includes("hot dog");
   if (isHotDog) {
     if (
+      ingName.includes("pan") ||
+      ingName.includes("perro") ||
+      ingName.includes("brioche") ||
       ingName.includes("salchicha") ||
       ingName.includes("suiza") ||
       ingName.includes("americana") ||
       ingName.includes("chorizo") ||
-      ingName.includes("butifarra")
+      ingName.includes("butifarra") ||
+      ingName.includes("embutido")
     ) {
       return true;
     }
   }
 
-  // 3. SALCHIPAPAS: Tanto las papas como las salchichas son la esencia indivisible de la salchipapa
+  // 3. SALCHIPAPAS: Tanto las PAPAS como la SALCHICHA son la esencia indivisible de la salchipapa
   const isSalchipapa = catName.includes("salchipapa") || prodName.includes("salchipapa");
   if (isSalchipapa) {
     if (
@@ -379,21 +424,37 @@ export const isEssentialIngredient = (ingredientName, producto) => {
       ingName.includes("francesa") ||
       ingName.includes("salchicha") ||
       ingName.includes("suiza") ||
-      ingName.includes("americana")
+      ingName.includes("americana") ||
+      ingName.includes("chorizo") ||
+      ingName.includes("embutido")
     ) {
       return true;
     }
   }
 
-  // 4. PLATOS Y PORCIONES DE PAPAS / ACOMPAÑAMIENTOS DE PAPA: No puedes pedir papas sin papa
-  const isPapasPlate = (catName.includes("acompa") || catName.includes("guarnic")) && prodName.includes("papa");
-  if (isPapasPlate) {
-    if (ingName.includes("papa") || ingName.includes("francesa") || ingName.includes("casco") || ingName.includes("corral")) {
+  // 4. COMBOS (Combo Pareja, Combo Personal, Combo Familiar, etc.)
+  const isCombo = catName.includes("combo") || prodName.includes("combo");
+  if (isCombo) {
+    if (
+      ingName.includes("pan") ||
+      ingName.includes("carne") ||
+      ingName.includes("res") ||
+      ingName.includes("salchicha") ||
+      ingName.includes("pollo")
+    ) {
       return true;
     }
   }
 
-  // 5. ALITAS O POLLO FRITO
+  // 5. PLATOS Y PORCIONES DE PAPAS / ACOMPAÑAMIENTOS DE PAPA
+  const isPapasPlate = (catName.includes("acompa") || catName.includes("guarnic") || catName.includes("papas")) && (prodName.includes("papa") || prodName.includes("francesa"));
+  if (isPapasPlate) {
+    if (ingName.includes("papa") || ingName.includes("francesa") || ingName.includes("casco") || ingName.includes("corral") || ingName.includes("espiral")) {
+      return true;
+    }
+  }
+
+  // 6. ALITAS O POLLO FRITO
   const isAlitas = catName.includes("alita") || prodName.includes("alita");
   if (isAlitas) {
     if (ingName.includes("alita") || ingName.includes("pollo")) {
@@ -1811,7 +1872,23 @@ export function FastFoodProductModal({
     }
 
     const cleanBaseName = drinkHasSizes ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : producto.nombre;
-    const customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
+    let customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
+
+    // Detección de promo 2x1 ("Paga 1 y lleva 2")
+    const is2x1Promo = Boolean(
+      eventInfo && (
+        eventInfo.tipo === "PROMOCION_2X1" ||
+        eventInfo.tipoEvento === "PROMOCION_2X1" ||
+        String(eventInfo.nombre || "").toLowerCase().includes("2x1") ||
+        String(eventInfo.descripcion || "").toLowerCase().includes("lleva 2") ||
+        String(eventInfo.descripcion || "").toLowerCase().includes("paga 1")
+      )
+    );
+
+    const kitchenPrepQty = is2x1Promo ? quantity * 2 : quantity;
+    if (is2x1Promo && !customName.toLowerCase().includes("2x1") && !customName.toLowerCase().includes("lleva 2")) {
+      customName = `${customName} (Promo 2x1 - Paga 1 Lleva 2)`;
+    }
 
     const safeRemovedIngredients = isDrink
       ? []
@@ -1825,6 +1902,9 @@ export function FastFoodProductModal({
       : safeRemovedIngredients.map((r) => `Sin ${r}`);
 
     let fullNotes = [];
+    if (is2x1Promo) {
+      fullNotes.push(`🔥 ¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${quantity} pagada + ${kitchenPrepQty - quantity} gratis)`);
+    }
     if (isComboWithDrinks && selectedDrinks.length > 0) {
       const drinksSummary = selectedDrinks
         .map((d) => `${d.cantidad || 1}x ${d.nombre}`)
@@ -1848,11 +1928,15 @@ export function FastFoodProductModal({
         saborSeleccionado: formulaTitle || cleanBaseName,
         configuracionCombo: comboConfig,
         precio: basePrice,
-        imagen: heroImage
+        imagen: heroImage,
+        is2x1Promo,
+        cantidadCocina: kitchenPrepQty
       },
       idVariante: chosenVarId,
       idProducto: targetProdId,
       cantidad: quantity,
+      cantidadCocina: kitchenPrepQty,
+      is2x1Promo,
       adiciones: isDrink ? [] : selectedAdditions,
       bebidas: isDrink ? [] : selectedDrinks,
       bebidasDelCombo: isComboWithDrinks ? selectedDrinks : [],
@@ -1885,7 +1969,7 @@ export function FastFoodProductModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
+      <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl sm:max-w-[700px] w-full shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         {/* ── Festival Drop Top Ribbon (Fast Food Industry Event Bar) ── */}
         {eventInfo && (
           <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
@@ -2162,24 +2246,24 @@ export function FastFoodProductModal({
           )}
 
           {/* ═══ 2. TABS NAVIGATION (CONDICIONADO: BEBIDAS TIENEN SABORES; COMIDA TIENE PERSONALIZAR Y ADICIONES) ═══ */}
-          <div className="px-4 sm:px-6 pt-3 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl overflow-x-auto no-scrollbar">
+          <div className="px-3 sm:px-4 pt-2.5 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl w-full">
               {isDrink ? (
                 <>
                   {drinkHasSizes && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("presentacion")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "presentacion"
                           ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
                       <Layers className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Tamaño & Presentación</span>
+                      <span className="truncate">Tamaño & Presentación</span>
                       <span
-                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-black leading-none whitespace-nowrap inline-flex items-center justify-center transition-colors ${
+                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black leading-none whitespace-nowrap inline-flex items-center justify-center transition-colors ${
                           activeTab === "presentacion"
                             ? "bg-[#f05454] text-white shadow-xs"
                             : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -2193,29 +2277,29 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Ficha Técnica</span>
+                    <span>Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Reseñas</span>
+                    <span>Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}
@@ -2227,19 +2311,19 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("personalizar")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "personalizar"
                           ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
                       <ChefHat className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">
+                      <span className="truncate">
                         {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
                       </span>
                       {removedIngredients.length > 0 && (
-                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
-                          {removedIngredients.length}
+                        <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-[#f05454] text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                          -{removedIngredients.length}
                         </span>
                       )}
                     </button>
@@ -2248,16 +2332,16 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("adiciones")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "adiciones"
                         ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Adiciones</span>
+                    <span>Adiciones</span>
                     {selectedAdditions.length > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-[#f05454] text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {selectedAdditions.length}
                       </span>
                     )}
@@ -2267,7 +2351,7 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("bebidas")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "bebidas"
                           ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm"
                           : isComboWithDrinks && !isComboDrinkComplete
@@ -2276,15 +2360,15 @@ export function FastFoodProductModal({
                       }`}
                     >
                       <FoodIcon name="drink" size={13} className="shrink-0" />
-                      <span className="whitespace-nowrap">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
+                      <span className="truncate">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
                       {isComboWithDrinks ? (
-                        <span className={`shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
+                        <span className={`shrink-0 min-w-[16px] px-1 py-0.5 rounded-full text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
                           isComboDrinkComplete ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
                         }`}>
                           {totalSelectedDrinkQty}/{requiredDrinkCount}
                         </span>
                       ) : selectedDrinks.length > 0 ? (
-                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                        <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-blue-600 text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                           {selectedDrinks.length}
                         </span>
                       ) : null}
@@ -2294,29 +2378,29 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Ficha Técnica</span>
+                    <span>Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Reseñas</span>
+                    <span>Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-amber-500 text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}

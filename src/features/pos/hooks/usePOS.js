@@ -90,7 +90,7 @@ export function usePOS({ initialClienteId = null } = {}) {
 
   const total = subtotal - descuento;
 
-  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1, stock = null }) {
+  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1, stock = null, is2x1Promo = false, cantidadCocina = null }) {
     setCart((prev) => {
       const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === productoId);
       const prodStock = Number(stock !== null ? stock : (prodMeta?.stock !== undefined ? prodMeta.stock : (prodMeta?.stockActual !== undefined ? prodMeta.stockActual : 9999)));
@@ -108,10 +108,31 @@ export function usePOS({ initialClienteId = null } = {}) {
       const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds);
       if (idx >= 0) {
         const newCart = [...prev];
-        newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + qtyToAdd };
+        const newQty = (newCart[idx].cantidad || 0) + qtyToAdd;
+        const isPromo = Boolean(newCart[idx].is2x1Promo || is2x1Promo);
+        newCart[idx] = {
+          ...newCart[idx],
+          cantidad: newQty,
+          cantidadCocina: isPromo ? newQty * 2 : newQty,
+          is2x1Promo: isPromo
+        };
         return newCart;
       }
-      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: qtyToAdd, observacion, stock: prodStock }];
+      return [
+        ...prev,
+        {
+          productoId,
+          varianteId,
+          nombre,
+          precio,
+          adiciones,
+          cantidad: qtyToAdd,
+          cantidadCocina: cantidadCocina || (is2x1Promo ? qtyToAdd * 2 : qtyToAdd),
+          is2x1Promo: Boolean(is2x1Promo),
+          observacion,
+          stock: prodStock
+        }
+      ];
     });
   }
 
@@ -131,7 +152,13 @@ export function usePOS({ initialClienteId = null } = {}) {
       }
 
       const next = [...prev];
-      next[index] = { ...next[index], cantidad: (next[index].cantidad || 0) + 1 };
+      const newQty = (next[index].cantidad || 0) + 1;
+      const isPromo = Boolean(next[index].is2x1Promo);
+      next[index] = {
+        ...next[index],
+        cantidad: newQty,
+        cantidadCocina: isPromo ? newQty * 2 : newQty
+      };
       return next;
     });
   }
@@ -143,7 +170,12 @@ export function usePOS({ initialClienteId = null } = {}) {
       if (newQty <= 0) {
         next.splice(index, 1);
       } else {
-        next[index] = { ...next[index], cantidad: newQty };
+        const isPromo = Boolean(next[index].is2x1Promo);
+        next[index] = {
+          ...next[index],
+          cantidad: newQty,
+          cantidadCocina: isPromo ? newQty * 2 : newQty
+        };
       }
       return next;
     });
@@ -212,11 +244,15 @@ export function usePOS({ initialClienteId = null } = {}) {
           productos: cart.map((it) => {
             const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
             const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+            const is2x1 = Boolean(it.is2x1Promo || it.nombre?.toLowerCase().includes("2x1") || it.observacion?.toLowerCase().includes("2x1"));
+            const kQty = it.cantidadCocina || (is2x1 ? (it.cantidad || 1) * 2 : (it.cantidad || 1));
             return {
               idProducto: it.productoId,
               idVariante: it.varianteId,
               nombre: it.nombre,
               cantidad: it.cantidad,
+              cantidadCocina: kQty,
+              is2x1Promo: is2x1,
               precioUnitario: Number(it.precio) || 0,
               total: lineTotal,
               observaciones: it.observacion || "",
@@ -229,10 +265,14 @@ export function usePOS({ initialClienteId = null } = {}) {
         items: cart.map((it) => {
           const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
           const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+          const is2x1 = Boolean(it.is2x1Promo || it.nombre?.toLowerCase().includes("2x1") || it.observacion?.toLowerCase().includes("2x1"));
+          const kQty = it.cantidadCocina || (is2x1 ? (it.cantidad || 1) * 2 : (it.cantidad || 1));
           return {
             idProducto: it.productoId,
             idVariante: it.varianteId,
             cantidad: it.cantidad,
+            cantidadCocina: kQty,
+            is2x1Promo: is2x1,
             precioUnitario: Number(it.precio) || 0,
             subtotal: lineTotal,
             idAdiciones: (it.adiciones || []).map((a) => a.idAdicion || a.id),

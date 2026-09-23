@@ -278,13 +278,20 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                         </span>
 
                         {/* Nombre del Platillo */}
-                        <span className={`font-bold text-sm truncate ${
-                          isListo
-                            ? "line-through text-gray-400 dark:text-gray-500"
-                            : "text-gray-900 dark:text-gray-100"
-                        }`}>
-                          {prod.nombre}
-                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`font-bold text-sm truncate ${
+                            isListo
+                              ? "line-through text-gray-400 dark:text-gray-500"
+                              : "text-gray-900 dark:text-gray-100"
+                          }`}>
+                            {prod.nombre}
+                          </span>
+                          {(prod.isPromo2x1 || prod.nombre?.includes("2x1") || itemObs?.includes("2x1")) && (
+                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-2xs">
+                              🔥 2x1 (Preparar {qty})
+                            </span>
+                          )}
+                        </div>
 
                         {/* Badges rápidos de resumen */}
                         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
