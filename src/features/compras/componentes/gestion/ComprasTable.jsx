@@ -25,7 +25,7 @@ function esEstadoCancelada(estado) {
   return e === "CANCELADA" || e === "ANULADA";
 }
 
-export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado, onCancelar }) {
+export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstado, onCancelar, procesandoId = null }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -98,8 +98,9 @@ export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstad
                         {estaPendiente && onUpdateEstado && (
                           <button
                             onClick={() => onUpdateEstado(c.id, "RECIBIDA")}
+                            disabled={procesandoId === c.id}
                             title="Marcar como Recibida (actualiza stock)"
-                            className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
@@ -107,8 +108,9 @@ export function ComprasTable({ compras = [], onViewDetail, onEdit, onUpdateEstad
                         {!estaCancelada && onCancelar && (
                           <button
                             onClick={() => onCancelar(c.id)}
+                            disabled={procesandoId === c.id}
                             title={estaRecibida ? "Anular compra (revierte stock)" : "Anular compra"}
-                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 dark:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 dark:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             <XCircle className="w-4 h-4" />
                           </button>

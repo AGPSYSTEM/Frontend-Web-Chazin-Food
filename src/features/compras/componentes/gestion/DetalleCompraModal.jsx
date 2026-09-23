@@ -1,4 +1,4 @@
-import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
 
 const estadoBadges = {
   RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Recibida" },
@@ -109,11 +109,26 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Estado actual</p>
                 <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{estadoInfo.label}</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  {estaPendiente && "⚠️ El stock NO ha sido actualizado aún. Marca como Recibida cuando lleguen los insumos."}
-                  {estaRecibida && "✅ El stock de los insumos fue actualizado cuando se marcó como Recibida."}
-                  {estaCancelada && "❌ Esta compra fue anulada. Si tenía stock asociado, fue revertido."}
-                </p>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  {estaPendiente && (
+                    <>
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>El stock NO ha sido actualizado aún. Marca como Recibida cuando lleguen los insumos.</span>
+                    </>
+                  )}
+                  {estaRecibida && (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span>El stock de los insumos fue actualizado cuando se marcó como Recibida.</span>
+                    </>
+                  )}
+                  {estaCancelada && (
+                    <>
+                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                      <span>Esta compra fue anulada. Si tenía stock asociado, fue revertido.</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">

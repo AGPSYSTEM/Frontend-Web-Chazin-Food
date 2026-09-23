@@ -1,34 +1,17 @@
-import React, { useMemo } from "react";
-import { Search, ShoppingCart, Sparkles } from "lucide-react";
+import React, { useMemo, useState, useEffect } from "react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
-
-const categoryIcons = {
-  default: "🍽️",
-  burgers: "🍔",
-  bebidas: "🥤",
-  pollo: "🍗",
-  papas: "🍟",
-  acompañamientos: "🍟",
-  postres: "🍰",
-};
-
-const getCategoryEmoji = (nombre = "") => {
-  const normalized = nombre.toLowerCase();
-  if (normalized.includes("hambur")) return "🍔";
-  if (normalized.includes("perro")) return "🌭";
-  if (normalized.includes("combo")) return "🍱";
-  if (normalized.includes("pizza")) return "🍕";
-  if (normalized.includes("pollo")) return "🍗";
-  if (normalized.includes("pap")) return "🍟";
-  if (normalized.includes("beb") || normalized.includes("gaseos")) return "🥤";
-  if (normalized.includes("acompa")) return "🥗";
-  if (normalized.includes("post")) return "🍰";
-  return categoryIcons.default;
-};
+import PosCheckoutModal from "../components/PosCheckoutModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { useToast } from "@/shared/context/ToastContext";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export default function PosVendedor() {
+  const toast = useToast();
   const {
     categorias,
     productos,
@@ -48,45 +31,294 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [customizingFicha, setCustomizingFicha] = useState(null);
+  const [allAdiciones, setAllAdiciones] = useState([]);
+  const [fichasCache, setFichasCache] = useState({});
+
+  useEffect(() => {
+    adicionesService
+      .getAdiciones()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setAllAdiciones(
+            res.filter(
+              (a) => a.estado === 1 || a.estado === "Activo" || a.estado === undefined
+            )
+          );
+        }
+      })
+      .catch((err) => console.warn("Error cargando adiciones en POS:", err));
+  }, []);
+
+  const allBebidas = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+      const name = String(p.nombre || "").toLowerCase();
+      return (
+        cat.includes("bebida") ||
+        cat.includes("gaseos") ||
+        cat.includes("refresco") ||
+        name.includes("gaseosa") ||
+        name.includes("agua")
+      );
+    });
+  }, [productos]);
+
+  const handleOpenCustomize = async (producto) => {
+    setCustomizingProduct(producto);
+    const prodId = producto.id || producto.idProducto;
+    if (fichasCache[prodId]) {
+      setCustomizingFicha(fichasCache[prodId]);
+      return;
+    }
+
+    try {
+      const f = await fichasTecnicasService.getFichaByProducto(prodId);
+      if (f) {
+        setFichasCache((prev) => ({ ...prev, [prodId]: f }));
+        setCustomizingFicha(f);
+      } else {
+        setCustomizingFicha(null);
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar ficha técnica para producto:", prodId);
+      setCustomizingFicha(null);
+    }
+  };
+
+  const handleModalConfirm = ({
+    producto,
+    cantidad,
+    adiciones,
+    bebidas,
+    observacion
+  }) => {
+    const displayName = producto.nombrePersonalizado || producto.nombre;
+    addProduct({
+      productoId: producto.idProducto || producto.id,
+      varianteId: producto.idVariante || producto.id || producto.idProducto,
+      nombre: displayName,
+      precio: producto.precio,
+      adiciones: (adiciones || []).map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        id: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio || 0),
+        cantidad: Number(a.cantidad || 1),
+        imagen: a.imagen || ""
+      })),
+      observacion,
+      cantidad: Number(cantidad) || 1,
+      stock: producto.stock
+    });
+
+    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let includedQuotaRemaining = requiredDrinks;
+
+    if (Array.isArray(bebidas) && bebidas.length > 0) {
+      for (const b of bebidas) {
+        const qty = Number(b.cantidad || 1);
+        const covered = isComboProd ? Math.min(includedQuotaRemaining, qty) : 0;
+        const extraQty = qty - covered;
+        if (isComboProd) includedQuotaRemaining -= covered;
+
+        // Solo agregar al carrito como ítem con costo si es un producto normal O es bebida extra por encima del combo
+        if (!isComboProd || extraQty > 0) {
+          addProduct({
+            productoId: b.id || b.idProducto,
+            varianteId: b.id || b.idProducto,
+            nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
+            precio: Number(b.precio || 0),
+            adiciones: [],
+            observacion: isComboProd ? `Bebida extra de ${displayName}` : `Acompañante de ${displayName}`,
+            cantidad: isComboProd ? extraQty : qty,
+            stock: b.stock
+          });
+        }
+      }
+    }
+
+    setCustomizingProduct(null);
+    setCustomizingFicha(null);
+    toast.success(
+      "¡Producto configurado!",
+      `${displayName} agregado al pedido con éxito.`
+    );
+  };
+
+  const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+
+  const handleConfirmCheckout = async (checkoutData) => {
+    try {
+      await submitOrder(checkoutData);
+      setIsCheckoutModalOpen(false);
+      setIsMobileCartOpen(false);
+      toast.success("¡Venta completada!", "El pedido fue registrado exitosamente.");
+    } catch (err) {
+      toast.error("Error al registrar venta", err.message || "No se pudo procesar la venta.");
+    }
+  };
+
+  const eventProductsCount = useMemo(() => {
+    const now = new Date();
+    return (productos || []).filter((p) => {
+      const evts = Array.isArray(p.eventos) ? p.eventos : [];
+      return evts.some((e) => {
+        if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+        if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+        if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+        return true;
+      });
+    }).length;
+  }, [productos]);
+
   const visibleProducts = useMemo(() => {
     return (productos || []).filter((p) => {
-      const matchCat = categoriaActiva === null || p.idCategoriaProducto === categoriaActiva || p.categoriaId === categoriaActiva;
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchCat && matchSearch;
+      if (!matchSearch) return false;
+      if (categoriaActiva === null) return true;
+
+      if (categoriaActiva === "eventos") {
+        const evts = Array.isArray(p.eventos) ? p.eventos : [];
+        const now = new Date();
+        return evts.some((e) => {
+          if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+          if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+          if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+          return true;
+        });
+      }
+
+      const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
+      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+      const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
+      const prodName = (p.nombre || "").toLowerCase().trim();
+
+      const matchCatId = (p.idCategoriaProducto === categoriaActiva) || (p.categoriaId === categoriaActiva) || (p.id === categoriaActiva);
+      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+
+      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+      const matchSubcategory = singularCatName.length >= 3 && (
+        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      );
+
+      return matchCatId || matchCatName || matchSubcategory;
     });
-  }, [productos, categoriaActiva, searchTerm]);
+  }, [productos, categoriaActiva, searchTerm, categorias]);
 
   return (
-    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 transition-colors">
+    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 pb-24 lg:pb-5 transition-colors">
       <div className="w-full">
         {/* Header */}
-        <header className="mb-4 flex items-center justify-between gap-3 px-1 py-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white">
-              <ShoppingCart className="h-5 w-5" />
+        <header className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1 py-1">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white shrink-0">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
+                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
-              <h1 className="text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
-            </div>
+
+            {/* Mobile quick cart badge */}
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="lg:hidden relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 border border-red-200 dark:border-red-800 shrink-0"
+              aria-label="Ver carrito"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalCartItems > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f05454] text-[10px] font-black text-white">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm">
-            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400" />
+          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
+            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
             <input
               aria-label="Buscar producto"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-48 sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
+              className="w-full sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
               placeholder="Buscar producto..."
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </header>
 
+        {/* Mobile Horizontal Categories (Visible only on < lg) */}
+        <div className="lg:hidden mb-3.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCategoriaActiva(null)}
+              className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                categoriaActiva === null
+                  ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                  : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+              }`}
+            >
+              <FoodIcon name="plate" size={16} />
+              <span>Todos</span>
+            </button>
+
+            {eventProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setCategoriaActiva("eventos")}
+                className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
+                  categoriaActiva === "eventos"
+                    ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
+                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 animate-pulse" />
+                <span>Eventos ({eventProductsCount})</span>
+              </button>
+            )}
+
+            {categorias.map((c) => {
+              const active = categoriaActiva === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoriaActiva(c.id)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                    active
+                      ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                      : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+                  }`}
+                >
+                  <FoodIcon name={c.nombre} size={16} />
+                  <span>{c.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 3 Column Flex Layout */}
         <div className="flex flex-col lg:flex-row gap-4 w-full items-start">
-          {/* Categorías (Left Column) */}
-          <aside className="w-full lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm">
+          {/* Categorías (Left Column - Desktop only) */}
+          <aside className="hidden lg:block lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm sticky top-4 self-start">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-black text-[#1f2d3d] dark:text-gray-100">Categorías</h2>
               <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
@@ -104,9 +336,24 @@ export default function PosVendedor() {
                     : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
                 }`}
               >
-                <span className="text-base">🍽️</span>
+                <FoodIcon name="plate" size={16} />
                 <span className="truncate">Todos</span>
               </button>
+
+              {eventProductsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCategoriaActiva("eventos")}
+                  className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-black transition-all ${
+                    categoriaActiva === "eventos"
+                      ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_8px_16px_rgba(245,158,11,0.3)]"
+                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 border border-amber-200/80 dark:border-amber-800/60"
+                  }`}
+                >
+                  <Flame className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-pulse shrink-0" />
+                  <span className="truncate">Eventos ({eventProductsCount})</span>
+                </button>
+              )}
 
               {categorias.map((c) => {
                 const active = categoriaActiva === c.id;
@@ -121,7 +368,7 @@ export default function PosVendedor() {
                         : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
                     }`}
                   >
-                    <span className="text-base">{getCategoryEmoji(c.nombre)}</span>
+                    <FoodIcon name={c.nombre} size={16} />
                     <span className="truncate">{c.nombre}</span>
                   </button>
                 );
@@ -144,27 +391,29 @@ export default function PosVendedor() {
                 <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
               </div>
             ) : (
-              <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+              <div className="grid gap-3.5 sm:gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleProducts.map((p) => (
                   <ProductCard
                     key={p.id}
                     producto={p}
-                    onAdd={({ productoId, varianteId, nombre, precio, adiciones }) =>
-                      addProduct({ productoId, varianteId, nombre, precio, adiciones })
+                    onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
+                      addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
                     }
+                    onCustomize={handleOpenCustomize}
                   />
                 ))}
               </div>
             )}
           </main>
 
-          {/* Carrito (Right Column Panel) */}
-          <section className="w-full lg:w-[285px] shrink-0">
+          {/* Carrito (Right Column Panel - Desktop only) */}
+          <section className="hidden lg:block lg:w-[285px] shrink-0 sticky top-4 self-start">
             <Cart
               cart={cart}
               increment={increment}
               decrement={decrement}
               setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => setIsCheckoutModalOpen(true)}
               submitOrder={() => submitOrder()}
               loading={loading}
               subtotal={subtotal}
@@ -174,6 +423,97 @@ export default function PosVendedor() {
           </section>
         </div>
       </div>
+
+      {/* Mobile Floating Cart Action Bar (< lg) */}
+      {totalCartItems > 0 && (
+        <div className="lg:hidden fixed bottom-3 inset-x-3 z-40">
+          <div className="bg-gray-900/95 dark:bg-gray-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-gray-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f05454] text-white shrink-0">
+                <ShoppingBag className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#f05454] text-[10px] font-black">
+                  {totalCartItems}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Total
+                </p>
+                <p className="text-base font-black text-white truncate">
+                  ${Number(total || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCheckoutModalOpen(true)}
+              className="px-4 py-2.5 bg-[#f05454] hover:bg-[#e04545] text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
+            >
+              <span>Finalizar Pedido</span>
+              <ChevronRight className="h-4 w-4 stroke-[3]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Slide-up Modal Drawer */}
+      {isMobileCartOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileCartOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 w-full sm:max-w-md max-h-[85vh] bg-[#f8f8f8] dark:bg-gray-900 rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
+            <Cart
+              cart={cart}
+              increment={increment}
+              decrement={decrement}
+              setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => {
+                setIsMobileCartOpen(false);
+                setIsCheckoutModalOpen(true);
+              }}
+              submitOrder={() => submitOrder()}
+              loading={loading}
+              subtotal={subtotal}
+              descuento={descuento}
+              total={total}
+              onClose={() => setIsMobileCartOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Pos Checkout Modal */}
+      <PosCheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        cart={cart}
+        subtotal={subtotal}
+        descuento={descuento}
+        total={total}
+        onConfirm={handleConfirmCheckout}
+        loading={loading}
+      />
+
+      {/* Fast Food Product Customization Modal (Mise en place, Adiciones, Ficha Técnica) */}
+      <FastFoodProductModal
+        isOpen={Boolean(customizingProduct)}
+        onClose={() => {
+          setCustomizingProduct(null);
+          setCustomizingFicha(null);
+        }}
+        producto={customizingProduct}
+        ficha={customizingFicha}
+        allAdiciones={allAdiciones}
+        allBebidas={allBebidas}
+        onConfirm={handleModalConfirm}
+        mode="pos"
+      />
     </div>
   );
 }
+

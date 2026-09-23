@@ -31,7 +31,6 @@ export function usePOS({ initialClienteId = null } = {}) {
       try {
         setLoading(true);
         const resCategorias = await posService.getCategorias();
-        console.log('Respuesta Categorías:', resCategorias);
 
         const rawList = Array.isArray(resCategorias)
           ? resCategorias
@@ -58,7 +57,6 @@ export function usePOS({ initialClienteId = null } = {}) {
       try {
         setLoading(true);
         const resProductos = await posService.getProductos();
-        console.log('Respuesta Productos:', resProductos);
 
         const rawList = Array.isArray(resProductos)
           ? resProductos
@@ -83,7 +81,7 @@ export function usePOS({ initialClienteId = null } = {}) {
   const subtotal = useMemo(() => {
     return cart.reduce((acc, it) => {
       const base = (it.precio || 0) * (it.cantidad || 1);
-      const adds = (it.adiciones || []).reduce((a, b) => a + (b.precio || 0), 0) * (it.cantidad || 1);
+      const adds = (it.adiciones || []).reduce((a, b) => a + (Number(b.precio) || 0) * (Number(b.cantidad) || 1), 0) * (it.cantidad || 1);
       return acc + base + adds;
     }, 0);
   }, [cart]);
@@ -92,21 +90,46 @@ export function usePOS({ initialClienteId = null } = {}) {
 
   const total = subtotal - descuento;
 
-  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "" }) {
+  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1, stock = null }) {
     setCart((prev) => {
-      const adicionIds = (adiciones || []).map((a) => a.id || a).slice();
+      const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === productoId);
+      const prodStock = Number(stock !== null ? stock : (prodMeta?.stock !== undefined ? prodMeta.stock : (prodMeta?.stockActual !== undefined ? prodMeta.stockActual : 9999)));
+
+      const totalInCart = prev
+        .filter((it) => it.productoId === productoId)
+        .reduce((sum, it) => sum + (it.cantidad || 1), 0);
+
+      const qtyToAdd = Number(cantidad) > 0 ? Number(cantidad) : 1;
+      if (totalInCart + qtyToAdd > prodStock) {
+        return prev;
+      }
+
+      const adicionIds = (adiciones || []).map((a) => (typeof a === "object" ? `${a.id || a.idAdicion}x${a.cantidad || 1}` : a)).slice();
       const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds);
       if (idx >= 0) {
         const newCart = [...prev];
-        newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + 1 };
+        newCart[idx] = { ...newCart[idx], cantidad: (newCart[idx].cantidad || 0) + qtyToAdd };
         return newCart;
       }
-      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: 1, observacion }];
+      return [...prev, { productoId, varianteId, nombre, precio, adiciones, cantidad: qtyToAdd, observacion, stock: prodStock }];
     });
   }
 
   function increment(index) {
     setCart((prev) => {
+      if (!prev[index]) return prev;
+      const target = prev[index];
+      const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === target.productoId);
+      const prodStock = Number(target.stock !== undefined ? target.stock : (prodMeta?.stock !== undefined ? prodMeta.stock : 9999));
+
+      const totalInCart = prev
+        .filter((it) => it.productoId === target.productoId)
+        .reduce((sum, it) => sum + (it.cantidad || 1), 0);
+
+      if (totalInCart + 1 > prodStock) {
+        return prev;
+      }
+
       const next = [...prev];
       next[index] = { ...next[index], cantidad: (next[index].cantidad || 0) + 1 };
       return next;
@@ -149,22 +172,77 @@ export function usePOS({ initialClienteId = null } = {}) {
     });
   }
 
-  async function submitOrder({ idUsuario = authenticatedUserId } = {}) {
+  async function submitOrder(checkoutData = {}) {
     setLoading(true);
     setError(null);
     try {
+      const {
+        idUsuario = authenticatedUserId,
+        tipoEntrega = "Recoger",
+        direccion = "Recoger en Local",
+        clienteNombre = "Cliente Mostrador",
+        metodoPago = "Efectivo",
+        datosPago = {},
+        observacion = ""
+      } = checkoutData;
+
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
         idCliente: clienteId,
-        observacion: observacionOrden,
+        clienteNombre,
+        tipoVenta: "PUNTO_DE_VENTA",
+        tipoEntrega,
+        direccion,
+        metodoPago,
+        subtotal: subtotal,
+        descuentoAplicado: descuento,
+        total: total,
+        observacion: observacion || observacionOrden,
+        observaciones: {
+          tipoEntrega,
+          direccion,
+          metodoPago,
+          clienteNombre,
+          efectivoConCuanto: datosPago.efectivoConCuanto || null,
+          vueltoEfectivo: datosPago.vueltoEfectivo || null,
+          tarjetaNumero: datosPago.tarjetaNumero || null,
+          transferBanco: datosPago.transferBanco || null,
+          transferenciaReferencia: datosPago.transferReferencia || null,
+          especificaciones: observacion || observacionOrden || "",
+          productos: cart.map((it) => {
+            const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
+            const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+            return {
+              idProducto: it.productoId,
+              idVariante: it.varianteId,
+              nombre: it.nombre,
+              cantidad: it.cantidad,
+              precioUnitario: Number(it.precio) || 0,
+              total: lineTotal,
+              observaciones: it.observacion || "",
+              adiciones: it.adiciones || []
+            };
+          })
+        },
         estado: "PENDIENTE",
-        items: cart.map((it) => ({
-          idVariante: it.varianteId,
-          cantidad: it.cantidad,
-          idAdiciones: (it.adiciones || []).map((a) => a.id),
-          observacion: it.observacion || ""
-        }))
+        estadoEntrega: "PENDIENTE",
+        items: cart.map((it) => {
+          const itAdds = (it.adiciones || []).reduce((s, a) => s + (Number(a.precio) || 0), 0);
+          const lineTotal = ((Number(it.precio) || 0) + itAdds) * (it.cantidad || 1);
+          return {
+            idProducto: it.productoId,
+            idVariante: it.varianteId,
+            cantidad: it.cantidad,
+            precioUnitario: Number(it.precio) || 0,
+            subtotal: lineTotal,
+            idAdiciones: (it.adiciones || []).map((a) => a.idAdicion || a.id),
+            adiciones: it.adiciones || [],
+            observacion: it.observacion || "",
+            nombre: it.nombre
+          };
+        })
       };
+
       const res = await posService.createVenta(payload);
       setCart([]);
       return res;

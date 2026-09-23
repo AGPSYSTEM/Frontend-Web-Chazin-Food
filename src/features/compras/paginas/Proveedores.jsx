@@ -5,6 +5,7 @@ import { ProveedoresTable } from "../componentes/proveedores/ProveedoresTable";
 import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
 import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProveedoresView";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Proveedores() {
   const {
@@ -99,7 +100,7 @@ export function Proveedores() {
     : filteredProveedores.filter((p) => filterEstado !== "Inactivo" ? (p.estado === "Activo" || p.estado === 1) : true);
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -244,7 +245,7 @@ export function Proveedores() {
 
           {/* Table */}
           {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando proveedores...</div>
+            <ChazinLoader text="CARGANDO PROVEEDORES" size="md" />
           ) : (
             <ProveedoresTable
               proveedores={displayProveedores}

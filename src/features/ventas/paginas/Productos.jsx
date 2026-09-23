@@ -7,6 +7,7 @@ import { VerProductoModal } from "../componentes/productos/VerProductoModal";
 import { EventosModal } from "../componentes/productos/EventosModal";
 import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
 import { eventosService } from "../servicios/eventosService";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Productos() {
   const {
@@ -32,6 +33,7 @@ export function Productos() {
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
+  const [eventoParaEditar, setEventoParaEditar] = useState(null);
   const [eventos, setEventos] = useState([]);
 
   const fetchEventos = useCallback(async () => {
@@ -96,8 +98,9 @@ export function Productos() {
     }
   };
 
-  const handleCreateEvento = (producto) => {
+  const handleCreateEvento = (producto, existingEvento = null) => {
     setProductoParaEvento(producto);
+    setEventoParaEditar(existingEvento);
     setCrearEventoModalOpen(true);
   };
 
@@ -107,7 +110,7 @@ export function Productos() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -223,7 +226,7 @@ export function Productos() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando productos...</div>
+        <ChazinLoader text="CARGANDO PRODUCTOS" size="md" />
       ) : (
         <ProductosTable
           productos={filteredProductos}
@@ -254,18 +257,40 @@ export function Productos() {
         />
       )}
 
-      {/* Eventos Modal (Versionamiento de Fichas Técnicas) */}
+      {/* Eventos Modal */}
       <EventosModal
         isOpen={eventosModalOpen}
         onClose={() => setEventosModalOpen(false)}
         eventos={eventos}
+        onOpenCrearEvento={() => {
+          setEventosModalOpen(false);
+          setProductoParaEvento(null);
+          setEventoParaEditar(null);
+          setCrearEventoModalOpen(true);
+        }}
+        onEditEvento={(evt) => {
+          setEventosModalOpen(false);
+          const relatedProd = productos.find(p => p.id === (evt.idProducto || evt.producto?.id)) || evt.producto || null;
+          setProductoParaEvento(relatedProd);
+          setEventoParaEditar(evt);
+          setCrearEventoModalOpen(true);
+        }}
+        onRefresh={() => {
+          fetchEventos();
+          refetch();
+        }}
       />
 
-      {/* Crear Evento Modal */}
+      {/* Crear / Editar Evento Modal */}
       <CrearEventoModal
         isOpen={crearEventoModalOpen}
-        onClose={() => setCrearEventoModalOpen(false)}
+        onClose={() => {
+          setCrearEventoModalOpen(false);
+          setProductoParaEvento(null);
+          setEventoParaEditar(null);
+        }}
         producto={productoParaEvento}
+        eventoToEdit={eventoParaEditar}
         onCreated={handleEventoCreated}
       />
     </div>

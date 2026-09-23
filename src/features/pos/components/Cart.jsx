@@ -1,8 +1,29 @@
 import React from "react";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat } from "lucide-react";
 
-export function Cart({ cart, increment, decrement, setItemObservacion, submitOrder, loading, subtotal, descuento, total }) {
+export function Cart({
+  cart,
+  increment,
+  decrement,
+  setItemObservacion,
+  submitOrder,
+  onOpenCheckout = null,
+  loading,
+  subtotal,
+  descuento,
+  total,
+  onClose = null
+}) {
   const isEmpty = cart.length === 0;
+
+  const handleProceed = () => {
+    if (onOpenCheckout) {
+      if (onClose) onClose();
+      onOpenCheckout();
+    } else {
+      submitOrder();
+    }
+  };
 
   return (
     <div className="flex h-full flex-col rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-[#f8f8f8] dark:bg-gray-900/60 p-4 shadow-sm transition-colors">
@@ -11,8 +32,19 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
           <p className="text-[0.65rem] uppercase tracking-[0.2em] font-bold text-[#7a8698] dark:text-gray-400">PEDIDO</p>
           <h3 className="text-xl font-black text-[#1f2d3d] dark:text-gray-100">Carrito</h3>
         </div>
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
-          <ShoppingCart className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
+            <ShoppingCart className="h-4 w-4" />
+          </div>
         </div>
       </div>
 
@@ -44,13 +76,24 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
                 </button>
               </div>
 
-              {(it.adiciones || []).length > 0 && (
+              {Array.isArray(it.adiciones) && it.adiciones.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {(it.adiciones || []).map((adicion, i) => (
-                    <span key={`${adicion.id}-${i}`} className="rounded-full bg-[#eef5ff] dark:bg-blue-900/30 px-2 py-0.5 text-[10px] font-medium text-[#49617a] dark:text-blue-300">
-                      {adicion.nombre}
-                    </span>
-                  ))}
+                  {it.adiciones.map((adicion, i) => {
+                    const adName = typeof adicion === "object" ? (adicion.nombre || adicion.nombreAdicion || "Adición") : String(adicion);
+                    const adQty = typeof adicion === "object" && Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
+                    const adPrice = typeof adicion === "object" ? (Number(adicion.precio || 0) * (Number(adicion.cantidad) || 1)) : 0;
+                    return (
+                      <span
+                        key={`${typeof adicion === 'object' ? (adicion.idAdicion || adicion.id || i) : i}-${i}`}
+                        className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
+                      >
+                        <span>+{adQty}{adName}</span>
+                        {adPrice > 0 && (
+                          <span className="opacity-75">(${adPrice.toLocaleString("es-CO")})</span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
 
@@ -74,13 +117,27 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
                 </div>
 
                 <div className="text-right text-xs font-black text-[#1f2d3d] dark:text-gray-100">
-                  ${Number((it.precio || 0) * (it.cantidad || 1)).toLocaleString("es-CO")}
+                  ${Number(
+                    ((Number(it.precio) || 0) +
+                      (it.adiciones || []).reduce(
+                        (s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1),
+                        0
+                      )) *
+                      (it.cantidad || 1)
+                  ).toLocaleString("es-CO")}
                 </div>
               </div>
 
+              {it.observacion && (
+                <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="truncate">{it.observacion}</span>
+                </div>
+              )}
+
               <div className="mt-2">
                 <input
-                  placeholder="Observaciones..."
+                  placeholder="Instrucción de cocina..."
                   className="w-full rounded-lg border border-[#e2e8f0] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 px-2.5 py-1 text-xs text-[#29384d] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-[#f05454]"
                   value={it.observacion || ""}
                   onChange={(e) => setItemObservacion(idx, e.target.value)}
@@ -108,11 +165,11 @@ export function Cart({ cart, increment, decrement, setItemObservacion, submitOrd
 
       <button
         type="button"
-        onClick={() => submitOrder()}
+        onClick={handleProceed}
         disabled={loading || isEmpty}
-        className="mt-3 w-full rounded-[16px] bg-[#f05454] px-4 py-2.5 text-xs font-bold text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition hover:bg-[#e64b4b] disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+        className="mt-3 w-full rounded-[16px] bg-[#f05454] hover:bg-[#e04545] px-4 py-3 text-xs sm:text-sm font-black text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer active:scale-98"
       >
-        {loading ? "Procesando..." : "Enviar orden"}
+        {loading ? "Procesando..." : "Finalizar Pedido"}
       </button>
     </div>
   );

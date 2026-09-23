@@ -1,4 +1,4 @@
-import { X, Package, Calendar, Tag, ShieldCheck, DollarSign, Layers, Building2, AlignLeft } from "lucide-react";
+import { X, Package, Calendar, Tag, ShieldCheck, DollarSign, Layers, Building2, AlignLeft, Sparkles } from "lucide-react";
 
 export function VerInsumoModal({ isOpen, onClose, insumo }) {
   if (!isOpen || !insumo) return null;
@@ -130,6 +130,30 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
               </p>
             </div>
           </div>
+
+          {/* Bloque de Adición si está habilitado */}
+          {(insumo.esAdicion === 1 || insumo.esAdicion === true || insumo.esAdicion === "1") && (
+            <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                    Habilitado como Adición
+                  </span>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    Precio Adición: ${Number(insumo.precioAdicion || 0).toLocaleString("es-CO")}
+                  </p>
+                </div>
+              </div>
+              {insumo.imagen && (
+                <span className="text-xs text-purple-600 dark:text-purple-400 bg-white dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800 font-medium">
+                  {insumo.imagen}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Descripción */}
           <div className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800">

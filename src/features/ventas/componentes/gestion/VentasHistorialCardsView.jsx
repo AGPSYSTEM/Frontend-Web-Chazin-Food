@@ -1,4 +1,5 @@
 import { Calendar, Clock, Eye } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
   if (!dateVal) return fallback;
@@ -20,48 +21,59 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
       codigoPedido: "PED-002",
       fecha: "2026-06-09",
       horario: "13:05 – 13:20",
-      precioOriginal: 45000,
       total: 40500,
-      descuentoPorcentaje: 10,
-      productos: [{ cantidad: 1, nombre: "Combo Familiar" }]
+      descuentoPorcentaje: 0,
+      montoDescuento: 0,
+      productos: [
+        { cantidad: 1, nombre: "Hamburguesa Chazin Clásica" },
+        { cantidad: 1, nombre: "Papas Fritas Medianas" },
+        { cantidad: 1, nombre: "Coca-Cola 400ml" }
+      ]
     },
     {
       id: 2,
       clienteNombre: "Juan Garcia",
-      codigoPedido: "PED-001",
+      codigoPedido: "PED-003",
       fecha: "2026-06-09",
-      horario: "12:30 – 12:45",
-      total: 28000,
+      horario: "13:12 – 13:30",
+      total: 78500,
+      descuentoPorcentaje: 10,
+      montoDescuento: 8722,
+      precioOriginal: 87222,
       productos: [
-        { cantidad: 1, nombre: "Hamburguesa Especial" },
-        { cantidad: 1, nombre: "Coca Cola" },
-        { cantidad: 2, nombre: "Papas Fritas" }
+        { cantidad: 2, nombre: "Hamburguesa Doble Carne" },
+        { cantidad: 1, nombre: "Salchipapa Especial" },
+        { cantidad: 2, nombre: "Limonada Natural" }
       ]
     },
     {
       id: 3,
       clienteNombre: "Luis Rodríguez",
-      codigoPedido: "PED-005",
-      fecha: "2026-06-08",
-      horario: "14:15 – 14:30",
-      total: 36000,
+      codigoPedido: "PED-004",
+      fecha: "2026-06-09",
+      horario: "13:25 – 13:40",
+      total: 25000,
+      descuentoPorcentaje: 0,
+      montoDescuento: 0,
       productos: [
-        { cantidad: 2, nombre: "Hamburguesa Especial" },
-        { cantidad: 1, nombre: "Jugo de Naranja" }
+        { cantidad: 1, nombre: "Perro Caliente Especial" },
+        { cantidad: 1, nombre: "Jugo Hit Mora 500ml" }
       ]
     },
     {
       id: 4,
       clienteNombre: "Ana Martínez",
-      codigoPedido: "PED-004",
-      fecha: "2026-06-08",
-      horario: "11:20 – 11:35",
-      precioOriginal: 54000,
-      total: 45900,
+      codigoPedido: "PED-005",
+      fecha: "2026-06-09",
+      horario: "13:40 – 14:00",
+      total: 55000,
       descuentoPorcentaje: 15,
+      montoDescuento: 9705,
+      precioOriginal: 64705,
       productos: [
-        { cantidad: 1, nombre: "Combo Familiar" },
-        { cantidad: 1, nombre: "Arepa con Queso" }
+        { cantidad: 1, nombre: "Pizza Personal Jamón y Queso" },
+        { cantidad: 1, nombre: "Porción de Alitas BBQ" },
+        { cantidad: 1, nombre: "Cerveza Corona 355ml" }
       ]
     }
   ];
@@ -70,7 +82,7 @@ export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
     <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
       {itemsToDisplay.map((v, index) => {
         const rawName = typeof v?.cliente === "string" ? v.cliente : (v?.clienteNombre || v?.cliente?.nombre || "Cliente General");
-        const clienteNombre = String(rawName || "Cliente General");
+        const clienteNombre = formatNombreCompleto(rawName) || "Cliente General";
         const inicial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
         const codigo = v?.numeroVenta || v?.codigoPedido || `PED-${String(v?.id || index + 1).padStart(3, "0")}`;
         const fechaStr = formatDateSafe(v?.fecha || v?.fechaVenta, "2026-06-09");

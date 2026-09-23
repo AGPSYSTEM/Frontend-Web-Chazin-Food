@@ -1,9 +1,12 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
 import { Plus, Search, Users, UserCheck, UserX, Download, Activity, ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
 import { useUsuarios } from "../hooks/useUsuarios";
 import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
 import { UsuarioPasswordModal } from "../componentes/usuarios/UsuarioPasswordModal";
+import { UsuarioDetalleModal } from "../componentes/usuarios/UsuarioDetalleModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Usuarios() {
   const {
@@ -28,6 +31,8 @@ export function Usuarios() {
 
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordUsuario, setPasswordUsuario] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingUsuario, setViewingUsuario] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
@@ -40,6 +45,11 @@ export function Usuarios() {
   const pillBtn = (active) => active
     ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F05454] text-white shadow-sm"
     : "px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors";
+
+  const handleOpenView = (usuario) => {
+    setViewingUsuario(usuario);
+    setViewModalOpen(true);
+  };
 
   const handleOpenCreate = () => {
     setEditingUsuario(null);
@@ -84,30 +94,39 @@ export function Usuarios() {
   const exportarExcel = () => {
     const rows = filteredUsuarios;
     if (rows.length === 0) return;
-    const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const csv = [
-      ["ID", "Nombre", "Apellidos", "Tipo Doc", "Email", "Teléfono", "Dirección", "Rol", "Estado"].map(escape).join(","),
-      ...rows.map((u) => [
-        u.idUsuario || u.id,
-        u.nombre,
-        u.apellidos || "",
-        u.tipoDocumento || "",
-        u.email || "",
-        u.telefono || "",
-        u.direccion || "-",
-        u.rolNombre || u.rol?.nombre || u.rol || "",
-        u.estado || ""
-      ].map(escape).join(","))
-    ].join("\n");
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    const headers = ["ID", "Nombre", "Apellidos", "Tipo Doc", "Email", "Teléfono", "Dirección", "Rol", "Estado"];
+    const data = rows.map((u) => [
+      u.idUsuario || u.id,
+      u.nombre || "",
+      u.apellidos || "",
+      u.tipoDocumento || "",
+      u.email || "",
+      u.telefono || "",
+      u.direccion || "-",
+      u.rolNombre || u.rol?.nombre || u.rol || "",
+      u.estado || ""
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    worksheet["!cols"] = [
+      { wch: 8 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 26 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 14 },
+      { wch: 12 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+    XLSX.writeFile(
+      workbook,
+      `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
     setExportMenuOpen(false);
   };
 
@@ -176,9 +195,8 @@ export function Usuarios() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#F05454]"></div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium animate-pulse">Cargando usuarios...</p>
+      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full flex items-center justify-center py-24">
+        <ChazinLoader text="CARGANDO USUARIOS" size="md" />
       </div>
     );
   }
@@ -259,7 +277,7 @@ export function Usuarios() {
           <div className="flex gap-2">
             <button onClick={exportarExcel} className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium whitespace-nowrap">
               <Download className="w-4 h-4" />
-              <span>Exportar CSV</span>
+              <span>Exportar Excel</span>
             </button>
             <button onClick={handleOpenCreate} className="flex items-center gap-2 px-4 py-2 bg-[#F05454] text-white rounded-xl hover:bg-[#c0392b] transition-colors text-sm font-medium shadow-sm whitespace-nowrap">
               <Plus className="w-4 h-4" />
@@ -288,6 +306,7 @@ export function Usuarios() {
         onEdit={handleOpenEdit}
         onDelete={deleteUsuario}
         onChangePassword={handleOpenPassword}
+        onView={handleOpenView}
       />
 
       {/* Modals */}
@@ -304,6 +323,15 @@ export function Usuarios() {
         onClose={() => setPasswordModalOpen(false)}
         onSave={handleSavePassword}
         usuario={passwordUsuario}
+      />
+
+      <UsuarioDetalleModal
+        isOpen={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setViewingUsuario(null);
+        }}
+        usuario={viewingUsuario}
       />
     </div>
   );

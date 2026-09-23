@@ -1,11 +1,18 @@
-import { useState, useEffect } from "react";
-import { X, Plus, Edit, Trash2, Save, Image as ImageIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles, UploadCloud, Loader2 } from "lucide-react";
 import { adicionesService } from "../../servicios/adicionesService";
+import { useToast } from "@/shared/context/ToastContext";
+import { useConfirm } from "@/shared/context/ConfirmContext";
+import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [adiciones, setAdiciones] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     id: null,
     nombre: "",
@@ -17,9 +24,47 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  
+  const [uploading, setUploading] = useState(false);
+  const [fileToUpload, setFileToUpload] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const resetFormState = () => {
+    setFileToUpload(null);
+    setIsEditing(false);
+    setShowForm(false);
+    setFormData({
+      id: null,
+      nombre: "",
+      idInsumo: "",
+      precio: "",
+      descripcion: "",
+      imagen: "",
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCloseModal = () => {
+    resetFormState();
+    onClose();
+  };
+
+  const handleCancelForm = () => {
+    resetFormState();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        handleCloseModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
+      resetFormState();
       loadAdiciones();
     }
   }, [isOpen]);
@@ -31,25 +76,28 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       setAdiciones(data);
     } catch (err) {
       console.error(err);
+      toast.error("Error", "No se pudieron cargar las adiciones");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateNew = () => {
+    setFileToUpload(null);
     setIsEditing(false);
     setFormData({
       id: null,
       nombre: "",
-      idInsumo: "",
+      idInsumo: insumos && insumos.length > 0 ? insumos[0].id || insumos[0].idInsumo : "",
       precio: "",
       descripcion: "",
-      imagen: "",
+      imagen: "bacon",
     });
     setShowForm(true);
   };
 
   const handleEdit = (adicion) => {
+    setFileToUpload(null);
     setIsEditing(true);
     setFormData({
       id: adicion.idAdicion,
@@ -57,44 +105,107 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       idInsumo: adicion.idInsumo,
       precio: adicion.precio,
       descripcion: adicion.descripcion || "",
-      imagen: adicion.imagen || "",
+      imagen: adicion.imagen || getAdditionEmoji(adicion.nombre, ""),
     });
     setShowForm(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Seguro que deseas eliminar esta adición?")) {
+    const isConfirmed = await confirm({
+      title: "¿Eliminar adición?",
+      message: "¿Estás seguro de que deseas desactivar esta adición?",
+      type: "danger",
+      confirmText: "Eliminar",
+      cancelText: "Cancelar"
+    });
+    if (isConfirmed) {
       try {
         await adicionesService.deleteAdicion(id);
+        toast.success("Adición eliminada", "La adición fue eliminada correctamente");
         await loadAdiciones();
       } catch (err) {
         console.error(err);
-        alert("Error al eliminar");
+        toast.error("Error", err.message || "Error al eliminar la adición");
       }
     }
   };
 
+  const handleImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Archivo inválido", "El archivo debe ser una imagen (JPG, PNG, WEBP).");
+      return;
+    }
+
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error("Archivo pesado", "La imagen no debe superar los 5 MB de tamaño.");
+      return;
+    }
+
+    // Previsualización local inmediata: cero subidas a Cloudinary hasta que guarde
+    setFileToUpload(file);
+    const localUrl = URL.createObjectURL(file);
+    setFormData((prev) => ({ ...prev, imagen: localUrl }));
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleClearImage = () => {
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSelectEmoji = (emoji) => {
+    setFileToUpload(null);
+    setFormData((prev) => ({ ...prev, imagen: emoji }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.nombre.trim() || !formData.idInsumo || formData.precio === "") {
+      toast.error("Campos requeridos", "Por favor completa el nombre, insumo base y precio");
+      return;
+    }
+
     try {
+      setUploading(true);
+      let finalImageUrl = formData.imagen;
+
+      // SUBIDA DIFERIDA: Si se seleccionó archivo local, subirlo a Cloudinary ahora
+      if (fileToUpload) {
+        finalImageUrl = await uploadImageToCloudinary(fileToUpload);
+      } else if (finalImageUrl && finalImageUrl.startsWith("blob:")) {
+        finalImageUrl = getAdditionEmoji(formData.nombre, "");
+      }
+
       const payload = {
         ...formData,
         idInsumo: Number(formData.idInsumo),
         precio: Number(formData.precio),
-        estado: "Activo"
+        estado: "Activo",
+        imagen: finalImageUrl || getAdditionEmoji(formData.nombre, "")
       };
 
       if (isEditing) {
         await adicionesService.updateAdicion(formData.id, payload);
+        toast.success("Adición actualizada", "La adición se actualizó correctamente");
       } else {
         await adicionesService.createAdicion(payload);
+        toast.success("Adición creada", "La adición se creó exitosamente");
       }
-      
-      setShowForm(false);
+
+      resetFormState();
       await loadAdiciones();
     } catch (err) {
       console.error(err);
-      alert("Error al guardar la adición");
+      toast.error("Error al guardar", err.message || "No se pudo guardar la adición");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -102,8 +213,8 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose} />
-      
+      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={handleCloseModal} />
+
       <div className="relative bg-white dark:bg-gray-900 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
@@ -112,12 +223,12 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
               Gestión de Adiciones
             </h2>
             <p className="text-sm text-gray-500">
-              Administra las adiciones (ej: Queso extra) basadas en insumos
+              Administra las adiciones con sus imágenes o emojis para el menú y POS
             </p>
           </div>
           <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+            onClick={handleCloseModal}
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -136,7 +247,15 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     type="text"
                     required
                     value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    onChange={(e) => {
+                      const newNombre = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        nombre: newNombre,
+                        // auto-suggest emoji if currently matching default
+                        imagen: prev.imagen && prev.imagen.length > 2 ? prev.imagen : getAdditionEmoji(newNombre, prev.imagen)
+                      }));
+                    }}
                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
                     placeholder="Ej. Tocineta Extra"
                   />
@@ -149,11 +268,11 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     required
                     value={formData.idInsumo}
                     onChange={(e) => setFormData({ ...formData, idInsumo: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 cursor-pointer"
                   >
                     <option value="">Selecciona un insumo...</option>
                     {insumos.map((i) => (
-                      <option key={i.id} value={i.id}>
+                      <option key={i.id || i.idInsumo} value={i.id || i.idInsumo}>
                         {i.nombre}
                       </option>
                     ))}
@@ -167,24 +286,99 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     type="number"
                     required
                     min="0"
-                    step="0.01"
+                    step="50"
                     value={formData.precio}
                     onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    placeholder="Ej. 3500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    URL Imagen (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.imagen}
-                    onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
-                    placeholder="https://..."
-                  />
+
+                {/* Emoji / Imagen selector with visual preview */}
+                <div className="md:col-span-2 space-y-2 p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Ícono o Imagen de la Adición</span>
+                    </label>
+                    <span className="text-xs text-gray-500">Selecciona un emoji o pega una URL</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    {/* Live Preview Avatar */}
+                    <div className="w-14 h-14 rounded-2xl bg-white dark:bg-gray-900 border-2 border-purple-300 dark:border-purple-850 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                      {formData.imagen && (formData.imagen.startsWith("http") || formData.imagen.startsWith("/")) ? (
+                        <img src={formData.imagen} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <FoodIcon name={formData.imagen || formData.nombre} size={28} stroke={1.75} className="text-purple-600 dark:text-purple-400" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 w-full space-y-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          value={formData.imagen}
+                          onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                          placeholder="Pega URL directa de imagen (.jpg, .png) o slug (ej. bacon, cheese)..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                          title="Seleccionar archivo de imagen"
+                        >
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-4 h-4" />
+                          )}
+                          <span>{uploading ? "Subiendo..." : fileToUpload ? "Cambiar Imagen" : "Seleccionar Imagen"}</span>
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageSelected}
+                        />
+                        {formData.imagen && (
+                          <button
+                            type="button"
+                            onClick={handleClearImage}
+                            className="px-2.5 py-2 text-xs font-semibold text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition cursor-pointer shrink-0"
+                            title="Limpiar imagen"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Quick Food Vector Slugs Palette */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span className="text-[11px] font-black text-gray-400 mr-1">Rápidos:</span>
+                        {AVAILABLE_FOOD_SLUGS.map((item) => (
+                          <button
+                            key={item.slug}
+                            type="button"
+                            onClick={() => handleSelectEmoji(item.slug)}
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-2xs border ${
+                              formData.imagen === item.slug
+                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 scale-110 ring-2 ring-purple-300 text-purple-600"
+                                : "bg-white dark:bg-gray-850 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 text-gray-600 dark:text-gray-300"
+                            }`}
+                            title={item.label}
+                          >
+                            <item.icon size={18} stroke={1.75} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Descripción (Opcional)
@@ -194,20 +388,22 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     value={formData.descripcion}
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                     className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    placeholder="Detalles sobre esta adición..."
                   />
                 </div>
               </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors"
+                  onClick={handleCancelForm}
+                  className="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl font-medium transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-md transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-md transition-colors cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Guardar</span>
@@ -219,7 +415,7 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
               <div className="flex justify-end">
                 <button
                   onClick={handleCreateNew}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-md transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl shadow-md transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Crear Adición</span>
@@ -234,38 +430,45 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {adiciones.map((adicion) => (
-                    <div key={adicion.idAdicion} className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm">
-                      {adicion.imagen ? (
-                        <img src={adicion.imagen} alt={adicion.nombre} className="w-12 h-12 rounded-xl object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6" />
+                  {adiciones.map((adicion) => {
+                    const isUrl = adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/"));
+                    const emojiChar = getAdditionEmoji(adicion.nombre, adicion.imagen);
+
+                    return (
+                      <div key={adicion.idAdicion} className="flex items-center gap-3.5 p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        {isUrl ? (
+                          <img src={adicion.imagen} alt={adicion.nombre} className="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-gray-700" />
+                        ) : (
+                          <FoodIconBadge name={adicion.imagen || adicion.nombre} size="md" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">
+                            <span>{adicion.nombre}</span>
+                          </p>
+                          <p className="text-xs text-gray-500 font-medium truncate">Insumo: {adicion.insumo?.nombre || "General"}</p>
+                          <p className="text-sm font-extrabold text-purple-600 dark:text-purple-400">
+                            +${Number(adicion.precio).toLocaleString("es-CO")}
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{adicion.nombre}</p>
-                        <p className="text-xs text-gray-500 font-medium">Insumo: {adicion.insumo?.nombre}</p>
-                        <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                          ${Number(adicion.precio).toLocaleString('es-CO')}
-                        </p>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => handleEdit(adicion)}
+                            className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors cursor-pointer"
+                            title="Editar adición"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(adicion.idAdicion)}
+                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
+                            title="Eliminar adición"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => handleEdit(adicion)}
-                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(adicion.idAdicion)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -275,3 +478,5 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     </div>
   );
 }
+
+export default AdicionesModal;

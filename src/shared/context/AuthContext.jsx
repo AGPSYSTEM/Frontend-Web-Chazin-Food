@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/shared/api/apiClient";
 
 export const AuthContext = createContext(undefined);
@@ -19,18 +19,48 @@ export function AuthProvider({ children }) {
     }
   });
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const saved = localStorage.getItem("chazin_user");
+      const token = saved ? JSON.parse(saved).token : null;
+      if (!token) return null;
+
+      const profileData = await apiClient.get("/usuarios/perfil");
+      if (profileData) {
+        setUser((prev) => {
+          if (prev && Object.keys(profileData).every(k => prev[k] === profileData[k])) {
+            return prev;
+          }
+          const merged = { ...prev, ...profileData, token: prev?.token || token };
+          localStorage.setItem("chazin_user", JSON.stringify(merged));
+          return merged;
+        });
+        return profileData;
+      }
+    } catch (err) {
+      // Silently fail if unauthenticated or network error
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    if (user?.token || localStorage.getItem("chazin_user")) {
+      refreshUser();
+    }
+  }, [refreshUser]);
+
   const login = async (correo, contraseña) => {
     try {
       const userData = await apiClient.post("/usuarios/login", { email: correo, contrasena: contraseña });
       if (userData) {
         setUser(userData);
         localStorage.setItem("chazin_user", JSON.stringify(userData));
-        return true;
+        return { success: true };
       }
-      return false;
+      return { success: false, message: "Error al iniciar sesión" };
     } catch (err) {
       console.error("Error en login:", err);
-      return false;
+      return { success: false, message: err.message || "Correo o contraseña incorrectos" };
     }
   };
 
@@ -49,6 +79,25 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      const updated = await apiClient.put("/autenticacion/perfil", profileData);
+      if (updated) {
+        // Sanitize direccion if needed
+        if (updated.direccion && typeof updated.direccion === "string" && updated.direccion.trim().startsWith("{")) {
+          try { const d = JSON.parse(updated.direccion); updated.direccion = d.direccion || updated.direccion; } catch (e) { /* keep */ }
+        }
+        setUser(updated);
+        localStorage.setItem("chazin_user", JSON.stringify(updated));
+        return { success: true, user: updated };
+      }
+      return { success: false, message: "No se pudo actualizar el perfil" };
+    } catch (err) {
+      console.error("Error en updateProfile:", err);
+      return { success: false, message: err.message || "Error al actualizar el perfil" };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("chazin_user");
@@ -60,6 +109,8 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateProfile,
+      refreshUser,
       isAuthenticated: !!user
     }}>
       {children}

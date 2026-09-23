@@ -3,6 +3,7 @@ node_modules/
 
 # Sub-repositories
 backend/
+frontend/
 
 # Production build
 dist/

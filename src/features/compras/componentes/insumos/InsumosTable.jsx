@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, Package, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, Edit, Trash2, Package, Sparkles, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
   const [pageSize, setPageSize] = useState(10);
@@ -55,9 +55,26 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
                           <Package className="w-4 h-4" />
                         </div>
-                        <span className="font-bold text-[#1e293b] dark:text-gray-100">
-                          {i.nombre}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#1e293b] dark:text-gray-100">
+                              {i.nombre}
+                            </span>
+                            {(i.estado === "Inactivo" || i.estado === 0 || i.estado === "0") && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                                Inactivo
+                              </span>
+                            )}
+                          </div>
+                          {(i.esAdicion === 1 || i.esAdicion === true || i.esAdicion === "1") && (
+                            <div className="flex items-center gap-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                <Sparkles className="w-3 h-3 text-purple-500" />
+                                <span>Adición (+${Number(i.precioAdicion || 0).toLocaleString("es-CO")})</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">

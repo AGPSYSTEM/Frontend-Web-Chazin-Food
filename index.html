@@ -3,10 +3,193 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png?v=2" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2" />
+    <link rel="apple-touch-icon" href="/favicon.png?v=2" />
     <title>Chazin Food</title>
+
+    <!-- Tipografías: Inter y Satisfy para caligrafía del logo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Satisfy&display=swap" rel="stylesheet">
+
+    <!-- Detección y persistencia inmediata de Modo Oscuro / Claro -->
+    <script>
+      (function() {
+        try {
+          var isDark = localStorage.getItem('chazin-dark') === 'true' ||
+            (!('chazin-dark' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Estilos de Splash inicial antes de que cargue React -->
+    <style>
+      :root {
+        --brand-red: #e30613;
+      }
+
+      .pre-loader-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        color: #111827;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        user-select: none;
+        overflow: hidden;
+        z-index: 99999;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      html.dark .pre-loader-screen {
+        background-color: #0e0e12;
+        color: #f3f4f6;
+      }
+
+      @keyframes preSlimeJump {
+        0% { transform: translateY(0px) scale(1, 1); animation-timing-function: cubic-bezier(0.35, 1, 0.65, 1); }
+        10% { transform: translateY(18px) scale(1.42, 0.58); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+        22% { transform: translateY(-30px) scale(0.72, 1.38); animation-timing-function: ease-out; }
+        45% { transform: translateY(-115px) scale(1.02, 0.98); animation-timing-function: ease-in; }
+        68% { transform: translateY(-18px) scale(0.82, 1.25); animation-timing-function: cubic-bezier(0.7, 0, 0.85, 0); }
+        76% { transform: translateY(18px) scale(1.5, 0.5); animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+        88% { transform: translateY(-7px) scale(0.95, 1.05); }
+        100% { transform: translateY(0px) scale(1, 1); }
+      }
+
+      @keyframes preSlimeShadow {
+        0% { transform: scale(1); opacity: 0.8; }
+        10% { transform: scale(1.35, 1.15); opacity: 0.95; }
+        45% { transform: scale(0.38, 0.38); opacity: 0.18; }
+        76% { transform: scale(1.45, 1.2); opacity: 1; }
+        88% { transform: scale(0.9, 0.9); opacity: 0.65; }
+        100% { transform: scale(1); opacity: 0.8; }
+      }
+
+      @keyframes preRunnerSlide {
+        0% { left: 0%; width: 18%; }
+        50% { left: 55%; width: 32%; }
+        100% { left: 82%; width: 18%; }
+      }
+
+      .pre-slime-actor {
+        width: 220px;
+        height: 220px;
+        animation: preSlimeJump 1.3s infinite;
+        transform-origin: bottom center;
+        will-change: transform;
+        filter: drop-shadow(0 12px 22px rgba(227, 6, 19, 0.32));
+      }
+
+      .pre-slime-shadow {
+        width: 175px;
+        height: 14px;
+        border-radius: 9999px;
+        margin-top: 10px;
+        filter: blur(4px);
+        background-color: rgba(0, 0, 0, 0.22);
+        animation: preSlimeShadow 1.3s infinite;
+        transform-origin: center center;
+      }
+
+      html.dark .pre-slime-shadow {
+        background-color: rgba(0, 0, 0, 0.75);
+      }
+
+      .pre-loader-label {
+        margin-top: 45px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: #6b7280;
+        text-align: center;
+      }
+
+      html.dark .pre-loader-label {
+        color: #8a8b94;
+      }
+
+      .pre-loader-track {
+        position: relative;
+        width: 190px;
+        height: 2.5px;
+        background-color: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      html.dark .pre-loader-track {
+        background-color: #27282d;
+      }
+
+      .pre-loader-runner {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background-color: var(--brand-red);
+        border-radius: 9999px;
+        box-shadow: 0 0 8px rgba(227, 6, 19, 0.8);
+        animation: preRunnerSlide 1.7s ease-in-out infinite alternate;
+      }
+    </style>
+
+    <!-- Pasarela de Pagos Wompi (Bancolombia) -->
+    <script type="text/javascript" src="https://checkout.wompi.co/widget.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash Screen Inicial de Carga (Reemplazado en milisegundos cuando React inicia) -->
+      <div class="pre-loader-screen">
+        <div class="pre-slime-actor">
+          <svg viewBox="0 0 500 500" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <mask id="preGapMask">
+                <rect width="500" height="500" fill="white" />
+                <line x1="114" y1="290" x2="128" y2="338" stroke="black" stroke-width="13" stroke-linecap="round" />
+              </mask>
+            </defs>
+
+            <!-- Borde exterior rojo (Squircle) -->
+            <rect x="25" y="25" width="450" height="450" rx="92" fill="none" stroke="#e30613" stroke-width="26" stroke-linejoin="round" />
+
+            <!-- Caligrafía Chazin Food -->
+            <g transform="translate(250, 150)" text-anchor="middle">
+              <text x="0" y="-12" fill="#e30613" font-family="'Satisfy', cursive" font-size="84" font-weight="bold" font-style="italic" letter-spacing="1">Chazin</text>
+              <path d="M -75 2 C -30 -12, 45 -12, 85 10 C 50 2, -40 2, -75 2 Z" fill="#e30613" />
+              <text x="0" y="78" fill="#e30613" font-family="'Satisfy', cursive" font-size="86" font-weight="bold" font-style="italic" letter-spacing="2">Food</text>
+            </g>
+
+            <!-- Visor exterior de los cuencos -->
+            <path d="M 85 275 C 35 275, 35 405, 85 405 C 140 405, 185 375, 250 375 C 315 375, 360 405, 415 405 C 465 405, 465 275, 415 275 C 345 275, 315 275, 250 275 C 185 275, 155 275, 85 275 Z" fill="none" stroke="#e30613" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- Cuenco izquierdo con corte -->
+            <rect x="94" y="302" width="115" height="24" rx="12" fill="#e30613" mask="url(#preGapMask)" />
+            <path d="M 100 338 L 202 338 C 202 390, 100 390, 100 338 Z" fill="#e30613" />
+
+            <!-- Cuenco derecho -->
+            <rect x="291" y="302" width="115" height="24" rx="12" fill="#e30613" />
+            <path d="M 298 338 L 400 338 C 400 390, 298 390, 298 338 Z" fill="#e30613" />
+          </svg>
+        </div>
+        <div class="pre-slime-shadow"></div>
+
+        <div class="pre-loader-label">CARGANDO DELICIAS</div>
+        <div class="pre-loader-track">
+          <div class="pre-loader-runner"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShieldAlert, Flame, Clock, AlertTriangle } from "lucide-react";
+import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
   const [pageSize, setPageSize] = useState(10);
@@ -78,7 +80,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                              {c.nombre} {c.apellidos || ""}
+                              {formatNombreCompleto(c.nombre, c.apellidos) || "Cliente General"}
                             </p>
                             {!tieneCuenta && (
                               <span title="Sin cuenta de usuario asociada" className="text-amber-500">
@@ -87,7 +89,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                             )}
                           </div>
                           <p className="text-[11px] text-gray-400 mt-0.5 max-w-xs truncate">
-                            {c.direccion || "Medellín, Colombia"}
+                            {formatDireccion(c.direccion)}
                           </p>
                         </div>
                       </div>
@@ -107,8 +109,14 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-center font-bold text-gray-700 dark:text-gray-300">
-                      {c.compras || 0}
+                    <td className="px-5 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{c.compras || 0}</span>
+                        <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-0.5">
+                          <Flame className="w-2.5 h-2.5" />
+                          <span>{c.fidelidad?.comprasCiclo !== undefined ? c.fidelidad.comprasCiclo : ((c.compras || 0) % 3)}/3</span>
+                        </span>
+                      </div>
                     </td>
 
                     <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100">
@@ -116,9 +124,29 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${getTipoBadge(tipoCliente)}`}>
-                        {tipoCliente}
-                      </span>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <FidelidadBadge
+                          tipo={tipoCliente}
+                          descuento={c.descuentoPorcentaje}
+                          enGracia={c.fidelidad?.enGracia}
+                          size="sm"
+                        />
+                        {tipoCliente === "Nuevo" ? (
+                          <span className="text-[10px] text-gray-400 font-medium">Sin vencimiento</span>
+                        ) : c.fidelidad?.enGracia ? (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-800/60 animate-pulse">
+                            <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                            Gracia: {c.fidelidad?.diasGraciaRestantes || 0}d
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5 shrink-0" />
+                            {c.fidelidad?.diasRestantes !== null && c.fidelidad?.diasRestantes !== undefined
+                              ? `${c.fidelidad.diasRestantes}d restantes`
+                              : "30d vigentes"}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-5 py-4">

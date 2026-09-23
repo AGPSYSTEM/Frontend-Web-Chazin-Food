@@ -1,12 +1,12 @@
 import { Users, Star, ShoppingBag } from "lucide-react";
 
-export function ClientesStatsCards({ clientes = [] }) {
-  const totalCount = clientes.length;
-  const vipCount = clientes.filter((c) => (c.tipo || (c.esVip ? "VIP" : "")) === "VIP").length;
-  const frecuentesCount = clientes.filter((c) => (c.tipo || "") === "Frecuente").length;
-  const nuevosCount = clientes.filter((c) => (c.tipo || "") === "Nuevo").length;
+export function ClientesStatsCards({ clientes = [], stats = null }) {
+  const totalCount = stats ? stats.total : clientes.length;
+  const vipCount = stats ? stats.vip : clientes.filter((c) => (c.tipo || (c.esVip ? "VIP" : "")) === "VIP").length;
+  const frecuentesCount = stats ? stats.frecuentes : clientes.filter((c) => (c.tipo || "") === "Frecuente").length;
+  const nuevosCount = stats ? stats.nuevos : clientes.filter((c) => (c.tipo || "") === "Nuevo").length;
 
-  const stats = [
+  const statCards = [
     {
       id: "total",
       title: "Total Clientes",
@@ -51,7 +51,7 @@ export function ClientesStatsCards({ clientes = [] }) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map((card) => {
+      {statCards.map((card) => {
         const IconComponent = card.icon;
         return (
           <div

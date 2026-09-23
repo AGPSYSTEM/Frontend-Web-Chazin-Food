@@ -5,6 +5,7 @@ import { ComprasTable } from "../componentes/gestion/ComprasTable";
 import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
 import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 function esEstadoPendiente(estado) {
   const e = String(estado || "").toUpperCase();
@@ -29,6 +30,7 @@ export function GestionCompras() {
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCompra, setEditCompra] = useState(null);
+  const [procesandoId, setProcesandoId] = useState(null);
 
   const stats = useMemo(() => {
     const total = compras.length;
@@ -75,27 +77,35 @@ export function GestionCompras() {
   };
 
   const handleMarcarRecibida = async (idCompra) => {
+    // Protección anti-doble-click: si ya se está procesando esta compra, ignorar
+    if (procesandoId === idCompra) return false;
     const confirmed = await notify.confirmAction(
       "¿Marcar como Recibida?",
       "Al confirmar, el stock de los insumos incluidos en esta compra se actualizará automáticamente (se sumarán las cantidades compradas). Esta acción sí afecta el inventario.",
       "Sí, marcar como Recibida"
     );
     if (!confirmed) return false;
-    const ok = await updateEstado(idCompra, "RECIBIDA");
-    if (ok) {
-      notify.success(
-        "✅ Compra Recibida",
-        "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
+    setProcesandoId(idCompra);
+    try {
+      const ok = await updateEstado(idCompra, "RECIBIDA");
+      if (ok) {
+        notify.success(
+          "Compra Recibida",
+          "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
+        );
+        if (selectedCompra && selectedCompra.id === idCompra) {
+          setSelectedCompra(null);
+        }
+        await refetch();
       }
-      await refetch();
+      return ok;
+    } finally {
+      setProcesandoId(null);
     }
-    return ok;
   };
 
   const handleUpdateEstado = async (idCompra, nuevoEstado) => {
+    if (procesandoId === idCompra) return false;
     const e = String(nuevoEstado || "").toUpperCase();
     if (e === "RECIBIDA") {
       return await handleMarcarRecibida(idCompra);
@@ -104,22 +114,28 @@ export function GestionCompras() {
   };
 
   const handleCancelar = async (idCompra) => {
-    const ok = await cancelarCompra(idCompra);
-    if (ok) {
-      notify.success(
-        "Compra Anulada",
-        "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
+    if (procesandoId === idCompra) return false;
+    setProcesandoId(idCompra);
+    try {
+      const ok = await cancelarCompra(idCompra);
+      if (ok) {
+        notify.success(
+          "Compra Anulada",
+          "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
+        );
+        if (selectedCompra && selectedCompra.id === idCompra) {
+          setSelectedCompra(null);
+        }
+        await refetch();
       }
-      await refetch();
+      return ok;
+    } finally {
+      setProcesandoId(null);
     }
-    return ok;
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Gestión de Compras
@@ -217,7 +233,7 @@ export function GestionCompras() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
+        <ChazinLoader text="CARGANDO HISTORIAL DE COMPRAS" size="md" />
       ) : (
         <ComprasTable
           compras={filteredCompras}
@@ -225,6 +241,7 @@ export function GestionCompras() {
           onEdit={handleEdit}
           onUpdateEstado={handleUpdateEstado}
           onCancelar={handleCancelar}
+          procesandoId={procesandoId}
         />
       )}
 

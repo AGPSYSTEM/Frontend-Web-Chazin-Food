@@ -1,10 +1,12 @@
 import { Package, TrendingDown, AlertCircle } from "lucide-react";
 
 export function InsumosStatsCards({ insumos = [] }) {
+  // Los insumos con inventario físico (insumos base) son los que poseen control de stock
+  const baseInsumos = insumos.filter((i) => i.tipo !== "Preparado");
   const total = insumos.length;
-  const stockNormal = insumos.filter((i) => (i.stock || 0) > (i.stockMinimo || 0)).length;
-  const stockBajo = insumos.filter((i) => (i.stock || 0) <= (i.stockMinimo || 0) && (i.stock || 0) > 0).length;
-  const agotados = insumos.filter((i) => (i.stock || 0) === 0).length;
+  const stockNormal = baseInsumos.filter((i) => Number(i.stock || 0) > Number(i.stockMinimo || 0)).length;
+  const stockBajo = baseInsumos.filter((i) => Number(i.stock || 0) <= Number(i.stockMinimo || 0) && Number(i.stock || 0) > 0).length;
+  const agotados = baseInsumos.filter((i) => Number(i.stock || 0) === 0).length;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

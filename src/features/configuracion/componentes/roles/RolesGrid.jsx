@@ -33,12 +33,31 @@ const getRolAccent = (nombre) => {
   }
 };
 
+const MODULOS_PERMISOS_VALIDOS = [
+  "Dashboard",
+  "Roles",
+  "Usuarios",
+  "Categoría Insumos",
+  "Insumos",
+  "Proveedores",
+  "Gestión de Compras",
+  "Categoría Productos",
+  "Productos",
+  "Fichas Técnicas",
+  "Gestión de Producción",
+  "Punto de Venta",
+  "Clientes",
+  "Gestión de Ventas"
+];
+
 export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {roles.map((rol) => {
         const accent = getRolAccent(rol.nombre);
-        const permisosCount = rol.permisos?.length || 0;
+        const permisosFiltrados = (rol.permisos || []).filter((p) => MODULOS_PERMISOS_VALIDOS.includes(p));
+        const permisosCount = permisosFiltrados.length;
+        const isAdministrador = (rol.nombre || "").toLowerCase() === "administrador" || String(rol.id) === "1";
 
         return (
           <div key={rol.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden hover:shadow-md transition-shadow">
@@ -78,7 +97,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
               <div className="mb-4">
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Permisos Asignados</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(rol.permisos || []).slice(0, 3).map((permiso, i) => (
+                  {permisosFiltrados.slice(0, 3).map((permiso, i) => (
                     <span key={i} className={`px-3 py-1 rounded-full text-xs font-medium ${accent.badge}`}>
                       {permiso}
                     </span>
@@ -95,10 +114,10 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
               </div>
 
               {/* Actions */}
-              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 flex items-center justify-center gap-1.5 text-[10px] lg:text-[11px] font-medium whitespace-nowrap">
+              <div className="border-t border-gray-100 dark:border-gray-700/60 pt-3 px-1 flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] xl:text-[11px] font-medium">
                 <button
                   onClick={() => onOpenPermisos(rol)}
-                  className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
+                  className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors shrink-0"
                   title="Permisos del rol"
                 >
                   <Shield className="w-3 h-3 stroke-[2]" />
@@ -109,33 +128,36 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
 
                 <button
                   onClick={() => onEdit(rol)}
-                  className="flex items-center gap-1 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
+                  className="flex items-center gap-0.5 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0"
                   title="Editar rol"
                 >
                   <Edit className="w-3 h-3 stroke-[2]" />
                   <span>Editar</span>
                 </button>
 
-                <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+                {!isAdministrador && (
+                  <>
+                    <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
+                    <button
+                      onClick={() => onToggleEstado(rol.id)}
+                      className={`flex items-center gap-0.5 transition-colors shrink-0 ${
+                        rol.estado === "Activo"
+                          ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                          : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                      }`}
+                      title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
+                    >
+                      {rol.estado === "Activo" ? (
+                        <ToggleRight className="w-3.5 h-3.5 stroke-[2] text-amber-500" />
+                      ) : (
+                        <ToggleLeft className="w-3.5 h-3.5 stroke-[2] text-emerald-500" />
+                      )}
+                      <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
+                    </button>
+                  </>
+                )}
 
-                <button
-                  onClick={() => onToggleEstado(rol.id)}
-                  className={`flex items-center gap-1 transition-colors shrink-0 ${
-                    rol.estado === "Activo"
-                      ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                      : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
-                  }`}
-                  title={rol.estado === "Activo" ? "Desactivar rol" : "Activar rol"}
-                >
-                  {rol.estado === "Activo" ? (
-                    <ToggleRight className="w-3 h-3 stroke-[2] text-amber-500" />
-                  ) : (
-                    <ToggleLeft className="w-3 h-3 stroke-[2] text-emerald-500" />
-                  )}
-                  <span>{rol.estado === "Activo" ? "Desactivar" : "Activar"}</span>
-                </button>
-
-                {onDelete && (
+                {onDelete && !isAdministrador && (
                   <>
                     <span className="text-gray-300 dark:text-gray-700 select-none shrink-0">|</span>
                     <button
@@ -143,7 +165,7 @@ export function RolesGrid({ roles = [], onOpenPermisos, onEdit, onToggleEstado, 
                       className="flex items-center justify-center text-red-500 hover:text-red-600 transition-colors shrink-0 p-0.5"
                       title="Eliminar rol"
                     >
-                      <Trash2 className="w-3 h-3 stroke-[2]" />
+                      <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
                     </button>
                   </>
                 )}

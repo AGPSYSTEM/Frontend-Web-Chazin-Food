@@ -10,7 +10,11 @@ import {
   CalendarDays,
   DollarSign,
   Sparkles,
-  Pencil
+  Pencil,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Info
 } from "lucide-react";
 import { comprasService } from "../../servicios/comprasService";
 import { apiClient } from "@/shared/api/apiClient";
@@ -336,33 +340,56 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                         <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
                       </div>
                       <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <span className={`shrink-0 inline-flex items-center px-3 py-2 rounded-xl text-xs font-bold border ${
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
                           normalizarEstadoSelect(form.estado) === "RECIBIDA"
                             ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
                             : normalizarEstadoSelect(form.estado) === "CANCELADA"
                             ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
                             : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
                         }`}>
-                          {normalizarEstadoSelect(form.estado) === "RECIBIDA"
-                            ? "✅ Recibida"
-                            : normalizarEstadoSelect(form.estado) === "CANCELADA"
-                            ? "❌ Cancelada"
-                            : "⏳ Pendiente"}
+                          {normalizarEstadoSelect(form.estado) === "RECIBIDA" ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Recibida</span>
+                            </>
+                          ) : normalizarEstadoSelect(form.estado) === "CANCELADA" ? (
+                            <>
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Cancelada</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Pendiente</span>
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
                     {!esEdicion && (
-                      <div className="mt-2 text-[11px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3">
-                        <strong>ℹ️ Importante:</strong> Todas las compras se crean en estado <strong>Pendiente</strong>. El stock de los insumos <strong>NO</strong> se actualizará hasta que manualmente marques la compra como <strong>Recibida</strong> desde la tabla o el detalle, cuando realmente lleguen los insumos.
+                      <div className="mt-2 text-[11px] text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-3 flex items-start gap-2">
+                        <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Importante:</strong> Todas las compras se crean en estado <strong>Pendiente</strong>. El stock de los insumos <strong>NO</strong> se actualizará hasta que manualmente marques la compra como <strong>Recibida</strong> desde la tabla o el detalle, cuando realmente lleguen los insumos.
+                        </div>
                       </div>
                     )}
                     {esEdicion && (
-                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg p-3">
-                        <strong>Nota:</strong> No puedes cambiar el estado desde aquí. Usa los botones de acción:
-                        <span className="inline-flex items-center mx-1 text-green-600 dark:text-green-400 font-semibold">✅ Marcar como Recibida</span>
-                        o
-                        <span className="inline-flex items-center mx-1 text-red-500 font-semibold">❌ Anular</span>
-                        disponibles en cada fila de la tabla o dentro del detalle de la compra.
+                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-lg p-3 flex items-start gap-2">
+                        <Info className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+                        <div>
+                          <strong>Nota:</strong> No puedes cambiar el estado desde aquí. Usa los botones de acción:
+                          <span className="inline-flex items-center gap-1 mx-1 text-green-600 dark:text-green-400 font-semibold">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Marcar como Recibida</span>
+                          </span>
+                          o
+                          <span className="inline-flex items-center gap-1 mx-1 text-red-500 font-semibold">
+                            <XCircle className="w-3 h-3" />
+                            <span>Anular</span>
+                          </span>
+                          disponibles en cada fila de la tabla o dentro del detalle de la compra.
+                        </div>
                       </div>
                     )}
                   </div>
