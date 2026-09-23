@@ -22,7 +22,8 @@ import {
   Award,
   Send,
   User as UserIcon,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Lock
 } from "lucide-react";
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -322,7 +323,80 @@ export const detectDefaultDrinkSize = (prod) => {
   return "400ml";
 };
 
-export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
+export const isEssentialIngredient = (ingredientName, producto) => {
+  if (!ingredientName || !producto) return false;
+  const ingName = String(ingredientName).toLowerCase().trim();
+  const prodName = String(producto.nombre || "").toLowerCase().trim();
+  const catName = String(
+    producto.categoria?.nombre ||
+    producto.categoria ||
+    producto.categoriaNombre ||
+    producto.categoria_producto ||
+    ""
+  ).toLowerCase().trim();
+
+  // 1. HAMBURGUESAS: La carne o pechuga de pollo principal es la base estructural insustituible
+  const isBurger = catName.includes("hamburguesa") || prodName.includes("hamburguesa") || prodName.includes("burger");
+  if (isBurger) {
+    if (
+      ingName.includes("carne") ||
+      ingName.includes("res") ||
+      ingName.includes("beef") ||
+      ingName.includes("patty") ||
+      (prodName.includes("pollo") && (ingName.includes("pollo") || ingName.includes("pechuga")))
+    ) {
+      return true;
+    }
+  }
+
+  // 2. PERROS CALIENTES: La salchicha es la esencia del perro caliente
+  const isHotDog = catName.includes("perro") || prodName.includes("perro") || prodName.includes("hot dog");
+  if (isHotDog) {
+    if (
+      ingName.includes("salchicha") ||
+      ingName.includes("suiza") ||
+      ingName.includes("americana") ||
+      ingName.includes("chorizo") ||
+      ingName.includes("butifarra")
+    ) {
+      return true;
+    }
+  }
+
+  // 3. SALCHIPAPAS: Tanto las papas como las salchichas son la esencia indivisible de la salchipapa
+  const isSalchipapa = catName.includes("salchipapa") || prodName.includes("salchipapa");
+  if (isSalchipapa) {
+    if (
+      ingName.includes("papa") ||
+      ingName.includes("francesa") ||
+      ingName.includes("salchicha") ||
+      ingName.includes("suiza") ||
+      ingName.includes("americana")
+    ) {
+      return true;
+    }
+  }
+
+  // 4. PLATOS Y PORCIONES DE PAPAS / ACOMPAÑAMIENTOS DE PAPA: No puedes pedir papas sin papa
+  const isPapasPlate = (catName.includes("acompa") || catName.includes("guarnic")) && prodName.includes("papa");
+  if (isPapasPlate) {
+    if (ingName.includes("papa") || ingName.includes("francesa") || ingName.includes("casco") || ingName.includes("corral")) {
+      return true;
+    }
+  }
+
+  // 5. ALITAS O POLLO FRITO
+  const isAlitas = catName.includes("alita") || prodName.includes("alita");
+  if (isAlitas) {
+    if (ingName.includes("alita") || ingName.includes("pollo")) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export const resolveInsumoPersonalizable = (detalleOrInsumo, producto = null) => {
   const rawName = String(
     detalleOrInsumo?.insumo?.nombre ||
     detalleOrInsumo?.nombreInsumo ||
@@ -380,10 +454,13 @@ export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
 
+  const isEssential = isEssentialIngredient(rawName, producto);
+
   return {
     id: cleanId,
     nombre: rawName,
-    icono
+    icono,
+    esencial: isEssential
   };
 };
 
@@ -400,7 +477,7 @@ export const extractPersonalizables = (producto, ficha) => {
   // 1. EXTRAER DIRECTAMENTE DE LA FICHA TÉCNICA (DETALLES CON INSUMOS REALES)
   if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
     for (const d of ficha.detalles) {
-      const item = resolveInsumoPersonalizable(d);
+      const item = resolveInsumoPersonalizable(d, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
         seenNames.add(item.nombre.toLowerCase());
         items.push(item);
@@ -411,7 +488,7 @@ export const extractPersonalizables = (producto, ficha) => {
   // 2. EXTRAER DE FICHA.INGREDIENTES (SI EXISTE ARRAY DE INGREDIENTES)
   if (ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
     for (const s of ficha.ingredientes) {
-      const item = resolveInsumoPersonalizable(s);
+      const item = resolveInsumoPersonalizable(s, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
         seenNames.add(item.nombre.toLowerCase());
         items.push(item);
@@ -453,7 +530,12 @@ export const extractPersonalizables = (producto, ficha) => {
     { id: "maiz", nombre: "Maíz Tierno", icono: "salad", aliases: ["maiz", "maíz", "choclo"] }
   ];
 
-  return FALLBACK_CANDIDATES.filter((c) => c.aliases.some((alias) => combined.includes(alias)));
+  return FALLBACK_CANDIDATES
+    .filter((c) => c.aliases.some((alias) => combined.includes(alias)))
+    .map((c) => ({
+      ...c,
+      esencial: isEssentialIngredient(c.nombre, producto)
+    }));
 };
 
 const QUICK_KITCHEN_TAGS = [
@@ -931,6 +1013,16 @@ export function FastFoodProductModal({
     [producto, liveFicha]
   );
 
+  const baseIngredients = useMemo(
+    () => personalizables.filter((i) => i.esencial),
+    [personalizables]
+  );
+
+  const customizableIngredients = useMemo(
+    () => personalizables.filter((i) => !i.esencial),
+    [personalizables]
+  );
+
   // Imagen específica de variantes conocidas como Coca-Cola Sin Azúcar / Light
   const getVariantImage = useCallback((varName) => {
     const vn = String(varName || "").toLowerCase();
@@ -1343,8 +1435,9 @@ export function FastFoodProductModal({
       : 99
   );
 
-  // Toggle remover ingrediente
+  // Toggle remover ingrediente (protegido por lógica humana de cocina)
   const toggleRemoveIngredient = (nombre) => {
+    if (isEssentialIngredient(nombre, producto)) return;
     setRemovedIngredients((prev) =>
       prev.includes(nombre) ? prev.filter((i) => i !== nombre) : [...prev, nombre]
     );
@@ -1684,12 +1777,16 @@ export function FastFoodProductModal({
     const cleanBaseName = drinkHasSizes ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : producto.nombre;
     const customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
 
+    const safeRemovedIngredients = isDrink
+      ? []
+      : removedIngredients.filter((r) => !isEssentialIngredient(r, producto));
+
     const personalizacionesFormatted = isDrink
       ? [
           formulaTitle ? `Sabor: ${formulaTitle}` : null,
           drinkHasSizes ? `Presentación: ${selectedSizeObj.label}` : null
         ].filter(Boolean)
-      : removedIngredients.map((r) => `Sin ${r}`);
+      : safeRemovedIngredients.map((r) => `Sin ${r}`);
 
     let fullNotes = [];
     if (isComboWithDrinks && selectedDrinks.length > 0) {
@@ -1726,7 +1823,7 @@ export function FastFoodProductModal({
       isCombo: isComboWithDrinks,
       sabor: formulaTitle || cleanBaseName,
       personalizaciones: personalizacionesFormatted,
-      ingredientesRemovidos: isDrink ? [] : removedIngredients,
+      ingredientesRemovidos: safeRemovedIngredients,
       observacion: finalObservationString,
       totalCalculado: grandTotal
     });
@@ -2100,8 +2197,10 @@ export function FastFoodProductModal({
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
-                      <Sliders className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Personalizar</span>
+                      <ChefHat className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
+                      </span>
                       {removedIngredients.length > 0 && (
                         <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                           {removedIngredients.length}
@@ -2408,17 +2507,17 @@ export function FastFoodProductModal({
               </div>
             )}
 
-            {/* ─── TAB 1: PERSONALIZAR INGREDIENTES ─── */}
+            {/* ─── TAB 1: PERSONALIZAR INGREDIENTES (MISE EN PLACE CON LÓGICA HUMANA DE COCINA) ─── */}
             {!isDrink && activeTab === "personalizar" && personalizables.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                       <ChefHat className="w-4 h-4 text-red-500" />
-                      Mise en Place & Exclusiones
+                      Mise en Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Toca los ingredientes que deseas <span className="text-red-500 font-bold">quitar</span> de tu preparación:
+                      Fórmula oficial de cocina e ingredientes personalizables:
                     </p>
                   </div>
                   {removedIngredients.length > 0 && (
@@ -2432,41 +2531,94 @@ export function FastFoodProductModal({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-                  {personalizables.map((ing) => {
-                    const isRemoved = removedIngredients.includes(ing.nombre);
-                    return (
-                      <button
-                        key={ing.id}
-                        type="button"
-                        onClick={() => toggleRemoveIngredient(ing.nombre)}
-                        className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
-                          isRemoved
-                            ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
-                            : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2.5 truncate">
-                          <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
-                            <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
-                          </span>
-                          <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
-                            {ing.nombre}
-                          </span>
-                        </span>
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
-                            isRemoved
-                              ? "bg-red-500 text-white"
-                              : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
-                          }`}
+                {/* ── SECCIÓN 1: INGREDIENTES BASE OBLIGATORIOS (PROTEGIDOS POR LÓGICA HUMANA) ── */}
+                {baseIngredients.length > 0 && (
+                  <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-800 dark:text-amber-300">
+                        <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Base Indispensable del Plato</span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> No removible
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {baseIngredients.map((baseIng) => (
+                        <div
+                          key={baseIng.id}
+                          className="p-2.5 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-2 shadow-2xs select-none"
+                          title="Ingrediente base indispensable del plato (no se puede retirar)"
                         >
-                          {isRemoved ? "Sin" : "Con"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span className="flex items-center gap-2 truncate text-xs font-bold text-gray-800 dark:text-gray-200">
+                            <span className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/70 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300">
+                              <FoodIcon name={baseIng.icono || baseIng.nombre} size={15} stroke={1.75} />
+                            </span>
+                            <span className="truncate">{baseIng.nombre}</span>
+                          </span>
+                          <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" /> Obligatorio
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── SECCIÓN 2: INGREDIENTES PERSONALIZABLES (EXCLUSIONES A PETICIÓN) ── */}
+                {customizableIngredients.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                        ¿Deseas retirar algún ingrediente de tu pedido?
+                      </p>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                        Toca para alternar (Con / Sin)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
+                      {customizableIngredients.map((ing) => {
+                        const isRemoved = removedIngredients.includes(ing.nombre);
+                        return (
+                          <button
+                            key={ing.id}
+                            type="button"
+                            onClick={() => toggleRemoveIngredient(ing.nombre)}
+                            className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
+                              isRemoved
+                                ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
+                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2.5 truncate">
+                              <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
+                                <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
+                              </span>
+                              <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
+                                {ing.nombre}
+                              </span>
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
+                                isRemoved
+                                  ? "bg-red-500 text-white"
+                                  : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
+                              }`}
+                            >
+                              {isRemoved ? "Sin" : "Con"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                    Este plato se prepara exclusivamente con sus ingredientes base indispensables.
+                  </p>
+                )}
 
                 {/* Banner de orden personalizada para cocina */}
                 {removedIngredients.length > 0 && (

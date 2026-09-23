@@ -19,7 +19,7 @@ import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
-import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import FastFoodProductModal, { isEssentialIngredient } from "@/shared/components/ui/FastFoodProductModal";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
 import { IconFlame as TablerFlame } from "@tabler/icons-react";
 import { ClienteFooter } from "../componentes/ClienteFooter";
@@ -1026,6 +1026,7 @@ export function ClienteLanding() {
 
   const handleToggleRemoverIngrediente = (nombreIngrediente) => {
     if (!productoSeleccionado) return;
+    if (isEssentialIngredient(nombreIngrediente, productoSeleccionado.producto)) return;
     const currentRemovidos = productoSeleccionado.ingredientesRemovidos || [];
     const isRemoved = currentRemovidos.includes(nombreIngrediente);
     const updated = isRemoved
