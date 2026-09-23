@@ -1206,10 +1206,9 @@ export function FastFoodProductModal({
     }
   }, [liveFicha, producto, isDrink, initialTab, isOpen, activeTab]);
 
-  if (!isOpen || !producto) return null;
-
   // Helper de Evento Activo para el Producto (Fast-food LTO / Festival drops)
   const eventInfo = (() => {
+    if (!producto) return null;
     const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
     if (eventos.length === 0) return null;
     const evt = eventos.find((e) => e.estado === 1 || e.estado === "Activo") || eventos[0];
@@ -1280,6 +1279,7 @@ export function FastFoodProductModal({
 
   // Calculo de precio base con posibles eventos o promociones
   const { basePrice, originalPrice, hasDiscount, discountLabel } = (() => {
+    if (!producto) return { basePrice: 0, originalPrice: 0, hasDiscount: false, discountLabel: '' };
     let rawPrice = Number(producto.precio || 0);
     if (drinkHasSizes) {
       const sizeMatchedVar = realVariants.find((v) => {
@@ -1336,9 +1336,9 @@ export function FastFoodProductModal({
 
   // Stock disponible
   const stockMax = Number(
-    producto.stock !== undefined
+    producto?.stock !== undefined
       ? producto.stock
-      : producto.stockActual !== undefined
+      : producto?.stockActual !== undefined
       ? producto.stockActual
       : 99
   );
@@ -1452,11 +1452,11 @@ export function FastFoodProductModal({
   const grandTotal = finalUnitPrice * quantity + drinksTotal;
 
   const productImage =
-    producto.imagen ||
-    producto.imagenUrl ||
-    producto.urlImagen ||
-    producto.foto ||
-    producto.img;
+    producto?.imagen ||
+    producto?.imagenUrl ||
+    producto?.urlImagen ||
+    producto?.foto ||
+    producto?.img;
 
   const isPepsi = String(producto?.nombre || "").toLowerCase().includes("pepsi");
   const isCoca = String(producto?.nombre || "").toLowerCase().includes("coca");
@@ -1550,7 +1550,7 @@ export function FastFoodProductModal({
       } else if (prodName.includes("cuatro") || prodName.includes("quatro")) {
         baseName = "Gaseosa Quatro Toronja";
       } else {
-        baseName = producto.nombre.replace(/\s*400\s*ml/gi, "").trim();
+        baseName = (producto?.nombre || "").replace(/\s*400\s*ml/gi, "").trim();
       }
     }
 
@@ -1739,6 +1739,9 @@ export function FastFoodProductModal({
   const hasRealRatings = reviewsData.total > 0;
   const effectiveRating = hasRealRatings ? reviewsData.promedio : 0;
   const effectiveReviewsTotal = hasRealRatings ? reviewsData.total : (ratingsInfo?.total || 0);
+
+  // Early-return guard AFTER all hooks (React rules of hooks)
+  if (!isOpen || !producto) return null;
 
   return (
     <div
