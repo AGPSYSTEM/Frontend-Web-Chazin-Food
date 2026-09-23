@@ -8,6 +8,7 @@ import { InsumoModal } from "../componentes/insumos/InsumoModal";
 import { TrazabilidadModal } from "../componentes/insumos/TrazabilidadModal";
 import { PapeleraReciclajeView } from "../componentes/insumos/PapeleraReciclajeView";
 import { VerInsumoModal } from "../componentes/insumos/VerInsumoModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Insumos() {
   const {
@@ -245,7 +246,7 @@ export function Insumos() {
           {(filterTipo === "Todos los tipos" || filterTipo === "Base") && (
             <>
               {loading ? (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando insumos...</div>
+                <ChazinLoader text="CARGANDO INSUMOS" size="md" />
               ) : (
                 <InsumosTable
                   insumos={insumosBase}

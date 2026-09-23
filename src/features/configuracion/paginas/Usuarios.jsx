@@ -6,6 +6,7 @@ import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
 import { UsuarioPasswordModal } from "../componentes/usuarios/UsuarioPasswordModal";
 import { UsuarioDetalleModal } from "../componentes/usuarios/UsuarioDetalleModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Usuarios() {
   const {
@@ -194,9 +195,8 @@ export function Usuarios() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full flex flex-col items-center justify-center gap-3">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#F05454]"></div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm font-medium animate-pulse">Cargando usuarios...</p>
+      <div className="p-4 md:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-full flex items-center justify-center py-24">
+        <ChazinLoader text="CARGANDO USUARIOS" size="md" />
       </div>
     );
   }

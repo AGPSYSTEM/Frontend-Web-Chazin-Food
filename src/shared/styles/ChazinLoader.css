@@ -1,0 +1,120 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAZIN FOOD - PANTALLA DE CARGA (SLIME MINECRAFT PHYSICS + RUNNER BAR)
+   Compatible con Modo Claro y Modo Oscuro (Sin Sonido)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --chazin-red: #e30613;
+  --slime-duration: 1.3s;
+}
+
+/* Físicas elásticas de Slime de Minecraft: Squash & Stretch */
+@keyframes slimeJumpPhysics {
+  0% {
+    /* En el piso en reposo */
+    transform: translateY(0px) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.35, 1, 0.65, 1);
+  }
+  10% {
+    /* Compresión previa al salto: squash contra el piso */
+    transform: translateY(calc(var(--slime-jump-h, -115px) * -0.15)) scale(1.42, 0.58);
+    animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  22% {
+    /* Despegue explosivo: estiramiento vertical */
+    transform: translateY(calc(var(--slime-jump-h, -115px) * 0.26)) scale(0.72, 1.38);
+    animation-timing-function: ease-out;
+  }
+  45% {
+    /* Cúspide del salto en gravedad cero */
+    transform: translateY(var(--slime-jump-h, -115px)) scale(1.02, 0.98);
+    animation-timing-function: ease-in;
+  }
+  68% {
+    /* Caída vertical acelerada */
+    transform: translateY(calc(var(--slime-jump-h, -115px) * 0.16)) scale(0.82, 1.25);
+    animation-timing-function: cubic-bezier(0.7, 0, 0.85, 0);
+  }
+  76% {
+    /* Impacto / Splat contra el suelo */
+    transform: translateY(calc(var(--slime-jump-h, -115px) * -0.15)) scale(1.5, 0.5);
+    animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  88% {
+    /* Rebote elástico secundario */
+    transform: translateY(calc(var(--slime-jump-h, -115px) * 0.06)) scale(0.95, 1.05);
+  }
+  100% {
+    /* Retorno suave a posición natural */
+    transform: translateY(0px) scale(1, 1);
+  }
+}
+
+/* Sombra dinámica en el piso sincronizada con el salto */
+@keyframes slimeShadowPhysics {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  10% {
+    transform: scale(1.35, 1.15);
+    opacity: 0.95;
+  }
+  45% {
+    transform: scale(0.38, 0.38);
+    opacity: 0.18;
+  }
+  76% {
+    transform: scale(1.45, 1.2);
+    opacity: 1;
+  }
+  88% {
+    transform: scale(0.9, 0.9);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+/* Indicador deslizante en la barra de carga roja */
+@keyframes loaderLineMovement {
+  0% {
+    left: 0%;
+    width: 18%;
+  }
+  50% {
+    left: 55%;
+    width: 32%;
+  }
+  100% {
+    left: 82%;
+    width: 18%;
+  }
+}
+
+.chazin-slime-actor {
+  animation: slimeJumpPhysics var(--slime-duration) infinite;
+  transform-origin: bottom center;
+  will-change: transform;
+}
+
+.chazin-slime-shadow {
+  animation: slimeShadowPhysics var(--slime-duration) infinite;
+  transform-origin: center center;
+  will-change: transform, opacity;
+}
+
+.chazin-loading-runner {
+  animation: loaderLineMovement 1.7s ease-in-out infinite alternate;
+}
+
+/* Partículas Minecraft de impacto (cubos pixelados rojos) */
+.slime-cube-particle {
+  position: absolute;
+  background-color: var(--chazin-red);
+  pointer-events: none;
+  box-shadow: inset -2px -2px 0px rgba(0, 0, 0, 0.4);
+  border-radius: 1px;
+}

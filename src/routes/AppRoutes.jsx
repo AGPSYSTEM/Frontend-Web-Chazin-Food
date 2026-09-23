@@ -92,6 +92,8 @@ export function AppRoutes() {
     return (
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/tienda" element={<ClienteLanding />} />
+        <Route path="/cliente" element={<ClienteLanding />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="compras/categoria-insumos" element={<CategoriaInsumos />} />

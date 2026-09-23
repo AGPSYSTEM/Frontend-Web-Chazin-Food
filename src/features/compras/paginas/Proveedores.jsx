@@ -5,6 +5,7 @@ import { ProveedoresTable } from "../componentes/proveedores/ProveedoresTable";
 import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
 import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProveedoresView";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Proveedores() {
   const {
@@ -244,7 +245,7 @@ export function Proveedores() {
 
           {/* Table */}
           {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando proveedores...</div>
+            <ChazinLoader text="CARGANDO PROVEEDORES" size="md" />
           ) : (
             <ProveedoresTable
               proveedores={displayProveedores}

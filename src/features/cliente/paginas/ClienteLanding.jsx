@@ -32,7 +32,7 @@ const defaultCategoryIcons = {
   "pollo": { icon: "chicken", color: "from-amber-500 to-orange-600" },
   "bebidas": { icon: "drink", color: "from-blue-400 to-blue-600" },
   "refrescos": { icon: "drink", color: "from-blue-400 to-blue-600" },
-  "acompañamientos": { icon: "salad", color: "from-green-400 to-green-600" },
+  "acompañamientos": { icon: "sides", color: "from-amber-400 to-orange-600" },
   "combos": { icon: "combo", color: "from-purple-400 to-purple-600" },
   "postres": { icon: "cake", color: "from-pink-400 to-rose-500" },
   "helados": { icon: "icecream", color: "from-indigo-400 to-purple-500" },
@@ -52,7 +52,7 @@ const getCategoryMeta = (nombre) => {
   if (key.includes("bebida") || key.includes("gaseosa") || key.includes("jugo") || key.includes("refresco")) return { icon: "drink", color: "from-blue-400 to-blue-600" };
   if (key.includes("postre") || key.includes("torta") || key.includes("pastel")) return { icon: "cake", color: "from-pink-400 to-rose-500" };
   if (key.includes("helado")) return { icon: "icecream", color: "from-indigo-400 to-purple-500" };
-  if (key.includes("acompa")) return { icon: "fries", color: "from-amber-400 to-orange-500" };
+  if (key.includes("acompa") || key.includes("side") || key.includes("guarnic")) return { icon: "sides", color: "from-amber-400 to-orange-600" };
   if (key.includes("ensalada")) return { icon: "salad", color: "from-green-400 to-green-600" };
   if (key.includes("entrada") || key.includes("snack") || key.includes("taco")) return { icon: "taco", color: "from-emerald-400 to-teal-500" };
   return defaultCategoryIcons[key] || { icon: "plate", color: "from-red-400 to-red-600" };
@@ -64,7 +64,7 @@ const categoriasDefault = [
   { id: 3, nombre: "Hamburguesas", icon: "burger", color: "from-yellow-400 to-orange-500" },
   { id: 4, nombre: "Bebidas", icon: "drink", color: "from-blue-400 to-blue-600" },
   { id: 5, nombre: "Salchipapas Gourmet", icon: "fries", color: "from-yellow-500 to-amber-600" },
-  { id: 6, nombre: "Acompañamientos", icon: "fries", color: "from-amber-400 to-orange-600" }
+  { id: 6, nombre: "Acompañamientos", icon: "sides", color: "from-amber-400 to-orange-600" }
 ];
 
 const productosDefault = [

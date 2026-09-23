@@ -1,23 +1,20 @@
 import React from 'react';
-import './LoadingSpinner.css';
-import logo from '../../assets/chazin_logo_small.png';
+import { ChazinLoader } from './ChazinLoader';
 
-const LoadingSpinner = ({ text = "Cargando...", fullScreen = false }) => {
-  if (fullScreen) {
-    return (
-      <div className="loading-overlay">
-        <img src={logo} alt="Chazin Food" className="logo-spinner" />
-        {text && <p className="loading-text">{text}</p>}
-      </div>
-    );
-  }
-
+/**
+ * LoadingSpinner oficial de Chazin Food
+ * Potenciado con ChazinLoader (animación física Slime de Minecraft, transparente y con soporte Dark/Light)
+ */
+const LoadingSpinner = ({ text = "CARGANDO DELICIAS", fullScreen = false, size = fullScreen ? "lg" : "md", className = "" }) => {
   return (
-    <div className="loading-container-inline">
-      <img src={logo} alt="Chazin Food" className="logo-spinner-inline" />
-      {text && <p className="loading-text-inline">{text}</p>}
-    </div>
+    <ChazinLoader
+      fullScreen={fullScreen}
+      text={text}
+      size={size}
+      className={className}
+    />
   );
 };
 
+export { ChazinLoader };
 export default LoadingSpinner;

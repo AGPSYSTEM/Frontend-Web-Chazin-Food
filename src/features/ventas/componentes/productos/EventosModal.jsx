@@ -319,10 +319,10 @@ export function EventosModal({
                   <div className="flex items-start gap-3.5 min-w-0 flex-1">
                     {/* Thumbnail / Icon */}
                     <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs relative">
-                      {evt.producto?.imagen ? (
+                      {(evt.imagen || evt.producto?.imagen) ? (
                         <img
-                          src={evt.producto.imagen}
-                          alt={evt.nombre}
+                          src={evt.imagen || evt.producto.imagen}
+                          alt={evt.nombre || evt.nombreEvento}
                           className="w-full h-full object-cover"
                         />
                       ) : (

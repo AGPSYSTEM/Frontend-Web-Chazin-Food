@@ -139,7 +139,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
-                        {v.clienteFidelidad?.tipo && v.clienteFidelidad.tipo !== "Nuevo" && (
+                        {(!clienteNombre.toLowerCase().includes("mostrador") && v.idCliente !== 26 && v.clienteFidelidad?.tieneCuenta && v.clienteFidelidad?.tipo && ["Regular", "Frecuente", "VIP"].includes(v.clienteFidelidad.tipo)) && (
                           <FidelidadBadge
                             tipo={v.clienteFidelidad.tipo}
                             descuento={v.clienteFidelidad.descuentoPorcentaje}

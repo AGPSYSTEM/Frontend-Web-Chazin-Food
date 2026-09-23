@@ -47,7 +47,7 @@ import { produccionService } from "@/features/produccion/servicios/produccionSer
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import LoadingSpinner from "@/shared/components/ui/LoadingSpinner";
+import LoadingSpinner, { ChazinLoader } from "@/shared/components/ui/LoadingSpinner";
 import { HistorialComandasLista } from "../componentes/HistorialComandasLista";
 import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
 
@@ -1093,9 +1093,7 @@ export function CocineroDashboard() {
         {/* ── KDS Grid of Orders ── */}
         {loading ? (
           <div className="p-16 text-center bg-white dark:bg-gray-900 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs flex-1 flex flex-col items-center justify-center">
-            <RefreshCw className="w-10 h-10 text-[#F05454] animate-spin mb-3" />
-            <h3 className="font-black text-gray-800 dark:text-gray-100 text-base">Cargando comandas de cocina...</h3>
-            <p className="text-xs text-gray-400 mt-1 font-medium">Sincronizando pedidos del punto de venta y tienda web</p>
+            <ChazinLoader text="CARGANDO COMANDAS DE COCINA" size="md" />
           </div>
         ) : pedidosFiltrados.length === 0 ? (
           <div className="p-16 text-center bg-white dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800 shadow-xs flex-1 flex flex-col items-center justify-center">

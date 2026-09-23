@@ -92,6 +92,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [prodPrecioEvento, setProdPrecioEvento] = useState("");
   const [prodDescripcion, setProdDescripcion] = useState("");
   const [prodImagen, setProdImagen] = useState("");
+  const [eventoImagen, setEventoImagen] = useState("");
   const [prodProcedimiento, setProdProcedimiento] = useState("");
   const [categoriasBD, setCategoriasBD] = useState([]);
 
@@ -213,6 +214,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
           parsedProds = eventoToEdit.productos;
         }
         setProductosSeleccionados(Array.isArray(parsedProds) ? parsedProds : []);
+
+        const existingImg = eventoToEdit.imagen || eventoToEdit.producto?.imagen || "";
+        setEventoImagen(existingImg);
+        setProdImagen(existingImg);
+        setImagePreviewUrl(existingImg);
+        setShowManualUrl(false);
       } else {
         // ── MODO CREACIÓN (RESET) ──
         setTipoEvento("Añadir Insumos");
@@ -244,6 +251,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         setProdPrecioEvento("");
         setProdDescripcion("");
         setProdImagen("");
+        setEventoImagen("");
         setImagePreviewUrl("");
         setUploadingImage(false);
         setShowManualUrl(false);
@@ -326,6 +334,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       setUploadingImage(true);
       const secureUrl = await uploadImageToCloudinary(file);
       setProdImagen(secureUrl);
+      setEventoImagen(secureUrl);
       setImagePreviewUrl(secureUrl);
       success("Imagen Subida", "La imagen se cargó exitosamente en Cloudinary.");
     } catch (err) {
@@ -341,6 +350,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
   const handleRemoveImage = () => {
     setProdImagen("");
+    setEventoImagen("");
     setImagePreviewUrl("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -646,6 +656,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
           descripcion: finalDescripcion || "Edición especial gastronómica de tiempo limitado.",
           tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
           icono: icono || "party",
+          imagen: (eventoImagen || prodImagen || "").trim() || null,
           isTemporal: prodVigenciaTipo === "temporal",
           fechaInicio: prodVigenciaTipo === "temporal" ? (fechaInicio || localTodaySub) : null,
           fechaFin: prodVigenciaTipo === "temporal" ? (fechaFin || localFutureSub) : null,
@@ -705,12 +716,17 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         notifyError("Validación Fallida", "El Título del Evento es obligatorio.");
         return;
       }
+      if (uploadingImage) {
+        notifyError("Subiendo Imagen", "Por favor espera a que la imagen termine de subirse a Cloudinary.");
+        return;
+      }
       setSaving(true);
       try {
         const payload = {
           productoId: producto?.id || producto?.idProducto || eventoToEdit.idProducto,
           tipoEvento,
           icono: icono || "party",
+          imagen: (eventoImagen || prodImagen || "").trim() || null,
           isTemporal,
           nombreEvento: stripEmojis(nombreEvento.trim()),
           descripcion: stripEmojis(descripcion.trim()),
@@ -767,12 +783,17 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       notifyError("Validación Fallida", "El Título del Evento es obligatorio.");
       return;
     }
+    if (uploadingImage) {
+      notifyError("Subiendo Imagen", "Por favor espera a que la imagen termine de subirse a Cloudinary.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         productoId: producto?.id || producto?.idProducto,
         tipoEvento,
         icono: icono || "party",
+        imagen: (eventoImagen || prodImagen || "").trim() || null,
         isTemporal,
         nombreEvento: stripEmojis(nombreEvento.trim()),
         descripcion: stripEmojis(descripcion.trim()),
@@ -1791,6 +1812,110 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     rows={2}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
                   />
+                </div>
+              </div>
+
+              {/* Sección: Imagen del Evento (Carrusel & Portada) */}
+              <div className="border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 rounded-2xl p-4 sm:p-5 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs uppercase tracking-wider">
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Imagen del Evento (Carrusel & Portada)</span>
+                  </div>
+                  {(imagePreviewUrl || eventoImagen) && (
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
+                      ✓ Imagen configurada
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  {/* Preview Box */}
+                  <div className="w-28 h-28 shrink-0 rounded-2xl border-2 border-dashed border-purple-300 dark:border-purple-700 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 shadow-2xs relative group">
+                    {imagePreviewUrl || eventoImagen ? (
+                      <>
+                        <img
+                          src={imagePreviewUrl || eventoImagen}
+                          alt="Preview Evento"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                          title="Eliminar imagen"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-purple-300 dark:text-purple-600 p-2 text-center">
+                        <FoodIcon name={icono || "fire"} size={28} className="mb-1 opacity-50 text-purple-400" />
+                        <span className="text-[10px] font-bold">Sin imagen</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex-1 space-y-2.5 w-full">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
+                      >
+                        {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                        <span>{uploadingImage ? "Subiendo a Cloudinary..." : imagePreviewUrl || eventoImagen ? "Cambiar Imagen desde PC" : "Subir Imagen desde PC"}</span>
+                      </button>
+
+                      {(imagePreviewUrl || eventoImagen) && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="px-3 py-2 text-xs text-red-500 hover:text-red-700 font-bold cursor-pointer"
+                        >
+                          Quitar
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setShowManualUrl(prev => !prev)}
+                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold ml-auto cursor-pointer"
+                      >
+                        {showManualUrl ? "Ocultar URL manual" : "O ingresar URL web..."}
+                      </button>
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleImageSelected}
+                    />
+
+                    {showManualUrl && (
+                      <div className="mt-2 animate-in fade-in duration-150">
+                        <input
+                          type="text"
+                          placeholder="https://res.cloudinary.com/... o enlace de imagen"
+                          value={eventoImagen}
+                          onChange={(e) => {
+                            setEventoImagen(e.target.value);
+                            setProdImagen(e.target.value);
+                            setImagePreviewUrl(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      Sube una fotografía desde tu computadora o introduce un enlace web. Esta imagen se mostrará en el carrusel de inicio para este evento.
+                    </p>
+                  </div>
                 </div>
               </div>
 

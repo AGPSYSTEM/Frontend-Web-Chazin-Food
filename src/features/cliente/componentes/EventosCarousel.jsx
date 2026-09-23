@@ -438,8 +438,8 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
 
               const isRealUrl = (url) => typeof url === "string" && (url.startsWith("http") || url.startsWith("/"));
               const cardImage =
-                (isRealUrl(prod?.imagen) ? prod.imagen : null) ||
                 (isRealUrl(evt?.imagen) ? evt.imagen : null) ||
+                (isRealUrl(prod?.imagen) ? prod.imagen : null) ||
                 (evt.icono === "fries"
                   ? "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=800&auto=format&fit=crop&q=80"
                   : evt.icono === "hotdog"
@@ -633,7 +633,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
       </div>
 
       {/* DOCK INFERIOR: SELECTOR DE PÍLDORAS CON ACCESO DIRECTO */}
-      <div className="mt-4 flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1">
+      <div className="mt-4 flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1 px-2">
         {combinedEventos.map((evt, idx) => {
           const isSelected = idx === currentIndex;
           return (

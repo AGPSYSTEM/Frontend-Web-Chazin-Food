@@ -7,6 +7,7 @@ import { VerProductoModal } from "../componentes/productos/VerProductoModal";
 import { EventosModal } from "../componentes/productos/EventosModal";
 import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
 import { eventosService } from "../servicios/eventosService";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Productos() {
   const {
@@ -225,7 +226,7 @@ export function Productos() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando productos...</div>
+        <ChazinLoader text="CARGANDO PRODUCTOS" size="md" />
       ) : (
         <ProductosTable
           productos={filteredProductos}

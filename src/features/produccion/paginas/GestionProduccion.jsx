@@ -4,6 +4,7 @@ import { useGestionProduccion } from "../hooks/useGestionProduccion";
 import { ProduccionTable } from "../componentes/ProduccionTable";
 import { NuevaOrdenModal } from "../componentes/NuevaOrdenModal";
 import { VerOrdenModal } from "../componentes/VerOrdenModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function GestionProduccion() {
   const {
@@ -175,9 +176,7 @@ export function GestionProduccion() {
 
       {/* CRUD Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          Cargando órdenes de producción...
-        </div>
+        <ChazinLoader text="CARGANDO ÓRDENES DE PRODUCCIÓN" size="md" />
       ) : (
         <ProduccionTable
           ordenes={filteredOrdenes}

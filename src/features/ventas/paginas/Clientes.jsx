@@ -6,6 +6,7 @@ import { ClientesTable } from "../componentes/clientes/ClientesTable";
 import { ClienteModal } from "../componentes/clientes/ClienteModal";
 import { ClienteDetalleModal } from "../componentes/clientes/ClienteDetalleModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Clientes() {
   const { info } = useNotifications();
@@ -118,7 +119,7 @@ export function Clientes() {
 
       {/* Main Content Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">Cargando clientes...</div>
+        <ChazinLoader text="CARGANDO CLIENTES" size="md" />
       ) : (
         <ClientesTable
           clientes={filteredClientes}

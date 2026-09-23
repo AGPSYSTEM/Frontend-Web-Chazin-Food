@@ -32,9 +32,31 @@ const QUICK_ADICION_ICONS = [
   { slug: "tomato", label: "Tomate" },
   { slug: "egg", label: "Huevo" },
   { slug: "bread", label: "Pan" },
-  { slug: "pickle", label: "Pepinillos" },
-  { slug: "sparkles", label: "Especial" }
+  { slug: "pickle", label: "Pepinillos" }
 ];
+
+// Detección automática de salsas y aderezos para requerir/sugerir rol de adición
+export const isSalsaItem = (nombre = "", categoria = "") => {
+  const n = String(nombre || "").toLowerCase().trim();
+  const c = String(categoria || "").toLowerCase().trim();
+  const salsaKeywords = [
+    "salsa",
+    "mayonesa",
+    "mostaza",
+    "aderezo",
+    "tartara",
+    "tártara",
+    "bbq",
+    "barbacoa",
+    "guacamole",
+    "suero",
+    "chimichurri",
+    "vinagreta",
+    "ketchup",
+    "catsup"
+  ];
+  return salsaKeywords.some((k) => n.includes(k)) || c.includes("salsa") || c.includes("aderezo");
+};
 
 export function InsumoModal({
   isOpen,
@@ -97,10 +119,16 @@ export function InsumoModal({
       const isPrep = insumo.tipo === "Preparado" || !!insumo.insumosReceta || (!insumo.idCategoriaInsumo && !insumo.idProveedor && (insumo.costo !== undefined || insumo.rendimiento !== undefined));
       setTipo(isPrep ? "Preparado" : "Base");
 
+      const catNom = insumo.categoria || insumo.categoriaNombre || (categorias[0]?.nombre || "");
+      const esSalsa = isSalsaItem(insumo.nombre, catNom);
+      const esAdicionVal = !!(insumo.esAdicion === 1 || insumo.esAdicion === true || insumo.esAdicion === "1") || esSalsa;
+      const precioAdicionVal = Number(insumo.precioAdicion || 0) > 0 ? Number(insumo.precioAdicion) : (esSalsa ? 1500 : 0);
+      const imagenVal = insumo.imagen || (esSalsa ? "sauce" : "");
+
       setForm({
         nombre: insumo.nombre || "",
         idCategoriaInsumo: insumo.idCategoriaInsumo || (categorias[0]?.id || ""),
-        categoria: insumo.categoria || insumo.categoriaNombre || (categorias[0]?.nombre || ""),
+        categoria: catNom,
         unidadMedida: insumo.unidadMedida || (isPrep ? "und — unidad" : "Kg"),
         precioUnitario: insumo.precioUnitario || insumo.costo || insumo.precio || 0,
         idProveedor: insumo.idProveedor || "",
@@ -111,9 +139,9 @@ export function InsumoModal({
         fechaVencimiento: insumo.fechaVencimiento || "",
         descripcion: insumo.descripcion || "",
         estado: insumo.estado === 1 || insumo.estado === "Activo" || insumo.estado === "1" ? "Activo" : "Inactivo",
-        esAdicion: !!(insumo.esAdicion === 1 || insumo.esAdicion === true || insumo.esAdicion === "1"),
-        precioAdicion: Number(insumo.precioAdicion || 0),
-        imagen: insumo.imagen || ""
+        esAdicion: esAdicionVal,
+        precioAdicion: precioAdicionVal,
+        imagen: imagenVal
       });
 
       if (isPrep) {
@@ -136,10 +164,12 @@ export function InsumoModal({
       }
     } else {
       setTipo("Base");
+      const defaultCat = categorias[0]?.nombre || "";
+      const esSalsaDefault = isSalsaItem("", defaultCat);
       setForm({
         nombre: "",
         idCategoriaInsumo: categorias[0]?.id || categorias[0]?.idCategoriaInsumo || "",
-        categoria: categorias[0]?.nombre || "",
+        categoria: defaultCat,
         unidadMedida: "Kg",
         precioUnitario: 0,
         idProveedor: proveedores[0]?.id || proveedores[0]?.idProveedor || "",
@@ -150,9 +180,9 @@ export function InsumoModal({
         fechaVencimiento: "",
         descripcion: "",
         estado: "Activo",
-        esAdicion: false,
-        precioAdicion: 0,
-        imagen: "bacon"
+        esAdicion: esSalsaDefault,
+        precioAdicion: esSalsaDefault ? 1500 : 0,
+        imagen: esSalsaDefault ? "sauce" : "bacon"
       });
       setInitialFichaTecnica(null);
       setFichaTecnica(null);
@@ -195,6 +225,33 @@ export function InsumoModal({
     setForm((prev) => ({ ...prev, [field]: sanitized }));
   };
 
+  const handleNombreChange = (nuevoNombre) => {
+    setForm((prev) => {
+      const esSalsa = isSalsaItem(nuevoNombre, prev.categoria);
+      return {
+        ...prev,
+        nombre: nuevoNombre,
+        esAdicion: esSalsa ? true : prev.esAdicion,
+        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
+        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
+      };
+    });
+  };
+
+  const handleCategoriaChange = (catId, catNombre) => {
+    setForm((prev) => {
+      const esSalsa = isSalsaItem(prev.nombre, catNombre);
+      return {
+        ...prev,
+        idCategoriaInsumo: catId,
+        categoria: catNombre,
+        esAdicion: esSalsa ? true : prev.esAdicion,
+        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
+        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
+      };
+    });
+  };
+
   // Subida de imagen a Cloudinary
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -231,8 +288,11 @@ export function InsumoModal({
       return;
     }
 
-    // Validación de adición
-    if (form.esAdicion) {
+    // Regla de negocio: Las salsas y aderezos deben ser adiciones para el menú
+    const esSalsa = isSalsaItem(form.nombre, form.categoria);
+
+    // Si el usuario habilitó manualmente el rol de adición (y no es salsa), exigir precio > 0
+    if (form.esAdicion && !esSalsa) {
       const pAdic = Number(form.precioAdicion);
       if (isNaN(pAdic) || pAdic <= 0) {
         notify.warning(
@@ -242,6 +302,14 @@ export function InsumoModal({
         return;
       }
     }
+
+    const esAdicionFinal = form.esAdicion || esSalsa;
+    const precioAdicionFinal = esAdicionFinal
+      ? (Number(form.precioAdicion) > 0 ? Number(form.precioAdicion) : (esSalsa ? 1500 : 0))
+      : 0;
+    const imagenFinal = esAdicionFinal
+      ? (form.imagen || (esSalsa ? "sauce" : "bacon"))
+      : "";
 
     if (tipo === "Preparado") {
       // Validaciones de Insumo Preparado y Ficha Técnica
@@ -299,9 +367,9 @@ export function InsumoModal({
         unidadMedida: form.unidadMedida,
         tipo: "Preparado",
         estado: form.estado,
-        esAdicion: form.esAdicion,
-        precioAdicion: form.esAdicion ? Number(form.precioAdicion) : 0,
-        imagen: form.esAdicion ? (form.imagen || "bacon") : "",
+        esAdicion: esAdicionFinal,
+        precioAdicion: precioAdicionFinal,
+        imagen: imagenFinal,
         fichaTecnica: {
           ...ft,
           procedimiento: ft.procedimiento.trim(),
@@ -331,9 +399,9 @@ export function InsumoModal({
         precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
         stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
         stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
-        esAdicion: form.esAdicion,
-        precioAdicion: form.esAdicion ? Number(form.precioAdicion) : 0,
-        imagen: form.esAdicion ? (form.imagen || "bacon") : ""
+        esAdicion: esAdicionFinal,
+        precioAdicion: precioAdicionFinal,
+        imagen: imagenFinal
       });
     }
   };
@@ -432,7 +500,7 @@ export function InsumoModal({
                       type="text"
                       required
                       value={form.nombre}
-                      onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                      onChange={(e) => handleNombreChange(e.target.value)}
                       className={inputCls}
                       placeholder="Ej. Queso Cheddar en Lonchas o Pan Brioche"
                     />
@@ -445,11 +513,9 @@ export function InsumoModal({
                       onChange={(e) => {
                         const val = e.target.value;
                         const selectedCat = categorias.find(c => String(c.id || c.idCategoriaInsumo) === String(val) || c.nombre === val);
-                        setForm({
-                          ...form,
-                          idCategoriaInsumo: selectedCat ? (selectedCat.id || selectedCat.idCategoriaInsumo) : (val ? Number(val) : ""),
-                          categoria: selectedCat ? selectedCat.nombre : val
-                        });
+                        const catId = selectedCat ? (selectedCat.id || selectedCat.idCategoriaInsumo) : (val ? Number(val) : "");
+                        const catNom = selectedCat ? selectedCat.nombre : val;
+                        handleCategoriaChange(catId, catNom);
                       }}
                       className={`${inputCls} cursor-pointer`}
                     >
@@ -613,7 +679,7 @@ export function InsumoModal({
                       type="text"
                       required
                       value={form.nombre}
-                      onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                      onChange={(e) => handleNombreChange(e.target.value)}
                       className={inputCls}
                       placeholder="Ej. Salsa Chazin de la Casa, Carne Molida Sazonada, Cebolla Caramelizada..."
                     />
@@ -693,10 +759,18 @@ export function InsumoModal({
 
             {/* ════ SELECCIONABLE PARA UTILIZAR COMO ADICIÓN ════ */}
             <div className={`p-4 rounded-3xl border transition-all ${
-              form.esAdicion
+              form.esAdicion || isSalsaItem(form.nombre, form.categoria)
                 ? "border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20 shadow-xs"
                 : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40"
             }`}>
+              {isSalsaItem(form.nombre, form.categoria) && (
+                <div className="mb-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <span className="text-base leading-none">🥫</span>
+                  <div className="leading-snug">
+                    <strong>Salsa / Aderezo detectado:</strong> Las salsas se configuran automáticamente como adición para el menú ($1.500).
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${

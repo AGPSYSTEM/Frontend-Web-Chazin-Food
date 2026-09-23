@@ -18,6 +18,7 @@ import { VentasHistorialCardsView } from "../componentes/gestion/VentasHistorial
 import { VentasHistorialTableView } from "../componentes/gestion/VentasHistorialTableView";
 import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function GestionVentas() {
   const {
@@ -450,9 +451,7 @@ function formatDateSafe(dateVal, fallback = "") {
 
             {/* Content View: Table or Empty State */}
             {loading ? (
-              <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
-                Cargando gestión de ventas...
-              </div>
+              <ChazinLoader text="CARGANDO GESTIÓN DE VENTAS" size="md" />
             ) : displayedVentas.length === 0 ? (
               <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 flex items-center justify-center mb-1">

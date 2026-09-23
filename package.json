@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "node src/test/wompiPaymentGateway.test.cjs",
     "test:wompi": "node src/test/wompiPaymentGateway.test.cjs",
+    "test:modals": "node src/test/insumosModalsAutomated.test.cjs",
     "test:real-data": "node src/test/stockDeductionRealData.test.cjs"
   },
   "dependencies": {

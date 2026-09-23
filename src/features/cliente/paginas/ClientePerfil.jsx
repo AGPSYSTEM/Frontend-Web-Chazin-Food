@@ -56,10 +56,22 @@ import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/ser
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 import Swal from "sweetalert2";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
-const PRESET_AVATARS = ["sprout", "gold", "burger", "fries", "pizza", "chicken", "taco", "chef", "icecream", "coffee", "cupcake", "fire"];
+const PRESET_AVATARS = [
+  // Comida y productos
+  "burger", "hotdog", "fries", "sides", "pizza", "drink", "bottle", "meat",
+  "bacon", "cheese", "egg", "mushroom", "avocado", "pepper", "sauce", "salad",
+  "dessert", "icecream", "combo",
+  // Eventos y promociones
+  "fire", "2x1", "discount", "flash", "gift", "crown", "calendar", "party", "rocket",
+  // Fidelidad
+  "sprout", "gold",
+  // Emblema institucional
+  "chazin"
+];
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -1319,9 +1331,8 @@ export function ClientePerfil() {
                 </div>
 
                 {loadingPedidos ? (
-                  <div className="py-12 text-center">
-                    <RefreshCw className="w-8 h-8 text-red-500 animate-spin mx-auto mb-2" />
-                    <p className="text-xs text-gray-400 font-bold">Cargando tus pedidos...</p>
+                  <div className="py-8">
+                    <ChazinLoader text="CARGANDO TUS PEDIDOS" size="md" />
                   </div>
                 ) : pedidos.length === 0 ? (
                   <div className="py-12 text-center space-y-3 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">

@@ -9,7 +9,7 @@ export function useGestionVentas() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
-  const [selectedPeriod, setSelectedPeriod] = useState("7_dias");
+  const [selectedPeriod, setSelectedPeriod] = useState("personalizado");
 
   const fetchVentas = useCallback(async () => {
     try {

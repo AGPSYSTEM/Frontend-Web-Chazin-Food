@@ -1,7 +1,7 @@
 /**
  * Food and Additions Icon & Emoji helper utilities (Powered by Tabler Icons)
  */
-import { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip } from "../components/ui/FoodIcon";
+import { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip, IconAcompanamientos, IconSides } from "../components/ui/FoodIcon";
 
 /**
  * Sanitiza textos de productos y eventos removiendo cualquier emoji unicode
@@ -17,12 +17,13 @@ export const stripEmojis = (str) => {
     .trim();
 };
 
-export { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip };
+export { FoodIcon, FoodIconBadge, getFoodColorTheme, IconFrenchFries, IconBaconStrip, IconAcompanamientos, IconSides };
 
 export const FOOD_EMOJI_LIST = [
   { emoji: "bacon", label: "Tocineta Extra", key: "tocineta" },
   { emoji: "cheese", label: "Queso Cheddar / Mozzarella", key: "queso" },
   { emoji: "fries", label: "Papas Fritas", key: "papas" },
+  { emoji: "sides", label: "Acompañamientos / Guarnición", key: "acompanamientos" },
   { emoji: "drink", label: "Bebida / Sprite / Coca Cola", key: "bebida" },
   { emoji: "egg", label: "Huevo Frito", key: "huevo" },
   { emoji: "meat", label: "Carne Extra", key: "carne" },
@@ -63,6 +64,7 @@ export const getAdditionEmoji = (name = "", rawImage = "") => {
   if (n.includes("pina") || n.includes("piña")) return "pineapple";
   if (n.includes("pepini")) return "pickle";
   if (n.includes("salchicha") || n.includes("perro")) return "hotdog";
+  if (n.includes("acompa") || n.includes("guarnic") || n.includes("side")) return "sides";
   if (n.includes("jalap") || n.includes("picante") || n.includes("aji")) return "pepper";
   if (n.includes("lechuga") || n.includes("tomate") || n.includes("veggie")) return "lettuce";
   if (n.includes("maiz") || n.includes("choclo")) return "corn";
@@ -75,6 +77,7 @@ export const getProductEmoji = (name = "") => {
   if (normalized.includes("salchip")) return "fries";
   if (normalized.includes("perro") || normalized.includes("hot dog")) return "hotdog";
   if (normalized.includes("pollo") || normalized.includes("alita") || normalized.includes("broaster")) return "chicken";
+  if (normalized.includes("acompa") || normalized.includes("guarnic") || normalized.includes("side")) return "sides";
   if (normalized.includes("papas") || normalized.includes("fritas")) return "fries";
   if (normalized.includes("beb") || normalized.includes("jugo")) return "drink";
   if (normalized.includes("gaseos") || normalized.includes("coca") || normalized.includes("sprite") || normalized.includes("quatro")) return "drink";

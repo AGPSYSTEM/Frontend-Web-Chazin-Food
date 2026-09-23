@@ -5,6 +5,7 @@ import { ComprasTable } from "../componentes/gestion/ComprasTable";
 import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
 import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 function esEstadoPendiente(estado) {
   const e = String(estado || "").toUpperCase();
@@ -232,7 +233,7 @@ export function GestionCompras() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
+        <ChazinLoader text="CARGANDO HISTORIAL DE COMPRAS" size="md" />
       ) : (
         <ComprasTable
           compras={filteredCompras}

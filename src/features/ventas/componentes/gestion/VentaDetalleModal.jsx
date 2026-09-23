@@ -122,12 +122,14 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
           <div className="text-xl sm:text-2xl font-black tracking-tight mt-1">{codigo}</div>
           <div className="text-xs sm:text-sm text-red-100 font-medium flex items-center gap-2 mt-1 flex-wrap">
             <span>{cliente}</span>
-            <FidelidadBadge
-              tipo={clienteFidelidad.tipo}
-              descuento={clienteFidelidad.descuentoPorcentaje || descuentoPorcentaje}
-              enGracia={clienteFidelidad.enGracia}
-              size="sm"
-            />
+            {(!String(cliente).toLowerCase().includes("mostrador") && venta?.idCliente !== 26 && clienteFidelidad?.tieneCuenta && clienteFidelidad?.tipo && ["Regular", "Frecuente", "VIP"].includes(clienteFidelidad.tipo)) && (
+              <FidelidadBadge
+                tipo={clienteFidelidad.tipo}
+                descuento={clienteFidelidad.descuentoPorcentaje || descuentoPorcentaje}
+                enGracia={clienteFidelidad.enGracia}
+                size="sm"
+              />
+            )}
           </div>
         </div>
 

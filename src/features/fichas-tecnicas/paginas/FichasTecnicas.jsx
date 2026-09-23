@@ -6,6 +6,7 @@ import { FichaTecnicaInsumo } from "../componentes/FichaTecnicaInsumo";
 import { FichaTecnicaDetalleModal } from "../componentes/FichaTecnicaDetalleModal";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { insumosService } from "@/features/compras/servicios/insumosService";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function FichasTecnicas({ readOnly = false }) {
   const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'preparados'
@@ -201,9 +202,7 @@ export function FichasTecnicas({ readOnly = false }) {
 
       {/* Grid view */}
       {loading ? (
-        <div className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium">
-          Cargando catálogo para fichas técnicas...
-        </div>
+        <ChazinLoader text="CARGANDO FICHAS TÉCNICAS" size="md" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((item) => {
