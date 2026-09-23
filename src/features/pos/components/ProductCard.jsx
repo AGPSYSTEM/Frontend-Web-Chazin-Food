@@ -1,12 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Minus, Check, ChevronDown, ChevronUp, Layers, Sliders, Sparkles, FileText, Flame } from "lucide-react";
-import { getAdditionEmoji, getProductEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { Plus, Sliders, Sparkles, Flame, Layers } from "lucide-react";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function ProductCard({ producto, onAdd, onCustomize }) {
-  const [showAdditions, setShowAdditions] = useState(false);
-  const [selectedAdditions, setSelectedAdditions] = useState([]); // [{ id, nombre, precio, cantidad, imagen }]
-  const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
 
   const variantes = useMemo(
@@ -78,53 +75,13 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     }));
   }, [producto.adiciones]);
 
-  // Toggle addition checked
-  const toggleAdicion = (adicion) => {
-    const adId = adicion.idAdicion || adicion.id;
-    setSelectedAdditions((prev) => {
-      const exists = prev.find((a) => (a.idAdicion || a.id) === adId);
-      if (exists) {
-        return prev.filter((a) => (a.idAdicion || a.id) !== adId);
-      } else {
-        return [...prev, { ...adicion, id: adId, idAdicion: adId, cantidad: 1 }];
-      }
-    });
-  };
-
-  // Change quantity of a selected addition
-  const changeAdicionQty = (adId, delta) => {
-    setSelectedAdditions((prev) =>
-      prev.map((a) => {
-        if ((a.idAdicion || a.id) === adId) {
-          const newQty = Math.max(1, (a.cantidad || 1) + delta);
-          return { ...a, cantidad: newQty };
-        }
-        return a;
-      })
-    );
-  };
-
-  const additionsTotal = useMemo(() => {
-    return selectedAdditions.reduce((sum, a) => sum + (Number(a.precio) || 0) * (Number(a.cantidad) || 1), 0);
-  }, [selectedAdditions]);
-
   const effectiveBasePrice = activeEvent ? activeEvent.finalPrice : (Number(currentVariante.precio) || 0);
-  const unitPrice = effectiveBasePrice + additionsTotal;
-  const finalCardPrice = unitPrice * quantity;
 
+  // Al hacer clic en "Agregar" se abre el modal completo del producto
   const handleAdd = () => {
-    onAdd({
-      productoId: producto.id,
-      varianteId: currentVariante.id,
-      nombre: producto.nombre,
-      precio: effectiveBasePrice,
-      adiciones: selectedAdditions,
-      cantidad: quantity,
-      evento: activeEvent ? { idEvento: activeEvent.idEvento || activeEvent.id, nombre: activeEvent.nombre } : null
-    });
-    setQuantity(1);
-    setSelectedAdditions([]);
-    setShowAdditions(false);
+    if (onCustomize) {
+      onCustomize(producto);
+    }
   };
 
   const handleOpenCustomize = () => {
@@ -251,163 +208,38 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
           </div>
         </div>
 
-        {/* ── Adiciones Toggle & Panel ── */}
-        {adiciones.length > 0 && (
-          <div className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800 w-full text-left">
-            <button
-              type="button"
-              onClick={() => setShowAdditions((prev) => !prev)}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-[#f05454] dark:text-red-400 bg-red-50/70 dark:bg-red-900/20 hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors cursor-pointer border border-red-100/60 dark:border-red-900/40"
-            >
-              <span className="flex items-center gap-1.5">
-                <span>{showAdditions ? "Ocultar adiciones" : "Personalizar adiciones"}</span>
-                {selectedAdditions.length > 0 && (
-                  <span className="bg-[#f05454] text-white text-[9.5px] font-black rounded-full h-4 min-w-[18px] px-1 flex items-center justify-center shadow-2xs">
-                    {selectedAdditions.length}
-                  </span>
-                )}
-              </span>
-              {showAdditions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-
-            {showAdditions && (
-              <div className="mt-2 space-y-1.5 rounded-xl border border-[#e9edf2] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800/80 p-2.5 text-[11px] max-h-44 overflow-y-auto">
-                <p className="text-[9.5px] uppercase tracking-wider font-extrabold text-gray-400 dark:text-gray-400 mb-1">
-                  Elige tus extras:
-                </p>
-                {adiciones.map((adicion) => {
-                  const adId = adicion.idAdicion || adicion.id;
-                  const selectedObj = selectedAdditions.find((a) => (a.idAdicion || a.id) === adId);
-                  const isChecked = Boolean(selectedObj);
-                  const itemQty = selectedObj?.cantidad || 1;
-
-                  return (
-                    <div
-                      key={adId}
-                      className={`flex items-center justify-between gap-1.5 py-1.5 px-2 rounded-xl transition-all border ${
-                        isChecked
-                          ? "bg-red-50/80 dark:bg-red-950/40 border-red-200 dark:border-red-900/60 text-[#f05454] dark:text-red-300 font-bold"
-                          : "border-transparent text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-700/60"
-                      }`}
-                    >
-                      {/* Checkbox, Avatar (Image/Emoji) & Name */}
-                      <label className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleAdicion(adicion)}
-                          className="h-4 w-4 rounded border-[#d5dbe2] dark:border-gray-600 accent-[#f05454] cursor-pointer shrink-0"
-                        />
-                        <span className="w-6 h-6 shrink-0 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 shadow-2xs text-xs border border-gray-200/70 dark:border-gray-600 overflow-hidden">
-                          {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
-                            <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover" />
-                          ) : (
-                            <FoodIcon name={adicion.nombre} size={14} stroke={2} />
-                          )}
-                        </span>
-                        <span className="truncate text-[11.5px] font-semibold leading-tight">
-                          {adicion.nombre}
-                        </span>
-                      </label>
-
-                      {/* Right: Quantity Stepper if checked + Price */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isChecked && (
-                          <div className="flex items-center gap-1 bg-white dark:bg-gray-900 rounded-lg p-0.5 border border-red-200 dark:border-red-900/50 shadow-2xs">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                changeAdicionQty(adId, -1);
-                              }}
-                              className="h-4.5 w-4.5 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-red-100 text-[10px] font-bold cursor-pointer"
-                              title="Disminuir cantidad"
-                            >
-                              -
-                            </button>
-                            <span className="text-[10px] font-black min-w-[14px] text-center text-[#f05454]">
-                              {itemQty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                changeAdicionQty(adId, 1);
-                              }}
-                              className="h-4.5 w-4.5 flex items-center justify-center rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-red-100 text-[10px] font-bold cursor-pointer"
-                              title="Aumentar cantidad"
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
-                        <span className="font-black text-[10.5px]">
-                          +${Number((Number(adicion.precio || 0) * itemQty)).toLocaleString("es-CO")}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Product Quantity Stepper & Price/Action Footer ── */}
+        {/* ── Price & Action Footer ── */}
         <div className="pt-3 flex flex-col gap-2 mt-3 w-full border-t border-gray-100 dark:border-gray-800">
-          {/* Stepper & Price Row */}
+          {/* Price Row */}
           <div className="flex items-center justify-between gap-2 px-0.5">
-            {/* Price Info */}
             <div className="text-left flex flex-col min-w-0">
-              <div className="flex items-center gap-1 leading-none">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">
-                  {quantity > 1 ? `Total (${quantity})` : "Precio"}
-                </span>
-                {activeEvent && activeEvent.savings > 0 && (
-                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md">
-                    -${Number(activeEvent.savings * quantity).toLocaleString("es-CO")}
-                  </span>
-                )}
-              </div>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Precio</span>
               <div className="flex items-baseline gap-1.5 mt-0.5">
                 {activeEvent && activeEvent.savings > 0 && (
                   <span className="text-[11px] line-through font-semibold text-gray-400">
-                    ${Number((activeEvent.rawPrice + additionsTotal) * quantity).toLocaleString("es-CO")}
+                    ${Number(activeEvent.rawPrice).toLocaleString("es-CO")}
+                  </span>
+                )}
+                {activeEvent && activeEvent.savings > 0 && (
+                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md">
+                    -{activeEvent.discountPercent}%
                   </span>
                 )}
                 <span className={`text-sm sm:text-base font-black leading-tight ${
                   activeEvent ? "text-amber-600 dark:text-amber-400" : "text-[#f05454] dark:text-red-400"
                 }`}>
-                  ${Number(finalCardPrice).toLocaleString("es-CO")}
+                  ${Number(effectiveBasePrice).toLocaleString("es-CO")}
                 </span>
               </div>
             </div>
 
-            {/* Product Quantity Incrementer / Decrementer Stepper */}
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200/70 dark:border-gray-700/60 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                disabled={quantity <= 1}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-40 transition cursor-pointer shadow-2xs active:scale-95"
-                title="Disminuir cantidad del producto"
-              >
-                <Minus className="w-3 h-3 stroke-[3]" />
-              </button>
-
-              <span className="w-6 text-center text-xs font-black text-gray-800 dark:text-gray-100">
-                {quantity}
+            {/* Additions count chip */}
+            {adiciones.length > 0 && (
+              <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">
+                <Layers className="w-3 h-3 text-amber-400" />
+                {adiciones.length} extras
               </span>
-
-              <button
-                type="button"
-                onClick={() => setQuantity((prev) => prev + 1)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition cursor-pointer shadow-2xs active:scale-95"
-                title="Aumentar cantidad del producto"
-              >
-                <Plus className="w-3 h-3 stroke-[3]" />
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -430,10 +262,10 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
                   ? "bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-amber-500/20"
                   : "bg-[#f05454] hover:bg-[#d94444]"
               }`}
-              title={activeEvent ? `Agregar con precio promocional de ${activeEvent.nombre}` : "Agregar rápido al carrito"}
+              title={activeEvent ? `Agregar con precio promocional de ${activeEvent.nombre}` : "Agregar al carrito"}
             >
               <Plus className="h-3.5 w-3.5 stroke-[3]" />
-              <span>{quantity > 1 ? `Agregar (${quantity})` : "Agregar"}</span>
+              <span>Agregar</span>
             </button>
           </div>
         </div>
