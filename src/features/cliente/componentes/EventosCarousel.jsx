@@ -13,7 +13,8 @@ import {
   Percent,
   ChefHat
 } from "lucide-react";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 // Paletas de color premium cinematográficas para cada evento
 const THEMES = {
@@ -142,6 +143,49 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
   const animationFrameRef = useRef(null);
   const startTimeRef = useRef(null);
   const slideDuration = 6000; // 6 segundos por diapositiva
+
+  // Referencias y estado para arrastre horizontal con mouse (drag-to-scroll)
+  const pillsRef = useRef(null);
+  const [isPillsDragging, setIsPillsDragging] = useState(false);
+  const pillsDragStartX = useRef(0);
+  const pillsScrollLeft = useRef(0);
+  const pillsHasDragged = useRef(false);
+
+  const handlePillsMouseDown = (e) => {
+    if (!pillsRef.current) return;
+    setIsPillsDragging(true);
+    pillsHasDragged.current = false;
+    pillsDragStartX.current = e.pageX - pillsRef.current.offsetLeft;
+    pillsScrollLeft.current = pillsRef.current.scrollLeft;
+  };
+
+  const handlePillsMouseMove = (e) => {
+    if (!isPillsDragging || !pillsRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - pillsRef.current.offsetLeft;
+    const walk = (x - pillsDragStartX.current) * 1.5;
+    if (Math.abs(walk) > 4) {
+      pillsHasDragged.current = true;
+    }
+    pillsRef.current.scrollLeft = pillsScrollLeft.current - walk;
+  };
+
+  const handlePillsMouseUp = () => {
+    setIsPillsDragging(false);
+  };
+
+  const handlePillsMouseLeave = () => {
+    setIsPillsDragging(false);
+  };
+
+  // Desplazar suavemente hacia la píldora activa cuando cambie el slide
+  useEffect(() => {
+    if (!pillsRef.current || isPillsDragging) return;
+    const activeBtn = pillsRef.current.children[currentIndex];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [currentIndex, isPillsDragging]);
 
   // Fusionar eventos activos de base de datos con showcases culinarios
   const combinedEventos = useMemo(() => {
@@ -632,29 +676,50 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
         </div>
       </div>
 
-      {/* DOCK INFERIOR: SELECTOR DE PÍLDORAS CON ACCESO DIRECTO */}
-      <div className="mt-4 flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1 px-2">
+      {/* DOCK INFERIOR: SELECTOR DE PÍLDORAS CON ACCESO DIRECTO Y ARRASTRE SUAVE */}
+      <div
+        ref={pillsRef}
+        onMouseDown={handlePillsMouseDown}
+        onMouseMove={handlePillsMouseMove}
+        onMouseUp={handlePillsMouseUp}
+        onMouseLeave={handlePillsMouseLeave}
+        className={`mt-4 flex items-center gap-3 overflow-x-auto no-scrollbar py-2.5 px-4 sm:px-6 select-none ${
+          isPillsDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{ scrollBehavior: isPillsDragging ? "auto" : "smooth" }}
+      >
         {combinedEventos.map((evt, idx) => {
           const isSelected = idx === currentIndex;
+          const badgeConfig = getEventBadgeConfig(evt);
+          const BadgeIcon = badgeConfig?.Icon;
+          const cleanName = badgeConfig?.fullLabel || stripEmojis(evt.nombreEvento || evt.nombre || "");
+
           return (
             <button
               key={evt.idEvento || idx}
               type="button"
-              onClick={() => goToSlide(idx)}
-              className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
+              onClick={() => {
+                if (pillsHasDragged.current) return;
+                goToSlide(idx);
+              }}
+              className={`shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 cursor-pointer border ${
                 isSelected
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-950 border-gray-900 dark:border-white shadow-md scale-102"
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750"
+                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-950 border-gray-900 dark:border-white shadow-lg ring-2 ring-gray-900/15 dark:ring-white/20"
+                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-300 dark:hover:border-gray-600 shadow-xs"
               }`}
             >
-              <FoodIcon name={evt.icono || "burger"} size={16} />
-              <span className="truncate max-w-[140px] sm:max-w-[180px]">{evt.nombreEvento}</span>
+              {BadgeIcon ? (
+                <BadgeIcon size={16} stroke={2} className={isSelected ? "text-amber-400 dark:text-amber-500" : "text-gray-500 dark:text-gray-400"} />
+              ) : (
+                <FoodIcon name={evt.icono || "burger"} size={16} />
+              )}
+              <span className="truncate max-w-[150px] sm:max-w-[200px] whitespace-nowrap">{cleanName}</span>
               {evt.descuento && (
                 <span
-                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
                     isSelected
-                      ? "bg-amber-400 text-gray-950"
-                      : "bg-red-500/10 text-red-600 dark:text-red-400"
+                      ? "bg-amber-400 text-gray-950 shadow-xs"
+                      : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
                   }`}
                 >
                   -{evt.descuento}%
@@ -663,6 +728,8 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
             </button>
           );
         })}
+        {/* Espaciador al final para garantizar que la última píldora nunca quede pegada ni recortada */}
+        <div className="w-4 shrink-0 pointer-events-none" />
       </div>
     </section>
   );

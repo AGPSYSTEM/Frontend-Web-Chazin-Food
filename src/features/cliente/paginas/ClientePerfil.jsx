@@ -60,18 +60,68 @@ import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 import Swal from "sweetalert2";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
-const PRESET_AVATARS = [
-  // Comida y productos
-  "burger", "hotdog", "fries", "sides", "pizza", "drink", "bottle", "meat",
-  "bacon", "cheese", "egg", "mushroom", "avocado", "pepper", "sauce", "salad",
-  "dessert", "icecream", "combo",
-  // Eventos y promociones
-  "fire", "2x1", "discount", "flash", "gift", "crown", "calendar", "party", "rocket",
-  // Fidelidad
-  "sprout", "gold",
-  // Emblema institucional
-  "chazin"
+
+const PRESET_AVATAR_CATEGORIES = [
+  {
+    name: "Comida & Menú",
+    avatars: [
+      { slug: "burger", label: "Hamburguesa" },
+      { slug: "hotdog", label: "Perro Caliente" },
+      { slug: "fries", label: "Papas Fritas" },
+      { slug: "sides", label: "Acompañamientos" },
+      { slug: "pizza", label: "Pizza" },
+      { slug: "drink", label: "Bebida / Refresco" },
+      { slug: "bottle", label: "Botella / Agua" },
+      { slug: "meat", label: "Carne Parrilla" },
+      { slug: "chicken", label: "Pollo Crispy" },
+      { slug: "bacon", label: "Tocineta" },
+      { slug: "cheese", label: "Queso Fundido" },
+      { slug: "egg", label: "Huevo Frito" },
+      { slug: "mushroom", label: "Champiñones" },
+      { slug: "avocado", label: "Aguacate" },
+      { slug: "pepper", label: "Picante / Ají" },
+      { slug: "sauce", label: "Salsas de la Casa" },
+      { slug: "salad", label: "Ensalada Veggie" },
+      { slug: "onion", label: "Cebolla Crispy" },
+      { slug: "tomato", label: "Tomate Fresco" },
+      { slug: "lettuce", label: "Lechuga" },
+      { slug: "carrot", label: "Zanahoria" },
+      { slug: "bread", label: "Pan Brioche" },
+      { slug: "dessert", label: "Postre / Torta" },
+      { slug: "icecream", label: "Helado" },
+      { slug: "combo", label: "Combo Gourmet" }
+    ]
+  },
+  {
+    name: "Promos & Eventos",
+    avatars: [
+      { slug: "fire", label: "Fuego / Burger Fest" },
+      { slug: "2x1", label: "Promo 2x1" },
+      { slug: "discount", label: "Ticket Descuento" },
+      { slug: "flash", label: "Relámpago / Flash" },
+      { slug: "gift", label: "Combo Festivo / Regalo" },
+      { slug: "crown", label: "Edición Especial" },
+      { slug: "calendar", label: "Evento Calendario" },
+      { slug: "party", label: "Fiesta / Celebración" },
+      { slug: "rocket", label: "Lanzamiento Cohete" }
+    ]
+  },
+  {
+    name: "Emblema & Fidelidad",
+    avatars: [
+      { slug: "chazin", label: "Emblema Chazin Food" },
+      { slug: "chef", label: "Chef Profesional" },
+      { slug: "star", label: "Estrella Destacada" },
+      { slug: "sprout", label: "Nivel Semilla" },
+      { slug: "bronze", label: "Nivel Bronce" },
+      { slug: "silver", label: "Nivel Plata" },
+      { slug: "gold", label: "Nivel Oro VIP" }
+    ]
+  }
 ];
+
+const ALL_AVATAR_ITEMS = PRESET_AVATAR_CATEGORIES.flatMap((c) => c.avatars);
+const PRESET_AVATARS = ALL_AVATAR_ITEMS.map((a) => a.slug);
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -99,6 +149,13 @@ export function ClientePerfil() {
   const [avatarUrl, setAvatarUrl] = useState(() => {
     return user?.foto || user?.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
   });
+  const [avatarFilter, setAvatarFilter] = useState("todos");
+
+  const filteredAvatars = useMemo(() => {
+    if (avatarFilter === "todos") return ALL_AVATAR_ITEMS;
+    const cat = PRESET_AVATAR_CATEGORIES.find((c) => c.name === avatarFilter);
+    return cat ? cat.avatars : ALL_AVATAR_ITEMS;
+  }, [avatarFilter]);
 
   // Edit form state
   const [form, setForm] = useState({
@@ -1649,27 +1706,71 @@ export function ClientePerfil() {
                       </div>
                     </div>
 
-                    {/* Preset Avatars Selector */}
-                    <div className="pt-1">
-                      <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mb-2">
-                        O elige un avatar rápido:
-                      </p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {PRESET_AVATARS.map((slug) => (
+                    {/* Preset Avatars Selector: Toda la iconografía disponible */}
+                    <div className="pt-2 border-t border-gray-200/70 dark:border-gray-700/60">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          O elige un avatar de nuestra iconografía:
+                        </p>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {ALL_AVATAR_ITEMS.length} iconos
+                        </span>
+                      </div>
+
+                      {/* Chips de filtro por categoría */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setAvatarFilter("todos")}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${
+                            avatarFilter === "todos"
+                              ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                          }`}
+                        >
+                          Todos ({ALL_AVATAR_ITEMS.length})
+                        </button>
+                        {PRESET_AVATAR_CATEGORIES.map((cat) => (
                           <button
-                            key={slug}
+                            key={cat.name}
                             type="button"
-                            onClick={() => handleSelectPresetAvatar(slug)}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-95 cursor-pointer ${
-                              avatarUrl === slug
-                                ? "bg-red-100 dark:bg-red-950/60 border-2 border-[#f05454] scale-110 shadow-xs"
-                                : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
+                            onClick={() => setAvatarFilter(cat.name)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${
+                              avatarFilter === cat.name
+                                ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
+                                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                             }`}
-                            title={`Elegir avatar ${slug}`}
                           >
-                            <FoodIcon name={slug} size={18} />
+                            {cat.name} ({cat.avatars.length})
                           </button>
                         ))}
+                      </div>
+
+                      {/* Cuadrícula desplazable de avatares con tooltip y checkmark */}
+                      <div className="max-h-48 overflow-y-auto pr-1 flex items-center gap-2 flex-wrap">
+                        {filteredAvatars.map((item) => {
+                          const isSelected = avatarUrl === item.slug;
+                          return (
+                            <button
+                              key={item.slug}
+                              type="button"
+                              onClick={() => handleSelectPresetAvatar(item.slug)}
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer relative group ${
+                                isSelected
+                                  ? "bg-red-500/15 border-2 border-[#f05454] shadow-xs text-[#f05454] scale-105"
+                                  : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+                              }`}
+                              title={item.label}
+                            >
+                              <FoodIcon name={item.slug} size={18} />
+                              {isSelected && (
+                                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#f05454] text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-xs">
+                                  ✓
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
