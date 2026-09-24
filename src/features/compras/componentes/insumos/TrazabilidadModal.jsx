@@ -9,7 +9,8 @@ import {
   Clock,
   RotateCcw,
   CheckCircle2,
-  ShoppingCart
+  ShoppingCart,
+  User
 } from "lucide-react";
 
 export function TrazabilidadModal({
@@ -245,6 +246,14 @@ export function TrazabilidadModal({
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                       {ev.descripcion}
                     </p>
+                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/40 text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-gray-700 flex items-center justify-center text-slate-500 dark:text-gray-300 shrink-0">
+                        <User className="w-2.5 h-2.5" />
+                      </div>
+                      <span>
+                        Responsable: <strong className="font-semibold text-gray-800 dark:text-gray-200">{ev.usuarioNombre || "Sistema"}</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
               );

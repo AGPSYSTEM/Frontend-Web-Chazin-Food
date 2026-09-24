@@ -1,4 +1,4 @@
-import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle } from "lucide-react";
+import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle, Layers, Info, CornerDownRight } from "lucide-react";
 
 const estadoBadges = {
   RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Recibida" },
@@ -44,21 +44,45 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
       })
     : "Sin fecha";
 
+  const fechaCancelacionFormatted = compra.fechaCancelacion
+    ? new Date(compra.fechaCancelacion).toLocaleString("es-CO", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+    : null;
+
   const detalles = compra.detalles || [];
   const estaPendiente = esEstadoPendiente(compra.estado);
   const estaRecibida = esEstadoRecibida(compra.estado);
   const estaCancelada = esEstadoCancelada(compra.estado);
 
+  // Parsear detalles de cancelación si existen
+  let itemsCancelados = [];
+  if (compra.detallesCancelacion) {
+    try {
+      itemsCancelados = typeof compra.detallesCancelacion === "string"
+        ? JSON.parse(compra.detallesCancelacion)
+        : compra.detallesCancelacion;
+    } catch (_) {
+      itemsCancelados = [];
+    }
+  }
+
+  const esProveedorGenerico = !compra.idProveedor || compra.proveedorNombre === "Proveedor Genérico" || compra.proveedorNombre === "Sin proveedor";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div
-        className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800"
+        className="relative bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800"
         style={{ animation: "fadeInScale 0.2s ease-out" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#F05454]/10 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-2xl bg-[#F05454]/10 flex items-center justify-center">
               <FileText className="w-5 h-5 text-[#F05454]" />
             </div>
             <div>
@@ -70,6 +94,11 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
                   <IconEstado className="w-3.5 h-3.5" />
                   {estadoInfo.label}
                 </span>
+                {esProveedorGenerico && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px] font-semibold">
+                    🏷️ Genérico
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Orden de compra #{compra.id}
@@ -78,7 +107,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
+            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -86,8 +115,8 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* Estado destacado y acciones */}
-          <div className={`rounded-xl p-4 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+          {/* Banner de Estado */}
+          <div className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
             estaPendiente
               ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50"
               : estaRecibida
@@ -95,7 +124,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
               : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50"
           }`}>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                 estaPendiente
                   ? "bg-yellow-100 dark:bg-yellow-800/40 text-yellow-600 dark:text-yellow-300"
                   : estaRecibida
@@ -119,13 +148,13 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
                   {estaRecibida && (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span>El stock de los insumos fue actualizado cuando se marcó como Recibida.</span>
+                      <span>El stock de los insumos fue reabastecido automáticamente en el inventario.</span>
                     </>
                   )}
                   {estaCancelada && (
                     <>
                       <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                      <span>Esta compra fue anulada. Si tenía stock asociado, fue revertido.</span>
+                      <span>Esta compra fue anulada y el stock cancelado fue descontado del inventario.</span>
                     </>
                   )}
                 </div>
@@ -135,7 +164,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
               {estaPendiente && onUpdateEstado && (
                 <button
                   onClick={() => onUpdateEstado(compra.id, "RECIBIDA")}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Marcar como Recibida
@@ -144,7 +173,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
               {!estaCancelada && onCancelar && (
                 <button
                   onClick={() => onCancelar(compra.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
                 >
                   <XCircle className="w-4 h-4" />
                   Anular Compra
@@ -153,15 +182,96 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
             </div>
           </div>
 
+          {/* ═══════════════════════════════════════════════════════════════
+              SECCIÓN DE CANCELACIÓN (MOTIVO, RESPONSABLE, Y LO QUE SE CANCELÓ)
+          ═══════════════════════════════════════════════════════════════ */}
+          {estaCancelada && (
+            <div className="p-4 rounded-2xl bg-red-50/60 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/40 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
+                    Información de la Anulación
+                  </span>
+                </div>
+                {fechaCancelacionFormatted && (
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Fecha: <strong className="text-gray-700 dark:text-gray-200">{fechaCancelacionFormatted}</strong>
+                  </span>
+                )}
+              </div>
+
+              {/* Motivo y Responsable */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="p-3 bg-white dark:bg-gray-800/80 rounded-xl border border-red-100 dark:border-red-900/30">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-1">
+                    ¿Por qué se canceló? (Motivo)
+                  </span>
+                  <p className="text-xs font-semibold text-red-700 dark:text-red-300">
+                    {compra.motivoCancelacion || "Sin motivo especificado"}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white dark:bg-gray-800/80 rounded-xl border border-red-100 dark:border-red-900/30">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-1">
+                    Responsable de la anulación
+                  </span>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-[#F05454]" />
+                    {compra.usuarioCancelacionNombre || "Usuario del sistema"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Insumos y Cantidades Exactamente Canceladas */}
+              {itemsCancelados.length > 0 && (
+                <div className="pt-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 block mb-2 flex items-center gap-1">
+                    <CornerDownRight className="w-3.5 h-3.5 text-red-500" />
+                    Exactamente lo que se canceló y descontó del stock:
+                  </span>
+                  <div className="border border-red-100 dark:border-red-900/40 rounded-xl overflow-hidden bg-white dark:bg-gray-800/80">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-red-50/70 dark:bg-red-950/30 border-b border-red-100 dark:border-red-900/40 text-[10px] uppercase font-bold text-red-800 dark:text-red-300">
+                          <th className="px-3 py-2">Insumo Cancelado</th>
+                          <th className="px-3 py-2 text-center">Cantidad Cancelada</th>
+                          <th className="px-3 py-2 text-right">Subtotal Revertido</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                        {itemsCancelados.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-red-50/30 dark:hover:bg-red-950/10">
+                            <td className="px-3 py-2 font-semibold text-gray-800 dark:text-gray-200">
+                              {item.nombre || `Insumo #${item.idInsumo}`}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold text-[11px]">
+                                -{Number(item.cantidadCancelada || 0).toLocaleString("es-CO")} {item.unidadMedida || ""}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-red-600 dark:text-red-400">
+                              -${Number(item.subtotal || 0).toLocaleString("es-CO")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Metadata Card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <div>
               <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
                 Proveedor
               </span>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-800 dark:text-gray-200">
                 <User className="w-4 h-4 text-[#F05454]" />
-                {compra.proveedorNombre || compra.proveedor?.nombre || "Sin Proveedor"}
+                {esProveedorGenerico ? "Proveedor Genérico (sin proveedor asociado)" : (compra.proveedorNombre || compra.proveedor?.nombre || "Sin Proveedor")}
               </div>
             </div>
             <div>
@@ -175,14 +285,14 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
             </div>
           </div>
 
-          {/* Insumos Comprados */}
+          {/* Insumos Comprados Originales */}
           <div>
             <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
               <Package className="w-4 h-4 text-[#F05454]" />
-              Insumos Adquiridos ({detalles.length})
+              Insumos Adquiridos en esta Orden ({detalles.length})
             </h3>
 
-            <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
+            <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -203,10 +313,30 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
                     detalles.map((d, i) => {
                       const insNombre = d.insumo?.nombre || `Insumo #${d.idInsumo}`;
                       const unidad = d.insumo?.unidadMedida || "";
+                      const lotesArr = Array.isArray(d.lotes) && d.lotes.length > 0
+                        ? d.lotes
+                        : (d.numeroLote ? [{ numeroLote: d.numeroLote, fechaVencimiento: d.fechaVencimiento }] : []);
+
                       return (
                         <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">
-                            {insNombre}
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-gray-900 dark:text-gray-100 block">
+                              {insNombre}
+                            </span>
+                            {lotesArr.length > 0 && (
+                              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                {lotesArr.map((lot, li) => (
+                                  <span
+                                    key={li}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-medium"
+                                  >
+                                    <Layers className="w-2.5 h-2.5" />
+                                    Lote: {lot.numeroLote}
+                                    {lot.fechaVencimiento && ` · Vence: ${lot.fechaVencimiento}`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold text-xs">
@@ -230,7 +360,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
 
           {/* Total Summary */}
           <div className="flex justify-end">
-            <div className="bg-[#F05454]/10 rounded-xl px-5 py-3 flex items-center gap-3 border border-[#F05454]/20">
+            <div className="bg-[#F05454]/10 rounded-2xl px-5 py-3 flex items-center gap-3 border border-[#F05454]/20">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 Total de la Orden:
               </span>

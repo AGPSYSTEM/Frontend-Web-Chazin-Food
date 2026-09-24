@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, Package, Sparkles, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
   const [pageSize, setPageSize] = useState(10);
@@ -20,8 +20,8 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
               <th className="px-6 py-4">NOMBRE</th>
               <th className="px-6 py-4">CATEGORÍA</th>
               <th className="px-6 py-4">CANTIDAD</th>
-              <th className="px-6 py-4">PRECIO UNIT.</th>
-              <th className="px-6 py-4">PROVEEDOR</th>
+              <th className="px-6 py-4">PRECIO / COSTO</th>
+              <th className="px-6 py-4">PROVEEDOR / ORIGEN</th>
               <th className="px-6 py-4">STOCK</th>
               <th className="px-6 py-4 text-center">ACCIONES</th>
             </tr>
@@ -30,11 +30,12 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
             {totalRecords === 0 ? (
               <tr>
                 <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No se encontraron insumos
+                  No se encontraron insumos registrados
                 </td>
               </tr>
             ) : (
               paginatedInsumos.map((i, index) => {
+                const isPreparado = i.tipo === "Preparado";
                 const isBajo = (i.stock || 0) <= (i.stockMinimo || 0) && (i.stock || 0) > 0;
                 const isAgotado = (i.stock || 0) === 0;
 
@@ -46,20 +47,30 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                   : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300";
 
                 return (
-                  <tr key={i.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                  <tr key={i.id || i.idInsumo || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">
-                      {i.id || startIndex + index + 1}
+                      {i.id || i.idInsumo || startIndex + index + 1}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center shrink-0">
-                          <Package className="w-4 h-4" />
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isPreparado 
+                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
+                            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                        }`}>
+                          {isPreparado ? <ChefHat className="w-5 h-5" /> : <Package className="w-5 h-5" />}
                         </div>
                         <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-[#1e293b] dark:text-gray-100">
                               {i.nombre}
                             </span>
+                            {isPreparado && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                <ChefHat className="w-3 h-3 text-purple-500" />
+                                <span>Insumo Preparado</span>
+                              </span>
+                            )}
                             {(i.estado === "Inactivo" || i.estado === 0 || i.estado === "0") && (
                               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                                 Inactivo
@@ -78,7 +89,9 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {typeof i.categoria === "string" ? i.categoria : (i.categoriaNombre || i.categoria?.nombre || "Sin categoría")}
+                      {isPreparado 
+                        ? (i.categoriaNombre || (typeof i.categoria === "string" ? i.categoria : "Preparado Interno")) 
+                        : (typeof i.categoria === "string" ? i.categoria : (i.categoriaNombre || i.categoria?.nombre || "Sin categoría"))}
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
                       {i.stock ?? 0} {i.unidadMedida || "und"}
@@ -87,7 +100,9 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                       ${Number(i.precioUnitario || i.costo || 0).toLocaleString("es-CO")}
                     </td>
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {typeof i.proveedor === "string" ? i.proveedor : (i.proveedorNombre || i.proveedor?.nombre || "Sin Proveedor")}
+                      {isPreparado
+                        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400">Cocina / Interno</span>
+                        : (typeof i.proveedor === "string" ? i.proveedor : (i.proveedorNombre || i.proveedor?.nombre || "Sin Proveedor"))}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${stockBadgeClass}`}>
@@ -113,7 +128,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                           <Edit className="w-4 h-4 stroke-[2]" />
                         </button>
                         <button
-                          onClick={() => onDelete(i.id || i.idInsumo, i.nombre)}
+                          onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
                           title="Eliminar insumo"
                           className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
                         >

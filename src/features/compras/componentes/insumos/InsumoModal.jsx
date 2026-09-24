@@ -80,8 +80,6 @@ export function InsumoModal({
     categoria: "",
     unidadMedida: "Kg",
     precioUnitario: 0,
-    idProveedor: "",
-    proveedor: "",
     stock: 0,
     stockMinimo: 5,
     fechaExpedicion: "",
@@ -172,8 +170,6 @@ export function InsumoModal({
         categoria: defaultCat,
         unidadMedida: "Kg",
         precioUnitario: 0,
-        idProveedor: proveedores[0]?.id || proveedores[0]?.idProveedor || "",
-        proveedor: proveedores[0]?.nombre || "",
         stock: 0,
         stockMinimo: 5,
         fechaExpedicion: "",
@@ -531,32 +527,7 @@ export function InsumoModal({
                     </select>
                   </div>
 
-                  <div>
-                    <label className={labelCls}>Proveedor</label>
-                    <select
-                      value={String(form.idProveedor || "")}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const selectedProv = proveedores.find(p => String(p.id || p.idProveedor) === String(val) || p.nombre === val);
-                        setForm({
-                          ...form,
-                          idProveedor: selectedProv ? (selectedProv.id || selectedProv.idProveedor) : (val ? Number(val) : ""),
-                          proveedor: selectedProv ? selectedProv.nombre : val
-                        });
-                      }}
-                      className={`${inputCls} cursor-pointer`}
-                    >
-                      <option value="">Sin Proveedor / Ninguno</option>
-                      {proveedores.map((p) => {
-                        const provId = p.id || p.idProveedor;
-                        return (
-                          <option key={provId || p.nombre} value={String(provId)}>
-                            {p.nombre}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
 
                   <div>
                     <label className={labelCls}>Unidad de Medida / Presentación</label>
