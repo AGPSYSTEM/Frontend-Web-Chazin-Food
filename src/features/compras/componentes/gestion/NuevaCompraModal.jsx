@@ -157,7 +157,7 @@ function LoteEditor({ lotes, onLotesChange, totalCantidad }) {
 }
 
 /* ─── Main Component ─── */
-export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra }) {
+export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra, initialInsumo }) {
   const notify = useNotifications();
   const esEdicion = Boolean(editCompra && editCompra.id);
   const idCompraEdit = esEdicion ? editCompra.id : null;
@@ -246,6 +246,28 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
       }
     }
   }, [isOpen, esEdicion, editCompra, loadCatalogos, poblarDatosEdicion, onClose]);
+
+  useEffect(() => {
+    if (isOpen && initialInsumo && insumos.length > 0 && !esEdicion) {
+      const targetId = initialInsumo.idInsumo || initialInsumo.id;
+      const found = insumos.find((i) => (i.idInsumo || i.id) === targetId);
+      if (found) {
+        if (found.idProveedor) {
+          setIdProveedor(String(found.idProveedor));
+        }
+        const cantSugerida = Math.max(
+          1,
+          Math.ceil((Number(found.stockMinimo || 0) * 2) - Number(found.stock || 0))
+        );
+        setConfigurando({
+          insumo: found,
+          cantidad: String(cantSugerida > 0 ? cantSugerida : 10),
+          precioUnitario: String(found.precioUnitario || 0),
+          lotes: []
+        });
+      }
+    }
+  }, [isOpen, initialInsumo, insumos, esEdicion]);
 
   if (!isOpen) return null;
 

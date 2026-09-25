@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
-import Swal from "sweetalert2";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
 
@@ -20,6 +20,7 @@ function FieldError({ msg }) {
 
 export function MiPerfilModal({ isOpen, onClose }) {
   const { user, updateProfile } = useAuth();
+  const notify = useNotifications();
 
   const [tab, setTab] = useState("datos"); // "datos" | "seguridad"
   const [saving, setSaving] = useState(false);
@@ -138,22 +139,10 @@ export function MiPerfilModal({ isOpen, onClose }) {
       };
       const result = await updateProfile(payload);
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Perfil actualizado!",
-          text: "Tus datos han sido guardados correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        notify.success("¡Perfil actualizado!", "Tus datos han sido guardados correctamente.");
         onClose();
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "No se pudo actualizar",
-          text: result.message || "Ocurrió un error al guardar los datos.",
-          confirmButtonColor: "#f05454",
-        });
+        notify.error("No se pudo actualizar", result.message || "Ocurrió un error al guardar los datos.");
       }
     } finally {
       setSaving(false);
@@ -172,22 +161,10 @@ export function MiPerfilModal({ isOpen, onClose }) {
         passwordNueva: passForm.passwordNueva,
       });
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Contraseña cambiada!",
-          text: "Tu contraseña ha sido actualizada correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        notify.success("¡Contraseña cambiada!", "Tu contraseña ha sido actualizada correctamente.");
         setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: result.message || "No se pudo cambiar la contraseña.",
-          confirmButtonColor: "#f05454",
-        });
+        notify.error("Error", result.message || "No se pudo cambiar la contraseña.");
       }
     } finally {
       setSaving(false);

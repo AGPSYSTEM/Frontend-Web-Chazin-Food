@@ -57,7 +57,6 @@ import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefon
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
-import Swal from "sweetalert2";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
 
@@ -148,7 +147,7 @@ export function ClientePerfil() {
   const navigate = useNavigate();
   const { user, updateProfile, logout, refreshUser } = useAuth();
   const [darkMode, toggleDarkMode] = useDarkMode();
-  const { success, warning, error: notifyError } = useNotifications();
+  const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
   const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "pedidos" | "editar"
   const [pedidos, setPedidos] = useState([]);
@@ -723,26 +722,14 @@ export function ClientePerfil() {
 
   // ── Close other active sessions ──
   const handleCloseOtherSessions = async () => {
-    const result = await Swal.fire({
-      title: "¿Cerrar sesiones en otros dispositivos?",
-      text: "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#f05454",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sí, cerrar otras sesiones",
-      cancelButtonText: "Cancelar",
-    });
+    const isConfirmed = await confirmAction(
+      "¿Cerrar sesiones en otros dispositivos?",
+      "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
+      "Sí, cerrar otras sesiones"
+    );
 
-    if (result.isConfirmed) {
-      await Swal.fire({
-        icon: "success",
-        title: "Sesiones cerradas",
-        text: "Tus otras sesiones han sido desconectadas por seguridad.",
-        confirmButtonColor: "#f05454",
-        timer: 2000,
-        timerProgressBar: true,
-      });
+    if (isConfirmed) {
+      success("Sesiones cerradas", "Tus otras sesiones han sido desconectadas por seguridad.");
     }
   };
 
@@ -813,22 +800,10 @@ export function ClientePerfil() {
       });
 
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Perfil Actualizado!",
-          text: "Tus datos personales y foto han sido guardados correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        success("¡Perfil Actualizado!", "Tus datos personales y foto han sido guardados correctamente.");
         refreshUser?.();
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "No se pudo actualizar",
-          text: result.message || "Ocurrió un error al guardar los cambios.",
-          confirmButtonColor: "#f05454",
-        });
+        notifyError("No se pudo actualizar", result.message || "Ocurrió un error al guardar los cambios.");
       }
     } finally {
       setSaving(false);

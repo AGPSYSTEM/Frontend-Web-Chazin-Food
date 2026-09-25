@@ -8,7 +8,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
-import Swal from "sweetalert2";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
 
@@ -23,6 +23,7 @@ function FieldError({ msg }) {
 
 export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
   const { updateProfile } = useAuth();
+  const notify = useNotifications();
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
   const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "editar"
   const [saving, setSaving] = useState(false);
@@ -201,23 +202,11 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
       });
 
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Datos actualizados!",
-          text: "Tu perfil fue guardado correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        notify.success("¡Datos actualizados!", "Tu perfil fue guardado correctamente.");
         setTab("fidelidad");
         onClose();
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "No se pudo actualizar",
-          text: result.message || "Ocurrió un error al guardar.",
-          confirmButtonColor: "#f05454",
-        });
+        notify.error("No se pudo actualizar", result.message || "Ocurrió un error al guardar.");
       }
     } finally {
       setSaving(false);

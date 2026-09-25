@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Plus, Search, FileText, CheckCircle2, XCircle, DollarSign } from "lucide-react";
 import { useGestionCompras } from "../hooks/useGestionCompras";
 import { ComprasTable } from "../componentes/gestion/ComprasTable";
@@ -28,11 +29,24 @@ export function GestionCompras() {
     refetch
   } = useGestionCompras();
 
+  const location = useLocation();
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCompra, setEditCompra] = useState(null);
+  const [initialInsumo, setInitialInsumo] = useState(null);
   const [procesandoId, setProcesandoId] = useState(null);
   const [cancelarCompraModal, setCancelarCompraModal] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.openNuevaCompra) {
+      setEditCompra(null);
+      if (location.state.initialInsumo) {
+        setInitialInsumo(location.state.initialInsumo);
+      }
+      setModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const stats = useMemo(() => {
     const total = compras.length;
@@ -287,10 +301,12 @@ export function GestionCompras() {
         onClose={() => {
           setModalOpen(false);
           setEditCompra(null);
+          setInitialInsumo(null);
         }}
         onCreated={handleCompraCreated}
         onUpdated={handleCompraUpdated}
         editCompra={editCompra}
+        initialInsumo={initialInsumo}
       />
 
       <DetalleCompraModal
