@@ -16,56 +16,145 @@ import {
 import { FoodIcon, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
-// Paletas de color premium cinematográficas para cada evento
+// Paletas de color premium cinematográficas para cada evento (8 temas únicos sin repeticiones)
 export const THEMES = {
   fire: {
-    bg: "from-red-950 via-orange-950 to-stone-950",
-    glow: "rgba(239, 68, 68, 0.4)",
-    border: "border-orange-500/30",
-    badgeBg: "bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-900/40",
-    accent: "text-amber-400",
-    btnGrad: "from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-lg shadow-orange-950/60",
-    pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
-    tag: "🔥 SUPER PROMO FLASH",
-    heroGradient: "from-red-600 via-rose-500 to-orange-500",
-    heroSubtext: "text-amber-100"
+    bg: "from-red-950 via-stone-900 to-stone-950",
+    glow: "rgba(239, 68, 68, 0.45)",
+    border: "border-red-500/30",
+    badgeBg: "bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-md shadow-red-900/40",
+    accent: "text-red-400",
+    btnGrad: "from-red-600 via-rose-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white shadow-lg shadow-red-950/60",
+    pillBg: "bg-red-500/15 border-red-400/30 text-red-200",
+    tag: "🔥 2X1 IMPERDIBLE",
+    heroGradient: "from-red-600 via-rose-600 to-orange-600",
+    heroSubtext: "text-red-100"
   },
   violet: {
     bg: "from-purple-950 via-indigo-950 to-stone-950",
-    glow: "rgba(168, 85, 247, 0.4)",
+    glow: "rgba(168, 85, 247, 0.45)",
     border: "border-purple-500/30",
     badgeBg: "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40",
     accent: "text-purple-300",
     btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
     pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
-    tag: "⚡ COMBO EXCLUSIVO",
+    tag: "🎉 PROMO FIN DE SEMANA",
     heroGradient: "from-purple-700 via-indigo-600 to-pink-600",
     heroSubtext: "text-purple-100"
   },
-  emerald: {
-    bg: "from-emerald-950 via-teal-950 to-stone-950",
-    glow: "rgba(16, 185, 129, 0.4)",
-    border: "border-emerald-500/30",
-    badgeBg: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40",
-    accent: "text-emerald-300",
-    btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
-    pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
-    tag: "🌿 EDICIÓN ESPECIAL",
-    heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
-    heroSubtext: "text-emerald-100"
+  ocean: {
+    bg: "from-sky-950 via-blue-950 to-stone-950",
+    glow: "rgba(14, 165, 233, 0.45)",
+    border: "border-sky-500/30",
+    badgeBg: "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-blue-900/40",
+    accent: "text-sky-300",
+    btnGrad: "from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-blue-950/60",
+    pillBg: "bg-sky-500/15 border-sky-400/30 text-sky-200",
+    tag: "💑 COMBO FESTIVO EN PAREJA",
+    heroGradient: "from-blue-700 via-sky-600 to-indigo-700",
+    heroSubtext: "text-sky-100"
   },
   gold: {
     bg: "from-amber-950 via-yellow-950 to-stone-950",
-    glow: "rgba(245, 158, 11, 0.4)",
+    glow: "rgba(245, 158, 11, 0.45)",
     border: "border-amber-500/30",
     badgeBg: "bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-gray-950 shadow-md shadow-amber-900/40 font-black",
     accent: "text-amber-300",
     btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
     pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
-    tag: "👑 SELECCIÓN CHEF GOURMET",
+    tag: "👑 EDICIÓN LIMITADA CHEF",
     heroGradient: "from-amber-600 via-yellow-600 to-orange-600",
     heroSubtext: "text-amber-100"
+  },
+  sunset: {
+    bg: "from-orange-950 via-amber-950 to-stone-950",
+    glow: "rgba(249, 115, 22, 0.45)",
+    border: "border-orange-500/30",
+    badgeBg: "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-900/40",
+    accent: "text-orange-400",
+    btnGrad: "from-orange-500 via-amber-500 to-red-500 hover:from-orange-400 hover:to-amber-500 text-white shadow-lg shadow-orange-950/60",
+    pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
+    tag: "⚡ OFERTA RELÁMPAGO CRISPY",
+    heroGradient: "from-orange-600 via-amber-500 to-red-500",
+    heroSubtext: "text-orange-100"
+  },
+  ruby: {
+    bg: "from-rose-950 via-red-950 to-stone-950",
+    glow: "rgba(225, 29, 72, 0.45)",
+    border: "border-rose-500/30",
+    badgeBg: "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-900/40",
+    accent: "text-rose-300",
+    btnGrad: "from-rose-500 via-red-600 to-pink-600 hover:from-rose-400 hover:to-red-500 text-white shadow-lg shadow-rose-950/60",
+    pillBg: "bg-rose-500/15 border-rose-400/30 text-rose-200",
+    tag: "🥩 MASTER PARRILLA & BACON",
+    heroGradient: "from-rose-700 via-red-600 to-pink-700",
+    heroSubtext: "text-rose-100"
+  },
+  emerald: {
+    bg: "from-emerald-950 via-teal-950 to-stone-950",
+    glow: "rgba(16, 185, 129, 0.45)",
+    border: "border-emerald-500/30",
+    badgeBg: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40",
+    accent: "text-emerald-300",
+    btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
+    pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
+    tag: "🥓 FESTIVAL DE TOPPINGS",
+    heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
+    heroSubtext: "text-emerald-100"
+  },
+  teal: {
+    bg: "from-teal-950 via-slate-900 to-stone-950",
+    glow: "rgba(20, 184, 166, 0.45)",
+    border: "border-teal-500/30",
+    badgeBg: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md shadow-teal-900/40",
+    accent: "text-teal-300",
+    btnGrad: "from-teal-500 via-cyan-600 to-emerald-600 hover:from-teal-400 hover:to-cyan-500 text-white shadow-lg shadow-teal-950/60",
+    pillBg: "bg-teal-500/15 border-teal-400/30 text-teal-200",
+    tag: "✨ CREACIÓN DE AUTOR EXCLUSIVA",
+    heroGradient: "from-teal-700 via-cyan-700 to-emerald-700",
+    heroSubtext: "text-teal-100"
   }
+};
+
+/**
+ * Asigna de forma inteligente un tema y etiqueta culinaria a cada evento
+ * para garantizar máxima armonía visual y CERO colores repetidos en el carrusel.
+ */
+export const getEventThemeAndTag = (event, index) => {
+  const name = String(event?.nombreEvento || event?.nombre || "").toLowerCase();
+  const type = String(event?.tipoEvento || "").toLowerCase();
+  const id = Number(event?.idEvento || 0);
+
+  // Mapeo preciso por identidad de cada evento
+  if (name.includes("2x1") || type.includes("2x1")) {
+    return { theme: "fire", tag: "🔥 2X1 IMPERDIBLE" };
+  }
+  if (name.includes("fin de semana")) {
+    return { theme: "violet", tag: "🎉 PROMO FIN DE SEMANA" };
+  }
+  if (name.includes("pareja") || type.includes("combo")) {
+    return { theme: "ocean", tag: "💑 COMBO FESTIVO EN PAREJA" };
+  }
+  if (id === 5 || (name.includes("burger fest") && name.includes("🔥"))) {
+    return { theme: "gold", tag: "👑 EDICIÓN LIMITADA CHEF" };
+  }
+  if (name.includes("pollo crispy") || name.includes("relampago") || name.includes("relámpago")) {
+    return { theme: "sunset", tag: "⚡ OFERTA RELÁMPAGO CRISPY" };
+  }
+  if (name.includes("doble carne") || (name.includes("tocineta") && name.includes("20%"))) {
+    return { theme: "ruby", tag: "🥩 MASTER PARRILLA & BACON" };
+  }
+  if (name.includes("toppings") || name.includes("perro suizo")) {
+    return { theme: "emerald", tag: "🥓 FESTIVAL DE TOPPINGS" };
+  }
+  if (id === 9 || name.includes("edicion limitada") || name.includes("edición limitada") || type.includes("especial")) {
+    return { theme: "teal", tag: "✨ CREACIÓN DE AUTOR" };
+  }
+
+  // Secuencia de rotación única para cualquier evento adicional sin repetir
+  const themeOrder = ["fire", "violet", "ocean", "gold", "sunset", "ruby", "emerald", "teal"];
+  const selectedTheme = themeOrder[index % themeOrder.length];
+  return { theme: selectedTheme, tag: THEMES[selectedTheme]?.tag || "⭐ EXPERIENCIA CHAZIN" };
 };
 
 export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
@@ -192,8 +281,9 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
     };
 
     const enrichedDb = rawActive.map((e, idx) => {
-      const themeKeys = ["fire", "violet", "emerald", "gold"];
-      const theme = e.theme || themeKeys[idx % themeKeys.length];
+      const { theme: calculatedTheme, tag: calculatedTag } = getEventThemeAndTag(e, idx);
+      const theme = e.theme || calculatedTheme;
+      const customTag = calculatedTag;
       const prod = productos.find(
         (p) => String(p.id || p.idProducto) === String(e.idProducto)
       );
@@ -207,6 +297,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
       return {
         ...e,
         theme,
+        customTag,
         precioOriginal: originalPrice,
         nuevoPrecio: finalPrice || originalPrice,
         perks: e.perks || [
@@ -551,7 +642,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                     <div className="lg:col-span-7 space-y-3.5 text-left">
                       <div>
                         <span className={`text-xs font-extrabold uppercase tracking-widest ${theme.accent} block mb-1`}>
-                          {theme.tag}
+                          {evt.customTag || theme.tag}
                         </span>
                         <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight">
                           {evt.nombreEvento || evt.nombre}

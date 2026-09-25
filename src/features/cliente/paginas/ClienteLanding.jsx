@@ -17,7 +17,7 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
-import { EventosCarousel } from "../componentes/EventosCarousel";
+import { EventosCarousel, THEMES } from "../componentes/EventosCarousel";
 import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
 import FastFoodProductModal, { isEssentialIngredient } from "@/shared/components/ui/FastFoodProductModal";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
@@ -1926,34 +1926,18 @@ export function ClienteLanding() {
         />
 
         {/* Capas temáticas integradas con los colores del carrusel de eventos (cuando SÍ hay eventos) */}
-        <div
-          className={`absolute inset-0 bg-gradient-to-r from-red-600 via-rose-500 to-orange-500 transition-opacity duration-700 ease-in-out ${
-            hasActiveEvents && (!currentCarouselTheme || currentCarouselTheme.themeKey === "fire")
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-        />
-        <div
-          className={`absolute inset-0 bg-gradient-to-r from-purple-700 via-indigo-600 to-pink-600 transition-opacity duration-700 ease-in-out ${
-            hasActiveEvents && currentCarouselTheme?.themeKey === "violet"
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-        />
-        <div
-          className={`absolute inset-0 bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-700 transition-opacity duration-700 ease-in-out ${
-            hasActiveEvents && currentCarouselTheme?.themeKey === "emerald"
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-        />
-        <div
-          className={`absolute inset-0 bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 transition-opacity duration-700 ease-in-out ${
-            hasActiveEvents && currentCarouselTheme?.themeKey === "gold"
-              ? "opacity-100"
-              : "opacity-0"
-          }`}
-        />
+        {hasActiveEvents &&
+          Object.entries(THEMES).map(([tKey, tVal]) => {
+            const isThemeActive = (currentCarouselTheme?.themeKey || "fire") === tKey;
+            return (
+              <div
+                key={tKey}
+                className={`absolute inset-0 bg-gradient-to-r ${tVal.heroGradient} transition-opacity duration-700 ease-in-out ${
+                  isThemeActive ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            );
+          })}
 
         {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
         {hasActiveEvents && (
