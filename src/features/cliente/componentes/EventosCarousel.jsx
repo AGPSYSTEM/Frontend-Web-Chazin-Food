@@ -17,7 +17,7 @@ import { FoodIcon, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 // Paletas de color premium cinematográficas para cada evento
-const THEMES = {
+export const THEMES = {
   fire: {
     bg: "from-red-950 via-orange-950 to-stone-950",
     glow: "rgba(239, 68, 68, 0.4)",
@@ -26,7 +26,9 @@ const THEMES = {
     accent: "text-amber-400",
     btnGrad: "from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-lg shadow-orange-950/60",
     pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
-    tag: "🔥 SUPER PROMO FLASH"
+    tag: "🔥 SUPER PROMO FLASH",
+    heroGradient: "from-red-600 via-rose-500 to-orange-500",
+    heroSubtext: "text-amber-100"
   },
   violet: {
     bg: "from-purple-950 via-indigo-950 to-stone-950",
@@ -36,7 +38,9 @@ const THEMES = {
     accent: "text-purple-300",
     btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
     pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
-    tag: "⚡ COMBO EXCLUSIVO"
+    tag: "⚡ COMBO EXCLUSIVO",
+    heroGradient: "from-purple-700 via-indigo-600 to-pink-600",
+    heroSubtext: "text-purple-100"
   },
   emerald: {
     bg: "from-emerald-950 via-teal-950 to-stone-950",
@@ -46,7 +50,9 @@ const THEMES = {
     accent: "text-emerald-300",
     btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
     pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
-    tag: "🌿 EDICIÓN ESPECIAL"
+    tag: "🌿 EDICIÓN ESPECIAL",
+    heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
+    heroSubtext: "text-emerald-100"
   },
   gold: {
     bg: "from-amber-950 via-yellow-950 to-stone-950",
@@ -56,79 +62,13 @@ const THEMES = {
     accent: "text-amber-300",
     btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
     pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
-    tag: "👑 SELECCIÓN CHEF GOURMET"
+    tag: "👑 SELECCIÓN CHEF GOURMET",
+    heroGradient: "from-amber-600 via-yellow-600 to-orange-600",
+    heroSubtext: "text-amber-100"
   }
 };
 
-// Eventos insignia de alta conversión culinaria
-const SHOWCASE_EVENTOS = [
-  {
-    idEvento: "showcase-1",
-    idProducto: 16,
-    nombreEvento: "Combo Pareja Legendario Chazin",
-    tipoEvento: "2x1 / Combo Especial",
-    descuento: 25,
-    nuevoPrecio: 28500,
-    precioOriginal: 38000,
-    descripcion: "2 Hamburguesas Clásicas en pan brioche artesanal sellado + Porción generosa de Papas Francesas + 2 Bebidas frías de 400ml.",
-    icono: "burger",
-    perks: ["2 Hamburguesas Clásicas", "Papas Francesas Grandes", "2 Bebidas 400ml", "100% Personalizable"],
-    theme: "violet",
-    tiempoPrep: "12 min",
-    calorias: "1.280 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-2",
-    idProducto: 15,
-    nombreEvento: "Festival Salchipapa Salvaje Titán",
-    tipoEvento: "Descuento",
-    descuento: 20,
-    nuevoPrecio: 18400,
-    precioOriginal: 23000,
-    descripcion: "Papas doraditas con salchicha americana y suiza ahumada, tocineta crocante y doble queso fundido con salsa Chazin.",
-    icono: "fries",
-    perks: ["Salchicha Suiza & Americana", "Lluvia de Tocineta Crocante", "Queso Mozzarella Fundido", "Salsa Chazin Incluida"],
-    theme: "fire",
-    tiempoPrep: "10 min",
-    calorias: "890 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-3",
-    idProducto: 11,
-    nombreEvento: "Noche Gourmet: Doble Carne & Bacon",
-    tipoEvento: "Descuento",
-    descuento: 15,
-    nuevoPrecio: 21250,
-    precioOriginal: 25000,
-    descripcion: "300g de pura carne de res 80/20 a la parrilla, doble tocineta ahumada, doble cheddar fundido y cebolla caramelizada.",
-    icono: "burger",
-    perks: ["300g Carne 80/20 Res", "Doble Queso Cheddar", "Doble Tocineta Ahumada", "Pan Brioche Sellado"],
-    theme: "gold",
-    tiempoPrep: "14 min",
-    calorias: "980 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-4",
-    idProducto: 13,
-    nombreEvento: "Dúo Perro Especial Americano",
-    tipoEvento: "2x1 / Combo Especial",
-    descuento: 30,
-    nuevoPrecio: 19600,
-    precioOriginal: 28000,
-    descripcion: "2 Perros Especiales con salchicha premium americana, tocineta crujiente, queso mozzarella gratinado y ripio de papa.",
-    icono: "hotdog",
-    perks: ["2 Perros Americanos", "Lluvia de Tocineta", "Queso Mozzarella", "Salsas de la Casa"],
-    theme: "emerald",
-    tiempoPrep: "8 min",
-    calorias: "640 kcal",
-    fechaFin: "2026-12-31"
-  }
-];
-
-export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento }) {
+export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -282,23 +222,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
       };
     });
 
-    if (enrichedDb.length >= 3) {
-      return enrichedDb;
-    }
-
-    const missingCount = 4 - enrichedDb.length;
-    const extraShowcases = SHOWCASE_EVENTOS.slice(0, missingCount).map((sc) => {
-      const prod = productos.find(
-        (p) => String(p.id || p.idProducto) === String(sc.idProducto)
-      );
-      const ratingInfo = getEventRating(sc, prod);
-      return {
-        ...sc,
-        rating: ratingInfo.rating,
-        totalResenas: ratingInfo.totalResenas
-      };
-    });
-    return [...enrichedDb, ...extraShowcases];
+    return enrichedDb;
   }, [eventos, productos, ratingsMap]);
 
   const totalSlides = combinedEventos.length;
@@ -401,12 +325,26 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
     }
   };
 
+  const currentEvt = combinedEventos && combinedEventos.length > 0 ? (combinedEventos[currentIndex] || combinedEventos[0]) : null;
+  const activeTheme = currentEvt ? (THEMES[currentEvt.theme] || THEMES.fire) : THEMES.fire;
+
+  useEffect(() => {
+    if (onThemeChange) {
+      if (!combinedEventos || combinedEventos.length === 0) {
+        onThemeChange(null);
+      } else if (currentEvt) {
+        onThemeChange({
+          themeKey: currentEvt.theme || "fire",
+          theme: activeTheme,
+          hasEvents: true
+        });
+      }
+    }
+  }, [currentIndex, currentEvt, activeTheme, combinedEventos, onThemeChange]);
+
   if (!combinedEventos || combinedEventos.length === 0) {
     return null;
   }
-
-  const currentEvt = combinedEventos[currentIndex] || combinedEventos[0];
-  const activeTheme = THEMES[currentEvt.theme] || THEMES.fire;
 
   return (
     <section

@@ -360,9 +360,21 @@ export function ClienteLanding() {
   const [productosList, setProductosList] = useState([]);
   const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
   const [eventosList, setEventosList] = useState([]);
+  const [currentCarouselTheme, setCurrentCarouselTheme] = useState(null);
   const [showPersonalizarEventoModal, setShowPersonalizarEventoModal] = useState(false);
   const [eventoParaPersonalizar, setEventoParaPersonalizar] = useState(null);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
+
+  const hasActiveEvents = useMemo(() => {
+    if (!Array.isArray(eventosList) || eventosList.length === 0) return false;
+    const today = new Date().toISOString().split("T")[0];
+    return eventosList.some((e) => {
+      const isActivo = e.estado === "Activo" || e.estado === 1 || e.estado === true;
+      if (!isActivo) return false;
+      if (e.fechaFin && today > e.fechaFin) return false;
+      return true;
+    });
+  }, [eventosList]);
 
   // Manejador de flecha Atrás / Adelante del navegador (popstate) para cerrar modales sin salir de la página
   useEffect(() => {
@@ -1901,13 +1913,71 @@ export function ClienteLanding() {
         productos={activeProductos}
         ratingsMap={ratingsMap}
         onSelectEvento={handleSelectEventoFromCarousel}
+        onThemeChange={setCurrentCarouselTheme}
       />
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 text-white py-10 md:py-14 shadow-inner">
-        <div className="w-full px-4 sm:px-6 lg:px-8 text-center space-y-2">
-          <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">¡El sabor auténtico de Chazin Food!</h2>
-          <p className="text-sm sm:text-lg text-red-100 font-medium">Haz tu pedido online y recíbelo fresco en tu puerta</p>
+      {/* Hero Section con integración cromática dinámica */}
+      <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
+        {/* Capa 0: Fondo predeterminado (cuando NO hay eventos) */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 transition-opacity duration-700 ease-in-out ${
+            !hasActiveEvents ? "opacity-100" : "opacity-0"
+          }`}
+        />
+
+        {/* Capas temáticas integradas con los colores del carrusel de eventos (cuando SÍ hay eventos) */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-r from-red-600 via-rose-500 to-orange-500 transition-opacity duration-700 ease-in-out ${
+            hasActiveEvents && (!currentCarouselTheme || currentCarouselTheme.themeKey === "fire")
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        />
+        <div
+          className={`absolute inset-0 bg-gradient-to-r from-purple-700 via-indigo-600 to-pink-600 transition-opacity duration-700 ease-in-out ${
+            hasActiveEvents && currentCarouselTheme?.themeKey === "violet"
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        />
+        <div
+          className={`absolute inset-0 bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-700 transition-opacity duration-700 ease-in-out ${
+            hasActiveEvents && currentCarouselTheme?.themeKey === "emerald"
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        />
+        <div
+          className={`absolute inset-0 bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 transition-opacity duration-700 ease-in-out ${
+            hasActiveEvents && currentCarouselTheme?.themeKey === "gold"
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        />
+
+        {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
+        {hasActiveEvents && (
+          <div
+            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-colors duration-700"
+            style={{
+              backgroundColor: currentCarouselTheme?.theme?.glow || "rgba(239, 68, 68, 0.4)",
+              opacity: 0.35
+            }}
+          />
+        )}
+
+        {/* Contenido del Hero */}
+        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 text-center space-y-2">
+          <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight drop-shadow-xs">¡El sabor auténtico de Chazin Food!</h2>
+          <p
+            className={`text-sm sm:text-lg font-medium transition-colors duration-500 ${
+              !hasActiveEvents
+                ? "text-red-100"
+                : currentCarouselTheme?.theme?.heroSubtext || "text-red-100"
+            }`}
+          >
+            Haz tu pedido online y recíbelo fresco en tu puerta
+          </p>
         </div>
       </div>
 
