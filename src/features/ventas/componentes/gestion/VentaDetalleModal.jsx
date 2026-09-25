@@ -229,12 +229,6 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                     </span>
                   </div>
                 )}
-                {obsMeta.vueltoEfectivo > 0 && (
-                  <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-bold">
-                    <span>Cambio / Vueltos:</span>
-                    <span>${Number(obsMeta.vueltoEfectivo).toLocaleString("es-CO")}</span>
-                  </div>
-                )}
                 {obsMeta.transferBanco && (
                   <div className="flex justify-between">
                     <span>Banco / Billetera:</span>

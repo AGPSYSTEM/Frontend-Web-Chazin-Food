@@ -178,9 +178,9 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                         </button>
 
                         <button
-                          onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`)}
-                          title="Eliminar cliente"
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`.trim(), c.compras || 0)}
+                          title={c.compras > 0 ? "No se puede eliminar: cuenta con ventas asociadas (solo inactivar)" : "Eliminar cliente"}
+                          className={`p-1 transition-colors ${c.compras > 0 ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-red-500"}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

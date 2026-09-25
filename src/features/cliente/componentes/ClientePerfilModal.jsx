@@ -79,13 +79,23 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
 
   // Fidelity Data extraction
   const fidelidad = user?.fidelidad || {};
-  const tipoFidelidad = fidelidad.tipo || user?.tipo || (totalPedidosCount >= 9 ? "VIP" : totalPedidosCount >= 6 ? "Frecuente" : totalPedidosCount >= 3 ? "Regular" : "Nuevo");
-  const descuentoPorcentaje = fidelidad.descuentoPorcentaje !== undefined
-    ? fidelidad.descuentoPorcentaje
-    : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0);
+  const tipoFidelidad =
+    fidelidad.tipo && fidelidad.tipo !== "Nuevo"
+      ? fidelidad.tipo
+      : (totalPedidosCount >= 9 ? "VIP" : totalPedidosCount >= 6 ? "Frecuente" : totalPedidosCount >= 3 ? "Regular" : (fidelidad.tipo || user?.tipo || "Nuevo"));
+  const descuentoPorcentaje =
+    fidelidad.descuentoPorcentaje !== undefined && fidelidad.descuentoPorcentaje > 0
+      ? fidelidad.descuentoPorcentaje
+      : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0);
 
-  const comprasCiclo = fidelidad.comprasCiclo !== undefined ? fidelidad.comprasCiclo : (totalPedidosCount % 3);
-  const comprasFaltantes = fidelidad.comprasFaltantes !== undefined ? fidelidad.comprasFaltantes : (3 - comprasCiclo);
+  const comprasCiclo =
+    fidelidad.comprasCiclo !== undefined && fidelidad.comprasCiclo > 0
+      ? fidelidad.comprasCiclo
+      : (totalPedidosCount % 3);
+  const comprasFaltantes =
+    fidelidad.comprasFaltantes !== undefined && fidelidad.comprasFaltantes > 0
+      ? fidelidad.comprasFaltantes
+      : (3 - (comprasCiclo % 3));
   const siguienteNivel = fidelidad.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
   const enGracia = Boolean(fidelidad.enGracia);
   const diasRestantesRaw = fidelidad.diasRestantes !== undefined ? fidelidad.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);

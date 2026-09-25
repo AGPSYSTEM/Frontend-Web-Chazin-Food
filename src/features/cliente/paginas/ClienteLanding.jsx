@@ -192,14 +192,16 @@ export const getIngredientesPersonalizables = (producto, ficha) => {
   if (!producto || isDrinkProduct(producto)) return [];
 
   const CANDIDATOS_BASE = [
-    { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion"] },
-    { id: "salsas", nombre: "Salsas de la casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce"] },
-    { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
+    { id: "salsa_queso", nombre: "Salsa de queso", icono: "salsa_queso", aliases: ["salsa de queso", "queso fundido", "salsa", "salsas", "sauce"] },
+    { id: "jalapenos", nombre: "Jalapeños", icono: "jalapenos", aliases: ["jalapeño", "jalapeno", "jalapeños", "jalapenos", "picante", "chile"] },
+    { id: "tomate", nombre: "Tomate", icono: "tomate", aliases: ["tomate", "tomato"] },
+    { id: "cebolla", nombre: "Cebolla", icono: "cebolla", aliases: ["cebolla", "onion"] },
+    { id: "guacamole", nombre: "Guacamole", icono: "guacamole", aliases: ["guacamole", "aguacate", "avocado"] },
+    { id: "suero_costeno", nombre: "Suero Costeño", icono: "suero_costeno", aliases: ["suero", "suero costeño", "suero costeno", "suerito"] },
     { id: "lechuga", nombre: "Lechuga", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
     { id: "queso", nombre: "Queso", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "cheese"] },
     { id: "tocineta", nombre: "Tocineta", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
-    { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio", "papas ripio", "chips"] },
-    { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] }
+    { id: "ripio", nombre: "Ripio de papa", icono: "fries", aliases: ["ripio", "papas ripio", "chips"] }
   ];
 
   let allIngStrings = [];
@@ -337,7 +339,6 @@ export function ClienteLanding() {
   const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
   const [isProcessingWompi, setIsProcessingWompi] = useState(false);
 
-  const [showPedidos, setShowPedidos] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [modalInitialTab, setModalInitialTab] = useState("personalizar");
@@ -374,8 +375,6 @@ export function ClienteLanding() {
         setShowProductModal(false);
       } else if (showPersonalizarEventoModal) {
         setShowPersonalizarEventoModal(false);
-      } else if (showPedidos) {
-        setShowPedidos(false);
       } else if (showResenasModal) {
         setShowResenasModal(false);
       }
@@ -383,7 +382,7 @@ export function ClienteLanding() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [showCheckout, showCart, showProductModal, showPersonalizarEventoModal, showPedidos, showResenasModal]);
+  }, [showCheckout, showCart, showProductModal, showPersonalizarEventoModal, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
   // Ref y desplazamiento suave para carrusel 'Complementa tu orden' en Carrito
@@ -428,13 +427,11 @@ export function ClienteLanding() {
           if (verificacion && verificacion.aprobado) {
             success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
             clearCart();
-            await fetchMyOrders();
-            setShowPedidos(true);
+            navigate("/perfil");
           } else if (verificacion && verificacion.estado === 'PENDING') {
-            success("Pago en Proceso", "Tu banco está verificando el pago. Te notificaremos en cuanto se confirme.");
+            success("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en Mi Perfil.");
             clearCart();
-            await fetchMyOrders();
-            setShowPedidos(true);
+            navigate("/perfil");
           } else {
             error("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}. Puedes intentar de nuevo.`);
           }
@@ -499,10 +496,29 @@ export function ClienteLanding() {
           setProductosList(apiProds);
 
           // Fetch ratings
-          const pIds = apiProds.map(p => p.id || p.idProducto).join(',');
-          apiClient.get(`/resenas/ratings?ids=${pIds}`)
-            .then(res => { if (res) setRatingsMap(res); })
-            .catch(() => {});
+          const pIdSet = new Set(apiProds.map(p => p.id || p.idProducto));
+          if (evtsRes.status === "fulfilled" && Array.isArray(evtsRes.value)) {
+            evtsRes.value.forEach(e => {
+              if (e.idProducto) pIdSet.add(e.idProducto);
+              if (e.productosAsociados) {
+                try {
+                  const parsed = typeof e.productosAsociados === "string" ? JSON.parse(e.productosAsociados) : e.productosAsociados;
+                  if (Array.isArray(parsed)) {
+                    parsed.forEach(a => {
+                      const aId = a.idProducto || a.id;
+                      if (aId) pIdSet.add(aId);
+                    });
+                  }
+                } catch (err) {}
+              }
+            });
+          }
+          const pIds = Array.from(pIdSet).filter(Boolean).join(',');
+          if (pIds) {
+            apiClient.get(`/resenas/ratings?ids=${pIds}`)
+              .then(res => { if (res) setRatingsMap(res); })
+              .catch(() => {});
+          }
         } else {
           setProductosList(productosDefault);
         }
@@ -798,6 +814,18 @@ export function ClienteLanding() {
     const toComplemento = (p) => {
       const firstVar = Array.isArray(p.variantes) && p.variantes.length > 0 ? p.variantes[0] : null;
       const pId = p.idProducto || p.id;
+      let compImg = p.imagen;
+      if (!compImg || typeof compImg !== "string" || (!compImg.startsWith("http") && !compImg.startsWith("/") && !compImg.startsWith("data:"))) {
+        const n = String(p.nombre || "").toLowerCase();
+        if (n.includes("naranja")) compImg = "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+        else if (n.includes("uva")) compImg = "/images/drinks/uva_postobon-removebg-preview.png";
+        else if (n.includes("manzana")) compImg = "/images/drinks/manzana_400ml-removebg-preview.png";
+        else if (n.includes("colombiana")) compImg = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+        else if (n.includes("coca")) compImg = "/images/drinks/coca_cola-removebg-preview.png";
+        else if (n.includes("pepsi")) compImg = "/images/drinks/pepsi_400ml-removebg-preview.png";
+        else if (n.includes("sprite")) compImg = "/images/drinks/sprite-removebg-preview.png";
+        else if (n.includes("quatro") || n.includes("cuatro")) compImg = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+      }
       return {
         id: p.id || p.idProducto,
         idProducto: pId,
@@ -807,7 +835,7 @@ export function ClienteLanding() {
         tamano: getTamano(p),
         precio: Number(p.precio),
         badge: getBadge(p),
-        imagen: p.imagen,
+        imagen: compImg || p.imagen,
         stock: Number(p.stock !== undefined ? p.stock : 30)
       };
     };
@@ -1331,10 +1359,23 @@ export function ClienteLanding() {
   const clientSubtotal = getSubtotal();
   const fidelidadCliente = user?.fidelidad || {};
   const pedidosCount = pedidos.length;
-  const tipoFidelidad = fidelidadCliente.tipo || user?.tipo || (pedidosCount >= 9 ? "VIP" : pedidosCount >= 6 ? "Frecuente" : pedidosCount >= 3 ? "Regular" : "Nuevo");
-  const discountPercent = Number(fidelidadCliente.descuentoPorcentaje !== undefined ? fidelidadCliente.descuentoPorcentaje : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0));
-  const comprasCiclo = fidelidadCliente.comprasCiclo !== undefined ? fidelidadCliente.comprasCiclo : (pedidosCount % 3);
-  const comprasFaltantes = fidelidadCliente.comprasFaltantes !== undefined ? fidelidadCliente.comprasFaltantes : (3 - (comprasCiclo % 3));
+  const tipoFidelidad =
+    fidelidadCliente.tipo && fidelidadCliente.tipo !== "Nuevo"
+      ? fidelidadCliente.tipo
+      : (pedidosCount >= 9 ? "VIP" : pedidosCount >= 6 ? "Frecuente" : pedidosCount >= 3 ? "Regular" : (fidelidadCliente.tipo || user?.tipo || "Nuevo"));
+  const discountPercent = Number(
+    fidelidadCliente.descuentoPorcentaje !== undefined && fidelidadCliente.descuentoPorcentaje > 0
+      ? fidelidadCliente.descuentoPorcentaje
+      : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0)
+  );
+  const comprasCiclo =
+    fidelidadCliente.comprasCiclo !== undefined && fidelidadCliente.comprasCiclo > 0
+      ? fidelidadCliente.comprasCiclo
+      : (pedidosCount % 3);
+  const comprasFaltantes =
+    fidelidadCliente.comprasFaltantes !== undefined && fidelidadCliente.comprasFaltantes > 0
+      ? fidelidadCliente.comprasFaltantes
+      : (3 - (comprasCiclo % 3));
   const siguienteNivel = fidelidadCliente.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
 
   // Dynamic real-time calculation of remaining days and seconds in hero banner
@@ -1579,19 +1620,17 @@ export function ClienteLanding() {
               console.warn("No se pudo guardar pedido en historial local:", storageErr);
             }
 
-            success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina.`);
+            success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina. Puedes ver su estado en Mi Perfil.`);
             clearCart();
             setShowCart(false);
-            await fetchMyOrders();
             if (refreshUser) await refreshUser();
-            setShowPedidos(true);
+            navigate("/perfil");
           } else if (verificacion.estado === 'PENDING') {
-            success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Te notificaremos en cuanto se confirme.");
+            success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Puedes seguir su estado en Mi Perfil.");
             clearCart();
             setShowCart(false);
-            await fetchMyOrders();
             if (refreshUser) await refreshUser();
-            setShowPedidos(true);
+            navigate("/perfil");
           } else {
             setShowCheckout(true);
             error("Pago Rechazado", `La transacción fue ${verificacion.estado || 'rechazada'}. Puedes intentar con otro medio de pago.`);
@@ -1719,13 +1758,12 @@ export function ClienteLanding() {
           console.warn("No se pudo guardar pedido en historial local:", storageErr);
         }
 
-        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado y está pendiente de aprobación.");
+        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado. Puedes consultar el detalle en tiempo real en Mi Perfil.");
         clearCart();
         setShowCheckout(false);
         setShowCart(false);
-        await fetchMyOrders();
         if (refreshUser) await refreshUser();
-        setShowPedidos(true);
+        navigate("/perfil");
       } catch (err) {
         console.error("Error confirmando pedido:", err);
         error("Error al procesar pedido", err.message || "No se pudo conectar con el servidor");
@@ -1739,7 +1777,6 @@ export function ClienteLanding() {
       logout();
       clearCart();
       setShowCart(false);
-      setShowPedidos(false);
       setShowProductModal(false);
       success("Sesión cerrada", "Has salido del sistema correctamente");
       navigate("/");
@@ -1814,26 +1851,13 @@ export function ClienteLanding() {
               </button>
 
               {isAuthenticated ? (
-                <>
-                  <button
-                    onClick={() => navigate("/perfil")}
-                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
-                  >
-                    <User className="w-5 h-5 text-[#f05454]" />
-                    <span className="hidden sm:inline">Mi Perfil</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      fetchMyOrders();
-                      setShowPedidos(true);
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
-                  >
-                    <Package className="w-5 h-5 text-red-500" />
-                    <span className="hidden sm:inline">Mis Pedidos</span>
-                  </button>
-                </>
+                <button
+                  onClick={() => navigate("/perfil")}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
+                >
+                  <User className="w-5 h-5 text-[#f05454]" />
+                  <span className="hidden sm:inline">Mi Perfil</span>
+                </button>
               ) : (
                 <button
                   onClick={() => navigate("/login")}
@@ -1870,6 +1894,14 @@ export function ClienteLanding() {
           </div>
         </div>
       </header>
+
+      {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones) */}
+      <EventosCarousel
+        eventos={eventosList}
+        productos={activeProductos}
+        ratingsMap={ratingsMap}
+        onSelectEvento={handleSelectEventoFromCarousel}
+      />
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 text-white py-10 md:py-14 shadow-inner">
@@ -1962,13 +1994,6 @@ export function ClienteLanding() {
           </div>
         </div>
       )}
-
-      {/* Carrusel con Eventos Activos en Vista de Cliente */}
-      <EventosCarousel
-        eventos={eventosList}
-        productos={activeProductos}
-        onSelectEvento={handleSelectEventoFromCarousel}
-      />
 
       {/* Categorías Carousel */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
@@ -2386,7 +2411,7 @@ export function ClienteLanding() {
 
                       return (
                         <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
-                          {item.imagen && typeof item.imagen === "string" && item.imagen.startsWith("http") ? (
+                          {item.imagen && typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/") || item.imagen.startsWith("data:")) ? (
                             <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700" />
                           ) : (
                             <FoodIconBadge name={item.nombre} size="md" />
@@ -2854,43 +2879,12 @@ export function ClienteLanding() {
                       />
                     </div>
 
-                    {/* Botones de montos rápidos con billetes reales en circulación */}
-                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setCheckoutEfectivoPaga(String(totalCheckout))}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                      >
-                        Pago Exacto (${totalCheckout.toLocaleString('es-CO')})
-                      </button>
-                      {[20000, 50000, 100000]
-                        .filter((v) => v > totalCheckout && v <= totalCheckout + 100000)
-                        .map((amt) => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => setCheckoutEfectivoPaga(String(amt))}
-                            className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                          >
-                            ${amt.toLocaleString('es-CO')}
-                          </button>
-                        ))}
-                    </div>
-
-                    {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && (
-                      <div className="space-y-1.5 pt-1">
-                        <p className="text-xs font-black text-[#16A34A] dark:text-emerald-400 flex items-center gap-1.5">
-                          <Coins className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span>Cambio / Vueltos: ${vueltoEfectivo.toLocaleString('es-CO')}</span>
-                        </p>
-                        {vueltoEfectivo > 100000 && (
-                          <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-start gap-1.5">
-                            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-                            <span>
-                              Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
-                            </span>
-                          </div>
-                        )}
+                    {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && vueltoEfectivo > 100000 && (
+                      <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-start gap-1.5 mt-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                        <span>
+                          Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
+                        </span>
                       </div>
                     )}
                   </div>
@@ -3052,81 +3046,6 @@ export function ClienteLanding() {
         </div>
       )}
 
-      {/* MODAL MIS PEDIDOS */}
-      {showPedidos && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 relative border border-gray-100 dark:border-gray-800 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Package className="w-6 h-6 text-red-500" />
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Mis Pedidos Realizados</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={fetchMyOrders}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-                  title="Actualizar Pedidos"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingPedidos ? "animate-spin" : ""}`} />
-                </button>
-                <button
-                  onClick={() => setShowPedidos(false)}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {pedidos.length === 0 ? (
-              <div className="text-center py-12 space-y-3">
-                <Package className="w-12 h-12 text-gray-300 mx-auto" />
-                <p className="text-sm font-semibold text-gray-500">Aún no has realizado pedidos</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {pedidos.map((p) => (
-                  <div key={p.id} className="p-4 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-gray-200/50 dark:border-gray-700 pb-2 text-xs">
-                      <div>
-                        <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">#{p.numeroVenta || p.id}</span>
-                        <p className="text-gray-400">{p.fecha}</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full font-bold border text-xs ${getEstadoColor(p.estado)}`}>
-                        {p.estado}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-xs">
-                      {p.items && p.items.map((it, idx) => (
-                        <div key={idx} className="flex justify-between text-gray-700 dark:text-gray-300">
-                          <span>{it.cantidad}x {it.nombre}</span>
-                          <span className="font-semibold">${Number(it.precio || 0).toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="border-t border-gray-200/50 dark:border-gray-700 pt-2 flex justify-between items-center text-xs font-bold">
-                      <span className="text-gray-500">Total:</span>
-                      <span className="text-red-600 dark:text-red-400 text-sm">${Number(p.total || 0).toLocaleString()}</span>
-                    </div>
-
-                    {(String(p.estado).toUpperCase() === 'PENDIENTE' || String(p.estado).toLowerCase() === 'en cola') && (
-                      <div className="pt-2 flex justify-end">
-                        <button
-                          onClick={() => handleCancelarPedido(p.id)}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          Cancelar Pedido
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR */}
       {showEmptyCartLoginModal && (

@@ -307,8 +307,8 @@ export function PersonalizarEventoModal({
       return { promedio: reviewsData.promedio, total: reviewsData.total, resenas: reviewsData.resenas };
     }
     const fromMap = selectedProduct ? ratingsMap[selectedProduct.id || selectedProduct.idProducto] : null;
-    if (fromMap) return fromMap;
-    return { promedio: 5.0, total: 0, resenas: [] };
+    if (fromMap && fromMap.total > 0) return fromMap;
+    return { promedio: 0, total: 0, resenas: [] };
   }, [hasRealRatings, reviewsData, selectedProduct, ratingsMap]);
 
   if (!isOpen || !evento) return null;
@@ -519,12 +519,12 @@ export function PersonalizarEventoModal({
       aria-modal="true"
     >
       {/* 
-        ESTRUCTURA DE TAMAÑO ESTABLE Y ROBUSTA:
+        ESTRUCTURA DE TAMAÑO ESTABLE Y FLUIDA:
         - max-w-2xl w-full: espacio amplio y estilizado idéntico a FastFoodProductModal.
-        - h-[90vh] max-h-[860px] min-h-[580px]: fija la altura total de forma consistente.
+        - max-h-[92vh] sm:h-[90vh] sm:max-h-[860px]: fija la altura total de forma consistente y fluida en móvil y escritorio.
         - flex flex-col: el modal no cambia ni salta de tamaño al pasar a "Mise en place" o a otra pestaña.
       */}
-      <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col h-[90vh] max-h-[860px] min-h-[580px] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl sm:rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[94vh] sm:h-[90vh] sm:max-h-[860px] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         
         {/* ── 1. Festival Drop Top Ribbon (Evento Activo) ── */}
         <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
@@ -1010,7 +1010,7 @@ export function PersonalizarEventoModal({
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
                           <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center shrink-0 text-xl overflow-hidden border border-amber-100 dark:border-amber-900/30">
-                            {ad.imagen && typeof ad.imagen === "string" && ad.imagen.startsWith("http") ? (
+                            {ad.imagen && typeof ad.imagen === "string" && (ad.imagen.startsWith("http") || ad.imagen.startsWith("/") || ad.imagen.startsWith("data:")) ? (
                               <img src={ad.imagen} alt={ad.nombre} className="w-full h-full object-cover" />
                             ) : (
                               <FoodIcon name={ad.nombre || "sauce"} size={18} />
@@ -1104,11 +1104,27 @@ export function PersonalizarEventoModal({
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
                           <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0 text-xl overflow-hidden border border-blue-100 dark:border-blue-900/30">
-                            {drink.imagen && typeof drink.imagen === "string" && drink.imagen.startsWith("http") ? (
-                              <img src={drink.imagen} alt={drink.nombre} className="w-full h-full object-cover" />
-                            ) : (
-                              <FoodIcon name="drink" size={18} />
-                            )}
+                            {(() => {
+                              let imgUrl = null;
+                              if (drink.imagen && typeof drink.imagen === "string" && (drink.imagen.startsWith("http") || drink.imagen.startsWith("/") || drink.imagen.startsWith("data:"))) {
+                                imgUrl = drink.imagen;
+                              } else {
+                                const n = String(drink.nombre || "").toLowerCase();
+                                if (n.includes("naranja")) imgUrl = "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+                                else if (n.includes("uva")) imgUrl = "/images/drinks/uva_postobon-removebg-preview.png";
+                                else if (n.includes("manzana")) imgUrl = "/images/drinks/manzana_400ml-removebg-preview.png";
+                                else if (n.includes("colombiana")) imgUrl = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+                                else if (n.includes("coca")) imgUrl = "/images/drinks/coca_cola-removebg-preview.png";
+                                else if (n.includes("pepsi")) imgUrl = "/images/drinks/pepsi_400ml-removebg-preview.png";
+                                else if (n.includes("sprite")) imgUrl = "/images/drinks/sprite-removebg-preview.png";
+                                else if (n.includes("quatro") || n.includes("cuatro")) imgUrl = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+                              }
+                              return imgUrl ? (
+                                <img src={imgUrl} alt={drink.nombre} className="w-full h-full object-cover" />
+                              ) : (
+                                <FoodIcon name="drink" size={18} />
+                              );
+                            })()}
                           </div>
                           <div className="min-w-0">
                             <p className="font-extrabold text-gray-900 dark:text-gray-100 truncate">
@@ -1167,7 +1183,7 @@ export function PersonalizarEventoModal({
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex flex-col items-center justify-center font-black shadow-md shrink-0">
                       <span className="text-base leading-none">
-                        {effectiveRating.total > 0 ? Number(effectiveRating.promedio || 5).toFixed(1) : "5.0"}
+                        {effectiveRating.total > 0 ? Number(effectiveRating.promedio || 0).toFixed(1) : "—"}
                       </span>
                       <Star className="w-2.5 h-2.5 fill-current opacity-90 mt-0.5" />
                     </div>

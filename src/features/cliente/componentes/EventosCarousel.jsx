@@ -75,7 +75,6 @@ const SHOWCASE_EVENTOS = [
     perks: ["2 Hamburguesas Clásicas", "Papas Francesas Grandes", "2 Bebidas 400ml", "100% Personalizable"],
     theme: "violet",
     tiempoPrep: "12 min",
-    rating: "4.9",
     calorias: "1.280 kcal",
     fechaFin: "2026-12-31"
   },
@@ -92,7 +91,6 @@ const SHOWCASE_EVENTOS = [
     perks: ["Salchicha Suiza & Americana", "Lluvia de Tocineta Crocante", "Queso Mozzarella Fundido", "Salsa Chazin Incluida"],
     theme: "fire",
     tiempoPrep: "10 min",
-    rating: "5.0",
     calorias: "890 kcal",
     fechaFin: "2026-12-31"
   },
@@ -109,7 +107,6 @@ const SHOWCASE_EVENTOS = [
     perks: ["300g Carne 80/20 Res", "Doble Queso Cheddar", "Doble Tocineta Ahumada", "Pan Brioche Sellado"],
     theme: "gold",
     tiempoPrep: "14 min",
-    rating: "4.9",
     calorias: "980 kcal",
     fechaFin: "2026-12-31"
   },
@@ -126,13 +123,12 @@ const SHOWCASE_EVENTOS = [
     perks: ["2 Perros Americanos", "Lluvia de Tocineta", "Queso Mozzarella", "Salsas de la Casa"],
     theme: "emerald",
     tiempoPrep: "8 min",
-    rating: "4.8",
     calorias: "640 kcal",
     fechaFin: "2026-12-31"
   }
 ];
 
-export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }) {
+export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -199,6 +195,62 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
       return true;
     });
 
+    const getEventRating = (e, prod) => {
+      // 1. Verificar calificación del producto principal del evento en ratingsMap
+      const prodId = e.idProducto || (prod ? (prod.id || prod.idProducto) : null);
+      if (prodId && ratingsMap && ratingsMap[prodId]) {
+        const rInfo = ratingsMap[prodId];
+        if (rInfo && rInfo.total > 0 && rInfo.promedio > 0) {
+          return {
+            rating: Number(rInfo.promedio),
+            totalResenas: Number(rInfo.total)
+          };
+        }
+      }
+
+      // 2. Si es un combo con productos asociados, calcular promedio real de sus productos
+      if (e.productosAsociados && ratingsMap) {
+        try {
+          const parsed = typeof e.productosAsociados === "string" ? JSON.parse(e.productosAsociados) : e.productosAsociados;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            let sumPromedios = 0;
+            let countRated = 0;
+            let sumTotal = 0;
+            parsed.forEach((asoc) => {
+              const asocId = asoc.idProducto || asoc.id;
+              if (asocId && ratingsMap[asocId] && ratingsMap[asocId].total > 0) {
+                sumPromedios += Number(ratingsMap[asocId].promedio || 0);
+                countRated += 1;
+                sumTotal += Number(ratingsMap[asocId].total || 0);
+              }
+            });
+            if (countRated > 0 && sumTotal > 0) {
+              return {
+                rating: Math.round((sumPromedios / countRated) * 10) / 10,
+                totalResenas: sumTotal
+              };
+            }
+          }
+        } catch (err) {
+          // ignore parsing error
+        }
+      }
+
+      // 3. Si el evento trae rating explícito verificado con totalResenas
+      if (e.totalResenas && Number(e.totalResenas) > 0 && e.rating) {
+        return {
+          rating: Number(e.rating),
+          totalResenas: Number(e.totalResenas)
+        };
+      }
+
+      // 4. Sin reseñas registradas
+      return {
+        rating: null,
+        totalResenas: 0
+      };
+    };
+
     const enrichedDb = rawActive.map((e, idx) => {
       const themeKeys = ["fire", "violet", "emerald", "gold"];
       const theme = e.theme || themeKeys[idx % themeKeys.length];
@@ -210,6 +262,8 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
       if (!finalPrice && e.descuento && originalPrice) {
         finalPrice = Math.round(originalPrice * (1 - Number(e.descuento) / 100));
       }
+      const ratingInfo = getEventRating(e, prod);
+
       return {
         ...e,
         theme,
@@ -222,7 +276,8 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
           "Garantía de Calidad Chazin"
         ],
         tiempoPrep: e.tiempoPrep || "10-15 min",
-        rating: e.rating || "4.9",
+        rating: ratingInfo.rating,
+        totalResenas: ratingInfo.totalResenas,
         calorias: e.calorias || "~650 kcal"
       };
     });
@@ -232,9 +287,19 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
     }
 
     const missingCount = 4 - enrichedDb.length;
-    const extraShowcases = SHOWCASE_EVENTOS.slice(0, missingCount);
+    const extraShowcases = SHOWCASE_EVENTOS.slice(0, missingCount).map((sc) => {
+      const prod = productos.find(
+        (p) => String(p.id || p.idProducto) === String(sc.idProducto)
+      );
+      const ratingInfo = getEventRating(sc, prod);
+      return {
+        ...sc,
+        rating: ratingInfo.rating,
+        totalResenas: ratingInfo.totalResenas
+      };
+    });
     return [...enrichedDb, ...extraShowcases];
-  }, [eventos, productos]);
+  }, [eventos, productos, ratingsMap]);
 
   const totalSlides = combinedEventos.length;
 
@@ -508,10 +573,25 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                         <span>{evt.tipoEvento || "Evento Activo"}</span>
                       </span>
 
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20">
-                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        <span>{evt.rating || "4.9"}</span>
-                      </span>
+                      {/* Píldora de Calificación Real o Sin Reseñas */}
+                      {evt.rating && Number(evt.rating) > 0 && evt.totalResenas > 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20"
+                          title={`Calificación: ${Number(evt.rating).toFixed(1)} / 5 (${evt.totalResenas} ${evt.totalResenas === 1 ? "reseña" : "reseñas"})`}
+                        >
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <span>{Number(evt.rating).toFixed(1)}</span>
+                          <span className="text-[10px] text-amber-200/80 font-normal">({evt.totalResenas})</span>
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10"
+                          title="Este evento aún no tiene reseñas de usuarios"
+                        >
+                          <Star className="w-3 h-3 text-white/40" />
+                          <span>Sin reseñas</span>
+                        </span>
+                      )}
 
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10">
                         <Clock className="w-3 h-3" />

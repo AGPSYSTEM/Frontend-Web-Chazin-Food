@@ -28,6 +28,7 @@ import {
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import postobonUvaImg from "@/shared/assets/drinks/postobon_uva.jpg";
@@ -388,7 +389,8 @@ export const isEssentialIngredient = (ingredientName, producto) => {
       ingName.includes("brioche") ||
       ingName.includes("artesanal") ||
       ingName.includes("carne") ||
-      ingName.includes("res") ||
+      ingName.includes("de res") ||
+      /\bres\b/.test(ingName) ||
       ingName.includes("beef") ||
       ingName.includes("patty") ||
       ingName.includes("pollo") ||
@@ -438,7 +440,8 @@ export const isEssentialIngredient = (ingredientName, producto) => {
     if (
       ingName.includes("pan") ||
       ingName.includes("carne") ||
-      ingName.includes("res") ||
+      ingName.includes("de res") ||
+      /\bres\b/.test(ingName) ||
       ingName.includes("salchicha") ||
       ingName.includes("pollo")
     ) {
@@ -493,26 +496,28 @@ export const resolveInsumoPersonalizable = (detalleOrInsumo, producto = null) =>
     return null;
   }
 
-  // Mapeo semántico de icono vectorial FoodIcon
+  // Mapeo semántico de icono vectorial FoodIcon (vegetales e ingredientes frescos primero)
   let icono = "kitchen";
-  if (n.includes("pan") || n.includes("brioche")) icono = "bread";
-  else if (n.includes("carne") || n.includes("res") || n.includes("hamburguesa")) icono = "meat";
-  else if (n.includes("pollo") || n.includes("pechuga") || n.includes("alitas")) icono = "chicken";
-  else if (n.includes("salchicha") || n.includes("chorizo") || n.includes("butifarra")) icono = "sausage";
-  else if (n.includes("papa") || n.includes("ripio") || n.includes("francesa")) icono = "fries";
+  if (n.includes("lechuga") || n.includes("lettuce")) icono = "lettuce";
+  else if (n.includes("suero") || n.includes("suero costeño") || n.includes("suero costeno")) icono = "suero_costeno";
+  else if (n.includes("tomate") || n.includes("tomato")) icono = "tomato";
+  else if (n.includes("cebolla") || n.includes("onion")) icono = "onion";
+  else if (n.includes("salsa de queso") || n.includes("salsa queso") || (n.includes("salsa") && (n.includes("queso") || n.includes("cheddar")))) icono = "salsa_queso";
   else if (n.includes("queso") || n.includes("cheddar") || n.includes("mozzarella") || n.includes("costeño") || n.includes("costeno")) icono = "cheese";
   else if (n.includes("tocineta") || n.includes("bacon") || n.includes("tocino")) icono = "bacon";
-  else if (n.includes("cebolla")) icono = "onion";
-  else if (n.includes("tomate")) icono = "tomato";
-  else if (n.includes("lechuga")) icono = "lettuce";
+  else if (n.includes("aguacate") || n.includes("guacamole") || n.includes("avocado")) icono = "avocado";
+  else if (n.includes("jalapeño") || n.includes("jalapeno") || n.includes("chile") || n.includes("picante") || n.includes("pepper")) icono = "pepper";
+  else if (n.includes("champiñon") || n.includes("champinon") || n.includes("hongo") || n.includes("mushroom")) icono = "mushroom";
+  else if (n.includes("carne") || n.includes("hamburguesa") || n.includes("de res") || /\bres\b/.test(n) || n.includes("patty") || n.includes("beef")) icono = "meat";
+  else if (n.includes("pollo") || n.includes("pechuga") || n.includes("alitas") || n.includes("chicken")) icono = "chicken";
+  else if (n.includes("salchicha") || n.includes("chorizo") || n.includes("butifarra") || n.includes("sausage")) icono = "sausage";
+  else if (n.includes("papa") || n.includes("ripio") || n.includes("francesa") || n.includes("fries")) icono = "fries";
+  else if (n.includes("pan") || n.includes("brioche") || n.includes("bread")) icono = "bread";
   else if (n.includes("salsa") || n.includes("mayonesa") || n.includes("tartara") || n.includes("tártara") || n.includes("bbq") || n.includes("mostaza") || n.includes("ketchup")) icono = "sauce";
-  else if (n.includes("huevo") || n.includes("codorniz")) icono = "egg";
-  else if (n.includes("champiñon") || n.includes("champinon") || n.includes("hongo")) icono = "mushroom";
-  else if (n.includes("jalapeño") || n.includes("jalapeno") || n.includes("chile") || n.includes("picante")) icono = "pepper";
-  else if (n.includes("aguacate") || n.includes("guacamole")) icono = "avocado";
+  else if (n.includes("huevo") || n.includes("codorniz") || n.includes("egg")) icono = "egg";
   else if (n.includes("maiz") || n.includes("maíz") || n.includes("choclo")) icono = "salad";
   else if (n.includes("pepinillo")) icono = "salad";
-  else if (n.includes("zanahoria")) icono = "carrot";
+  else if (n.includes("zanahoria") || n.includes("carrot")) icono = "carrot";
 
   // ID único normalizado
   const cleanId = rawName
@@ -582,7 +587,7 @@ export const extractPersonalizables = (producto, ficha) => {
 
   const FALLBACK_CANDIDATES = [
     { id: "pan", nombre: "Pan Brioche", icono: "bread", aliases: ["pan", "brioche", "artesanal"] },
-    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "res", "beef", "patty"] },
+    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "de res", "carne de res", "beef", "patty"] },
     { id: "pollo", nombre: "Pechuga de Pollo", icono: "chicken", aliases: ["pollo", "chicken", "pechuga"] },
     { id: "salchicha", nombre: "Salchicha", icono: "sausage", aliases: ["salchicha", "suiza", "americana", "hot dog", "perro"] },
     { id: "papas", nombre: "Papas a la Francesa", icono: "fries", aliases: ["papa", "papas", "francesa", "salchipapa"] },
@@ -591,6 +596,7 @@ export const extractPersonalizables = (producto, ficha) => {
     { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion", "caramelizada"] },
     { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
     { id: "lechuga", nombre: "Lechuga Batavia", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
+    { id: "suero_costeno", nombre: "Suero Costeño", icono: "suero_costeno", aliases: ["suero", "suero costeño", "suero costeno", "suerito"] },
     { id: "salsas", nombre: "Salsas de la Casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce", "tártara", "tartara", "bbq"] },
     { id: "ripio", nombre: "Ripio de Papa", icono: "fries", aliases: ["ripio", "chips"] },
     { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] },
@@ -780,6 +786,7 @@ export function FastFoodProductModal({
   mode = "pos", // "pos" | "cliente"
   initialTab = "personalizar"
 }) {
+  const { warning } = useNotifications();
   const { user, isAuthenticated } = useAuth?.() || {};
   const isDrink = isDrinkProduct(producto);
   const drinkHasSizes = hasDrinkSizes(producto);
@@ -1760,7 +1767,7 @@ export function FastFoodProductModal({
   const handleConfirm = () => {
     if (isComboWithDrinks && !isComboDrinkComplete) {
       setActiveTab("bebidas");
-      alert(`Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
+      warning("Bebidas requeridas", `Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
       return;
     }
 
@@ -2919,15 +2926,31 @@ export function FastFoodProductModal({
                           onClick={() => dStock > 0 && toggleDrink(drink)}
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
-                          {drink.imagen && typeof drink.imagen === "string" && drink.imagen.startsWith("http") ? (
-                            <img
-                              src={drink.imagen}
-                              alt={drink.nombre}
-                              className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
-                            />
-                          ) : (
-                            <FoodIconBadge name={drink.nombre || "drink"} size="md" />
-                          )}
+                          {(() => {
+                            let imgUrl = null;
+                            if (drink.imagen && typeof drink.imagen === "string" && (drink.imagen.startsWith("http") || drink.imagen.startsWith("/") || drink.imagen.startsWith("data:"))) {
+                              imgUrl = drink.imagen;
+                            } else {
+                              const n = String(drink.nombre || "").toLowerCase();
+                              if (n.includes("naranja")) imgUrl = "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+                              else if (n.includes("uva")) imgUrl = "/images/drinks/uva_postobon-removebg-preview.png";
+                              else if (n.includes("manzana")) imgUrl = "/images/drinks/manzana_400ml-removebg-preview.png";
+                              else if (n.includes("colombiana")) imgUrl = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+                              else if (n.includes("coca")) imgUrl = "/images/drinks/coca_cola-removebg-preview.png";
+                              else if (n.includes("pepsi")) imgUrl = "/images/drinks/pepsi_400ml-removebg-preview.png";
+                              else if (n.includes("sprite")) imgUrl = "/images/drinks/sprite-removebg-preview.png";
+                              else if (n.includes("quatro") || n.includes("cuatro")) imgUrl = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+                            }
+                            return imgUrl ? (
+                              <img
+                                src={imgUrl}
+                                alt={drink.nombre}
+                                className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                              />
+                            ) : (
+                              <FoodIconBadge name={drink.nombre || "drink"} size="md" />
+                            );
+                          })()}
                           <div className="min-w-0">
                             <p className="text-gray-900 dark:text-gray-100 font-black text-xs sm:text-sm truncate">
                               {drink.nombre}

@@ -37,6 +37,7 @@ export const FOOD_EMOJI_LIST = [
   { emoji: "pepper", label: "Jalapeños / Ají Picante", key: "jalapeno" },
   { emoji: "corn", label: "Maíz Tierno", key: "maiz" },
   { emoji: "lettuce", label: "Lechuga / Vegetales", key: "vegetales" },
+  { emoji: "suero_costeno", label: "Suero Costeño", key: "suero" },
   { emoji: "pickle", label: "Pepinillos", key: "pepinillos" },
   { emoji: "sparkles", label: "Especial / Extra", key: "especial" }
 ];
@@ -50,12 +51,14 @@ export const getAdditionEmoji = (name = "", rawImage = "") => {
   }
 
   const n = (name || "").toLowerCase();
+  if (n.includes("suero")) return "suero_costeno";
+  if (n.includes("lechuga") || n.includes("lettuce")) return "lettuce";
   if (n.includes("toci") || n.includes("bacon")) return "bacon";
   if (n.includes("queso") || n.includes("cheddar") || n.includes("mozzarella")) return "cheese";
   if (n.includes("papa") || n.includes("frita") || n.includes("casco")) return "fries";
   if (n.includes("sprite") || n.includes("coca") || n.includes("gaseosa") || n.includes("bebida") || n.includes("jugo") || n.includes("quatro") || n.includes("agua")) return "drink";
   if (n.includes("huevo")) return "egg";
-  if (n.includes("carne") || n.includes("patty") || n.includes("res")) return "meat";
+  if (n.includes("carne") || n.includes("patty") || n.includes("de res") || /\bres\b/.test(n)) return "meat";
   if (n.includes("pollo") || n.includes("nugget") || n.includes("alita") || n.includes("broaster")) return "chicken";
   if (n.includes("cebolla") || n.includes("crispy")) return "onion";
   if (n.includes("salsa") || n.includes("bbq") || n.includes("ajo") || n.includes("tartara") || n.includes("mayo") || n.includes("ketchup") || n.includes("mostaza")) return "sauce";
@@ -66,7 +69,7 @@ export const getAdditionEmoji = (name = "", rawImage = "") => {
   if (n.includes("salchicha") || n.includes("perro")) return "hotdog";
   if (n.includes("acompa") || n.includes("guarnic") || n.includes("side")) return "sides";
   if (n.includes("jalap") || n.includes("picante") || n.includes("aji")) return "pepper";
-  if (n.includes("lechuga") || n.includes("tomate") || n.includes("veggie")) return "lettuce";
+  if (n.includes("tomate") || n.includes("veggie")) return "lettuce";
   if (n.includes("maiz") || n.includes("choclo")) return "corn";
   return "sparkles";
 };

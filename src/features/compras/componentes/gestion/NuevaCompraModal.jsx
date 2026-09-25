@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { comprasService } from "../../servicios/comprasService";
 import { apiClient } from "@/shared/api/apiClient";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
@@ -157,6 +158,7 @@ function LoteEditor({ lotes, onLotesChange, totalCantidad }) {
 
 /* ─── Main Component ─── */
 export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCompra }) {
+  const notify = useNotifications();
   const esEdicion = Boolean(editCompra && editCompra.id);
   const idCompraEdit = esEdicion ? editCompra.id : null;
 
@@ -178,6 +180,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
 
   // Para modo edición
   const [fechaCompraEdit, setFechaCompraEdit] = useState(hoy());
+  const [mobileTab, setMobileTab] = useState("catalogo"); // "catalogo" | "orden" para responsive móvil
 
   const loadCatalogos = useCallback(async () => {
     try {
@@ -229,6 +232,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
       setSubmitted(false);
       setConfigurando(null);
       setSearch("");
+      setMobileTab("catalogo");
       if (esEdicion) {
         if (editCompra && !esEstadoPendiente(editCompra.estado)) {
           onClose?.();
@@ -312,6 +316,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
       return [...prev, newItem];
     });
     setConfigurando(null);
+    setMobileTab("orden");
   };
 
   const removeFromOrden = (idStr) => {
@@ -332,7 +337,12 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitted || saving) return;
-    if (!isValid()) return;
+    if (!isValid()) {
+      if (ordenItems.length === 0) {
+        notify?.warning?.("Orden vacía", "Debes agregar al menos un insumo a la orden de compra antes de confirmar.");
+      }
+      return;
+    }
     if (esEdicion && editCompra && !esEstadoPendiente(editCompra.estado)) return;
     setSubmitted(true);
     setSaving(true);
@@ -342,14 +352,29 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
         fechaCompra: esEdicion ? fechaCompraEdit : hoy(),
         estado: "RECIBIDA",
         total: totalGeneral,
-        detalles: ordenItems.map((it) => ({
-          idInsumo: parseInt(it.insumo?.idInsumo || it.insumo?.id),
-          cantidad: parseFloat(it.cantidad),
-          precioUnitario: parseFloat(it.precioUnitario),
-          subtotal: it.subtotal,
-          lotes: it.lotes || [],
-          ...(it.lotes?.[0] ? { numeroLote: it.lotes[0].numeroLote, fechaVencimiento: it.lotes[0].fechaVencimiento } : {}),
-        })),
+        detalles: ordenItems.map((it) => {
+          const lotesValidos = (it.lotes || [])
+            .filter((l) => l.numeroLote && String(l.numeroLote).trim())
+            .map((l) => ({
+              numeroLote: String(l.numeroLote).trim(),
+              cantidad: parseFloat(l.cantidad) || parseFloat(it.cantidad) || 0,
+              fechaVencimiento: l.fechaVencimiento && String(l.fechaVencimiento).trim() ? String(l.fechaVencimiento).trim() : null
+            }));
+
+          const primerLote = lotesValidos[0];
+          const numLote = primerLote ? primerLote.numeroLote : null;
+          const fVenc = primerLote ? primerLote.fechaVencimiento : null;
+
+          return {
+            idInsumo: parseInt(it.insumo?.idInsumo || it.insumo?.id),
+            cantidad: parseFloat(it.cantidad),
+            precioUnitario: parseFloat(it.precioUnitario),
+            subtotal: it.subtotal,
+            lotes: lotesValidos,
+            ...(numLote ? { numeroLote: numLote } : {}),
+            ...(fVenc ? { fechaVencimiento: fVenc } : {}),
+          };
+        }),
       };
       if (esEdicion) {
         await comprasService.updateCompra(idCompraEdit, payload);
@@ -361,6 +386,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
       onClose();
     } catch (err) {
       console.error("Error al guardar compra:", err);
+      notify?.error?.("Error al guardar compra", err.message || "No se pudo registrar la compra.");
       setSubmitted(false);
     } finally {
       setSaving(false);
@@ -449,11 +475,45 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
             Cargando catálogos...
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-1 overflow-hidden">
-            {/* ─────────────────────────────────────────────────
-                PANEL IZQUIERDO — Catálogo de Insumos
-            ───────────────────────────────────────────────── */}
-            <div className="w-full sm:w-1/2 border-r border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            {/* ── Selector de Pestaña Móvil (visible solo en pantallas pequeñas < 640px) ── */}
+            <div className="flex sm:hidden border-b border-gray-200 dark:border-gray-800 bg-gray-50/90 dark:bg-gray-850 p-1.5 shrink-0 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMobileTab("catalogo")}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  mobileTab === "catalogo"
+                    ? "bg-white dark:bg-gray-800 text-[#F05454] shadow-xs border border-gray-200/60 dark:border-gray-700/60"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>1. Catálogo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileTab("orden")}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  mobileTab === "orden"
+                    ? "bg-white dark:bg-gray-800 text-[#F05454] shadow-xs border border-gray-200/60 dark:border-gray-700/60"
+                    : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+                }`}
+              >
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>2. Orden ({ordenItems.length})</span>
+                {totalGeneral > 0 && (
+                  <span className="text-[10px] font-extrabold text-[#F05454] ml-1">
+                    ${totalGeneral.toLocaleString("es-CO")}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-1 overflow-hidden">
+              {/* ─────────────────────────────────────────────────
+                  PANEL IZQUIERDO — Catálogo de Insumos
+              ───────────────────────────────────────────────── */}
+              <div className={`${mobileTab === "catalogo" ? "flex" : "hidden"} sm:flex w-full sm:w-1/2 border-r border-gray-100 dark:border-gray-800 flex-col overflow-hidden`}>
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
                 <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1.5">
                   <Package className="w-4 h-4 text-[#F05454]" />
@@ -616,7 +676,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
             {/* ─────────────────────────────────────────────────
                 PANEL DERECHO — Orden de Compra
             ───────────────────────────────────────────────── */}
-            <div className="w-full sm:w-1/2 flex flex-col overflow-hidden bg-gray-50/40 dark:bg-gray-900">
+            <div className={`${mobileTab === "orden" ? "flex" : "hidden"} sm:flex w-full sm:w-1/2 flex-col overflow-hidden bg-gray-50/40 dark:bg-gray-900`}>
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
@@ -689,7 +749,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               type="button"
-                              onClick={() => handleSelectInsumo(it.insumo)}
+                              onClick={() => {
+                                handleSelectInsumo(it.insumo);
+                                setMobileTab("catalogo");
+                              }}
                               className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                               title="Editar"
                             >
@@ -756,6 +819,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, onUpdated, editCo
                     : "Confirmar Compra y Reabastecer Insumos"}
                 </button>
               </div>
+            </div>
             </div>
           </form>
         )}

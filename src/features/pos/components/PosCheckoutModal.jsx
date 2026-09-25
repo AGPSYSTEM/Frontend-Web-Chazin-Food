@@ -42,7 +42,7 @@ export function PosCheckoutModal({
   const safeCart = Array.isArray(cart) ? cart : [];
   const [clientesList, setClientesList] = useState([]);
   const [selectedCliente, setSelectedCliente] = useState(null);
-  const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
+  const [clienteNombre, setClienteNombre] = useState("");
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
@@ -51,17 +51,13 @@ export function PosCheckoutModal({
     : "Vendedor Mostrador";
   const responsableRol = user?.rol || user?.rolInfo?.nombre || (user?.idRol === 1 ? "Administrador" : "Vendedor");
 
-  const [metodoPago, setMetodoPago] = useState("efectivo"); // "efectivo", "tarjeta", "transferencia"
+  const [metodoPago, setMetodoPago] = useState("efectivo"); // "efectivo", "tarjeta"
 
   // Pago en Efectivo
   const [efectivoPaga, setEfectivoPaga] = useState("");
 
   // Pago con Tarjeta
   const [tarjetaNumero, setTarjetaNumero] = useState("");
-
-  // Pago con Transferencia
-  const [transferBanco, setTransferBanco] = useState("Nequi");
-  const [transferReferencia, setTransferReferencia] = useState("");
 
   // Load clients on modal open
   useEffect(() => {
@@ -112,11 +108,20 @@ export function PosCheckoutModal({
 
   const handleClearSelectedClient = () => {
     setSelectedCliente(null);
-    setClienteNombre("Cliente Mostrador");
+    setClienteNombre("");
   };
 
   const handleConfirm = (e) => {
     e.preventDefault();
+
+    // Validación de Cliente Obligatorio
+    if (!clienteNombre.trim()) {
+      warning(
+        "Nombre de cliente obligatorio",
+        "Por favor ingresa el nombre del cliente para registrar la orden."
+      );
+      return;
+    }
 
     // Validaciones estrictas de Pago Obligatorio (primero el pago antes de entregar el producto)
     if (metodoPago === "efectivo") {
@@ -139,7 +144,7 @@ export function PosCheckoutModal({
       if (vuelto > MAX_CAMBIO_PERMITIDO) {
         warning(
           "Límite de cambio de caja",
-          `Por políticas de arqueo y seguridad de caja, el cambio máximo permitido es de $${MAX_CAMBIO_PERMITIDO.toLocaleString("es-CO")}. El vuelto actual es de $${vuelto.toLocaleString("es-CO")}. Si el cliente paga con montos mayores, registra el cobro por Transferencia o Tarjeta.`
+          `Por políticas de arqueo y seguridad de caja, el cambio máximo permitido es de $${MAX_CAMBIO_PERMITIDO.toLocaleString("es-CO")}. Si el cliente paga con montos mayores, registra el cobro por Tarjeta.`
         );
         return;
       }
@@ -152,14 +157,6 @@ export function PosCheckoutModal({
         );
         return;
       }
-    } else if (metodoPago === "transferencia") {
-      if (!transferReferencia.trim()) {
-        warning(
-          "Comprobante requerido",
-          "Por favor ingresa el número de referencia del comprobante de transferencia."
-        );
-        return;
-      }
     }
 
     const payload = {
@@ -167,24 +164,17 @@ export function PosCheckoutModal({
       idCliente: selectedCliente ? (selectedCliente.id || selectedCliente.idCliente) : null,
       tipoEntrega: "Recoger",
       direccion: "Recoger en Local",
-      clienteNombre: clienteNombre.trim() || "Cliente Mostrador",
+      clienteNombre: clienteNombre.trim(),
       responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
       descuentoAplicado: calculatedDescuento,
       descuentoPorcentaje: discountPercent,
       total: finalTotal,
-      metodoPago:
-        metodoPago === "tarjeta"
-          ? "Tarjeta"
-          : metodoPago === "transferencia"
-          ? "Transferencia"
-          : "Efectivo",
+      metodoPago: metodoPago === "tarjeta" ? "Tarjeta" : "Efectivo",
       datosPago: {
         efectivoConCuanto: efectivoPaga ? Number(efectivoPaga) : null,
         vueltoEfectivo: vueltoEfectivo > 0 ? vueltoEfectivo : null,
-        tarjetaNumero: tarjetaNumero || null,
-        transferBanco: metodoPago === "transferencia" ? transferBanco : null,
-        transferReferencia: metodoPago === "transferencia" ? transferReferencia : null
+        tarjetaNumero: tarjetaNumero || null
       }
     };
 
@@ -564,13 +554,15 @@ export function PosCheckoutModal({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
-                    Nombre del Cliente en Factura / Comanda:
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre del Cliente en Factura / Comanda <span className="text-red-500 font-extrabold">* (Obligatorio)</span>:
                   </label>
                   <input
                     type="text"
+                    required
                     value={clienteNombre}
                     onChange={(e) => setClienteNombre(e.target.value)}
+                    placeholder="Ingresa el nombre del cliente (Obligatorio)"
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
                   />
                 </div>
@@ -602,15 +594,16 @@ export function PosCheckoutModal({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
-                      Nombre del Cliente (Mostrador / Mesa / Comanda):
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Nombre del Cliente (Mostrador / Mesa / Comanda) <span className="text-red-500 font-extrabold">* (Obligatorio)</span>:
                     </label>
                     <input
                       type="text"
+                      required
                       value={clienteNombre}
                       onChange={(e) => setClienteNombre(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
-                      placeholder="Ej. Juan Pérez / Carlos / Mesa 3"
+                      placeholder="Ingresa el nombre del cliente (Obligatorio)"
                     />
                     <p className="text-[10.5px] text-gray-400 mt-1">
                       Nombre que saldrá en la comanda de preparación y recibo.
@@ -635,13 +628,13 @@ export function PosCheckoutModal({
               <span>Método de Pago</span>
             </h4>
 
-            {/* Selector de Métodos (3 Columnas) */}
-            <div className="grid grid-cols-3 gap-2.5">
+            {/* Selector de Métodos (2 Columnas: Solo Efectivo y Tarjeta) */}
+            <div className="grid grid-cols-2 gap-3">
               {/* Efectivo */}
               <button
                 type="button"
                 onClick={() => setMetodoPago("efectivo")}
-                className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                   metodoPago === "efectivo"
                     ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/20 text-[#f05454] shadow-xs"
                     : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
@@ -660,7 +653,7 @@ export function PosCheckoutModal({
               <button
                 type="button"
                 onClick={() => setMetodoPago("tarjeta")}
-                className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                   metodoPago === "tarjeta"
                     ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/20 text-[#f05454] shadow-xs"
                     : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
@@ -669,25 +662,6 @@ export function PosCheckoutModal({
                 <CreditCard className="w-5 h-5 text-inherit" />
                 <span className="text-xs font-bold text-inherit">Tarjeta</span>
                 {metodoPago === "tarjeta" && (
-                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
-                    ✓
-                  </span>
-                )}
-              </button>
-
-              {/* Transferencia */}
-              <button
-                type="button"
-                onClick={() => setMetodoPago("transferencia")}
-                className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
-                  metodoPago === "transferencia"
-                    ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/20 text-[#f05454] shadow-xs"
-                    : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                <Smartphone className="w-5 h-5 text-inherit" />
-                <span className="text-xs font-bold text-inherit">Transferencia</span>
-                {metodoPago === "transferencia" && (
                   <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
                     ✓
                   </span>
@@ -719,37 +693,6 @@ export function PosCheckoutModal({
                     className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
                   />
                 </div>
-
-                {/* Botones de montos rápidos */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setEfectivoPaga(String(finalTotal))}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                  >
-                    Pago Exacto (${finalTotal.toLocaleString("es-CO")})
-                  </button>
-                  {[20000, 50000, 100000].filter(v => v > finalTotal).map(amt => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setEfectivoPaga(String(amt))}
-                      className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                    >
-                      ${amt.toLocaleString("es-CO")}
-                    </button>
-                  ))}
-                </div>
-
-                {montoPagaNum >= finalTotal && (
-                  <div className="flex items-center justify-between text-xs font-black text-[#16A34A] dark:text-emerald-400 bg-white/80 dark:bg-gray-800/80 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    <span className="flex items-center gap-1.5">
-                      <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span>Cambio / Vueltos al cliente:</span>
-                    </span>
-                    <span>${vueltoEfectivo.toLocaleString("es-CO")}</span>
-                  </div>
-                )}
               </div>
             )}
 
@@ -785,56 +728,6 @@ export function PosCheckoutModal({
                     readOnly
                     value={`$ ${Number(total).toLocaleString("es-CO")}`}
                     className="w-full px-3.5 py-2 bg-gray-100 dark:bg-gray-800/80 border border-[#C7D2FE] dark:border-blue-700 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-200 outline-none cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Sub-formulario Transferencia */}
-            {metodoPago === "transferencia" && (
-              <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-3.5 space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1">
-                    Entidad / Banco origen
-                  </label>
-                  <select
-                    value={transferBanco}
-                    onChange={(e) => setTransferBanco(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-xl text-sm font-bold text-gray-900 dark:text-gray-100 outline-none cursor-pointer"
-                  >
-                    <optgroup label="Billeteras digitales">
-                      <option value="Nequi">Nequi</option>
-                      <option value="Daviplata">Daviplata</option>
-                    </optgroup>
-                    <optgroup label="Bancos">
-                      <option value="Bancolombia">Bancolombia</option>
-                      <option value="Davivienda">Davivienda</option>
-                      <option value="BBVA">BBVA</option>
-                      <option value="Banco de Bogotá">Banco de Bogotá</option>
-                      <option value="Banco Caja Social">Banco Caja Social</option>
-                      <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
-                      <option value="Otro">Otro</option>
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div className="bg-blue-100/70 dark:bg-blue-900/30 p-2.5 rounded-xl text-xs text-[#1E40AF] dark:text-blue-300 font-medium leading-relaxed">
-                  Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> o{" "}
-                  <span className="font-bold">Nequi 312-345-6789</span> a nombre de{" "}
-                  <span className="font-bold">Chazin Food</span>.
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1">
-                    Número de referencia / Comprobante <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={transferReferencia}
-                    onChange={(e) => setTransferReferencia(e.target.value)}
-                    placeholder="Ej: 987654321"
-                    className="w-full px-3.5 py-2 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-xl text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none"
                   />
                 </div>
               </div>

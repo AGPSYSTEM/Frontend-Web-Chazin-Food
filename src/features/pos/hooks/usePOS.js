@@ -212,7 +212,7 @@ export function usePOS({ initialClienteId = null } = {}) {
         idUsuario = authenticatedUserId,
         tipoEntrega = "Recoger",
         direccion = "Recoger en Local",
-        clienteNombre = "Cliente Mostrador",
+        clienteNombre = "",
         metodoPago = "Efectivo",
         datosPago = {},
         observacion = ""

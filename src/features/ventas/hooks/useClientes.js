@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { clientesService } from "../servicios/clientesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import Swal from "sweetalert2";
 
 export function useClientes() {
   const notify = useNotifications();
@@ -74,7 +75,19 @@ export function useClientes() {
     }
   };
 
-  const deleteCliente = async (id, nombre) => {
+  const deleteCliente = async (id, nombre, comprasCount = 0) => {
+    // Si tiene ventas asociadas, se bloquea la eliminación totalmente para proteger los registros contables
+    if (comprasCount > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "No se puede eliminar",
+        html: `El cliente <b>"${nombre}"</b> cuenta con <b>${comprasCount}</b> ${comprasCount === 1 ? 'venta asociada' : 'ventas asociadas'} en el sistema.<br/><br/><span style="color:#d97706;font-size:0.9em;">Por integridad y trazabilidad contable, este cliente no puede ser eliminado. Si ya no requiere actividad comercial, únicamente es posible cambiar su estado a <b>Inactivo</b> desde la opción de edición.</span>`,
+        confirmButtonText: "Entendido",
+        confirmButtonColor: "#30475E"
+      });
+      return false;
+    }
+
     const confirmed = await notify.confirmDelete(
       "¿Eliminar cliente?",
       `¿Estás seguro de que deseas eliminar a "${nombre}"?`
