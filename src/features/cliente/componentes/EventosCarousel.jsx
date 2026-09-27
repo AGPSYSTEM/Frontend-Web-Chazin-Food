@@ -13,7 +13,19 @@ import {
   Percent,
   ChefHat
 } from "lucide-react";
-import { FoodIcon, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
+import {
+  FoodIcon,
+  getEventBadgeConfig,
+  StreamlineFlame,
+  StreamlinePartyPopper,
+  StreamlineCrown,
+  IconCoupleHeart,
+  IconLightningBolt,
+  IconMeatSteak,
+  IconExplosion,
+  IconServingCloche,
+  IconBaconStrip
+} from "@/shared/components/ui/FoodIcon";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 // Paletas de color premium cinematográficas para cada evento (8 temas únicos sin repeticiones)
@@ -26,7 +38,10 @@ export const THEMES = {
     accent: "text-red-400",
     btnGrad: "from-red-600 via-rose-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white shadow-lg shadow-red-950/60",
     pillBg: "bg-red-500/15 border-red-400/30 text-red-200",
-    tag: "🔥 2X1 IMPERDIBLE",
+    tag: "2X1 IMPERDIBLE",
+    tagText: "2X1 IMPERDIBLE",
+    TagIcon: StreamlineFlame,
+    TitleIcon: null,
     heroGradient: "from-red-600 via-rose-600 to-orange-600",
     heroSubtext: "text-red-100"
   },
@@ -38,7 +53,10 @@ export const THEMES = {
     accent: "text-purple-300",
     btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
     pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
-    tag: "🎉 PROMO FIN DE SEMANA",
+    tag: "PROMO FIN DE SEMANA",
+    tagText: "PROMO FIN DE SEMANA",
+    TagIcon: StreamlinePartyPopper,
+    TitleIcon: null,
     heroGradient: "from-purple-700 via-indigo-600 to-pink-600",
     heroSubtext: "text-purple-100"
   },
@@ -50,7 +68,10 @@ export const THEMES = {
     accent: "text-sky-300",
     btnGrad: "from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-blue-950/60",
     pillBg: "bg-sky-500/15 border-sky-400/30 text-sky-200",
-    tag: "💑 COMBO FESTIVO EN PAREJA",
+    tag: "COMBO FESTIVO EN PAREJA",
+    tagText: "COMBO FESTIVO EN PAREJA",
+    TagIcon: IconCoupleHeart,
+    TitleIcon: null,
     heroGradient: "from-blue-700 via-sky-600 to-indigo-700",
     heroSubtext: "text-sky-100"
   },
@@ -62,7 +83,10 @@ export const THEMES = {
     accent: "text-amber-300",
     btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
     pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
-    tag: "👑 EDICIÓN LIMITADA CHEF",
+    tag: "EDICIÓN LIMITADA CHEF",
+    tagText: "EDICIÓN LIMITADA CHEF",
+    TagIcon: StreamlineCrown,
+    TitleIcon: StreamlineFlame,
     heroGradient: "from-amber-600 via-yellow-600 to-orange-600",
     heroSubtext: "text-amber-100"
   },
@@ -74,7 +98,10 @@ export const THEMES = {
     accent: "text-orange-400",
     btnGrad: "from-orange-500 via-amber-500 to-red-500 hover:from-orange-400 hover:to-amber-500 text-white shadow-lg shadow-orange-950/60",
     pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
-    tag: "⚡ OFERTA RELÁMPAGO CRISPY",
+    tag: "OFERTA RELÁMPAGO CRISPY",
+    tagText: "OFERTA RELÁMPAGO CRISPY",
+    TagIcon: IconLightningBolt,
+    TitleIcon: IconLightningBolt,
     heroGradient: "from-orange-600 via-amber-500 to-red-500",
     heroSubtext: "text-orange-100"
   },
@@ -86,7 +113,10 @@ export const THEMES = {
     accent: "text-rose-300",
     btnGrad: "from-rose-500 via-red-600 to-pink-600 hover:from-rose-400 hover:to-red-500 text-white shadow-lg shadow-rose-950/60",
     pillBg: "bg-rose-500/15 border-rose-400/30 text-rose-200",
-    tag: "🥩 MASTER PARRILLA & BACON",
+    tag: "MASTER PARRILLA & BACON",
+    tagText: "MASTER PARRILLA & BACON",
+    TagIcon: IconMeatSteak,
+    TitleIcon: IconExplosion,
     heroGradient: "from-rose-700 via-red-600 to-pink-700",
     heroSubtext: "text-rose-100"
   },
@@ -98,7 +128,10 @@ export const THEMES = {
     accent: "text-emerald-300",
     btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
     pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
-    tag: "🥓 FESTIVAL DE TOPPINGS",
+    tag: "FESTIVAL DE TOPPINGS",
+    tagText: "FESTIVAL DE TOPPINGS",
+    TagIcon: IconBaconStrip,
+    TitleIcon: IconBaconStrip,
     heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
     heroSubtext: "text-emerald-100"
   },
@@ -110,7 +143,10 @@ export const THEMES = {
     accent: "text-teal-300",
     btnGrad: "from-teal-500 via-cyan-600 to-emerald-600 hover:from-teal-400 hover:to-cyan-500 text-white shadow-lg shadow-teal-950/60",
     pillBg: "bg-teal-500/15 border-teal-400/30 text-teal-200",
-    tag: "✨ CREACIÓN DE AUTOR EXCLUSIVA",
+    tag: "CREACIÓN DE AUTOR EXCLUSIVA",
+    tagText: "CREACIÓN DE AUTOR EXCLUSIVA",
+    TagIcon: IconServingCloche,
+    TitleIcon: IconServingCloche,
     heroGradient: "from-teal-700 via-cyan-700 to-emerald-700",
     heroSubtext: "text-teal-100"
   }
@@ -125,36 +161,91 @@ export const getEventThemeAndTag = (event, index) => {
   const type = String(event?.tipoEvento || "").toLowerCase();
   const id = Number(event?.idEvento || 0);
 
-  // Mapeo preciso por identidad de cada evento
+  // Mapeo preciso por identidad de cada evento con iconos vectoriales SVG limpios (sin emojis unicode)
   if (name.includes("2x1") || type.includes("2x1")) {
-    return { theme: "fire", tag: "🔥 2X1 IMPERDIBLE" };
+    return {
+      theme: "fire",
+      tag: "2X1 IMPERDIBLE",
+      tagText: "2X1 IMPERDIBLE",
+      TagIcon: StreamlineFlame,
+      TitleIcon: null
+    };
   }
   if (name.includes("fin de semana")) {
-    return { theme: "violet", tag: "🎉 PROMO FIN DE SEMANA" };
+    return {
+      theme: "violet",
+      tag: "PROMO FIN DE SEMANA",
+      tagText: "PROMO FIN DE SEMANA",
+      TagIcon: StreamlinePartyPopper,
+      TitleIcon: null
+    };
   }
   if (name.includes("pareja") || type.includes("combo")) {
-    return { theme: "ocean", tag: "💑 COMBO FESTIVO EN PAREJA" };
+    return {
+      theme: "ocean",
+      tag: "COMBO FESTIVO EN PAREJA",
+      tagText: "COMBO FESTIVO EN PAREJA",
+      TagIcon: IconCoupleHeart,
+      TitleIcon: null
+    };
   }
-  if (id === 5 || (name.includes("burger fest") && name.includes("🔥"))) {
-    return { theme: "gold", tag: "👑 EDICIÓN LIMITADA CHEF" };
+  if (id === 5 || name.includes("burger fest")) {
+    return {
+      theme: "gold",
+      tag: "EDICIÓN LIMITADA CHEF",
+      tagText: "EDICIÓN LIMITADA CHEF",
+      TagIcon: StreamlineCrown,
+      TitleIcon: StreamlineFlame
+    };
   }
   if (name.includes("pollo crispy") || name.includes("relampago") || name.includes("relámpago")) {
-    return { theme: "sunset", tag: "⚡ OFERTA RELÁMPAGO CRISPY" };
+    return {
+      theme: "sunset",
+      tag: "OFERTA RELÁMPAGO CRISPY",
+      tagText: "OFERTA RELÁMPAGO CRISPY",
+      TagIcon: IconLightningBolt,
+      TitleIcon: IconLightningBolt
+    };
   }
   if (name.includes("doble carne") || (name.includes("tocineta") && name.includes("20%"))) {
-    return { theme: "ruby", tag: "🥩 MASTER PARRILLA & BACON" };
+    return {
+      theme: "ruby",
+      tag: "MASTER PARRILLA & BACON",
+      tagText: "MASTER PARRILLA & BACON",
+      TagIcon: IconMeatSteak,
+      TitleIcon: IconExplosion
+    };
   }
   if (name.includes("toppings") || name.includes("perro suizo")) {
-    return { theme: "emerald", tag: "🥓 FESTIVAL DE TOPPINGS" };
+    return {
+      theme: "emerald",
+      tag: "FESTIVAL DE TOPPINGS",
+      tagText: "FESTIVAL DE TOPPINGS",
+      TagIcon: IconBaconStrip,
+      TitleIcon: IconBaconStrip
+    };
   }
   if (id === 9 || name.includes("edicion limitada") || name.includes("edición limitada") || type.includes("especial")) {
-    return { theme: "teal", tag: "✨ CREACIÓN DE AUTOR" };
+    return {
+      theme: "teal",
+      tag: "CREACIÓN DE AUTOR EXCLUSIVA",
+      tagText: "CREACIÓN DE AUTOR EXCLUSIVA",
+      TagIcon: IconServingCloche,
+      TitleIcon: IconServingCloche
+    };
   }
 
   // Secuencia de rotación única para cualquier evento adicional sin repetir
   const themeOrder = ["fire", "violet", "ocean", "gold", "sunset", "ruby", "emerald", "teal"];
   const selectedTheme = themeOrder[index % themeOrder.length];
-  return { theme: selectedTheme, tag: THEMES[selectedTheme]?.tag || "⭐ EXPERIENCIA CHAZIN" };
+  const tObj = THEMES[selectedTheme];
+  return {
+    theme: selectedTheme,
+    tag: tObj?.tagText || "EXPERIENCIA CHAZIN",
+    tagText: tObj?.tagText || "EXPERIENCIA CHAZIN",
+    TagIcon: tObj?.TagIcon || StreamlinePartyPopper,
+    TitleIcon: tObj?.TitleIcon || null
+  };
 };
 
 export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
@@ -281,9 +372,12 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
     };
 
     const enrichedDb = rawActive.map((e, idx) => {
-      const { theme: calculatedTheme, tag: calculatedTag } = getEventThemeAndTag(e, idx);
-      const theme = e.theme || calculatedTheme;
-      const customTag = calculatedTag;
+      const meta = getEventThemeAndTag(e, idx);
+      const theme = e.theme || meta.theme;
+      const themeConfig = THEMES[theme] || THEMES.fire;
+      const customTag = meta.tagText;
+      const TagIcon = meta.TagIcon || themeConfig.TagIcon;
+      const TitleIcon = meta.TitleIcon || themeConfig.TitleIcon;
       const prod = productos.find(
         (p) => String(p.id || p.idProducto) === String(e.idProducto)
       );
@@ -298,6 +392,8 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
         ...e,
         theme,
         customTag,
+        TagIcon,
+        TitleIcon,
         precioOriginal: originalPrice,
         nuevoPrecio: finalPrice || originalPrice,
         perks: e.perks || [
@@ -641,11 +737,17 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                     {/* Información y detalles */}
                     <div className="lg:col-span-7 space-y-3.5 text-left">
                       <div>
-                        <span className={`text-xs font-extrabold uppercase tracking-widest ${theme.accent} block mb-1`}>
-                          {evt.customTag || theme.tag}
-                        </span>
-                        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight">
-                          {evt.nombreEvento || evt.nombre}
+                        <div className={`inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest ${theme.accent} mb-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-xs`}>
+                          {evt.TagIcon && (
+                            <evt.TagIcon size={14} className="shrink-0 animate-pulse" />
+                          )}
+                          <span>{evt.customTag || theme.tagText || theme.tag}</span>
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight flex items-center gap-2.5 flex-wrap">
+                          {evt.TitleIcon && (
+                            <evt.TitleIcon size={28} className="shrink-0 text-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]" />
+                          )}
+                          <span>{stripEmojis(evt.nombreEvento || evt.nombre)}</span>
                         </h3>
                       </div>
 

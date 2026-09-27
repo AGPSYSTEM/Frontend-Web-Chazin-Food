@@ -529,6 +529,106 @@ export const StreamlineCrown = ({ size = 20, stroke = 1.75, className = "", ...p
 );
 
 /**
+ * Icono de Pareja con Corazón (Doodle Vectorial Streamline)
+ */
+export const IconCoupleHeart = ({ size = 20, className = "", stroke, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 48 48"
+    width={size}
+    height={size}
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M 13.455 3.455 C 10.730 6.179, 10.499 7.548, 12.067 11.685 C 13.495 15.456, 16.726 18.798, 21.122 21.053 L 24.745 22.910 28.899 19.355 C 35.687 13.544, 37.657 7.811, 34.443 3.223 C 32.595 0.583, 27.904 0.239, 25.571 2.571 C 24.143 4, 23.857 4, 22.429 2.571 C 20.128 0.271, 16.257 0.652, 13.455 3.455 M 14.861 4.911 C 12.569 6.768, 12.544 6.947, 14 11.122 C 15.057 14.151, 16.757 16.303, 19.754 18.403 L 24.008 21.385 26.754 19.350 C 30.595 16.505, 34 11.195, 34 8.052 C 34 2.664, 29.355 1.313, 25.648 5.623 L 23.391 8.246 21.673 5.623 C 19.629 2.504, 18.039 2.338, 14.861 4.911 M 7.500 23.155 C 2.866 25.689, 1.447 31.626, 4.632 35.146 C 6.159 36.833, 6.061 37.140, 3.132 39.876 C 1.410 41.486, 0 43.810, 0 45.042 C 0 46.970, 0.569 46.635, 4.085 42.641 C 7.423 38.849, 8.785 38, 11.534 38 C 14.174 38, 15.447 38.720, 17.449 41.344 C 18.852 43.184, 20 45.235, 20 45.903 C 20 46.571, 20.423 46.857, 20.940 46.537 C 22.308 45.691, 20.151 40.151, 18.008 39.004 C 16.307 38.094, 16.313 37.874, 18.144 34.173 C 20.339 29.737, 19.546 25.898, 16.048 24.026 C 13.450 22.636, 13.431 23.431, 16 26 C 17.100 27.100, 18 28.900, 18 30 C 18 35.034, 10.074 37.949, 6.655 34.171 C 4.382 31.660, 4.572 31, 7.566 31 C 8.977 31, 11.031 30.519, 12.130 29.931 C 13.584 29.152, 14.518 29.185, 15.564 30.053 C 16.393 30.741, 17 30.822, 17 30.245 C 17 29.695, 16.330 28.689, 15.511 28.009 C 14.318 27.019, 13.201 27.103, 9.886 28.429 C 4.975 30.394, 4.150 29.947, 6.388 26.531 C 7.440 24.924, 8.972 24, 10.582 24 C 12.018 24, 12.850 23.566, 12.500 23 C 11.710 21.721, 10.026 21.773, 7.500 23.155 M 31.653 24.490 C 30.834 25.309, 29.852 27.447, 29.470 29.240 C 29.089 31.033, 28.141 33.223, 27.363 34.107 C 26.141 35.496, 26.159 35.887, 27.500 37 C 28.856 38.125, 28.869 38.488, 27.603 39.893 C 26.807 40.777, 25.879 42.850, 25.542 44.500 C 24.993 47.181, 25.064 47.298, 26.214 45.606 C 30.041 39.971, 31.552 38.880, 36 38.543 C 40.958 38.167, 44.316 40.287, 46.225 45 C 46.854 46.552, 47.421 47.007, 47.719 46.199 C 48.367 44.448, 46.042 39.008, 44.629 38.968 C 44.008 38.951, 44.381 38.270, 45.458 37.456 C 47.333 36.038, 47.343 35.851, 45.708 33.083 C 44.769 31.493, 44 29.280, 44 28.167 C 44 27.054, 43.293 25.436, 42.429 24.571 C 40.430 22.573, 33.621 22.522, 31.653 24.490 M 33.385 24.765 C 32.771 25.169, 31.936 26.569, 31.528 27.875 C 30.705 30.509, 31.793 30.233, 35.563 26.853 C 37.588 25.037, 37.667 25.058, 39.843 28.001 C 41.359 30.052, 41.639 31, 40.730 31 C 39.998 31, 38.928 30.528, 38.352 29.952 C 36.615 28.215, 29.169 32.362, 29.032 35.144 C 29.002 35.755, 30.183 35.903, 36 36.019 C 42.971 36.159, 44.098 35.886, 43.594 34.184 C 43.320 33.258, 42.787 31.150, 42.410 29.500 C 42.033 27.850, 41.281 25.938, 40.740 25.250 C 39.666 23.887, 35.168 23.591, 33.385 24.765 M 10.667 40.667 C 9.620 41.714, 9.888 46, 11 46 C 11.550 46, 12 44.650, 12 43 C 12 39.893, 11.796 39.537, 10.667 40.667 M 33.659 43 C 34.634 44.650, 35.767 46, 36.177 46 C 37.151 46, 41 41.860, 41 40.811 C 41 39.492, 39.342 39.883, 37.979 41.525 C 36.845 42.892, 36.538 42.892, 35.028 41.525 C 32.344 39.096, 31.738 39.749, 33.659 43"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
+ * Icono de Rayo Doodle (Estilo Vectorial Streamline)
+ */
+export const IconLightningBolt = ({ size = 20, className = "", stroke, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 48 48"
+    width={size}
+    height={size}
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M 14.604 2.798 C 11.236 9.313, 5.971 23.144, 6.521 24.034 C 6.850 24.566, 9.319 25, 12.010 25 L 16.902 25 11.919 33.034 C 3.551 46.527, 4.241 51.454, 13.403 43.627 C 20.422 37.631, 38.820 19.204, 40.789 16.199 C 42.887 12.997, 41.269 12.035, 33.750 12.015 C 30.587 12.007, 28 11.830, 28 11.622 C 28 11.414, 28.701 9.566, 29.559 7.514 C 31.707 2.373, 30.606 1.892, 28.070 6.863 C 24.671 13.526, 25.001 14, 33.047 14 L 40.094 14 36.797 18.116 C 32.778 23.132, 9.873 44.207, 9.186 43.520 C 8.916 43.249, 11.211 38.885, 14.287 33.821 C 17.363 28.758, 19.655 24.252, 19.381 23.807 C 19.107 23.363, 16.464 23, 13.508 23 L 8.135 23 12.091 13.276 C 14.267 7.928, 16.400 3.200, 16.832 2.768 C 17.263 2.337, 20.965 1.596, 25.058 1.122 L 32.500 0.259 24.276 0.130 C 16.226 0.003, 16.021 0.059, 14.604 2.798"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
+ * Icono de Carne / Filete Steak (Doodle Vectorial Streamline)
+ */
+export const IconMeatSteak = ({ size = 20, className = "", stroke, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 48 48"
+    width={size}
+    height={size}
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M 28 6.445 C 20.872 7.999, 16.401 10.019, 11.683 13.816 C 2.323 21.349, -1.779 30.290, 1.022 37.052 C 3.151 42.194, 8.360 43.419, 15.467 40.449 C 18.845 39.038, 19.625 39.047, 24.152 40.550 C 35.169 44.210, 42.431 42.412, 46.162 35.101 C 47.515 32.450, 47.911 32.184, 48.296 33.672 C 48.718 35.306, 48.779 35.288, 48.876 33.500 C 49.135 28.731, 46.965 14.833, 45.528 12.054 C 42.552 6.299, 36.927 4.499, 28 6.445 M 24.500 9.399 C 15.960 12.100, 6.525 19.150, 3.423 25.148 C -0.762 33.241, 4.909 37.443, 14.568 33.407 C 17.860 32.032, 19.439 31.979, 26.156 33.024 C 34.811 34.371, 38.432 33.848, 41.721 30.779 C 46.994 25.857, 46.654 16.500, 40.996 10.842 C 38.629 8.475, 37.346 8.011, 33.327 8.067 C 30.672 8.104, 26.700 8.703, 24.500 9.399 M 25.264 10.973 C 22.043 11.738, 15 16.442, 15 17.829 C 15 18.228, 15.900 19.326, 17 20.268 C 18.100 21.210, 19 23.077, 19 24.418 C 19 28.307, 23.325 31, 29.570 31 C 38.560 31, 44.003 27.439, 43.996 21.561 C 43.986 12.993, 35.931 8.440, 25.264 10.973 M 23.603 13.477 C 21.460 14.240, 19.036 15.535, 18.218 16.353 C 16.901 17.671, 16.975 18.153, 18.865 20.556 C 20.039 22.048, 21 24.019, 21 24.935 C 21 27.854, 23.250 29, 28.950 28.985 C 35.422 28.968, 38.865 27.495, 40.898 23.873 C 42.140 21.659, 42.156 20.792, 41.006 18.014 C 38.731 12.522, 31.542 10.647, 23.603 13.477 M 6 25 C 4.527 27.753, 6.373 31, 9.413 31 C 12.557 31, 14.372 28.617, 13.593 25.513 C 13.098 23.540, 12.328 23, 10.016 23 C 8.094 23, 6.698 23.695, 6 25 M 8.688 24.646 C 7.216 26.117, 7.990 29.149, 9.750 28.810 C 10.713 28.624, 11.500 27.616, 11.500 26.570 C 11.500 24.580, 9.869 23.464, 8.688 24.646 M 0.252 32.500 C 0.263 34.700, 0.468 35.482, 0.707 34.238 C 0.946 32.994, 0.937 31.194, 0.687 30.238 C 0.437 29.282, 0.241 30.300, 0.252 32.500 M 45 30.890 C 45 31.562, 42.889 33.046, 40.309 34.188 C 35.905 36.135, 35.109 36.184, 27.328 34.973 C 20.018 33.836, 18.432 33.880, 13.904 35.342 C 7.440 37.430, 6.122 37.418, 3.713 35.250 C 1.853 33.577, 1.784 33.584, 2.134 35.394 C 2.335 36.436, 3.631 38.132, 5.013 39.162 C 7.482 41.004, 7.634 40.998, 13.659 38.803 C 19.656 36.619, 19.913 36.607, 25.234 38.285 C 32.826 40.678, 39.048 40.535, 41.873 37.904 C 44.241 35.698, 46.425 31.091, 45.528 30.195 C 45.238 29.904, 45 30.217, 45 30.890"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
+ * Icono de Explosión / Oferta Boom (Doodle Vectorial Streamline)
+ */
+export const IconExplosion = ({ size = 20, className = "", stroke, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 48 48"
+    width={size}
+    height={size}
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M 18.405 1.895 C 16.521 3.044, 14.276 3.584, 12.668 3.277 C 10.490 2.861, 9.143 3.673, 5.013 7.891 C -0.440 13.460, -0.782 14.438, 1.557 17.777 C 2.768 19.507, 4.099 20, 7.557 20 C 10.001 20, 12 19.550, 12 19 C 12 18.450, 10.216 18, 8.035 18 C 3.247 18, 0.945 15.198, 3.573 12.569 C 4.437 11.706, 5.561 11, 6.071 11 C 6.582 11, 7 10.357, 7 9.571 C 7 6.842, 10.055 4.853, 13.191 5.542 C 15.310 6.007, 16.698 5.678, 18.147 4.367 C 20.800 1.966, 27.200 1.966, 29.853 4.367 C 31.302 5.678, 32.690 6.007, 34.809 5.542 C 37.945 4.853, 41 6.842, 41 9.571 C 41 10.357, 41.418 11, 41.929 11 C 42.439 11, 43.563 11.706, 44.427 12.569 C 47.055 15.198, 44.753 18, 39.965 18 C 37.784 18, 36 18.450, 36 19 C 36 19.550, 37.994 20, 40.432 20 C 44.182 20, 45.182 19.553, 46.932 17.096 C 48.767 14.519, 49.923 10.744, 48.415 12.252 C 48.093 12.573, 45.613 10.572, 42.902 7.804 C 38.850 3.665, 37.506 2.861, 35.332 3.277 C 33.724 3.584, 31.479 3.044, 29.595 1.895 C 27.893 0.857, 25.375 0.007, 24 0.007 C 22.625 0.007, 20.107 0.857, 18.405 1.895 M 0.079 14.583 C 0.127 15.748, 0.364 15.985, 0.683 15.188 C 0.972 14.466, 0.936 13.603, 0.604 13.271 C 0.272 12.939, 0.036 13.529, 0.079 14.583 M 16 20.500 C 16 22.425, 16.450 24, 17 24 C 17.550 24, 18 22.425, 18 20.500 C 18 18.575, 17.550 17, 17 17 C 16.450 17, 16 18.575, 16 20.500 M 23 19.500 C 23 20.875, 23.450 22, 24 22 C 24.550 22, 25 20.875, 25 19.500 C 25 18.125, 24.550 17, 24 17 C 23.450 17, 23 18.125, 23 19.500 M 30 20.500 C 30 22.425, 30.450 24, 31 24 C 31.550 24, 32 22.425, 32 20.500 C 32 18.575, 31.550 17, 31 17 C 30.450 17, 30 18.575, 30 20.500 M 19.500 25.229 C 12.253 27.685, 12 27.878, 12 30.943 C 12 32.947, 12.686 34.297, 14.086 35.046 C 16.756 36.475, 17.923 35.395, 15.568 33.674 C 14.586 32.955, 13.949 31.504, 14.152 30.449 C 15.039 25.845, 33.961 25.845, 34.848 30.449 C 35.051 31.504, 34.414 32.955, 33.432 33.674 C 31.077 35.395, 32.244 36.475, 34.914 35.046 C 37.893 33.452, 37.785 28.254, 34.750 27.106 C 26.112 23.841, 24.268 23.614, 19.500 25.229 M 23 41.500 C 23 45.167, 23.436 48, 24 48 C 24.564 48, 25 45.167, 25 41.500 C 25 37.833, 24.564 35, 24 35 C 23.436 35, 23 37.833, 23 41.500 M 15.457 41.250 C 14.927 43.051, 13.497 44.940, 12.250 45.487 C 9.663 46.622, 9.277 48, 11.545 48 C 13.975 48, 18 43.352, 18 40.545 C 18 36.984, 16.598 37.372, 15.457 41.250 M 30 40.545 C 30 43.352, 34.025 48, 36.455 48 C 38.723 48, 38.337 46.622, 35.750 45.487 C 34.503 44.940, 33.073 43.051, 32.543 41.250 C 31.402 37.372, 30 36.984, 30 40.545"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
+ * Icono de Campana Gourmet / Servicio Chef (Doodle Vectorial Streamline)
+ */
+export const IconServingCloche = ({ size = 20, className = "", stroke, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    fill="currentColor"
+    className={className}
+    {...props}
+  >
+    <path
+      d="M 10.710 2 C 10.299 3.574, 10.680 4, 12.500 4 C 14.320 4, 14.701 3.574, 14.290 2 C 14.002 0.900, 13.197 0, 12.500 0 C 11.803 0, 10.998 0.900, 10.710 2 M 5.861 5.914 C 4.562 6.967, 3.732 8.061, 4.015 8.345 C 4.298 8.630, 5.583 7.769, 6.870 6.431 C 9.669 3.523, 9.143 3.253, 5.861 5.914 M 17.087 5.248 C 18.600 6.442, 21 10.236, 21 11.434 C 21 11.745, 17.175 12, 12.500 12 C 6.375 12, 3.996 11.651, 3.985 10.750 C 3.974 9.917, 3.646 10, 3 11 C 2.467 11.825, 2.023 12.725, 2.013 13 C 2.004 13.275, 6.497 13.358, 11.998 13.184 C 23.356 12.824, 26.275 14.687, 15.250 15.258 L 8.500 15.608 15.281 15.804 C 20.316 15.950, 22.201 15.639, 22.601 14.597 C 23.347 12.654, 19.478 5.384, 17.293 4.621 C 15.697 4.064, 15.674 4.133, 17.087 5.248 M 1 16.395 C 1 16.612, 2.762 16.958, 4.916 17.163 C 7.070 17.369, 8.618 17.191, 8.357 16.768 C 7.882 15.999, 1 15.650, 1 16.395 M 9 19.666 C 15.818 20.467, 15.403 21.453, 8 22.042 L 0.500 22.640 8.323 22.820 C 15.288 22.980, 16.110 22.808, 15.814 21.250 C 15.555 19.882, 14.392 19.473, 10.491 19.378 C 7.486 19.304, 6.892 19.419, 9 19.666"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/**
  * Cohete / Lanzamiento Novedad (Startup Streamline Sharp oficial)
  */
 export const StreamlineRocket = ({ size = 20, className = "", stroke, ...props }) => (
@@ -822,10 +922,10 @@ export const ICON_MAP = {
   fire: StreamlineFlame,
   burger_fest: StreamlineFlame,
   festival: StreamlineFlame,
-  flash: StreamlineBolt,
-  rayo: StreamlineBolt,
-  lightning: StreamlineBolt,
-  bolt: StreamlineBolt,
+  flash: IconLightningBolt,
+  rayo: IconLightningBolt,
+  lightning: IconLightningBolt,
+  bolt: IconLightningBolt,
   tag: StreamlineDiscountTicket,
   ticket: StreamlineDiscountTicket,
   discount: StreamlineDiscountTicket,
@@ -881,6 +981,20 @@ export const ICON_MAP = {
   gold: StreamlineCrown,
   vip: StreamlineCrown,
 
+  // Pareja, Rayo, Carne Steak, Explosión, Campana Gourmet
+  couple_heart: IconCoupleHeart,
+  pareja: IconCoupleHeart,
+  duo: IconCoupleHeart,
+  lightning_bolt: IconLightningBolt,
+  relampago: IconLightningBolt,
+  meat_steak: IconMeatSteak,
+  steak: IconMeatSteak,
+  carne_steak: IconMeatSteak,
+  explosion: IconExplosion,
+  boom: IconExplosion,
+  serving_cloche: IconServingCloche,
+  cloche: IconServingCloche,
+
   // Emblema Institucional Chazin Food
   chazin: IconChazinEmblem,
   "chazin-food": IconChazinEmblem,
@@ -926,12 +1040,16 @@ export const AVAILABLE_FOOD_SLUGS = [
   { slug: "fire", label: "Burger Fest / Fuego", icon: StreamlineFlame },
   { slug: "2x1", label: "Promo 2x1 / Doble", icon: StreamlineDoubleBurger },
   { slug: "discount", label: "Descuento / Ticket", icon: StreamlineDiscountTicket },
-  { slug: "flash", label: "Relámpago / Flash", icon: StreamlineBolt },
+  { slug: "flash", label: "Relámpago / Flash", icon: IconLightningBolt },
   { slug: "gift", label: "Regalo / Combo Festivo", icon: StreamlineGiftBox },
   { slug: "crown", label: "Edición Especial / Corona", icon: StreamlineCrown },
   { slug: "calendar", label: "Evento / Calendario", icon: StreamlineCalendarCheck },
   { slug: "party", label: "Celebración / Fiesta", icon: StreamlinePartyPopper },
   { slug: "rocket", label: "Lanzamiento Novedad", icon: StreamlineRocket },
+  { slug: "couple_heart", label: "Combo Pareja", icon: IconCoupleHeart },
+  { slug: "meat_steak", label: "Corte de Carne", icon: IconMeatSteak },
+  { slug: "explosion", label: "Oferta Explosiva", icon: IconExplosion },
+  { slug: "serving_cloche", label: "Selección Chef", icon: IconServingCloche },
 ];
 
 /**
@@ -1160,34 +1278,11 @@ export function getEventBadgeConfig(event, product = null) {
   const rawIcon = String(event.icono || "").toLowerCase().trim();
   const rawType = String(event.tipoEvento || event.tipo || "").toLowerCase().trim();
   const rawName = String(event.nombreEvento || event.nombre || "").toLowerCase().trim();
+  const id = Number(event.idEvento || 0);
   const combined = `${rawIcon} ${rawType} ${rawName}`;
   const cleanName = stripEmojis(event.nombreEvento || event.nombre || "");
 
-  // 1. EDICIÓN LIMITADA / BURGER FEST / FESTIVAL GOURMET
-  if (
-    rawIcon === "fire" ||
-    rawIcon === "flame" ||
-    rawType.includes("edicion") ||
-    rawType.includes("limitada") ||
-    combined.includes("burger fest") ||
-    combined.includes("festival")
-  ) {
-    return {
-      key: "festival",
-      Icon: StreamlineFlame,
-      iconSlug: "fire",
-      label: combined.includes("burger fest") ? "BURGER FEST" : "EDICIÓN LIMITADA",
-      fullLabel: cleanName || "Edición Limitada",
-      gradient: "from-amber-500 via-orange-500 to-red-600",
-      border: "border-amber-300/40",
-      glow: "shadow-[0_4px_16px_rgba(245,158,11,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
-      accentColor: "#f59e0b"
-    };
-  }
-
-  // 2. PROMOCIÓN 2X1
+  // 1. PROMOCIÓN 2X1 (Evento 1: Jueves 2x1)
   if (
     rawIcon === "2x1" ||
     rawType.includes("2x1") ||
@@ -1196,11 +1291,29 @@ export function getEventBadgeConfig(event, product = null) {
   ) {
     return {
       key: "2x1",
-      Icon: StreamlineDoubleBurger,
-      iconSlug: "2x1",
+      Icon: StreamlineFlame, // Icono fuego solicitado para el primer evento
+      iconSlug: "fire",
       label: "PROMO 2X1",
-      fullLabel: cleanName || "Jueves 2x1",
-      gradient: "from-indigo-600 via-purple-600 to-pink-600",
+      fullLabel: cleanName || "Jueves 2x1 de Burger Artesanal",
+      gradient: "from-red-600 via-rose-600 to-orange-600",
+      border: "border-red-300/40",
+      glow: "shadow-[0_4px_16px_rgba(239,68,68,0.45)]",
+      textColor: "text-white",
+      pillBg: "bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/60",
+      accentColor: "#ef4444"
+    };
+  }
+
+  // 2. FIESTA FIN DE SEMANA / CONFETI (Evento 2: Super Fin de Semana)
+  if (combined.includes("fin de semana") || combined.includes("fiesta") || rawIcon === "party") {
+    const pct = event.descuento ? Number(event.descuento) : 15;
+    return {
+      key: "party",
+      Icon: StreamlinePartyPopper, // Icono confeti solicitado para el segundo evento
+      iconSlug: "party",
+      label: `-${pct}% OFF`,
+      fullLabel: cleanName || "Super Fin de Semana Chazin (15% OFF)",
+      gradient: "from-purple-600 via-indigo-600 to-pink-600",
       border: "border-purple-300/40",
       glow: "shadow-[0_4px_16px_rgba(168,85,247,0.45)]",
       textColor: "text-white",
@@ -1209,95 +1322,116 @@ export function getEventBadgeConfig(event, product = null) {
     };
   }
 
-  // 3. DESCUENTOS (% OFF o DESCUENTO GENERAL)
-  if (
-    rawIcon === "discount" ||
-    rawType.includes("descuento") ||
-    event.descuento ||
-    combined.includes("off") ||
-    combined.includes("fin de semana")
-  ) {
-    const pct = event.descuento ? Number(event.descuento) : null;
-    const label = pct ? `-${pct}% OFF` : (combined.includes("15%") ? "-15% OFF" : (combined.includes("20%") ? "-20% OFF" : "DESCUENTO"));
+  // 3. COMBO PAREJA / DÚO (Evento 3: Combo Pareja Festivo)
+  if (combined.includes("pareja") || combined.includes("duo") || combined.includes("dúo") || rawIcon === "couple_heart") {
     return {
-      key: "discount",
-      Icon: StreamlineDiscountTicket,
-      iconSlug: "discount",
-      label,
-      fullLabel: cleanName || "Descuento Exclusivo",
-      gradient: "from-emerald-500 via-teal-500 to-cyan-600",
-      border: "border-emerald-300/40",
-      glow: "shadow-[0_4px_16px_rgba(160,185,129,0.45)]",
+      key: "couple_heart",
+      Icon: IconCoupleHeart, // Icono pareja con corazón convertido en SVG solicitado para el tercer evento
+      iconSlug: "couple_heart",
+      label: "COMBO PAREJA",
+      fullLabel: cleanName || "Combo Pareja Festivo",
+      gradient: "from-sky-600 via-blue-600 to-indigo-600",
+      border: "border-sky-300/40",
+      glow: "shadow-[0_4px_16px_rgba(14,165,233,0.45)]",
       textColor: "text-white",
-      pillBg: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60",
-      accentColor: "#10b981"
+      pillBg: "bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-900/60",
+      accentColor: "#0ea5e9"
     };
   }
 
-  // 4. PROMO RELÁMPAGO / FLASH SALE / PROMOCIÓN PRECIO
+  // 4. EDICIÓN LIMITADA CHEF / BURGER FEST (Evento 4: Chazin Burger Fest 2026 - idEvento 5)
+  if (id === 5 || (combined.includes("burger fest") && !combined.includes("edicion especial") && !combined.includes("edición especial")) || rawIcon === "crown") {
+    return {
+      key: "crown",
+      Icon: StreamlineCrown, // Corona solicitada para el 4to evento
+      iconSlug: "crown",
+      label: "BURGER FEST",
+      fullLabel: cleanName || "Chazin Burger Fest 2026",
+      gradient: "from-amber-500 via-yellow-500 to-orange-500",
+      border: "border-amber-300/40",
+      glow: "shadow-[0_4px_16px_rgba(245,158,11,0.45)]",
+      textColor: "text-gray-950 font-black",
+      pillBg: "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
+      accentColor: "#f59e0b"
+    };
+  }
+
+  // 5. PROMO RELÁMPAGO / POLLO CRISPY (Evento 5: Promo Relámpago Pollo Crispy)
   if (
-    rawIcon === "flash" ||
-    rawType.includes("precio") ||
+    combined.includes("pollo crispy") ||
     combined.includes("relampago") ||
     combined.includes("relámpago") ||
-    combined.includes("flash")
+    rawIcon === "flash" ||
+    rawIcon === "lightning_bolt"
   ) {
     return {
       key: "flash",
-      Icon: StreamlineBolt,
-      iconSlug: "flash",
+      Icon: IconLightningBolt, // Rayo SVG convertido del PNG para el 5to evento
+      iconSlug: "lightning_bolt",
       label: "PROMO FLASH",
-      fullLabel: cleanName || "Promo Relámpago",
-      gradient: "from-amber-400 via-yellow-500 to-orange-500",
-      border: "border-yellow-200/60",
-      glow: "shadow-[0_4px_16px_rgba(234,179,8,0.5)]",
-      textColor: "text-gray-950",
-      pillBg: "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
-      accentColor: "#eab308"
-    };
-  }
-
-  // 5. COMBOS ESPECIALES / FESTIVOS
-  if (
-    rawIcon === "gift" ||
-    rawType.includes("combo") ||
-    combined.includes("combo") ||
-    combined.includes("pareja")
-  ) {
-    return {
-      key: "combo",
-      Icon: StreamlineGiftBox,
-      iconSlug: "gift",
-      label: "COMBO FESTIVO",
-      fullLabel: cleanName || "Combo Especial",
-      gradient: "from-fuchsia-600 via-purple-600 to-indigo-600",
-      border: "border-fuchsia-300/40",
-      glow: "shadow-[0_4px_16px_rgba(217,70,239,0.45)]",
+      fullLabel: cleanName || "Promo Relámpago: Pollo Crispy Gourmet",
+      gradient: "from-orange-500 via-amber-500 to-red-500",
+      border: "border-orange-300/40",
+      glow: "shadow-[0_4px_16px_rgba(249,115,22,0.45)]",
       textColor: "text-white",
-      pillBg: "bg-fuchsia-100 dark:bg-fuchsia-950/60 text-fuchsia-800 dark:text-fuchsia-300 border-fuchsia-200 dark:border-fuchsia-900/60",
-      accentColor: "#d946ef"
+      pillBg: "bg-orange-100 dark:bg-orange-950/60 text-orange-900 dark:text-orange-300 border-orange-200 dark:border-orange-900/60",
+      accentColor: "#f97316"
     };
   }
 
-  // 6. TOPPINGS GRATIS / AÑADIR INSUMOS
+  // 6. 20% OFF DOBLE CARNE & TOCINETA (Evento 6: Explosión / Carne)
+  if (combined.includes("doble carne") || (combined.includes("tocineta") && combined.includes("20%")) || rawIcon === "explosion") {
+    return {
+      key: "explosion",
+      Icon: IconExplosion, // Explosión SVG convertida del PNG solicitada para el 6to evento
+      iconSlug: "explosion",
+      label: "-20% OFF",
+      fullLabel: cleanName || "20% OFF en Doble Carne & Tocineta",
+      gradient: "from-rose-600 via-red-600 to-pink-600",
+      border: "border-rose-300/40",
+      glow: "shadow-[0_4px_16px_rgba(225,29,72,0.45)]",
+      textColor: "text-white",
+      pillBg: "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60",
+      accentColor: "#e11d48"
+    };
+  }
+
+  // 7. FESTIVAL DE TOPPINGS (Evento 7: Perro Suizo + Doble Tocineta)
   if (
     rawIcon === "bacon" ||
     rawType.includes("insumo") ||
     combined.includes("topping") ||
-    combined.includes("tocineta")
+    combined.includes("perro suizo")
   ) {
     return {
       key: "toppings",
       Icon: IconBaconStrip,
       iconSlug: "bacon",
       label: "+ TOPPING GRATIS",
-      fullLabel: cleanName || "Festival de Toppings",
-      gradient: "from-rose-500 via-red-500 to-amber-500",
-      border: "border-rose-300/40",
-      glow: "shadow-[0_4px_16px_rgba(244,63,94,0.45)]",
+      fullLabel: cleanName || "Festival de Toppings: Perro Suizo",
+      gradient: "from-emerald-600 via-teal-600 to-cyan-600",
+      border: "border-emerald-300/40",
+      glow: "shadow-[0_4px_16px_rgba(16,185,129,0.45)]",
       textColor: "text-white",
-      pillBg: "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60",
-      accentColor: "#f43f5e"
+      pillBg: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60",
+      accentColor: "#10b981"
+    };
+  }
+
+  // 8. EDICIÓN ESPECIAL / CREACIÓN DE AUTOR (Evento 8: idEvento 9)
+  if (id === 9 || rawType.includes("especial") || combined.includes("edicion limitada") || combined.includes("edición limitada") || rawIcon === "serving_cloche") {
+    return {
+      key: "serving_cloche",
+      Icon: IconServingCloche, // Campana gourmet convertida en SVG
+      iconSlug: "serving_cloche",
+      label: "EDICIÓN ESPECIAL",
+      fullLabel: cleanName || "Chazin Burger Fest 2026 - Edición Limitada",
+      gradient: "from-teal-600 via-cyan-600 to-emerald-600",
+      border: "border-teal-300/40",
+      glow: "shadow-[0_4px_16px_rgba(20,184,166,0.45)]",
+      textColor: "text-white",
+      pillBg: "bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-900/60",
+      accentColor: "#14b8a6"
     };
   }
 
