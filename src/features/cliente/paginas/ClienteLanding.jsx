@@ -1472,27 +1472,8 @@ export function ClienteLanding() {
       return;
     }
 
-    // Validación estricta de Pago Obligatorio y Política de Efectivo / Cambio Máximo
-    if (checkoutMetodoPago === "efectivo") {
-      const montoEfectivo = Number(checkoutEfectivoPaga || 0);
-      if (!checkoutEfectivoPaga || montoEfectivo <= 0) {
-        error("Pago requerido", `Debes indicar el monto en efectivo con el que vas a pagar (debe ser igual o superior a $${totalCheckout.toLocaleString('es-CO')}).`);
-        return;
-      }
-      if (montoEfectivo < totalCheckout) {
-        error("Monto insuficiente", `El efectivo entregado ($${montoEfectivo.toLocaleString('es-CO')}) es menor al total a pagar ($${totalCheckout.toLocaleString('es-CO')}).`);
-        return;
-      }
-      const vuelto = montoEfectivo - totalCheckout;
-      const MAX_CAMBIO_PERMITIDO = 100000;
-      if (vuelto > MAX_CAMBIO_PERMITIDO) {
-        error(
-          "Límite de cambio excedido",
-          `Por seguridad de los domiciliarios y política de caja, el cambio máximo en efectivo es de $${MAX_CAMBIO_PERMITIDO.toLocaleString('es-CO')}. Tu vuelto sería de $${vuelto.toLocaleString('es-CO')}. Para montos mayores te sugerimos pagar vía Transferencia o Tarjeta.`
-        );
-        return;
-      }
-    } else if (checkoutMetodoPago === "transferencia") {
+    // Validación de comprobante y tarjeta según método de pago
+    if (checkoutMetodoPago === "transferencia") {
       if (!checkoutTransferReferencia.trim()) {
         error("Comprobante requerido", "Debes ingresar el número de referencia del comprobante de transferencia para verificar el pago.");
         return;
@@ -1673,7 +1654,7 @@ export function ClienteLanding() {
     if (confirmed) {
       try {
         const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
-        const metodoPagoNormalizado = checkoutMetodoPago === "tarjeta" ? "Tarjeta" : checkoutMetodoPago === "transferencia" ? "Transferencia" : "Efectivo";
+        const metodoPagoNormalizado = checkoutMetodoPago === "transferencia" ? "Transferencia" : "Tarjeta";
 
         const ventaPayload = {
           idCliente: user?.idCliente || null,
@@ -2799,7 +2780,7 @@ export function ClienteLanding() {
                     <ShieldCheck className="w-3.5 h-3.5" /> Pago Seguro
                   </span>
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-3 gap-2.5">
                   {/* Wompi (Online) */}
                   <button
                     type="button"
@@ -2816,21 +2797,6 @@ export function ClienteLanding() {
                     <Zap className="w-5 h-5 text-inherit" />
                     <span className="text-xs font-extrabold text-inherit">Wompi</span>
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-tight">PSE, Nequi, Tarj.</span>
-                  </button>
-
-                  {/* Efectivo */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("efectivo")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      checkoutMetodoPago === "efectivo"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Banknote className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-bold text-inherit">Efectivo</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Contra entrega</span>
                   </button>
 
                   {/* Tarjeta en Sitio */}
@@ -2908,41 +2874,6 @@ export function ClienteLanding() {
                   </div>
                 )}
 
-                {/* Sub-formulario Efectivo */}
-                {checkoutMetodoPago === "efectivo" && (
-                  <div className="bg-[#F0FDF4] dark:bg-emerald-950/20 border border-[#DCFCE7] dark:border-emerald-900/40 rounded-2xl p-4 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-[#166534] dark:text-emerald-300">
-                        ¿Con cuánto vas a pagar en efectivo? <span className="text-red-500">*</span>
-                      </label>
-                      <span className="text-[10px] font-black text-[#16A34A] dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md">
-                        Pago requerido
-                      </span>
-                    </div>
-
-                    <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#86EFAC] dark:border-emerald-700 rounded-2xl px-4 py-2.5 shadow-2xs">
-                      <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
-                      <input
-                        type="number"
-                        min={totalCheckout}
-                        required
-                        value={checkoutEfectivoPaga}
-                        onChange={(e) => setCheckoutEfectivoPaga(e.target.value)}
-                        placeholder={`Mínimo: $${totalCheckout.toLocaleString('es-CO')}`}
-                        className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
-                      />
-                    </div>
-
-                    {checkoutEfectivoPaga && Number(checkoutEfectivoPaga) >= totalCheckout && vueltoEfectivo > 100000 && (
-                      <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-amber-800 dark:text-amber-300 text-[11px] font-semibold flex items-start gap-1.5 mt-2">
-                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-                        <span>
-                          Por seguridad de los domiciliarios, el cambio máximo en efectivo es de $100.000 COP. Por favor ingresa una denominación menor o selecciona Transferencia / Tarjeta.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Sub-formulario Tarjeta */}
                 {checkoutMetodoPago === "tarjeta" && (
