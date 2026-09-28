@@ -24,17 +24,19 @@ import {
   StreamlineCalendarCheck,
   StreamlinePartyPopper,
   StreamlineRocket,
+  StreamlineTag,
+  IconLightningBolt,
   IconBaconStrip
 } from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
   { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Añadir Insumos", desc: "Modifica receta base" },
-  { value: "Promoción Precio", icon: StreamlineBolt, defaultIcon: "flash", label: "Promoción Precio", desc: "Rebaja temporal" },
+  { value: "Promoción Precio", icon: StreamlineTag, defaultIcon: "tag", label: "Promoción Precio", desc: "Rebaja temporal" },
   { value: "Descuento", icon: StreamlineDiscountTicket, defaultIcon: "discount", label: "Descuento %", desc: "Descuento directo" },
   { value: "2x1 / Combo Especial", icon: StreamlineDoubleBurger, defaultIcon: "2x1", label: "2x1 / Combo", desc: "Oferta por volumen" },
   { value: "Lanzamiento / Novedad", icon: StreamlineRocket, defaultIcon: "rocket", label: "Lanzamiento", desc: "Nuevo en carta" },
-  { value: "Happy Hour / Flash Sale", icon: StreamlineBolt, defaultIcon: "flash", label: "Flash Sale", desc: "Tiempo limitado" },
+  { value: "Happy Hour / Flash Sale", icon: IconLightningBolt, defaultIcon: "flash", label: "Flash Sale", desc: "Tiempo limitado" },
   { value: "Edición Especial", icon: StreamlineCrown, defaultIcon: "crown", label: "Edición Especial", desc: "Temporada gourmet" },
   { value: "Cortesía / Degustación", icon: StreamlineGiftBox, defaultIcon: "gift", label: "Cortesía", desc: "Degustación / Regalo" }
 ];
