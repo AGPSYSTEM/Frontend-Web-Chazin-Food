@@ -1,10 +1,13 @@
-import { useState, useMemo } from "react";
-import { Plus, Search, FileText, DollarSign } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { Plus, Search, FileText, CheckCircle2, XCircle, DollarSign } from "lucide-react";
 import { useGestionCompras } from "../hooks/useGestionCompras";
 import { ComprasTable } from "../componentes/gestion/ComprasTable";
 import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
 import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
+import { CancelarCompraModal } from "../componentes/gestion/CancelarCompraModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 function esEstadoPendiente(estado) {
   const e = String(estado || "").toUpperCase();
@@ -26,9 +29,24 @@ export function GestionCompras() {
     refetch
   } = useGestionCompras();
 
+  const location = useLocation();
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editCompra, setEditCompra] = useState(null);
+  const [initialInsumo, setInitialInsumo] = useState(null);
+  const [procesandoId, setProcesandoId] = useState(null);
+  const [cancelarCompraModal, setCancelarCompraModal] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.openNuevaCompra) {
+      setEditCompra(null);
+      if (location.state.initialInsumo) {
+        setInitialInsumo(location.state.initialInsumo);
+      }
+      setModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const stats = useMemo(() => {
     const total = compras.length;
@@ -61,8 +79,8 @@ export function GestionCompras() {
   const handleCompraCreated = async () => {
     await refetch();
     notify.success(
-      "Compra registrada",
-      "La orden de compra se creó exitosamente en estado Pendiente. El stock NO se actualizará hasta que marques la compra como Recibida."
+      "¡Compra confirmada y stock reabastecido!",
+      "La orden de compra se registró y los insumos fueron sumados automáticamente al inventario."
     );
   };
 
@@ -75,27 +93,34 @@ export function GestionCompras() {
   };
 
   const handleMarcarRecibida = async (idCompra) => {
+    if (procesandoId === idCompra) return false;
     const confirmed = await notify.confirmAction(
       "¿Marcar como Recibida?",
       "Al confirmar, el stock de los insumos incluidos en esta compra se actualizará automáticamente (se sumarán las cantidades compradas). Esta acción sí afecta el inventario.",
       "Sí, marcar como Recibida"
     );
     if (!confirmed) return false;
-    const ok = await updateEstado(idCompra, "RECIBIDA");
-    if (ok) {
-      notify.success(
-        "✅ Compra Recibida",
-        "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
+    setProcesandoId(idCompra);
+    try {
+      const ok = await updateEstado(idCompra, "RECIBIDA");
+      if (ok) {
+        notify.success(
+          "Compra Recibida",
+          "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
+        );
+        if (selectedCompra && selectedCompra.id === idCompra) {
+          setSelectedCompra(null);
+        }
+        await refetch();
       }
-      await refetch();
+      return ok;
+    } finally {
+      setProcesandoId(null);
     }
-    return ok;
   };
 
   const handleUpdateEstado = async (idCompra, nuevoEstado) => {
+    if (procesandoId === idCompra) return false;
     const e = String(nuevoEstado || "").toUpperCase();
     if (e === "RECIBIDA") {
       return await handleMarcarRecibida(idCompra);
@@ -103,99 +128,139 @@ export function GestionCompras() {
     return await updateEstado(idCompra, nuevoEstado);
   };
 
-  const handleCancelar = async (idCompra) => {
-    const ok = await cancelarCompra(idCompra);
-    if (ok) {
-      notify.success(
-        "Compra Anulada",
-        "La orden de compra fue anulada. Si la compra había sido marcada como Recibida, el stock fue revertido."
-      );
-      if (selectedCompra && selectedCompra.id === idCompra) {
-        setSelectedCompra(null);
-      }
-      await refetch();
+  const handleCancelar = (idCompra) => {
+    if (procesandoId === idCompra) return;
+    const compraTarget = compras.find((c) => c.id === idCompra || c.idCompra === idCompra);
+    setCancelarCompraModal(compraTarget || { id: idCompra });
+    if (selectedCompra && selectedCompra.id === idCompra) {
+      setSelectedCompra(null);
     }
-    return ok;
   };
 
+  const handleConfirmarCancelacion = async (idCompra, cancelData) => {
+    setProcesandoId(idCompra);
+    try {
+      const ok = await cancelarCompra(idCompra, cancelData);
+      if (ok) {
+        notify.success(
+          "Compra Anulada",
+          `Anulación registrada con motivo: "${cancelData?.motivo || 'sin motivo'}". Si la compra estaba Recibida, el stock fue revertido.`
+        );
+        setCancelarCompraModal(null);
+        await refetch();
+      }
+      return ok;
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
+  const statCards = [
+    {
+      id: "total",
+      title: "Órdenes de Compra",
+      value: stats.total,
+      subtext: "registradas",
+      subtextColor: "text-gray-400 dark:text-gray-500",
+      icon: FileText,
+      bgColor: "bg-blue-50 dark:bg-blue-950/40",
+      iconColor: "text-blue-500 dark:text-blue-400"
+    },
+    {
+      id: "completadas",
+      title: "Compras Recibidas",
+      value: stats.completadas,
+      subtext: "stock reabastecido",
+      subtextColor: "text-emerald-600 dark:text-emerald-400",
+      icon: CheckCircle2,
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
+      iconColor: "text-emerald-500 dark:text-emerald-400"
+    },
+    {
+      id: "anuladas",
+      title: "Compras Anuladas",
+      value: stats.anuladas,
+      subtext: "canceladas",
+      subtextColor: "text-rose-500 dark:text-rose-400",
+      icon: XCircle,
+      bgColor: "bg-rose-50 dark:bg-rose-950/40",
+      iconColor: "text-rose-500 dark:text-rose-400"
+    },
+    {
+      id: "monto",
+      title: "Total Invertido",
+      value: `$${stats.montoTotal.toLocaleString("es-CO", { minimumFractionDigits: 0 })}`,
+      subtext: "monto acumulado",
+      subtextColor: "text-purple-600 dark:text-purple-400",
+      icon: DollarSign,
+      bgColor: "bg-purple-50 dark:bg-purple-950/40",
+      iconColor: "text-purple-500 dark:text-purple-400"
+    }
+  ];
+
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
+      {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Gestión de Compras
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Administra las órdenes de compra del negocio
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          Administra las órdenes de compra de insumos, recepciones de inventario y trazabilidad de lotes
         </p>
       </div>
 
-      <hr className="border-gray-200 dark:border-gray-700" />
+      {/* 4 Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const IconComponent = card.icon;
+          return (
+            <div
+              key={card.id}
+              className="bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm"
+            >
+              <div className={`w-12 h-12 rounded-2xl ${card.bgColor} ${card.iconColor} flex items-center justify-center shrink-0`}>
+                <IconComponent className="w-6 h-6" />
+              </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-blue-500" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Órdenes de Compra</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">registradas</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-green-500" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Recibidas</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.completadas}</p>
-            <p className="text-xs text-green-500">recibidas / completadas</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-emerald-500" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Total en Compras</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              ${stats.montoTotal.toLocaleString("es-CO", { minimumFractionDigits: 0 })}
-            </p>
-            <p className="text-xs text-emerald-500">monto total acumulado</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-red-400" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Anuladas</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.anuladas}</p>
-            <p className="text-xs text-red-400">canceladas</p>
-          </div>
-        </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">
+                  {card.title}
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+                    {card.value}
+                  </span>
+                  <span className={`text-xs font-medium ${card.subtextColor} shrink-0`}>
+                    {card.subtext}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar compra..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
-            />
-          </div>
+      {/* Filter and Action Bar Box - En una sola línea */}
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Search Input */}
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar compra por ID, factura o proveedor..."
+            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors placeholder:text-gray-400 outline-none"
+          />
+        </div>
 
+        {/* Filter Dropdown & Primary Action Button */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <select
             value={filterEstado}
             onChange={(e) => setFilterEstado(e.target.value)}
-            className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors shrink-0 cursor-pointer"
+            className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-red-500/50 cursor-pointer w-full sm:w-auto outline-none font-medium"
           >
             <option value="Todos">Todos los estados</option>
             <option value="PENDIENTE">Pendiente</option>
@@ -208,16 +273,17 @@ export function GestionCompras() {
               setEditCompra(null);
               setModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
+            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nueva Compra</span>
           </button>
         </div>
       </div>
 
+      {/* Main Content Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando historial de compras...</div>
+        <ChazinLoader text="CARGANDO HISTORIAL DE COMPRAS" size="md" />
       ) : (
         <ComprasTable
           compras={filteredCompras}
@@ -225,18 +291,22 @@ export function GestionCompras() {
           onEdit={handleEdit}
           onUpdateEstado={handleUpdateEstado}
           onCancelar={handleCancelar}
+          procesandoId={procesandoId}
         />
       )}
 
+      {/* Modals */}
       <NuevaCompraModal
         isOpen={modalOpen || !!editCompra}
         onClose={() => {
           setModalOpen(false);
           setEditCompra(null);
+          setInitialInsumo(null);
         }}
         onCreated={handleCompraCreated}
         onUpdated={handleCompraUpdated}
         editCompra={editCompra}
+        initialInsumo={initialInsumo}
       />
 
       <DetalleCompraModal
@@ -246,6 +316,15 @@ export function GestionCompras() {
         onUpdateEstado={handleUpdateEstado}
         onCancelar={handleCancelar}
       />
+
+      <CancelarCompraModal
+        isOpen={!!cancelarCompraModal}
+        onClose={() => setCancelarCompraModal(null)}
+        compra={cancelarCompraModal}
+        onConfirm={handleConfirmarCancelacion}
+      />
     </div>
   );
 }
+
+export default GestionCompras;

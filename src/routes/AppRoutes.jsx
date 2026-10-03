@@ -16,6 +16,7 @@ import { Login } from "@/features/autenticacion/paginas/Login";
 import { ForgotPassword } from "@/features/autenticacion/paginas/ForgotPassword";
 import { ResetPassword } from "@/features/autenticacion/paginas/ResetPassword";
 import { ClienteLanding } from "@/features/cliente/paginas/ClienteLanding";
+import { ClientePerfil } from "@/features/cliente/paginas/ClientePerfil";
 import { CocineroDashboard } from "@/features/cocinero/paginas/CocineroDashboard";
 import { FichasTecnicas } from "@/features/fichas-tecnicas/paginas/FichasTecnicas";
 import { GestionProduccion } from "@/features/produccion/paginas/GestionProduccion";
@@ -58,13 +59,16 @@ export function AppRoutes() {
     );
   }
 
-  const userRol = user?.rol?.toLowerCase()?.trim() || "";
+  const rawRol = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isCliente = userRol === "cliente" || user?.idRol === 4;
 
-  // ── Cliente: landing page ──
-  if (userRol === "cliente") {
+  // ── Cliente: landing page & perfil ──
+  if (isCliente) {
     return (
       <Routes>
         <Route path="/" element={<ClienteLanding />} />
+        <Route path="/perfil" element={<ClientePerfil />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -88,6 +92,8 @@ export function AppRoutes() {
     return (
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/tienda" element={<ClienteLanding />} />
+        <Route path="/cliente" element={<ClienteLanding />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="compras/categoria-insumos" element={<CategoriaInsumos />} />
@@ -128,9 +134,12 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/" element={<Layout />}>
-        {hasDashboard && <Route index element={<Dashboard />} />}
-        {!hasDashboard && defaultPath && (
+        {hasDashboard ? (
+          <Route index element={<Dashboard />} />
+        ) : defaultPath ? (
           <Route index element={<Navigate to={`/${defaultPath}`} replace />} />
+        ) : (
+          <Route index element={<Dashboard />} />
         )}
         {allowedRoutes.map(
           (route) =>

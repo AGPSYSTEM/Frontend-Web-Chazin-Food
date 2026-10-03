@@ -17,11 +17,11 @@ export const comprasService = {
     return await apiClient.put(`/compras/${id}`, data);
   },
 
-  updateEstadoCompra: async (id, estado) => {
-    return await apiClient.put(`/compras/${id}/estado`, { estado });
+  updateEstadoCompra: async (id, estado, extraData = {}) => {
+    return await apiClient.put(`/compras/${id}/estado`, { estado, ...extraData });
   },
 
-  cancelarCompra: async (id) => {
-    return await apiClient.put(`/compras/${id}/cancelar`);
+  cancelarCompra: async (id, cancelData = {}) => {
+    return await apiClient.put(`/compras/${id}/cancelar`, cancelData);
   }
 };

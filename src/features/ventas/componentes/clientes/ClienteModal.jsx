@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Clock, Lightbulb } from "lucide-react";
+import {
+  sanitizeTelefono,
+  sanitizeDocumento,
+  getDocConfig,
+  validateTelefono,
+  validateDocumento
+} from "@/shared/utils/validationUtils";
 
-export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
+export function ClienteModal({ isOpen, onClose, onSave, cliente = null, zIndex = "z-50" }) {
   const isEditing = !!cliente;
   const [form, setForm] = useState({
     nombre: "",
+    apellidos: "",
+    tipoDocumento: "C.C.",
+    documento: "",
     email: "",
     telefono: "",
     direccion: "",
@@ -12,17 +22,19 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
     descuentoPorcentaje: 0,
     sinCuenta: false
   });
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (cliente) {
-      const fullNombre = `${cliente.nombre || ''} ${cliente.apellidos || ''}`.trim();
       const currentTipo = cliente.tipo || (cliente.esVip ? "VIP" : "Nuevo");
-      // El descuento se recalcula siempre desde el nivel de fidelidad, nunca del valor guardado
       const defaultDesc = currentTipo === "VIP" ? 15 : currentTipo === "Frecuente" ? 10 : currentTipo === "Regular" ? 5 : 0;
       setForm({
-        nombre: fullNombre || "",
+        nombre: cliente.nombre || "",
+        apellidos: cliente.apellidos || "",
+        tipoDocumento: cliente.tipoDocumento || "C.C.",
+        documento: cliente.documento || (cliente.idUsuario ? String(cliente.idUsuario) : ""),
         email: cliente.email || "",
-        telefono: cliente.telefono || "",
+        telefono: sanitizeTelefono(cliente.telefono || ""),
         direccion: cliente.direccion || "",
         tipo: currentTipo,
         descuentoPorcentaje: defaultDesc,
@@ -31,22 +43,56 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
     } else {
       setForm({
         nombre: "",
+        apellidos: "",
+        tipoDocumento: "C.C.",
+        documento: "",
         email: "",
         telefono: "",
         direccion: "",
         tipo: "Nuevo",
         descuentoPorcentaje: 0,
-        sinCuenta: true // Default to true when admin manually creates a client
+        sinCuenta: false // Default to creating full account so they have fidelity!
       });
     }
+    setErrorMsg("");
   }, [cliente, isOpen]);
 
   if (!isOpen) return null;
 
+  const docConfig = getDocConfig(form.tipoDocumento);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.nombre.trim()) return;
-    onSave(form);
+    setErrorMsg("");
+
+    if (!form.nombre.trim()) {
+      setErrorMsg("El nombre del cliente es obligatorio.");
+      return;
+    }
+
+    if (form.telefono) {
+      const telVal = validateTelefono(form.telefono);
+      if (!telVal.isValid) {
+        setErrorMsg(telVal.error);
+        return;
+      }
+    }
+
+    if (form.documento) {
+      const docVal = validateDocumento(form.documento, form.tipoDocumento);
+      if (!docVal.isValid) {
+        setErrorMsg(docVal.error);
+        return;
+      }
+    }
+
+    onSave({
+      ...form,
+      nombre: form.nombre.trim(),
+      apellidos: form.apellidos.trim(),
+      telefono: sanitizeTelefono(form.telefono),
+      documento: sanitizeDocumento(form.documento, form.tipoDocumento)
+    });
   };
 
   const handleTipoChange = (newTipo) => {
@@ -60,8 +106,8 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
   const firstChar = form.nombre ? form.nombre.charAt(0).toUpperCase() : "C";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5 border border-gray-100 dark:border-gray-800">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs`}>
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg p-6 space-y-5 border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
         
         {/* Header with initial avatar & close icon */}
         <div className="flex items-center justify-between">
@@ -69,17 +115,29 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
             <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-bold text-base flex items-center justify-center shadow-xs">
               {firstChar}
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-              {isEditing ? "Editar Cliente" : "Nuevo Cliente"}
-            </h2>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {isEditing ? "Editar Cliente" : "Nuevo Cliente"}
+              </h2>
+              <p className="text-xs text-gray-400">
+                {isEditing ? "Modifica los datos del cliente" : "Registra un nuevo cliente"}
+              </p>
+            </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-800">
+            {errorMsg}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Option: Client without account */}
@@ -99,36 +157,103 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
                 <div className="flex items-start gap-2 text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
                   <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <p>
-                    Se está creando un cliente sin cuenta de usuario. Este cliente quedará <strong>INACTIVO</strong> y no podrá acceder al sistema ni realizar pedidos hasta que se cree y active su usuario. Actualmente no posee credenciales de acceso.
+                    Se está creando un cliente sin cuenta de usuario. Este cliente quedará <strong>INACTIVO</strong> y no podrá acceder al sistema ni realizar pedidos hasta que se cree y active su usuario.
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Nombre Completo */}
-          <div>
-            <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-              Nombre Completo: *
-            </label>
-            <input
-              type="text"
-              required
-              value={form.nombre}
-              onChange={(e) => {
-                const val = e.target.value;
-                // Permitir únicamente letras, acentos, espacios y guiones (bloquear números y símbolos)
-                if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
-                  setForm({ ...form, nombre: val });
-                }
-              }}
-              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
-              placeholder="Ej: Juan Carlos Pérez"
-            />
+          {/* Nombres y Apellidos Separados */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Nombres: *
+              </label>
+              <input
+                type="text"
+                required
+                value={form.nombre}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
+                    setForm({ ...form, nombre: val });
+                  }
+                }}
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                placeholder="Ej: Juan Carlos"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Apellidos:
+              </label>
+              <input
+                type="text"
+                value={form.apellidos}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
+                    setForm({ ...form, apellidos: val });
+                  }
+                }}
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                placeholder="Ej: Pérez Gómez"
+              />
+            </div>
+          </div>
+
+          {/* Tipo de Documento y Número de Documento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                Tipo de Documento
+              </label>
+              <select
+                value={form.tipoDocumento}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  setForm({
+                    ...form,
+                    tipoDocumento: newTipo,
+                    documento: sanitizeDocumento(form.documento, newTipo)
+                  });
+                }}
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer"
+              >
+                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
+                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="NIT">NIT</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-semibold text-gray-700 dark:text-gray-300">
+                  Número de Documento
+                </label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {docConfig.helper}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.documento}
+                maxLength={docConfig.max}
+                onChange={(e) => {
+                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
+                  setForm({ ...form, documento: clean });
+                }}
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                placeholder={docConfig.helper}
+              />
+            </div>
           </div>
 
           {/* Email & Telefono */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                 Email
@@ -137,26 +262,29 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
                 placeholder="juan.perez@email.com"
               />
             </div>
             <div>
-              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Teléfono
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-semibold text-gray-700 dark:text-gray-300">
+                  Teléfono
+                </label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  Máx. 10 dígitos ({form.telefono.length}/10)
+                </span>
+              </div>
               <input
                 type="text"
                 value={form.telefono}
+                maxLength={10}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  // Permitir únicamente números, espacios y el signo + (bloquear letras)
-                  if (/^[0-9\s+]*$/.test(val)) {
-                    setForm({ ...form, telefono: val });
-                  }
+                  const clean = sanitizeTelefono(e.target.value);
+                  setForm({ ...form, telefono: clean });
                 }}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
-                placeholder="319 123 4567"
+                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                placeholder="3191234567"
               />
             </div>
           </div>
@@ -170,41 +298,83 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
               type="text"
               value={form.direccion}
               onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50"
+              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
               placeholder="Calle 50 #45-30, Belén, Medellín"
             />
           </div>
 
           {/* Nivel de Fidelidad & Descuento (%) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Nivel de Fidelidad
-              </label>
-              <select
-                value={form.tipo}
-                onChange={(e) => handleTipoChange(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer"
-              >
-                <option value="VIP">VIP (15%)</option>
-                <option value="Frecuente">Frecuente (10%)</option>
-                <option value="Regular">Regular (5%)</option>
-                <option value="Nuevo">Nuevo (0%)</option>
-              </select>
+          <div className="bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                <span>⭐ Nivel de Fidelidad (Automatizado)</span>
+              </span>
+              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
+                3 compras / nivel
+              </span>
             </div>
 
-            <div>
-              <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Descuento (%)
-              </label>
-              <input
-                type="number"
-                readOnly
-                value={form.descuentoPorcentaje}
-                className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 font-semibold cursor-not-allowed outline-none select-none"
-                title="El porcentaje de descuento se asigna automáticamente según el Nivel de Fidelidad (VIP: 15%, Frecuente: 10%, Regular: 5%, Nuevo: 0%)"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Nivel Asignado
+                </label>
+                <select
+                  value={form.tipo}
+                  onChange={(e) => handleTipoChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer font-bold"
+                >
+                  <option value="VIP">VIP (15% OFF)</option>
+                  <option value="Frecuente">Frecuente (10% OFF)</option>
+                  <option value="Regular">Regular (5% OFF)</option>
+                  <option value="Nuevo">Nuevo (0%)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Descuento Automático
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${form.descuentoPorcentaje}% de descuento`}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 font-bold cursor-not-allowed outline-none select-none text-xs"
+                />
+              </div>
             </div>
+
+            {cliente && cliente.fidelidad && form.tipo !== "Nuevo" && (
+              <div className="mt-2 p-2.5 bg-white/70 dark:bg-gray-800/70 rounded-xl border border-amber-200/50 dark:border-amber-800/40 text-[11px] space-y-1">
+                <div className="flex items-center justify-between text-gray-700 dark:text-gray-300">
+                  <span className="font-semibold">Vigencia de Nivel:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400">
+                    {cliente.fidelidad.enGracia ? (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>En Gracia: {cliente.fidelidad.diasGraciaRestantes || 0} días restantes</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        <span>{cliente.fidelidad.diasRestantes !== null && cliente.fidelidad.diasRestantes !== undefined ? cliente.fidelidad.diasRestantes : 30} días restantes</span>
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {cliente.fidelidad.fechaVencimientoNivel && (
+                  <div className="flex items-center justify-between text-[10px] text-gray-400">
+                    <span>Fecha de Renovación / Vencimiento:</span>
+                    <span className="font-bold">{new Date(cliente.fidelidad.fechaVencimientoNivel).toLocaleDateString('es-CO')}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className="text-[10.5px] text-gray-500 dark:text-gray-400 flex items-start gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <span>El sistema actualiza el nivel automáticamente con las compras del cliente: Regular (3 compras, 1 mes), Frecuente (1 mes + 10d gracia), VIP (1 mes + 15d gracia).</span>
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -212,13 +382,13 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              className="px-5 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-md"
+              className="px-6 py-2.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-md cursor-pointer"
             >
               {isEditing ? "Guardar Cambios" : "Crear Cliente"}
             </button>

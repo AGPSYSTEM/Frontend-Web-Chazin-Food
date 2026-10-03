@@ -9,7 +9,8 @@ import {
   Clock,
   RotateCcw,
   CheckCircle2,
-  ShoppingCart
+  ShoppingCart,
+  User
 } from "lucide-react";
 
 export function TrazabilidadModal({
@@ -23,9 +24,29 @@ export function TrazabilidadModal({
 
   if (!isOpen) return null;
 
-  const reabastecimientosCount = eventos.filter(
-    (e) => e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada"
-  ).length;
+  const isEventCancelacion = (e) =>
+    e.esCancelacion === true ||
+    e.tipo === "Cancelación de Compra" ||
+    e.tipo === "Anulación de Compra" ||
+    e.tipo === "cancelacion_compra" ||
+    e.tipoMovimiento === "Salida" ||
+    (e.descripcion && (
+      e.descripcion.toLowerCase().includes("cancelaci") ||
+      e.descripcion.toLowerCase().includes("anulaci") ||
+      e.descripcion.toLowerCase().includes("reversa")
+    )) ||
+    (e.motivo && (
+      e.motivo.toLowerCase().includes("cancelaci") ||
+      e.motivo.toLowerCase().includes("anulaci") ||
+      e.motivo.toLowerCase().includes("reversa")
+    ));
+
+  const isEventReabastecimiento = (e) =>
+    !isEventCancelacion(e) &&
+    (e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada");
+
+  const reabastecimientosCount = eventos.filter(isEventReabastecimiento).length;
+  const cancelacionesCount = eventos.filter(isEventCancelacion).length;
   const creadosCount = eventos.filter((e) => e.tipo === "Creado").length;
   const editadosCount = eventos.filter((e) => e.tipo === "Editado").length;
   const eliminadosCount = eventos.filter((e) => e.tipo === "Eliminado").length;
@@ -33,8 +54,8 @@ export function TrazabilidadModal({
 
   const filteredEventos = eventos.filter((e) => {
     if (filterType === "Todos") return true;
-    if (filterType === "Reabastecimientos")
-      return e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada";
+    if (filterType === "Reabastecimientos") return isEventReabastecimiento(e);
+    if (filterType === "Cancelaciones") return isEventCancelacion(e);
     if (filterType === "Creados") return e.tipo === "Creado";
     if (filterType === "Editados") return e.tipo === "Editado";
     if (filterType === "Eliminados") return e.tipo === "Eliminado";
@@ -105,13 +126,26 @@ export function TrazabilidadModal({
 
           <button
             onClick={() => setFilterType("Reabastecimientos")}
-            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
+            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 flex items-center gap-1.5 ${
               filterType === "Reabastecimientos"
                 ? "bg-emerald-600 text-white"
                 : "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100"
             }`}
           >
-            🛒 Reabastecimientos ({reabastecimientosCount})
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Reabastecimientos ({reabastecimientosCount})</span>
+          </button>
+
+          <button
+            onClick={() => setFilterType("Cancelaciones")}
+            className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 flex items-center gap-1.5 ${
+              filterType === "Cancelaciones"
+                ? "bg-red-600 text-white"
+                : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100"
+            }`}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Cancelaciones ({cancelacionesCount})</span>
           </button>
 
           <button
@@ -175,16 +209,16 @@ export function TrazabilidadModal({
             </div>
           ) : (
             filteredEventos.map((ev) => {
-              const isReabastecimiento =
-                ev.tipo === "Reabastecimiento" ||
-                ev.tipo === "compra" ||
-                ev.tipoMovimiento === "Entrada";
+              const isCancelacion = isEventCancelacion(ev);
+              const isReabastecimiento = isEventReabastecimiento(ev);
               const isCreado = ev.tipo === "Creado";
               const isEditado = ev.tipo === "Editado";
               const isEliminado = ev.tipo === "Eliminado";
 
-              const badgeBg = isReabastecimiento
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+              const badgeBg = isCancelacion
+                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200/80"
+                : isReabastecimiento
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200/80"
                 : isCreado
                 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                 : isEditado
@@ -193,7 +227,11 @@ export function TrazabilidadModal({
                 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                 : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300";
 
-              const iconCircle = isReabastecimiento ? (
+              const iconCircle = isCancelacion ? (
+                <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-4 h-4 text-red-600 dark:text-red-400" />
+                </div>
+              ) : isReabastecimiento ? (
                 <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
                   <ShoppingCart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -225,14 +263,24 @@ export function TrazabilidadModal({
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeBg}`}>
-                          • {isReabastecimiento ? "Reabastecimiento por Compra" : ev.tipo}
+                          • {isCancelacion
+                              ? (ev.tipo && (ev.tipo.includes("Cancel") || ev.tipo.includes("Anul")) ? ev.tipo : "Cancelación de Compra")
+                              : isReabastecimiento
+                              ? "Reabastecimiento por Compra"
+                              : ev.tipo}
                         </span>
                         <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
                           {ev.nombre}
                         </span>
                         {ev.cantidad && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
-                            +{ev.cantidad}
+                          <span
+                            className={`px-2 py-0.5 rounded-md font-bold text-xs border ${
+                              isCancelacion
+                                ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200/80 dark:border-red-800/60"
+                                : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60"
+                            }`}
+                          >
+                            {isCancelacion ? `-${Math.abs(parseFloat(ev.cantidad))}` : `+${Math.abs(parseFloat(ev.cantidad))}`}
                           </span>
                         )}
                       </div>
@@ -244,6 +292,14 @@ export function TrazabilidadModal({
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                       {ev.descripcion}
                     </p>
+                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/40 text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-gray-700 flex items-center justify-center text-slate-500 dark:text-gray-300 shrink-0">
+                        <User className="w-2.5 h-2.5" />
+                      </div>
+                      <span>
+                        Responsable: <strong className="font-semibold text-gray-800 dark:text-gray-200">{ev.usuarioNombre || "Sistema"}</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
               );

@@ -72,15 +72,17 @@ export function useGestionCompras() {
     }
   };
 
-  const cancelarCompra = async (id) => {
-    const confirmed = await notify.confirmAction(
-      "¿Anular compra?",
-      "¿Estás seguro de que deseas anular esta orden de compra?",
-      "Sí, anular"
-    );
-    if (!confirmed) return false;
+  const cancelarCompra = async (id, cancelData = null) => {
+    if (!cancelData) {
+      const confirmed = await notify.confirmAction(
+        "¿Anular compra?",
+        "¿Estás seguro de que deseas anular esta orden de compra?",
+        "Sí, anular"
+      );
+      if (!confirmed) return false;
+    }
     try {
-      await comprasService.cancelarCompra(id);
+      await comprasService.cancelarCompra(id, cancelData || {});
       notify.success("Compra anulada", "La compra fue anulada correctamente");
       await fetchCompras();
       return true;

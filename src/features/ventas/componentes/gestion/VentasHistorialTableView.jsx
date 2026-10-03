@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import FoodIcon from "@/shared/components/ui/FoodIcon";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
   if (!dateVal) return fallback;
@@ -85,20 +87,23 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
     if (tipoNormalized.includes("mesa")) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <span>🍽️</span> En Mesa
+          <FoodIcon name="table" size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>En Mesa</span>
         </span>
       );
     }
     if (tipoNormalized.includes("recoger") || tipoNormalized.includes("llevar")) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <span>🏪</span> Recoger
+          <FoodIcon name="takeout" size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>Recoger</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-        <span>🛵</span> Domicilio
+        <FoodIcon name="delivery" size={14} className="text-purple-600 dark:text-purple-400" />
+        <span>Domicilio</span>
       </span>
     );
   };
@@ -108,13 +113,23 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
     if (metodoNormalized.includes("tarjeta")) {
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <span>💳</span> Tarjeta
+          <FoodIcon name="card" size={14} className="text-gray-500" />
+          <span>Tarjeta</span>
+        </span>
+      );
+    }
+    if (metodoNormalized.includes("transfer") || metodoNormalized.includes("nequi") || metodoNormalized.includes("davi")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <FoodIcon name="mobile" size={14} className="text-gray-500" />
+          <span>Transferencia</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-        <span>💵</span> Efectivo
+        <FoodIcon name="cash" size={14} className="text-gray-500" />
+        <span>Efectivo</span>
       </span>
     );
   };
@@ -138,7 +153,8 @@ export function VentasHistorialTableView({ ventas = [], onViewDetail, onUpdateEs
           </thead>
           <tbody className="divide-y divide-gray-200/60 dark:divide-gray-800 text-sm bg-white dark:bg-gray-900">
             {paginatedVentas.map((v) => {
-              const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const rawName = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const clienteNombre = formatNombreCompleto(rawName) || "Cliente General";
               const inicialCliente = clienteNombre.charAt(0).toUpperCase();
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
 
