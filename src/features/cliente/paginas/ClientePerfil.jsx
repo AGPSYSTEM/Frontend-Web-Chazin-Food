@@ -844,6 +844,7 @@ export function ClientePerfil() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
+                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
                 className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
                 title="Cambiar Modo"
               >
@@ -852,6 +853,7 @@ export function ClientePerfil() {
 
               <Link
                 to="/"
+                aria-label="Volver al menú de comidas"
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4 text-[#f05454]" />
@@ -870,6 +872,7 @@ export function ClientePerfil() {
                   logout();
                   navigate("/");
                 }}
+                aria-label="Cerrar sesión"
                 className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
                 title="Cerrar Sesión"
               >

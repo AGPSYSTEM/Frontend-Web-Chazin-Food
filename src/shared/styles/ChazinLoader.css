@@ -78,19 +78,16 @@
   }
 }
 
-/* Indicador deslizante en la barra de carga roja */
+/* Indicador deslizante en la barra de carga roja (Acelerado por GPU para evitar reflow) */
 @keyframes loaderLineMovement {
   0% {
-    left: 0%;
-    width: 18%;
+    transform: translateX(0%) scaleX(0.7);
   }
   50% {
-    left: 55%;
-    width: 32%;
+    transform: translateX(110%) scaleX(1.3);
   }
   100% {
-    left: 82%;
-    width: 18%;
+    transform: translateX(230%) scaleX(0.7);
   }
 }
 
@@ -107,6 +104,10 @@
 }
 
 .chazin-loading-runner {
+  left: 0;
+  width: 30%;
+  transform-origin: left center;
+  will-change: transform;
   animation: loaderLineMovement 1.7s ease-in-out infinite alternate;
 }
 

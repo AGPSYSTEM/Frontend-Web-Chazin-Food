@@ -165,7 +165,14 @@ export function Layout() {
         <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-white/20 shrink-0">
-              <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
+              <img
+                src={logoImg}
+                alt="Chazin Food"
+                width="32"
+                height="32"
+                style={{ objectPosition: "50% 56%", aspectRatio: "1 / 1" }}
+                className="w-full h-full object-cover"
+              />
             </div>
             <span className="font-bold text-white text-base tracking-tight">Chazin Food</span>
           </div>
@@ -197,7 +204,13 @@ export function Layout() {
             {/* Configuración */}
             {showConfig && (
               <li>
-                <button onClick={() => handleSectionClick("config", configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                <button
+                  onClick={() => handleSectionClick("config", configExpanded)}
+                  aria-label="Menú de Configuración"
+                  aria-expanded={configExpanded}
+                  title="Configuración"
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
                   <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" /><span className="font-medium">Configuración</span></div>
                   {configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
@@ -212,7 +225,13 @@ export function Layout() {
             {/* Compras */}
             {showCompras && (
               <li>
-                <button onClick={() => handleSectionClick("compras", comprasExpanded)} title="Compras" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                <button
+                  onClick={() => handleSectionClick("compras", comprasExpanded)}
+                  aria-label="Menú de Compras"
+                  aria-expanded={comprasExpanded}
+                  title="Compras"
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
                   <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" /><span className="font-medium">Compras</span></div>
                   {comprasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
@@ -227,7 +246,13 @@ export function Layout() {
             {/* Producción */}
             {showProduccion && (
               <li>
-                <button onClick={() => handleSectionClick("produccion", produccionExpanded)} title="Producción" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                <button
+                  onClick={() => handleSectionClick("produccion", produccionExpanded)}
+                  aria-label="Menú de Producción"
+                  aria-expanded={produccionExpanded}
+                  title="Producción"
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
                   <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" /><span className="font-medium">Producción</span></div>
                   {produccionExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
@@ -242,7 +267,13 @@ export function Layout() {
             {/* Ventas */}
             {showVentas && (
               <li>
-                <button onClick={() => handleSectionClick("ventas", ventasExpanded)} title="Ventas" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                <button
+                  onClick={() => handleSectionClick("ventas", ventasExpanded)}
+                  aria-label="Menú de Ventas"
+                  aria-expanded={ventasExpanded}
+                  title="Ventas"
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all cursor-pointer ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                >
                   <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" /><span className="font-medium">Ventas</span></div>
                   {ventasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
@@ -303,11 +334,23 @@ export function Layout() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 shrink-0">
-                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
+                <img
+                  src={logoImg}
+                  alt="Chazin Food"
+                  width="28"
+                  height="28"
+                  style={{ objectPosition: "50% 56%", aspectRatio: "1 / 1" }}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <span className="font-bold text-white text-sm">Chazin Food</span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Cerrar menú lateral"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95 cursor-pointer"
+            >
               <X className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -454,6 +497,7 @@ export function Layout() {
           <div className="space-y-1">
             <button
               onClick={() => { setSidebarOpen(false); setPerfilOpen(true); }}
+              aria-label="Abrir mi perfil"
               className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-[0.98] text-left cursor-pointer"
             >
               <UserCircle className="w-5 h-5 shrink-0 text-blue-500" />
@@ -462,6 +506,7 @@ export function Layout() {
 
             <button
               onClick={() => toggleDarkMode()}
+              aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
               className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
             >
               {darkMode ? <Sun className="w-5 h-5 shrink-0 text-yellow-400" /> : <Moon className="w-5 h-5 shrink-0 text-gray-500" />}
@@ -473,6 +518,7 @@ export function Layout() {
 
             <button
               onClick={handleLogout}
+              aria-label="Cerrar sesión"
               className="flex items-center gap-3 w-full px-3 py-3 rounded-xl transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
             >
               <LogOut className="w-5 h-5 shrink-0" />
@@ -498,7 +544,14 @@ export function Layout() {
 
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-white ring-2 ring-gray-100 dark:ring-gray-700">
-              <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
+              <img
+                src={logoImg}
+                alt="Chazin Food"
+                width="28"
+                height="28"
+                style={{ objectPosition: "50% 56%", aspectRatio: "1 / 1" }}
+                className="w-full h-full object-cover"
+              />
             </div>
             <span className="font-bold text-gray-800 dark:text-gray-100 tracking-tight">Chazin Food</span>
           </div>

@@ -251,13 +251,10 @@ export const getEventThemeAndTag = (event, index) => {
 export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ dias: 2, horas: 14, minutos: 42, segundos: 30 });
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
-  const animationFrameRef = useRef(null);
-  const startTimeRef = useRef(null);
   const slideDuration = 6000; // 6 segundos por diapositiva
 
   // Referencias y estado para arrastre horizontal con mouse (drag-to-scroll)
@@ -414,59 +411,50 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
 
   const totalSlides = combinedEventos.length;
 
-  // Barra de progreso y autoplay continuo
+  // Autoplay continuo mediante temporizador limpio (sin re-renders de 60fps en CPU)
   useEffect(() => {
-    if (totalSlides <= 1) return;
+    if (totalSlides <= 1 || isPaused) return;
 
-    let start = performance.now();
-    startTimeRef.current = start;
-
-    const tick = (now) => {
-      if (isPaused) {
-        startTimeRef.current = now - (progress / 100) * slideDuration;
-        animationFrameRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      const elapsed = now - startTimeRef.current;
-      const pct = Math.min(100, (elapsed / slideDuration) * 100);
-      setProgress(pct);
-
-      if (pct >= 100) {
-        setCurrentIndex((prev) => (prev + 1) % totalSlides);
-        startTimeRef.current = performance.now();
-        setProgress(0);
-      }
-
-      animationFrameRef.current = requestAnimationFrame(tick);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(tick);
+    let timer;
+    const startDelay = setTimeout(() => {
+      timer = setInterval(() => {
+        if (!document.hidden) {
+          setCurrentIndex((prev) => (prev + 1) % totalSlides);
+        }
+      }, slideDuration);
+    }, 3000);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      clearTimeout(startDelay);
+      if (timer) clearInterval(timer);
     };
-  }, [currentIndex, isPaused, totalSlides, progress]);
+  }, [totalSlides, isPaused, slideDuration]);
 
-  // Reloj de cuenta regresiva en vivo
+  // Reloj de cuenta regresiva en vivo (arranque diferido para liberar hilo principal en carga inicial)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.segundos > 0) {
-          return { ...prev, segundos: prev.segundos - 1 };
-        } else if (prev.minutos > 0) {
-          return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
-        } else if (prev.horas > 0) {
-          return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
-        } else if (prev.dias > 0) {
-          return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
-        }
-        return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    let timer;
+    const startDelay = setTimeout(() => {
+      timer = setInterval(() => {
+        if (document.hidden) return;
+        setTimeLeft((prev) => {
+          if (prev.segundos > 0) {
+            return { ...prev, segundos: prev.segundos - 1 };
+          } else if (prev.minutos > 0) {
+            return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
+          } else if (prev.horas > 0) {
+            return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
+          } else if (prev.dias > 0) {
+            return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
+          }
+          return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
+        });
+      }, 1000);
+    }, 2500);
+
+    return () => {
+      clearTimeout(startDelay);
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   // Navegación fluida por teclado
@@ -484,17 +472,14 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % totalSlides);
-    setProgress(0);
   }, [totalSlides]);
 
   const prevSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
-    setProgress(0);
   }, [totalSlides]);
 
   const goToSlide = (idx) => {
     setCurrentIndex(idx);
-    setProgress(0);
   };
 
   const handleTouchStart = (e) => {
@@ -622,15 +607,16 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
               className="flex-1 h-1.5 sm:h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 transition-all cursor-pointer relative group"
             >
               <div
-                className={`h-full transition-all duration-150 ${
+                className={`h-full transition-all ${
                   isCurrent
-                    ? "bg-gradient-to-r from-amber-500 via-orange-500 to-red-500"
+                    ? "bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 w-full"
                     : isPast
-                    ? "bg-gray-400 dark:bg-gray-600"
+                    ? "bg-gray-400 dark:bg-gray-600 w-full"
                     : "w-0"
                 }`}
                 style={{
-                  width: isCurrent ? `${progress}%` : isPast ? "100%" : "0%"
+                  transitionDuration: isCurrent ? `${slideDuration}ms` : "200ms",
+                  transitionTimingFunction: "linear"
                 }}
               />
               <span className="absolute inset-0 group-hover:bg-white/20 transition-colors" />
@@ -803,6 +789,9 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                           <img
                             src={cardImage}
                             alt={evt.nombreEvento || "Plato Chazin Food"}
+                            width="288"
+                            height="288"
+                            style={{ aspectRatio: "1 / 1" }}
                             className="w-full h-full object-cover rounded-2xl filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)]"
                             loading="eager"
                             onError={(e) => {
@@ -836,20 +825,24 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       </button>
                     </div>
 
-                    {/* Indicadores de diapositivas totalmente centrados */}
-                    <div className="sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex items-center justify-center gap-2 py-1 sm:py-0">
+                    {/* Indicadores de diapositivas totalmente centrados con áreas táctiles accesibles */}
+                    <div className="sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex items-center justify-center gap-1 py-1 sm:py-0">
                       {combinedEventos.map((_, dotIdx) => (
                         <button
                           key={dotIdx}
                           type="button"
                           onClick={() => goToSlide(dotIdx)}
-                          className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                            currentIndex === dotIdx
-                              ? "w-8 bg-white shadow-lg shadow-white/60"
-                              : "w-2.5 bg-white/35 hover:bg-white/70"
-                          }`}
-                          aria-label={`Ir al slide ${dotIdx + 1}`}
-                        />
+                          className="p-2.5 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
+                          aria-label={`Ir a la diapositiva ${dotIdx + 1}`}
+                        >
+                          <span
+                            className={`h-2.5 rounded-full transition-all duration-300 block ${
+                              currentIndex === dotIdx
+                                ? "w-8 bg-white shadow-lg shadow-white/60"
+                                : "w-2.5 bg-white/35 hover:bg-white/70"
+                            }`}
+                          />
+                        </button>
                       ))}
                     </div>
 

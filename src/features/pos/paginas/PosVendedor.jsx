@@ -257,6 +257,7 @@ export default function PosVendedor() {
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
+                aria-label="Limpiar búsqueda"
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               >
                 <X className="h-3.5 w-3.5" />
@@ -271,6 +272,7 @@ export default function PosVendedor() {
             <button
               type="button"
               onClick={() => setCategoriaActiva(null)}
+              aria-label="Mostrar todos los productos"
               className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
                 categoriaActiva === null
                   ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
@@ -285,6 +287,7 @@ export default function PosVendedor() {
               <button
                 type="button"
                 onClick={() => setCategoriaActiva("eventos")}
+                aria-label="Filtrar por eventos"
                 className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
                   categoriaActiva === "eventos"
                     ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
@@ -303,6 +306,7 @@ export default function PosVendedor() {
                   key={c.id}
                   type="button"
                   onClick={() => setCategoriaActiva(c.id)}
+                  aria-label={`Filtrar por categoría ${c.nombre}`}
                   className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
                     active
                       ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"

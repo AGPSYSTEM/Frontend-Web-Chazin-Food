@@ -204,7 +204,9 @@ export function MiPerfilModal({ isOpen, onClose }) {
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de mi perfil"
             className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -395,7 +397,7 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     placeholder="Tu contraseña actual"
                     className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordActual ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? "Ocultar contraseña actual" : "Mostrar contraseña actual"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -415,7 +417,7 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     placeholder="Mínimo 6 caracteres"
                     className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordNueva ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} aria-label={showNewPass ? "Ocultar nueva contraseña" : "Mostrar nueva contraseña"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -435,7 +437,7 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     placeholder="Repite la nueva contraseña"
                     className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordConfirm ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} aria-label={showConfirmPass ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>

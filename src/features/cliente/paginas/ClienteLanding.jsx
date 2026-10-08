@@ -344,12 +344,21 @@ export function ClienteLanding() {
   const [modalInitialTab, setModalInitialTab] = useState("personalizar");
   const [showResenasModal, setShowResenasModal] = useState(false);
 
-  // Real-time ticker for live countdowns (1-second precision)
+  // Real-time ticker for live countdowns (only when authenticated to save CPU)
   const [liveTick, setLiveTick] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setLiveTick(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (!isAuthenticated) return;
+    let t;
+    const delay = setTimeout(() => {
+      t = setInterval(() => {
+        if (!document.hidden) setLiveTick(Date.now());
+      }, 1000);
+    }, 2500);
+    return () => {
+      clearTimeout(delay);
+      if (t) clearInterval(t);
+    };
+  }, [isAuthenticated]);
   const [productoParaResenas, setProductoParaResenas] = useState(null);
   const [ratingsMap, setRatingsMap] = useState({});
 
@@ -903,8 +912,16 @@ export function ClienteLanding() {
   // Live ticker for real-time countdown
   const [currentLiveTime, setCurrentLiveTime] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setCurrentLiveTime(Date.now()), 60000);
-    return () => clearInterval(timer);
+    let timer;
+    const delay = setTimeout(() => {
+      timer = setInterval(() => {
+        if (!document.hidden) setCurrentLiveTime(Date.now());
+      }, 60000);
+    }, 3000);
+    return () => {
+      clearTimeout(delay);
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   // Helper ultra-preciso de Evento Activo (Burger Fest / Drops / Promos con Vigencia en Tiempo Real)
@@ -1812,8 +1829,12 @@ export function ClienteLanding() {
                 <img
                   src={logoImg}
                   alt="Chazin Food"
+                  width="48"
+                  height="48"
+                  fetchpriority="high"
+                  loading="eager"
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: "50% 56%" }}
+                  style={{ objectPosition: "50% 56%", aspectRatio: "1 / 1" }}
                 />
               </div>
               <div>
@@ -1837,6 +1858,7 @@ export function ClienteLanding() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
+                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
                 className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
                 title="Cambiar Modo"
               >
@@ -1846,6 +1868,7 @@ export function ClienteLanding() {
               {isAuthenticated ? (
                 <button
                   onClick={() => navigate("/perfil")}
+                  aria-label="Ir a mi perfil"
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                 >
                   <User className="w-5 h-5 text-[#f05454]" />
@@ -1854,6 +1877,7 @@ export function ClienteLanding() {
               ) : (
                 <button
                   onClick={() => navigate("/login")}
+                  aria-label="Iniciar sesión"
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors font-medium text-sm cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
@@ -1863,6 +1887,7 @@ export function ClienteLanding() {
 
               <button
                 onClick={() => setShowCart(true)}
+                aria-label="Abrir carrito de compras"
                 className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
@@ -1877,6 +1902,7 @@ export function ClienteLanding() {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
+                  aria-label="Cerrar sesión"
                   className="p-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
                   title="Cerrar Sesión"
                 >
@@ -1888,14 +1914,16 @@ export function ClienteLanding() {
         </div>
       </header>
 
-      {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones) */}
-      <EventosCarousel
-        eventos={eventosList}
-        productos={activeProductos}
-        ratingsMap={ratingsMap}
-        onSelectEvento={handleSelectEventoFromCarousel}
-        onThemeChange={setCurrentCarouselTheme}
-      />
+      {/* Punto de referencia semántico principal para Accesibilidad */}
+      <main id="main-content" role="main">
+        {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones) */}
+        <EventosCarousel
+          eventos={eventosList}
+          productos={activeProductos}
+          ratingsMap={ratingsMap}
+          onSelectEvento={handleSelectEventoFromCarousel}
+          onThemeChange={setCurrentCarouselTheme}
+        />
 
       {/* Hero Section con integración cromática dinámica */}
       <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
@@ -1952,7 +1980,9 @@ export function ClienteLanding() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
+              id="search-menu-input"
               type="text"
+              aria-label="Buscar producto por nombre"
               placeholder="Buscar por nombre de producto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -2044,7 +2074,7 @@ export function ClienteLanding() {
             type="button"
             onClick={() => scrollCategories("left")}
             aria-label="Anterior categoría"
-            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
+            className="shrink-0 w-12 h-12 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -2062,6 +2092,7 @@ export function ClienteLanding() {
             <button
               type="button"
               onClick={() => setSelectedCategoria(null)}
+              aria-label="Mostrar todas las categorías"
               style={{ scrollSnapAlign: "start" }}
               className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                 selectedCategoria === null
@@ -2083,6 +2114,7 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setSelectedCategoria("eventos")}
+                aria-label="Filtrar por eventos y drops de edición especial"
                 style={{ scrollSnapAlign: "start" }}
                 className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
                   selectedCategoria === "eventos"
@@ -2113,6 +2145,7 @@ export function ClienteLanding() {
                   key={cat.id || cat.idCategoriaProducto || cat.nombre}
                   type="button"
                   onClick={() => setSelectedCategoria(cat.id || cat.idCategoriaProducto)}
+                  aria-label={`Filtrar menú por categoría ${cat.nombre}`}
                   style={{ scrollSnapAlign: "start" }}
                   className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                     isSelected
@@ -2122,7 +2155,14 @@ export function ClienteLanding() {
                 >
                   {cat.icon && (cat.icon.includes("/") || cat.icon.includes(".")) ? (
                     <div className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
-                      <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
+                      <img
+                        src={cat.icon}
+                        alt={cat.nombre}
+                        width="56"
+                        height="56"
+                        style={{ aspectRatio: "1 / 1" }}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   ) : (
                     <FoodIconBadge
@@ -2145,7 +2185,7 @@ export function ClienteLanding() {
             type="button"
             onClick={() => scrollCategories("right")}
             aria-label="Siguiente categoría"
-            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
+            className="shrink-0 w-12 h-12 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
           >
             <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -2220,7 +2260,12 @@ export function ClienteLanding() {
                       <img
                         src={producto.imagen}
                         alt=""
+                        width="384"
+                        height="208"
+                        style={{ aspectRatio: "384 / 208" }}
                         className="absolute inset-0 w-full h-full object-cover scale-125 blur-xl opacity-35 dark:opacity-40 filter saturate-150 pointer-events-none"
+                        loading="lazy"
+                        aria-hidden="true"
                       />
                       {/* Vignette oscura sutil para contraste pro */}
                       <div className="absolute inset-0 bg-radial from-transparent via-black/20 to-black/70 pointer-events-none" />
@@ -2228,8 +2273,15 @@ export function ClienteLanding() {
                       <img
                         src={producto.imagen}
                         alt={producto.nombre}
-                        className="relative z-10 max-h-[92%] max-w-[92%] object-contain drop-shadow-[0_12px_16px_rgba(0,0,0,0.55)] group-hover:scale-108 group-hover:-rotate-1 transition-all duration-300 ease-out"
+                        width="384"
+                        height="208"
+                        style={{ aspectRatio: "384 / 208" }}
+                        className="relative z-10 w-full h-full max-h-[92%] max-w-[92%] object-contain drop-shadow-[0_12px_16px_rgba(0,0,0,0.55)] group-hover:scale-108 group-hover:-rotate-1 transition-all duration-300 ease-out"
                         loading="lazy"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80";
+                        }}
                       />
                     </>
                   ) : (
@@ -2297,6 +2349,7 @@ export function ClienteLanding() {
                               setModalInitialTab("resenas");
                               handleProductClick(producto);
                             }}
+                            aria-label={`Calificar o ver opiniones de ${producto.nombre}`}
                             className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
                           >
                             <Star className="w-3.5 h-3.5" />
@@ -2341,6 +2394,11 @@ export function ClienteLanding() {
                       e.stopPropagation();
                       handleProductClick(producto);
                     }}
+                    aria-label={
+                      producto.eventos && producto.eventos.length > 0
+                        ? `Personalizar evento ${producto.nombre}`
+                        : `Agregar ${producto.nombre} al pedido`
+                    }
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
                       producto.eventos && producto.eventos.length > 0
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
@@ -2447,7 +2505,14 @@ export function ClienteLanding() {
                       return (
                         <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
                           {item.imagen && typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/") || item.imagen.startsWith("data:")) ? (
-                            <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700" />
+                            <img
+                              src={item.imagen}
+                              alt={item.nombre}
+                              width="48"
+                              height="48"
+                              style={{ aspectRatio: "1 / 1" }}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                            />
                           ) : (
                             <FoodIconBadge name={item.nombre} size="md" />
                           )}
@@ -2555,6 +2620,9 @@ export function ClienteLanding() {
                             <img
                               src={comp.imagen}
                               alt={comp.nombre}
+                              width="128"
+                              height="80"
+                              style={{ aspectRatio: "16 / 10" }}
                               className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 select-none"
                             />
                             {comp.badge && (
@@ -3131,6 +3199,7 @@ export function ClienteLanding() {
         }}
         getProductQuantityInCart={getProductQuantityInCart}
       />
+      </main>
 
       {/* Pie de Página / Sección de Créditos del Equipo */}
       <ClienteFooter />

@@ -3,15 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chazin Food - Deliciosas comidas rápidas artesanales: hamburguesas gourmet, salchipapas, perros calientes y combos. Pide en línea con entrega rápida." />
+    <meta name="keywords" content="hamburguesas artesanales, comida rápida, salchipapas gourmet, perros calientes, combos, domicilios, Chazin Food" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#e30613" />
+
+    <!-- Open Graph / Redes Sociales -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Chazin Food | Comidas Rápidas Artesanales" />
+    <meta property="og:description" content="Deliciosas hamburguesas artesanales, salchipapas gourmet y combos. Pide online en Chazin Food." />
+    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:url" content="http://localhost:5173/" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Chazin Food | Comidas Rápidas Artesanales" />
+    <meta name="twitter:description" content="Deliciosas hamburguesas artesanales, salchipapas gourmet y combos. Pide online en Chazin Food." />
+    <meta name="twitter:image" content="/favicon.png" />
+
+    <link rel="canonical" href="http://localhost:5173/" />
     <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2" />
     <link rel="apple-touch-icon" href="/favicon.png?v=2" />
-    <title>Chazin Food</title>
+    <title>Chazin Food | Comidas Rápidas Artesanales</title>
 
-    <!-- Tipografías: Inter y Satisfy para caligrafía del logo -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Satisfy&display=swap" rel="stylesheet">
+    <!-- Preload del emblema oficial del Splash Screen para LCP instantáneo (< 100ms) -->
+    <link rel="preload" as="image" href="/favicon_256.webp" type="image/webp" fetchpriority="high" />
+
+    <!-- Tipografía Inter oficial (Carga optimizada con display=swap) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <!-- Detección y persistencia inmediata de Modo Oscuro / Claro -->
     <script>
@@ -28,12 +50,21 @@
       })();
     </script>
 
-    <!-- Estilos de Splash inicial antes de que cargue React -->
+    <!-- Estilos de Splash inicial Chazin Food (Acelerados por GPU, sin reflow de layout) -->
     <style>
       :root {
         --brand-red: #e30613;
       }
-
+      body {
+        margin: 0;
+        background-color: #f8f9fa;
+        color: #111827;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      html.dark body {
+        background-color: #0e0e12;
+        color: #f3f4f6;
+      }
       .pre-loader-screen {
         position: fixed;
         inset: 0;
@@ -49,12 +80,12 @@
         z-index: 99999;
         transition: background-color 0.3s ease, color 0.3s ease;
       }
-
       html.dark .pre-loader-screen {
         background-color: #0e0e12;
         color: #f3f4f6;
       }
 
+      /* Físicas elásticas de Slime de Minecraft: Squash & Stretch en GPU */
       @keyframes preSlimeJump {
         0% { transform: translateY(0px) scale(1, 1); animation-timing-function: cubic-bezier(0.35, 1, 0.65, 1); }
         10% { transform: translateY(18px) scale(1.42, 0.58); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.2); }
@@ -75,10 +106,11 @@
         100% { transform: scale(1); opacity: 0.8; }
       }
 
+      /* Runner acelerado 100% por GPU compositor (transform: translateX + scaleX) sin forzar reflow de geometría */
       @keyframes preRunnerSlide {
-        0% { left: 0%; width: 18%; }
-        50% { left: 55%; width: 32%; }
-        100% { left: 82%; width: 18%; }
+        0% { transform: translateX(0%) scaleX(0.7); }
+        50% { transform: translateX(110%) scaleX(1.3); }
+        100% { transform: translateX(230%) scaleX(0.7); }
       }
 
       .pre-slime-actor {
@@ -99,6 +131,7 @@
         background-color: rgba(0, 0, 0, 0.22);
         animation: preSlimeShadow 1.3s infinite;
         transform-origin: center center;
+        will-change: transform, opacity;
       }
 
       html.dark .pre-slime-shadow {
@@ -137,50 +170,35 @@
         position: absolute;
         top: 0;
         bottom: 0;
+        left: 0;
+        width: 30%;
         background-color: var(--brand-red);
         border-radius: 9999px;
         box-shadow: 0 0 8px rgba(227, 6, 19, 0.8);
+        transform-origin: left center;
+        will-change: transform;
         animation: preRunnerSlide 1.7s ease-in-out infinite alternate;
       }
     </style>
-
-    <!-- Pasarela de Pagos Wompi (Bancolombia) -->
-    <script type="text/javascript" src="https://checkout.wompi.co/widget.js"></script>
   </head>
   <body>
     <div id="root">
-      <!-- Splash Screen Inicial de Carga (Reemplazado en milisegundos cuando React inicia) -->
-      <div class="pre-loader-screen">
+      <!-- Splash Screen Oficial Chazin Food (Sustituido en cuanto React monta los componentes) -->
+      <div class="pre-loader-screen" role="status" aria-label="Cargando Chazin Food">
         <div class="pre-slime-actor">
-          <svg viewBox="0 0 500 500" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <mask id="preGapMask">
-                <rect width="500" height="500" fill="white" />
-                <line x1="114" y1="290" x2="128" y2="338" stroke="black" stroke-width="13" stroke-linecap="round" />
-              </mask>
-            </defs>
-
-            <!-- Borde exterior rojo (Squircle) -->
-            <rect x="25" y="25" width="450" height="450" rx="92" fill="none" stroke="#e30613" stroke-width="26" stroke-linejoin="round" />
-
-            <!-- Caligrafía Chazin Food -->
-            <g transform="translate(250, 150)" text-anchor="middle">
-              <text x="0" y="-12" fill="#e30613" font-family="'Satisfy', cursive" font-size="84" font-weight="bold" font-style="italic" letter-spacing="1">Chazin</text>
-              <path d="M -75 2 C -30 -12, 45 -12, 85 10 C 50 2, -40 2, -75 2 Z" fill="#e30613" />
-              <text x="0" y="78" fill="#e30613" font-family="'Satisfy', cursive" font-size="86" font-weight="bold" font-style="italic" letter-spacing="2">Food</text>
-            </g>
-
-            <!-- Visor exterior de los cuencos -->
-            <path d="M 85 275 C 35 275, 35 405, 85 405 C 140 405, 185 375, 250 375 C 315 375, 360 405, 415 405 C 465 405, 465 275, 415 275 C 345 275, 315 275, 250 275 C 185 275, 155 275, 85 275 Z" fill="none" stroke="#e30613" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
-
-            <!-- Cuenco izquierdo con corte -->
-            <rect x="94" y="302" width="115" height="24" rx="12" fill="#e30613" mask="url(#preGapMask)" />
-            <path d="M 100 338 L 202 338 C 202 390, 100 390, 100 338 Z" fill="#e30613" />
-
-            <!-- Cuenco derecho -->
-            <rect x="291" y="302" width="115" height="24" rx="12" fill="#e30613" />
-            <path d="M 298 338 L 400 338 C 400 390, 298 390, 298 338 Z" fill="#e30613" />
-          </svg>
+          <picture>
+            <source srcset="/favicon_256.webp" type="image/webp" />
+            <img
+              src="/favicon_256.png"
+              alt="Chazin Food"
+              width="220"
+              height="220"
+              fetchpriority="high"
+              loading="eager"
+              decoding="sync"
+              style="width: 100%; height: 100%; object-fit: contain; border-radius: 46px; filter: drop-shadow(0 10px 20px rgba(227, 6, 19, 0.35));"
+            />
+          </picture>
         </div>
         <div class="pre-slime-shadow"></div>
 
