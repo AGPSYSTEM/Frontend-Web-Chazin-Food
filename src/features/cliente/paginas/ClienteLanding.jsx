@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
-import { ProductoResenasModal } from "../componentes/ProductoResenasModal";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
@@ -18,11 +17,14 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel, THEMES } from "../componentes/EventosCarousel";
-import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
-import FastFoodProductModal, { isEssentialIngredient } from "@/shared/components/ui/FastFoodProductModal";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
-import { IconFlame as TablerFlame } from "@tabler/icons-react";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
+import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
+
+const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
+const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
+const PersonalizarEventoModal = lazy(() => import("../componentes/PersonalizarEventoModal").then(m => ({ default: m.PersonalizarEventoModal })));
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "burger", color: "from-yellow-400 to-orange-500" },
@@ -88,6 +90,75 @@ const productosDefault = [
   { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa Coca-Cola sabor original 400ml fría", stock: 60 },
   { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa sabor manzana Postobón 400ml refrescante", stock: 45 },
   { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
+];
+
+const eventosDefault = [
+  {
+    id: 2,
+    idEvento: 2,
+    nombreEvento: "Jueves 2x1 de Burger Artesanal",
+    nombre: "Jueves 2x1 de Burger Artesanal",
+    descripcion: "Paga 1 y lleva 2 Hamburguesas Clásicas todos los jueves del mes con salsas de la casa y papas.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 10,
+    tipoEvento: "2x1",
+    icono: "🍔",
+    descuento: "50.00",
+    nuevoPrecio: "18000.00",
+    producto: {
+      id: 10,
+      idProducto: 10,
+      nombre: "Hamburguesa Clásica Chazin",
+      precio: "18000.00",
+      imagen: "/hero-burger.webp"
+    }
+  },
+  {
+    id: 5,
+    idEvento: 5,
+    nombreEvento: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
+    nombre: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
+    descripcion: "Participante oficial en el festival gastronómico del año. Receta conmemorativa de tiempo limitado con $4.000 de ahorro directo, pan brioche artesanal y salsa trufada secreta.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 26,
+    tipoEvento: "EDICION_LIMITADA",
+    icono: "🎉",
+    descuento: "14.28",
+    nuevoPrecio: "24000.00",
+    producto: {
+      id: 26,
+      idProducto: 26,
+      nombre: "Hamburguesa Burger Fest Trufada Chazin (Edición Especial)",
+      precio: "28000.00",
+      imagen: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789011032/xpk8envk39i0hgpu3d5r.jpg"
+    }
+  },
+  {
+    id: 4,
+    idEvento: 4,
+    nombreEvento: "Combo Pareja Festivo",
+    nombre: "Combo Pareja Festivo",
+    descripcion: "Combo Pareja Chazin a precio especial de $34.000 (Ahorro de $4.000) por temporada.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 16,
+    tipoEvento: "COMBO_ESPECIAL",
+    icono: "🎉",
+    descuento: "10.52",
+    nuevoPrecio: "34000.00",
+    producto: {
+      id: 16,
+      idProducto: 16,
+      nombre: "Combo Pareja Chazin",
+      precio: "38000.00",
+      imagen: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&auto=format&fit=crop&q=80"
+    }
+  }
 ];
 
 const adicionesDisponibles = [
@@ -368,7 +439,7 @@ export function ClienteLanding() {
   const [categoriasList, setCategoriasList] = useState([]);
   const [productosList, setProductosList] = useState([]);
   const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
-  const [eventosList, setEventosList] = useState([]);
+  const [eventosList, setEventosList] = useState(eventosDefault);
   const [currentCarouselTheme, setCurrentCarouselTheme] = useState(null);
   const [showPersonalizarEventoModal, setShowPersonalizarEventoModal] = useState(false);
   const [eventoParaPersonalizar, setEventoParaPersonalizar] = useState(null);
@@ -573,7 +644,13 @@ export function ClienteLanding() {
       }
     };
 
-    fetchCatalog();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(() => fetchCatalog(), { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    } else {
+      const timerId = setTimeout(fetchCatalog, 200);
+      return () => clearTimeout(timerId);
+    }
   }, []);
 
   // Fetch client orders from backend + local history synchronization
@@ -1037,6 +1114,30 @@ export function ClienteLanding() {
 
     return matchCatId || matchCatName || matchSubcategory;
   });
+
+  const [maxVisibleProducts, setMaxVisibleProducts] = useState(8);
+  const loadMoreRef = useRef(null);
+
+  useEffect(() => {
+    setMaxVisibleProducts(8);
+  }, [searchTerm, selectedCategoria]);
+
+  useEffect(() => {
+    if (maxVisibleProducts >= productosFiltrados.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0] && entries[0].isIntersecting) {
+          setMaxVisibleProducts((prev) => Math.min(prev + 12, productosFiltrados.length));
+        }
+      },
+      { rootMargin: "250px" }
+    );
+    const target = loadMoreRef.current;
+    if (target) observer.observe(target);
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [maxVisibleProducts, productosFiltrados.length]);
 
   const handleSelectEventoFromCarousel = (evento, targetProd) => {
     setEventoParaPersonalizar(evento);
@@ -1888,7 +1989,7 @@ export function ClienteLanding() {
               <button
                 onClick={() => setShowCart(true)}
                 aria-label="Abrir carrito de compras"
-                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm cursor-pointer"
+                className="relative flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl transition-colors shadow-md font-bold text-sm cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
                 {getTotalItems() > 0 && (
@@ -1915,15 +2016,17 @@ export function ClienteLanding() {
       </header>
 
       {/* Punto de referencia semántico principal para Accesibilidad */}
-      <main id="main-content" role="main">
-        {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones) */}
-        <EventosCarousel
-          eventos={eventosList}
-          productos={activeProductos}
-          ratingsMap={ratingsMap}
-          onSelectEvento={handleSelectEventoFromCarousel}
-          onThemeChange={setCurrentCarouselTheme}
-        />
+      <main id="main-content">
+        {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones con altura fija para 0 CLS) */}
+        <div className="w-full min-h-[460px]">
+          <EventosCarousel
+            eventos={eventosList}
+            productos={activeProductos}
+            ratingsMap={ratingsMap}
+            onSelectEvento={handleSelectEventoFromCarousel}
+            onThemeChange={setCurrentCarouselTheme}
+          />
+        </div>
 
       {/* Hero Section con integración cromática dinámica */}
       <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
@@ -1951,7 +2054,7 @@ export function ClienteLanding() {
         {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
         {hasActiveEvents && (
           <div
-            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-colors duration-700"
+            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-opacity duration-700"
             style={{
               backgroundColor: currentCarouselTheme?.theme?.glow || "rgba(239, 68, 68, 0.4)",
               opacity: 0.35
@@ -2082,9 +2185,8 @@ export function ClienteLanding() {
           {/* Horizontal Carousel Container */}
           <div
             ref={categoryCarouselRef}
-            className="flex-1 flex items-stretch gap-3 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1"
+            className="flex-1 flex items-stretch gap-3 overflow-x-auto no-scrollbar py-2 px-1"
             style={{
-              scrollSnapType: "x mandatory",
               scrollbarWidth: "none",
               msOverflowStyle: "none"
             }}
@@ -2092,12 +2194,12 @@ export function ClienteLanding() {
             <button
               type="button"
               onClick={() => setSelectedCategoria(null)}
-              aria-label="Mostrar todas las categorías"
+              aria-label="Todos: mostrar todas las categorías y productos"
               style={{ scrollSnapAlign: "start" }}
               className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                 selectedCategoria === null
-                  ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
-                  : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+                  ? "bg-red-700 text-white shadow-lg shadow-red-700/25 scale-105 font-bold"
+                  : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
               }`}
             >
               <FoodIconBadge
@@ -2106,7 +2208,7 @@ export function ClienteLanding() {
                 size="lg"
                 isSelected={selectedCategoria === null}
               />
-              <p className="text-xs font-semibold truncate w-full">Todos</p>
+              <p className={`text-xs font-semibold truncate w-full ${selectedCategoria === null ? "text-white font-bold" : "text-gray-800 dark:text-gray-200"}`}>Todos</p>
             </button>
 
             {/* Quick Filter Pill: Edición Especial / Eventos */}
@@ -2114,7 +2216,7 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setSelectedCategoria("eventos")}
-                aria-label="Filtrar por eventos y drops de edición especial"
+                aria-label={`${eventProductsCount} DROP - Edición Evento`}
                 style={{ scrollSnapAlign: "start" }}
                 className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
                   selectedCategoria === "eventos"
@@ -2122,17 +2224,17 @@ export function ClienteLanding() {
                     : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-purple-300/60 dark:border-purple-600/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 shadow-xs"
                 }`}
               >
-                <div className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                <div aria-hidden="true" className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
                   {eventProductsCount} DROP
                 </div>
                 <div className={`flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shadow-xs transition-all ${
                   selectedCategoria === "eventos"
                     ? "bg-white text-purple-600"
-                    : "bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40"
+                    : "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40"
                 }`}>
-                  <TablerFlame size={26} stroke={2} />
+                  <Flame size={26} strokeWidth={2} />
                 </div>
-                <p className="text-xs font-black truncate w-full" style={selectedCategoria === "eventos" ? { color: '#fff' } : { color: '#a855f7' }}>
+                <p className={`text-xs font-black truncate w-full ${selectedCategoria === "eventos" ? "text-white" : "text-purple-700 dark:text-purple-300"}`}>
                   Edición Evento
                 </p>
               </button>
@@ -2149,15 +2251,16 @@ export function ClienteLanding() {
                   style={{ scrollSnapAlign: "start" }}
                   className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                     isSelected
-                      ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
-                      : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+                      ? "bg-red-700 text-white shadow-lg shadow-red-700/25 scale-105 font-bold"
+                      : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
                   }`}
                 >
                   {cat.icon && (cat.icon.includes("/") || cat.icon.includes(".")) ? (
                     <div className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
                       <img
-                        src={cat.icon}
-                        alt={cat.nombre}
+                        src={getOptimizedImageUrl(cat.icon, 120)}
+                        alt=""
+                        aria-hidden="true"
                         width="56"
                         height="56"
                         style={{ aspectRatio: "1 / 1" }}
@@ -2172,7 +2275,7 @@ export function ClienteLanding() {
                       isSelected={isSelected}
                     />
                   )}
-                  <p className="text-xs font-semibold leading-tight line-clamp-2 text-center w-full" title={cat.nombre}>
+                  <p className={`text-xs font-semibold leading-tight line-clamp-2 text-center w-full ${isSelected ? "text-white font-bold" : "text-gray-800 dark:text-gray-200"}`} title={cat.nombre}>
                     {cat.nombre}
                   </p>
                 </button>
@@ -2200,7 +2303,7 @@ export function ClienteLanding() {
               {selectedCategoria === "eventos" ? (
                 <>
                   <span className="flex items-center gap-1.5">
-                    <TablerFlame className="w-5 h-5 text-amber-500 inline shrink-0" />
+                    <Flame className="w-5 h-5 text-amber-500 inline shrink-0" />
                     Edición Especial & Eventos Gastronómicos
                   </span>
                   <span className="text-xs font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -2221,7 +2324,7 @@ export function ClienteLanding() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {productosFiltrados.map((producto) => {
+          {productosFiltrados.slice(0, maxVisibleProducts).map((producto) => {
             const hasRealImage = producto.imagen && (producto.imagen.includes('/') || producto.imagen.includes('.'));
             const activeEvent = getActiveEvent(producto);
             return (
@@ -2231,7 +2334,7 @@ export function ClienteLanding() {
                   setModalInitialTab("personalizar");
                   handleProductClick(producto);
                 }}
-                className={`bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
+                className={`bg-white dark:bg-gray-900 cv-auto rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
                   activeEvent
                     ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-amber-400/30"
                     : "border border-gray-100 dark:border-gray-800"
@@ -2258,7 +2361,7 @@ export function ClienteLanding() {
                   {hasRealImage ? (
                     <>
                       <img
-                        src={producto.imagen}
+                        src={getOptimizedImageUrl(producto.imagen, 120)}
                         alt=""
                         width="384"
                         height="208"
@@ -2271,7 +2374,7 @@ export function ClienteLanding() {
                       <div className="absolute inset-0 bg-radial from-transparent via-black/20 to-black/70 pointer-events-none" />
                       {/* Capa 2: Producto protagonista flotante con iluminación cenital */}
                       <img
-                        src={producto.imagen}
+                        src={getOptimizedImageUrl(producto.imagen, 500)}
                         alt={producto.nombre}
                         width="384"
                         height="208"
@@ -2333,9 +2436,9 @@ export function ClienteLanding() {
                               title="Ver opiniones y calificaciones de comensales"
                             >
                               <StarRating value={rInfo.promedio} readonly size="xs" />
-                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
-                              <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold opacity-0 group-hover/rate:opacity-100 transition-opacity">
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
+                              <span className="text-[10.5px] text-gray-600 dark:text-gray-400">({rInfo.total})</span>
+                              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold opacity-0 group-hover/rate:opacity-100 transition-opacity">
                                 • Calificar
                               </span>
                             </div>
@@ -2349,11 +2452,11 @@ export function ClienteLanding() {
                               setModalInitialTab("resenas");
                               handleProductClick(producto);
                             }}
-                            aria-label={`Calificar o ver opiniones de ${producto.nombre}`}
-                            className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
+                            aria-label={`Sin reseñas • Calificar ${producto.nombre}`}
+                            className="text-[11px] text-gray-600 dark:text-gray-300 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
                           >
                             <Star className="w-3.5 h-3.5" />
-                            <span>Sin reseñas • Calificar</span>
+                            <span className="text-gray-600 dark:text-gray-300">Sin reseñas • Calificar</span>
                           </button>
                         );
                       })()}
@@ -2368,7 +2471,7 @@ export function ClienteLanding() {
                         </div>
                         {producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento" || e.nuevoPrecio) ? (
                           <>
-                            <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
                             <span className="text-2xl font-black text-purple-600 dark:text-purple-400 flex items-center gap-1">
                               <Sparkles className="w-4 h-4 text-purple-500" />
                               ${(() => {
@@ -2385,7 +2488,7 @@ export function ClienteLanding() {
                         )}
                       </>
                     ) : (
-                      <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                      <p className="text-2xl font-black text-red-700 dark:text-red-400">${producto.precio.toLocaleString()}</p>
                     )}
                   </div>
                   <button
@@ -2402,7 +2505,7 @@ export function ClienteLanding() {
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
                       producto.eventos && producto.eventos.length > 0
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
-                        : "bg-red-500 hover:bg-red-600 shadow-red-500/20"
+                        : "bg-red-700 hover:bg-red-800 shadow-red-700/20"
                     }`}
                   >
                     {producto.eventos && producto.eventos.length > 0 ? (
@@ -2423,40 +2526,56 @@ export function ClienteLanding() {
           );
         })}
         </div>
+
+        {maxVisibleProducts < productosFiltrados.length && (
+          <div ref={loadMoreRef} className="flex justify-center mt-8">
+            <button
+              type="button"
+              onClick={() => setMaxVisibleProducts(productosFiltrados.length)}
+              className="px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-sm transition shadow-sm cursor-pointer"
+            >
+              Ver más productos ({productosFiltrados.length - maxVisibleProducts} restantes)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ═══ MASTER FAST FOOD PRODUCT CUSTOMIZATION MODAL (EL MEJOR MODAL DEL MERCADO) ═══ */}
-      <FastFoodProductModal
-        isOpen={Boolean(showProductModal && productoSeleccionado)}
-        onClose={() => {
-          setShowProductModal(false);
-          setProductoSeleccionado(null);
-        }}
-        producto={productoSeleccionado?.producto}
-        ficha={
-          productoSeleccionado?.ficha ||
-          (productoSeleccionado?.producto &&
-            (fichasMap[productoSeleccionado.producto.id] ||
-              fichasMap[productoSeleccionado.producto.idProducto] ||
-              fichasTecnicasDefault[productoSeleccionado.producto.id]))
-        }
-        allAdiciones={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
-        allBebidas={bebidasDisponibles}
-        ratingsInfo={
-          productoSeleccionado?.producto
-            ? ratingsMap[productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto]
-            : null
-        }
-        onOpenResenas={() => {
-          if (productoSeleccionado?.producto) {
-            setProductoParaResenas(productoSeleccionado.producto);
-            setShowResenasModal(true);
-          }
-        }}
-        onConfirm={handleClientModalConfirm}
-        mode="cliente"
-        initialTab={modalInitialTab}
-      />
+      {showProductModal && productoSeleccionado && (
+        <Suspense fallback={null}>
+          <FastFoodProductModal
+            isOpen={true}
+            onClose={() => {
+              setShowProductModal(false);
+              setProductoSeleccionado(null);
+            }}
+            producto={productoSeleccionado?.producto}
+            ficha={
+              productoSeleccionado?.ficha ||
+              (productoSeleccionado?.producto &&
+                (fichasMap[productoSeleccionado.producto.id] ||
+                  fichasMap[productoSeleccionado.producto.idProducto] ||
+                  fichasTecnicasDefault[productoSeleccionado.producto.id]))
+            }
+            allAdiciones={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+            allBebidas={bebidasDisponibles}
+            ratingsInfo={
+              productoSeleccionado?.producto
+                ? ratingsMap[productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto]
+                : null
+            }
+            onOpenResenas={() => {
+              if (productoSeleccionado?.producto) {
+                setProductoParaResenas(productoSeleccionado.producto);
+                setShowResenasModal(true);
+              }
+            }}
+            onConfirm={handleClientModalConfirm}
+            mode="cliente"
+            initialTab={modalInitialTab}
+          />
+        </Suspense>
+      )}
 
       {/* MODAL CARRITO */}
       {showCart && (
@@ -2476,6 +2595,7 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setShowCart(false)}
+                aria-label="Cerrar carrito de compras"
                 className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
                 title="Cerrar carrito"
               >
@@ -2522,7 +2642,7 @@ export function ClienteLanding() {
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {item.adiciones.map((a, aIdx) => (
                                   <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                    <img src={getAdicionImage(a)} alt="" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
+                                    <img src={getAdicionImage(a)} alt="" aria-hidden="true" width="14" height="14" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
                                     +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
                                   </span>
                                 ))}
@@ -2543,6 +2663,7 @@ export function ClienteLanding() {
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
+                              aria-label={`Reducir cantidad de ${item.nombre}`}
                               className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
                             >
                               -
@@ -2556,12 +2677,14 @@ export function ClienteLanding() {
                                   updateQuantity(item.cartItemId || item.id, 1);
                                 }
                               }}
+                              aria-label={`Aumentar cantidad de ${item.nombre}`}
                               className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
                             >
                               +
                             </button>
                             <button
                               onClick={() => removeFromCart(item.cartItemId || item.id)}
+                              aria-label={`Eliminar ${item.nombre} del carrito`}
                               className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
                               title="Eliminar este producto"
                             >
@@ -2590,6 +2713,7 @@ export function ClienteLanding() {
                         <button
                           type="button"
                           onClick={() => scrollComplementos("left")}
+                          aria-label="Ver complemento anterior"
                           className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
                           title="Anterior complemento"
                         >
@@ -2598,6 +2722,7 @@ export function ClienteLanding() {
                         <button
                           type="button"
                           onClick={() => scrollComplementos("right")}
+                          aria-label="Ver siguiente complemento"
                           className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
                           title="Siguiente complemento"
                         >
@@ -2622,6 +2747,7 @@ export function ClienteLanding() {
                               alt={comp.nombre}
                               width="128"
                               height="80"
+                              loading="lazy"
                               style={{ aspectRatio: "16 / 10" }}
                               className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 select-none"
                             />
@@ -2702,6 +2828,7 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setShowCheckout(false)}
+                aria-label="Cerrar checkout"
                 className="w-9 h-9 rounded-2xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
                 title="Cerrar"
               >
@@ -3131,6 +3258,7 @@ export function ClienteLanding() {
                   setShowEmptyCartLoginModal(false);
                   navigate("/login");
                 }}
+                aria-label="Iniciar sesión para continuar con el pedido"
                 className="w-full py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
                 <LogIn className="w-4 h-4" />
@@ -3161,64 +3289,72 @@ export function ClienteLanding() {
       )}
 
       {/* Modal de Personalización Individual de Eventos */}
-      <PersonalizarEventoModal
-        isOpen={showPersonalizarEventoModal}
-        onClose={() => setShowPersonalizarEventoModal(false)}
-        evento={eventoParaPersonalizar}
-        producto={productoParaEvento}
-        productosList={activeProductos}
-        adicionesList={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
-        allBebidas={bebidasDisponibles}
-        fichasMap={fichasMap}
-        ratingsMap={ratingsMap}
-        onOpenResenas={(prod) => {
-          setProductoParaResenas(prod);
-          setShowResenasModal(true);
-        }}
-        onAddToCart={(item, selectedDrinks = []) => {
-          const res = addToCart(item);
-          if (res && res.success === false) {
-            error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-            return;
-          }
-          if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
-            for (const b of selectedDrinks) {
-              addToCart({
-                id: b.id || b.idProducto,
-                idProducto: b.idProducto || b.id,
-                nombre: b.nombre,
-                precio: Number(b.precio || 0),
-                cantidad: 1,
-                esBebida: true,
-                categoria: "Bebidas"
-              });
-            }
-          }
-          const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
-          success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
-        }}
-        getProductQuantityInCart={getProductQuantityInCart}
-      />
+      {showPersonalizarEventoModal && (
+        <Suspense fallback={null}>
+          <PersonalizarEventoModal
+            isOpen={true}
+            onClose={() => setShowPersonalizarEventoModal(false)}
+            evento={eventoParaPersonalizar}
+            producto={productoParaEvento}
+            productosList={activeProductos}
+            adicionesList={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+            allBebidas={bebidasDisponibles}
+            fichasMap={fichasMap}
+            ratingsMap={ratingsMap}
+            onOpenResenas={(prod) => {
+              setProductoParaResenas(prod);
+              setShowResenasModal(true);
+            }}
+            onAddToCart={(item, selectedDrinks = []) => {
+              const res = addToCart(item);
+              if (res && res.success === false) {
+                error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+                return;
+              }
+              if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
+                for (const b of selectedDrinks) {
+                  addToCart({
+                    id: b.id || b.idProducto,
+                    idProducto: b.idProducto || b.id,
+                    nombre: b.nombre,
+                    precio: Number(b.precio || 0),
+                    cantidad: 1,
+                    esBebida: true,
+                    categoria: "Bebidas"
+                  });
+                }
+              }
+              const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
+              success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
+            }}
+            getProductQuantityInCart={getProductQuantityInCart}
+          />
+        </Suspense>
+      )}
       </main>
 
       {/* Pie de Página / Sección de Créditos del Equipo */}
       <ClienteFooter />
 
       {/* Modal Reseñas de Producto (renders over PersonalizarEventoModal) */}
-      <ProductoResenasModal
-        isOpen={showResenasModal}
-        onClose={() => {
-          setShowResenasModal(false);
-          // Refresh ratings
-          if (productosList.length > 0) {
-            const pIds = productosList.map(p => p.id || p.idProducto).join(',');
-            apiClient.get(`/resenas/ratings?ids=${pIds}`)
-              .then(res => { if (res) setRatingsMap(res); })
-              .catch(() => {});
-          }
-        }}
-        producto={productoParaResenas}
-      />
+      {showResenasModal && (
+        <Suspense fallback={null}>
+          <ProductoResenasModal
+            isOpen={true}
+            onClose={() => {
+              setShowResenasModal(false);
+              // Refresh ratings
+              if (productosList.length > 0) {
+                const pIds = productosList.map(p => p.id || p.idProducto).join(',');
+                apiClient.get(`/resenas/ratings?ids=${pIds}`)
+                  .then(res => { if (res) setRatingsMap(res); })
+                  .catch(() => {});
+              }
+            }}
+            producto={productoParaResenas}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

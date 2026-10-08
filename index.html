@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Optimización LCP Prioritaria: Preload ultra-rápido de la imagen hero local del carrusel -->
+    <link rel="preload" as="image" href="/hero-burger.webp" type="image/webp" fetchpriority="high" />
+
     <meta name="description" content="Chazin Food - Deliciosas comidas rápidas artesanales: hamburguesas gourmet, salchipapas, perros calientes y combos. Pide en línea con entrega rápida." />
     <meta name="keywords" content="hamburguesas artesanales, comida rápida, salchipapas gourmet, perros calientes, combos, domicilios, Chazin Food" />
     <meta name="robots" content="index, follow" />
@@ -13,7 +17,7 @@
     <meta property="og:title" content="Chazin Food | Comidas Rápidas Artesanales" />
     <meta property="og:description" content="Deliciosas hamburguesas artesanales, salchipapas gourmet y combos. Pide online en Chazin Food." />
     <meta property="og:image" content="/favicon.png" />
-    <meta property="og:url" content="http://localhost:5173/" />
+    <meta property="og:url" content="http://localhost:4173/" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -21,7 +25,7 @@
     <meta name="twitter:description" content="Deliciosas hamburguesas artesanales, salchipapas gourmet y combos. Pide online en Chazin Food." />
     <meta name="twitter:image" content="/favicon.png" />
 
-    <link rel="canonical" href="http://localhost:5173/" />
+    <link rel="canonical" href="http://localhost:4173/" />
     <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2" />
     <link rel="apple-touch-icon" href="/favicon.png?v=2" />
@@ -30,10 +34,14 @@
     <!-- Preload del emblema oficial del Splash Screen para LCP instantáneo (< 100ms) -->
     <link rel="preload" as="image" href="/favicon_256.webp" type="image/webp" fetchpriority="high" />
 
-    <!-- Tipografía Inter oficial (Carga optimizada con display=swap) -->
+    <!-- Tipografía Inter oficial (Carga optimizada con display=optional para 0 CLS) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" />
+    </noscript>
 
     <!-- Detección y persistencia inmediata de Modo Oscuro / Claro -->
     <script>
@@ -78,7 +86,7 @@
         user-select: none;
         overflow: hidden;
         z-index: 99999;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: opacity 0.25s ease, background-color 0.3s ease, color 0.3s ease;
       }
       html.dark .pre-loader-screen {
         background-color: #0e0e12;

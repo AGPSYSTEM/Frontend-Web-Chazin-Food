@@ -1,7 +1,9 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import { ClienteLanding } from "@/features/cliente/paginas/ClienteLanding";
+
+// ── ClienteLanding: lazy-loaded para reducir el bundle inicial (≈177KB menos) ──
+const ClienteLanding = lazy(() => import("@/features/cliente/paginas/ClienteLanding").then(m => ({ default: m.ClienteLanding })));
 
 // ── Code Splitting con React.lazy para ChazinLoader y rutas secundarias ──
 const ChazinLoader = lazy(() => import("@/shared/components/ui/ChazinLoader").then(m => ({ default: m.ChazinLoader })));
@@ -54,7 +56,7 @@ export function AppRoutes() {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/" element={<ClienteLanding />} />
+        <Route path="/" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
         <Route
           path="/login"
           element={
@@ -92,7 +94,7 @@ export function AppRoutes() {
   if (isCliente) {
     return (
       <Routes>
-        <Route path="/" element={<ClienteLanding />} />
+        <Route path="/" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
         <Route
           path="/perfil"
           element={
@@ -127,8 +129,8 @@ export function AppRoutes() {
       <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/tienda" element={<ClienteLanding />} />
-          <Route path="/cliente" element={<ClienteLanding />} />
+          <Route path="/tienda" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
+          <Route path="/cliente" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="compras/categoria-insumos" element={<CategoriaInsumos />} />

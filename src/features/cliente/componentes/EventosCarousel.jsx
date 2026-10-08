@@ -27,6 +27,7 @@ import {
   IconBaconStrip
 } from "@/shared/components/ui/FoodIcon";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 
 // Paletas de color premium cinematográficas para cada evento (8 temas únicos sin repeticiones)
 export const THEMES = {
@@ -291,12 +292,14 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
     setIsPillsDragging(false);
   };
 
-  // Desplazar suavemente hacia la píldora activa cuando cambie el slide
+  // Desplazar suavemente hacia la píldora activa cuando cambie el slide (solo en interacción, nunca en montado inicial para no afectar scroll del documento ni LCP)
   useEffect(() => {
-    if (!pillsRef.current || isPillsDragging) return;
+    if (!pillsRef.current || isPillsDragging || currentIndex === 0) return;
     const activeBtn = pillsRef.current.children[currentIndex];
     if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      const container = pillsRef.current;
+      const left = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
+      container.scrollTo({ left, behavior: "smooth" });
     }
   }, [currentIndex, isPillsDragging]);
 
@@ -422,7 +425,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
           setCurrentIndex((prev) => (prev + 1) % totalSlides);
         }
       }, slideDuration);
-    }, 3000);
+    }, 8000);
 
     return () => {
       clearTimeout(startDelay);
@@ -449,7 +452,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
           return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
         });
       }, 1000);
-    }, 2500);
+    }, 8000);
 
     return () => {
       clearTimeout(startDelay);
@@ -529,27 +532,30 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-7px); }
         }
-        .animate-float-plate {
-          animation: floatFoodPlate 3.6s ease-in-out infinite;
+        @keyframes timerPulse {
+          0% { opacity: 0.9; }
+          100% { opacity: 1; }
         }
-        @keyframes sweepLight {
-          0% { transform: translateX(-150%) skewX(-20deg); }
-          100% { transform: translateX(250%) skewX(-20deg); }
+        .animate-float-plate {
+          transform: translateY(0);
+          transition: transform 0.4s ease;
+        }
+        .animate-float-plate:hover {
+          transform: translateY(-6px);
         }
         .animate-sweep {
-          animation: sweepLight 5s ease-in-out infinite;
+          display: none;
         }
       `}</style>
 
       {/* HEADER SUPERIOR CON RELOJ DIGITAL Y ESTADO EN VIVO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 min-h-[52px]">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <Flame className="w-6 h-6 animate-pulse" />
+              <Flame className="w-6 h-6" />
             </div>
             <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white dark:border-gray-900"></span>
             </span>
           </div>
@@ -559,7 +565,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                 Experiencias & Ofertas Exclusivas
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide uppercase bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide uppercase bg-red-100 dark:bg-red-950/80 text-red-900 dark:text-red-200 border border-red-300 dark:border-red-800">
                 En Vivo
               </span>
             </div>
@@ -571,7 +577,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
 
         {/* TEMPORIZADOR DIGITAL FLOTANTE */}
         <div className="flex items-center gap-2 bg-gray-100/90 dark:bg-gray-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs self-start sm:self-auto">
-          <Clock className="w-3.5 h-3.5 text-amber-500 animate-spin" style={{ animationDuration: "12s" }} />
+          <Clock className="w-3.5 h-3.5 text-amber-500" />
           <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Termina en:</span>
           <div className="flex items-center gap-1 font-mono text-xs font-black text-gray-900 dark:text-amber-300">
             <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
@@ -586,7 +592,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
               {String(timeLeft.minutos).padStart(2, "0")}m
             </span>
             <span>:</span>
-            <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-md shadow-2xs animate-pulse">
+            <span className="bg-red-800 text-white px-1.5 py-0.5 rounded-md shadow-2xs font-bold">
               {String(timeLeft.segundos).padStart(2, "0")}s
             </span>
           </div>
@@ -664,7 +670,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                   ? "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=800&auto=format&fit=crop&q=80"
                   : evt.icono === "hotdog"
                   ? "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=800&auto=format&fit=crop&q=80"
-                  : "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80");
+                  : "/hero-burger.webp");
 
               return (
                 <div
@@ -672,22 +678,22 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                   className={`w-full shrink-0 relative bg-gradient-to-br ${theme.bg} text-white min-h-[380px] sm:min-h-[400px] flex flex-col justify-between overflow-hidden`}
                 >
                   {/* Destello suave que barre la tarjeta */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none animate-sweep" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
 
                   {/* Top Bar de la diapositiva */}
-                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 pt-5 sm:pt-6 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative z-10 px-4 sm:px-10 lg:px-16 pt-4 sm:pt-6 flex items-center justify-between gap-2.5 min-h-[56px]">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${theme.badgeBg}`}
                       >
                         <Zap className="w-3.5 h-3.5 fill-current" />
                         <span>{evt.tipoEvento || "Evento Activo"}</span>
                       </span>
 
-                      {/* Píldora de Calificación Real o Sin Reseñas */}
+                      {/* Píldora de Calificación Real o Sin Reseñas (Ancho estable min-w-[88px] para 0 CLS) */}
                       {evt.rating && Number(evt.rating) > 0 && evt.totalResenas > 0 ? (
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20"
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20 shrink-0 min-w-[88px]"
                           title={`Calificación: ${Number(evt.rating).toFixed(1)} / 5 (${evt.totalResenas} ${evt.totalResenas === 1 ? "reseña" : "reseñas"})`}
                         >
                           <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
@@ -696,7 +702,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         </span>
                       ) : (
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10"
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0 min-w-[88px]"
                           title="Este evento aún no tiene reseñas de usuarios"
                         >
                           <Star className="w-3 h-3 text-white/40" />
@@ -704,14 +710,14 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         </span>
                       )}
 
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0">
                         <Clock className="w-3 h-3" />
                         <span>{evt.tiempoPrep || "10-15 min"}</span>
                       </span>
                     </div>
 
                     {savePct > 0 && (
-                      <div className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-lg shadow-red-950/60">
+                      <div className="shrink-0 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-lg shadow-red-950/60">
                         <Percent className="w-3.5 h-3.5" />
                         <span>-{savePct}% OFF</span>
                       </div>
@@ -719,13 +725,13 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                   </div>
 
                   {/* Contenido Central: Información gastronómica + Plato fotográfico */}
-                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  <div className="relative z-10 px-4 sm:px-10 lg:px-16 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                     {/* Información y detalles */}
                     <div className="lg:col-span-7 space-y-3.5 text-left">
                       <div>
                         <div className={`inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest ${theme.accent} mb-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-xs`}>
                           {evt.TagIcon && (
-                            <evt.TagIcon size={14} className="shrink-0 animate-pulse" />
+                            <evt.TagIcon size={14} className="shrink-0" />
                           )}
                           <span>{evt.customTag || theme.tagText || theme.tag}</span>
                         </div>
@@ -787,16 +793,18 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
 
                         <div className="relative z-10 w-full h-full rounded-3xl overflow-hidden border-2 border-white/20 bg-black/40 shadow-2xl backdrop-blur-md p-2 flex items-center justify-center">
                           <img
-                            src={cardImage}
+                            src={getOptimizedImageUrl(cardImage, 360)}
                             alt={evt.nombreEvento || "Plato Chazin Food"}
                             width="288"
                             height="288"
                             style={{ aspectRatio: "1 / 1" }}
-                            className="w-full h-full object-cover rounded-2xl filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)]"
-                            loading="eager"
+                            className="w-full h-full object-cover rounded-2xl"
+                            loading={idx === 0 ? "eager" : "lazy"}
+                            fetchPriority={idx === 0 ? "high" : "low"}
+                            decoding="async"
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80";
+                              e.target.src = "/hero-burger.webp";
                             }}
                           />
 
@@ -922,8 +930,8 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
                     isSelected
-                      ? "bg-amber-400 text-gray-950 shadow-xs"
-                      : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                      ? "bg-black text-amber-300 border border-amber-400/50 font-black"
+                      : "bg-red-800 text-white font-black"
                   }`}
                 >
                   -{evt.descuento}%
