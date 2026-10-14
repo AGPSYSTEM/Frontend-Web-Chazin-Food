@@ -39,12 +39,12 @@ export function Roles() {
     setRolModalOpen(true);
   };
 
-  const handleSaveRol = async (nombre, descripcion) => {
+  const handleSaveRol = async (nombre, descripcion, permisos) => {
     let ok = false;
     if (editingRol) {
-      ok = await updateRol(editingRol.id, nombre, descripcion);
+      ok = await updateRol(editingRol.id, nombre, descripcion, permisos);
     } else {
-      ok = await createRol(nombre, descripcion);
+      ok = await createRol(nombre, descripcion, permisos);
     }
     if (ok) {
       setRolModalOpen(false);

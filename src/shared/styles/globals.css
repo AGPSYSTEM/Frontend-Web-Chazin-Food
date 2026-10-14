@@ -9,3 +9,95 @@ input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Global class to hide scrollbars completely across Chrome, Safari, Firefox, Edge, IE */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Ensure sidebars and drawers never show horizontal scrollbars */
+.sidebar-scroll-container {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+}
+
+.sidebar-scroll-container::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* Pulse animation without opacity reduction for WCAG AA/AAA contrast compliance */
+@keyframes timerPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.4);
+  }
+  100% {
+    transform: scale(1.06);
+    box-shadow: 0 0 8px 2px rgba(185, 28, 28, 0.6);
+  }
+}
+
+/* Content-visibility optimization to skip layout and paint of off-screen elements */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 420px;
+}
+
+.cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+}
+
+/* Custom smooth modal scrollbar */
+.custom-modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dark .custom-modal-scrollbar {
+  scrollbar-color: #475569 transparent;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #475569;
+}
+
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
