@@ -31,7 +31,8 @@ export function Insumos() {
     restoreInsumo,
     deleteDefinitivoInsumo,
     clearEventos,
-    resetUnreadCount
+    resetUnreadCount,
+    toggleEstadoInsumo
   } = useInsumos();
 
   const [viewMode, setViewMode] = useState("activos"); // "activos" | "papelera"
@@ -201,6 +202,65 @@ export function Insumos() {
             </div>
           </div>
 
+          {/* Active Filter Badges / Identificación de Filtros (#55) */}
+          {(filterTipo !== "Todos los tipos" || filterCategoria !== "Todas" || searchTerm.trim() !== "") && (
+            <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider">
+                Filtros activos:
+              </span>
+              {filterTipo !== "Todos los tipos" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-[#F05454] border border-red-200 dark:border-red-900/60 font-medium">
+                  <span>Tipo: {filterTipo}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterTipo("Todos los tipos")}
+                    className="hover:text-red-700 cursor-pointer font-bold ml-0.5"
+                    title="Quitar filtro"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filterCategoria !== "Todas" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 font-medium">
+                  <span>Categoría: {filterCategoria}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategoria("Todas")}
+                    className="hover:text-blue-800 cursor-pointer font-bold ml-0.5"
+                    title="Quitar filtro"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {searchTerm.trim() !== "" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium">
+                  <span>Búsqueda: &quot;{searchTerm}&quot;</span>
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm("")}
+                    className="hover:text-gray-900 cursor-pointer font-bold ml-0.5"
+                    title="Quitar filtro"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterTipo("Todos los tipos");
+                  setFilterCategoria("Todas");
+                  setSearchTerm("");
+                }}
+                className="text-xs text-gray-500 hover:text-red-500 underline ml-2 cursor-pointer font-medium"
+              >
+                Limpiar todos
+              </button>
+            </div>
+          )}
+
           {/* Unified Table: Base + Preparados */}
           {loading ? (
             <ChazinLoader text="CARGANDO INSUMOS" size="md" />
@@ -210,6 +270,7 @@ export function Insumos() {
               onEdit={handleOpenEdit}
               onDelete={handleDeleteItem}
               onView={(item) => setViewingInsumo(item)}
+              onToggleEstado={toggleEstadoInsumo}
             />
           )}
         </div>

@@ -32,14 +32,12 @@ export function GestionCompras() {
   const location = useLocation();
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editCompra, setEditCompra] = useState(null);
   const [initialInsumo, setInitialInsumo] = useState(null);
   const [procesandoId, setProcesandoId] = useState(null);
   const [cancelarCompraModal, setCancelarCompraModal] = useState(null);
 
   useEffect(() => {
     if (location.state?.openNuevaCompra) {
-      setEditCompra(null);
       if (location.state.initialInsumo) {
         setInitialInsumo(location.state.initialInsumo);
       }
@@ -71,61 +69,12 @@ export function GestionCompras() {
     setSelectedCompra(c);
   };
 
-  const handleEdit = (c) => {
-    if (!c || !esEstadoPendiente(c.estado)) return;
-    setEditCompra(c);
-  };
-
   const handleCompraCreated = async () => {
     await refetch();
     notify.success(
-      "¡Compra confirmada y stock reabastecido!",
-      "La orden de compra se registró y los insumos fueron sumados automáticamente al inventario."
+      "¡Compra confirmada!",
+      "La orden de compra se registró exitosamente y los insumos fueron sumados automáticamente al inventario."
     );
-  };
-
-  const handleCompraUpdated = async () => {
-    await refetch();
-    notify.success(
-      "Compra actualizada",
-      "Los datos de la compra fueron modificados exitosamente. El stock solo se ve afectado cuando la compra está en estado Recibida."
-    );
-  };
-
-  const handleMarcarRecibida = async (idCompra) => {
-    if (procesandoId === idCompra) return false;
-    const confirmed = await notify.confirmAction(
-      "¿Marcar como Recibida?",
-      "Al confirmar, el stock de los insumos incluidos en esta compra se actualizará automáticamente (se sumarán las cantidades compradas). Esta acción sí afecta el inventario.",
-      "Sí, marcar como Recibida"
-    );
-    if (!confirmed) return false;
-    setProcesandoId(idCompra);
-    try {
-      const ok = await updateEstado(idCompra, "RECIBIDA");
-      if (ok) {
-        notify.success(
-          "Compra Recibida",
-          "La orden fue marcada como Recibida. Los insumos fueron sumados al stock."
-        );
-        if (selectedCompra && selectedCompra.id === idCompra) {
-          setSelectedCompra(null);
-        }
-        await refetch();
-      }
-      return ok;
-    } finally {
-      setProcesandoId(null);
-    }
-  };
-
-  const handleUpdateEstado = async (idCompra, nuevoEstado) => {
-    if (procesandoId === idCompra) return false;
-    const e = String(nuevoEstado || "").toUpperCase();
-    if (e === "RECIBIDA") {
-      return await handleMarcarRecibida(idCompra);
-    }
-    return await updateEstado(idCompra, nuevoEstado);
   };
 
   const handleCancelar = (idCompra) => {
@@ -137,15 +86,27 @@ export function GestionCompras() {
     }
   };
 
-  const handleConfirmarCancelacion = async (idCompra, cancelData) => {
+  const handleEditarCancelacion = (compraTarget) => {
+    setCancelarCompraModal(compraTarget);
+    setSelectedCompra(null);
+  };
+
+  const handleConfirmarCancelacion = async (idCompra, cancelData, esEdicion = false) => {
     setProcesandoId(idCompra);
     try {
       const ok = await cancelarCompra(idCompra, cancelData);
       if (ok) {
-        notify.success(
-          "Compra Anulada",
-          `Anulación registrada con motivo: "${cancelData?.motivo || 'sin motivo'}". Si la compra estaba Recibida, el stock fue revertido.`
-        );
+        if (esEdicion) {
+          notify.success(
+            "Gestión Actualizada",
+            "Los datos de la devolución, estados de entrega/reembolso y observaciones fueron actualizados exitosamente."
+          );
+        } else {
+          notify.success(
+            "Compra Anulada y Gestionada",
+            `Anulación registrada con motivo: "${cancelData?.motivo || 'sin motivo'}". El inventario fue revertido automáticamente.`
+          );
+        }
         setCancelarCompraModal(null);
         await refetch();
       }
@@ -158,7 +119,7 @@ export function GestionCompras() {
   const statCards = [
     {
       id: "total",
-      title: "Órdenes de Compra",
+      title: "Total de Compras", // #85: No denominar orden de compras, llamar algo como total de compras en kpis
       value: stats.total,
       subtext: "registradas",
       subtextColor: "text-gray-400 dark:text-gray-500",
@@ -168,7 +129,7 @@ export function GestionCompras() {
     },
     {
       id: "completadas",
-      title: "Compras Recibidas",
+      title: "Compras Confirmadas", // #87: No llamar compras recibidas, llamar confirmadas en kpis
       value: stats.completadas,
       subtext: "stock reabastecido",
       subtextColor: "text-emerald-600 dark:text-emerald-400",
@@ -250,7 +211,7 @@ export function GestionCompras() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar compra por ID, factura o proveedor..."
+            placeholder="Buscar compra por ID, factura, proveedor, insumo, monto, lote o fecha..."
             className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors placeholder:text-gray-400 outline-none"
           />
         </div>
@@ -263,23 +224,55 @@ export function GestionCompras() {
             className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-red-500/50 cursor-pointer w-full sm:w-auto outline-none font-medium"
           >
             <option value="Todos">Todos los estados</option>
-            <option value="PENDIENTE">Pendiente</option>
-            <option value="RECIBIDA">Recibida</option>
-            <option value="CANCELADA">Cancelada</option>
+            <option value="RECIBIDA">Confirmadas</option>
+            <option value="CANCELADA">Canceladas</option>
           </select>
 
           <button
-            onClick={() => {
-              setEditCompra(null);
-              setModalOpen(true);
-            }}
-            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
+            onClick={() => setModalOpen(true)}
+            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Nueva Compra</span>
           </button>
         </div>
       </div>
+
+      {/* Active Filter Badges */}
+      {(filterEstado !== "Todos" || searchTerm.trim() !== "") && (
+        <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
+          <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider">
+            Filtros activos:
+          </span>
+          {filterEstado !== "Todos" && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-[#F05454] border border-red-200 dark:border-red-900/60 font-medium">
+              <span>Estado: {filterEstado === "RECIBIDA" ? "Confirmadas" : filterEstado}</span>
+              <button
+                type="button"
+                onClick={() => setFilterEstado("Todos")}
+                className="hover:text-red-700 cursor-pointer font-bold ml-0.5"
+              >×</button>
+            </span>
+          )}
+          {searchTerm.trim() !== "" && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium">
+              <span>Búsqueda: &quot;{searchTerm}&quot;</span>
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="hover:text-gray-900 cursor-pointer font-bold ml-0.5"
+              >×</button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => { setFilterEstado("Todos"); setSearchTerm(""); }}
+            className="text-xs text-gray-500 hover:text-red-500 underline ml-2 cursor-pointer font-medium"
+          >
+            Limpiar todos
+          </button>
+        </div>
+      )}
 
       {/* Main Content Table */}
       {loading ? (
@@ -288,8 +281,6 @@ export function GestionCompras() {
         <ComprasTable
           compras={filteredCompras}
           onViewDetail={handleViewDetail}
-          onEdit={handleEdit}
-          onUpdateEstado={handleUpdateEstado}
           onCancelar={handleCancelar}
           procesandoId={procesandoId}
         />
@@ -297,24 +288,21 @@ export function GestionCompras() {
 
       {/* Modals */}
       <NuevaCompraModal
-        isOpen={modalOpen || !!editCompra}
+        isOpen={modalOpen}
         onClose={() => {
           setModalOpen(false);
-          setEditCompra(null);
           setInitialInsumo(null);
         }}
         onCreated={handleCompraCreated}
-        onUpdated={handleCompraUpdated}
-        editCompra={editCompra}
         initialInsumo={initialInsumo}
       />
 
       <DetalleCompraModal
-        isOpen={!!selectedCompra && !editCompra && !modalOpen}
+        isOpen={!!selectedCompra && !modalOpen}
         onClose={() => setSelectedCompra(null)}
         compra={selectedCompra}
-        onUpdateEstado={handleUpdateEstado}
         onCancelar={handleCancelar}
+        onEditarCancelacion={handleEditarCancelacion}
       />
 
       <CancelarCompraModal
@@ -326,5 +314,6 @@ export function GestionCompras() {
     </div>
   );
 }
+
 
 export default GestionCompras;

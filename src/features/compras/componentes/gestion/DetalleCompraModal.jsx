@@ -1,19 +1,12 @@
-import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle, Layers, Info, CornerDownRight } from "lucide-react";
+import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle, Layers, Info, CornerDownRight, ArrowRightLeft, Truck, Wallet, RotateCcw, Edit3, Sparkles, Tag } from "lucide-react";
 
 const estadoBadges = {
-  RECIBIDA: { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Recibida" },
-  Recibida:  { cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Recibida" },
-  Completada:{ cls: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800", icon: CheckCircle2, label: "Completada" },
-  PENDIENTE: { cls: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800", icon: Clock, label: "Pendiente" },
-  Pendiente: { cls: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800", icon: Clock, label: "Pendiente" },
+  RECIBIDA: { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  Recibida:  { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  Completada:{ cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
   CANCELADA: { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Cancelada" },
   Anulada:   { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Anulada" }
 };
-
-function esEstadoPendiente(estado) {
-  const e = String(estado || "").toUpperCase();
-  return e === "PENDIENTE";
-}
 
 function esEstadoRecibida(estado) {
   const e = String(estado || "").toUpperCase();
@@ -25,7 +18,16 @@ function esEstadoCancelada(estado) {
   return e === "CANCELADA" || e === "ANULADA";
 }
 
-export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, onCancelar }) {
+// Configuración de visualización según tipo de operación
+const TIPO_OP_LABELS = {
+  CAMBIO_PRODUCTO: { label: "Cambio de Producto", cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+  PRODUCTO_VENCIDO: { label: "Producto Vencido / Averiado", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  REEMBOLSO_DINERO: { label: "Reembolso de Dinero", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
+  DEVOLUCION_PARCIAL: { label: "Devolución Parcial", cls: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
+  ANULACION_ADMINISTRATIVA: { label: "Anulación Administrativa", cls: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800" }
+};
+
+export function DetalleCompraModal({ isOpen, onClose, compra, onCancelar, onEditarCancelacion }) {
   if (!isOpen || !compra) return null;
 
   const estadoInfo = estadoBadges[compra.estado] || {
@@ -55,17 +57,23 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
     : null;
 
   const detalles = compra.detalles || [];
-  const estaPendiente = esEstadoPendiente(compra.estado);
   const estaRecibida = esEstadoRecibida(compra.estado);
   const estaCancelada = esEstadoCancelada(compra.estado);
 
-  // Parsear detalles de cancelación si existen
+  // Parsear detalles de cancelación si existen (soporte para array antiguo y objeto enriquecido nuevo)
   let itemsCancelados = [];
+  let gestionInfo = null;
   if (compra.detallesCancelacion) {
     try {
-      itemsCancelados = typeof compra.detallesCancelacion === "string"
+      const parsed = typeof compra.detallesCancelacion === "string"
         ? JSON.parse(compra.detallesCancelacion)
         : compra.detallesCancelacion;
+      if (Array.isArray(parsed)) {
+        itemsCancelados = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        gestionInfo = parsed;
+        itemsCancelados = parsed.items || [];
+      }
     } catch (_) {
       itemsCancelados = [];
     }
@@ -117,21 +125,16 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {/* Banner de Estado */}
           <div className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-            estaPendiente
-              ? "bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800/50"
-              : estaRecibida
-              ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50"
-              : "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800/50"
+            estaRecibida
+              ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50"
+              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50"
           }`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                estaPendiente
-                  ? "bg-yellow-100 dark:bg-yellow-800/40 text-yellow-600 dark:text-yellow-300"
-                  : estaRecibida
-                  ? "bg-green-100 dark:bg-green-800/40 text-green-600 dark:text-green-300"
+                estaRecibida
+                  ? "bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-300"
                   : "bg-red-100 dark:bg-red-800/40 text-red-600 dark:text-red-300"
               }`}>
-                {estaPendiente && <Clock className="w-5 h-5" />}
                 {estaRecibida && <CheckCircle2 className="w-5 h-5" />}
                 {estaCancelada && <XCircle className="w-5 h-5" />}
               </div>
@@ -139,76 +142,137 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Estado actual</p>
                 <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{estadoInfo.label}</p>
                 <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                  {estaPendiente && (
-                    <>
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span>El stock NO ha sido actualizado aún. Marca como Recibida cuando lleguen los insumos.</span>
-                    </>
-                  )}
                   {estaRecibida && (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <span>El stock de los insumos fue reabastecido automáticamente en el inventario.</span>
+                      <span>El inventario fue reabastecido automáticamente con los insumos adquiridos.</span>
                     </>
                   )}
                   {estaCancelada && (
                     <>
                       <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                      <span>Esta compra fue anulada y el stock cancelado fue descontado del inventario.</span>
+                      <span>Esta compra fue anulada y las cantidades fueron descontadas del inventario.</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              {estaPendiente && onUpdateEstado && (
-                <button
-                  onClick={() => onUpdateEstado(compra.id, "RECIBIDA")}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Marcar como Recibida
-                </button>
-              )}
               {!estaCancelada && onCancelar && (
                 <button
                   onClick={() => onCancelar(compra.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-sm transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
                   <XCircle className="w-4 h-4" />
                   Anular Compra
+                </button>
+              )}
+              {estaCancelada && onEditarCancelacion && (
+                <button
+                  onClick={() => onEditarCancelacion(compra)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                  title="Editar estados, horas, fechas, productos de cambio u observaciones"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Editar Devolución / Cancelación
                 </button>
               )}
             </div>
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════
-              SECCIÓN DE CANCELACIÓN (MOTIVO, RESPONSABLE, Y LO QUE SE CANCELÓ)
+              SECCIÓN DE CANCELACIÓN / DEVOLUCIÓN ENRIQUECIDA (#88)
           ═══════════════════════════════════════════════════════════════ */}
           {estaCancelada && (
-            <div className="p-4 rounded-2xl bg-red-50/60 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/40 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300">
-                    Información de la Anulación
+            <div className="p-4 rounded-2xl bg-red-50/60 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/40 space-y-4">
+              
+              {/* Header de la Anulación */}
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-red-100 dark:border-red-900/40 pb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center text-red-600 dark:text-red-300">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-red-800 dark:text-red-300">
+                    Registro de Devolución / Cancelación
                   </span>
+                  {gestionInfo?.tipoOperacion && (
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${TIPO_OP_LABELS[gestionInfo.tipoOperacion]?.cls || "bg-gray-100 text-gray-700"}`}>
+                      {TIPO_OP_LABELS[gestionInfo.tipoOperacion]?.label || gestionInfo.tipoOperacion}
+                    </span>
+                  )}
                 </div>
-                {fechaCancelacionFormatted && (
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Fecha: <strong className="text-gray-700 dark:text-gray-200">{fechaCancelacionFormatted}</strong>
-                  </span>
-                )}
+
+                <div className="flex items-center gap-3">
+                  {onEditarCancelacion && (
+                    <button
+                      type="button"
+                      onClick={() => onEditarCancelacion(compra)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-[11px] font-bold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      Editar
+                    </button>
+                  )}
+                </div>
               </div>
 
+              {/* Tiempos y Estados (si vienen en formato estructurado) */}
+              {gestionInfo && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {/* Fecha y Hora */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-850 border border-red-100 dark:border-red-900/30">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-0.5">
+                      Fecha y Hora
+                    </span>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-red-500" />
+                      {gestionInfo.fecha || "Sin fecha"} {gestionInfo.hora ? `• ${gestionInfo.hora}` : ""}
+                    </p>
+                  </div>
+
+                  {/* Estado Mercancía */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-850 border border-red-100 dark:border-red-900/30">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-0.5">
+                      Estado Productos
+                    </span>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                      <Truck className="w-3 h-3 text-blue-500" />
+                      {gestionInfo.estadoMercancia === "RECIBIDO" ? "✅ Ya se recibieron" : gestionInfo.estadoMercancia === "EN_PROCESO" ? "⏳ En proceso" : "📦 Pendiente"}
+                    </p>
+                  </div>
+
+                  {/* Estado Dinero */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-850 border border-red-100 dark:border-red-900/30">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-0.5">
+                      Estado Reembolso
+                    </span>
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                      <Wallet className="w-3 h-3 text-emerald-500" />
+                      {gestionInfo.estadoDinero === "REEMBOLSADO" ? "💵 Dinero devuelto" : gestionInfo.estadoDinero === "ENTREGA_INMEDIATA" ? "⚡ Entrega inmediata" : gestionInfo.estadoDinero === "EN_PROCESO" ? "⏳ En proceso" : gestionInfo.estadoDinero === "SALDO_A_FAVOR" ? "🎟️ Saldo a favor" : "⛔ No aplica"}
+                    </p>
+                  </div>
+
+                  {/* Monto y Método */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-gray-850 border border-red-100 dark:border-red-900/30">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-0.5">
+                      Monto Reembolso
+                    </span>
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      {gestionInfo.montoReembolsado ? `$${Number(gestionInfo.montoReembolsado).toLocaleString("es-CO")}` : "$0"}
+                      <span className="text-[10px] text-gray-400 font-normal ml-1">({gestionInfo.metodoReembolso || "N/A"})</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Motivo y Responsable */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-white dark:bg-gray-800/80 rounded-xl border border-red-100 dark:border-red-900/30">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-1">
-                    ¿Por qué se canceló? (Motivo)
+                    Motivo General
                   </span>
                   <p className="text-xs font-semibold text-red-700 dark:text-red-300">
-                    {compra.motivoCancelacion || "Sin motivo especificado"}
+                    {gestionInfo?.motivoGeneral || compra.motivoCancelacion || "Sin motivo especificado"}
                   </p>
                 </div>
 
@@ -223,40 +287,82 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
                 </div>
               </div>
 
-              {/* Insumos y Cantidades Exactamente Canceladas */}
+              {/* Observaciones generales adicionales */}
+              {gestionInfo?.observaciones && (
+                <div className="p-3 bg-white dark:bg-gray-800/80 rounded-xl border border-red-100 dark:border-red-900/30">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 block mb-1">
+                    Observaciones y Acuerdos con el Proveedor
+                  </span>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {gestionInfo.observaciones}
+                  </p>
+                </div>
+              )}
+
+              {/* Insumos y Especificaciones Individuales */}
               {itemsCancelados.length > 0 && (
-                <div className="pt-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 block mb-2 flex items-center gap-1">
+                <div className="pt-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block mb-2 flex items-center gap-1">
                     <CornerDownRight className="w-3.5 h-3.5 text-red-500" />
-                    Exactamente lo que se canceló y descontó del stock:
+                    Insumos Afectados, Motivos Individuales y Acciones:
                   </span>
                   <div className="border border-red-100 dark:border-red-900/40 rounded-xl overflow-hidden bg-white dark:bg-gray-800/80">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-red-50/70 dark:bg-red-950/30 border-b border-red-100 dark:border-red-900/40 text-[10px] uppercase font-bold text-red-800 dark:text-red-300">
-                          <th className="px-3 py-2">Insumo Cancelado</th>
-                          <th className="px-3 py-2 text-center">Cantidad Cancelada</th>
-                          <th className="px-3 py-2 text-right">Subtotal Revertido</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                        {itemsCancelados.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-red-50/30 dark:hover:bg-red-950/10">
-                            <td className="px-3 py-2 font-semibold text-gray-800 dark:text-gray-200">
-                              {item.nombre || `Insumo #${item.idInsumo}`}
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold text-[11px]">
-                                -{Number(item.cantidadCancelada || 0).toLocaleString("es-CO")} {item.unidadMedida || ""}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-right font-bold text-red-600 dark:text-red-400">
-                              -${Number(item.subtotal || 0).toLocaleString("es-CO")}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-red-50/70 dark:bg-red-950/30 border-b border-red-100 dark:border-red-900/40 text-[10px] uppercase font-bold text-red-800 dark:text-red-300">
+                            <th className="px-3 py-2">Insumo Devuelto</th>
+                            <th className="px-3 py-2 text-center">Cant. Cancelada</th>
+                            <th className="px-3 py-2">Motivo & Acción</th>
+                            <th className="px-3 py-2 text-right">Subtotal</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                          {itemsCancelados.map((item, idx) => {
+                            const cantCanc = Number(item.cantidadCancelada || 0);
+                            const tieneReemplazo = item.insumoReemplazoNombre || (item.tipoAccion === "CAMBIO");
+                            return (
+                              <tr key={idx} className="hover:bg-red-50/30 dark:hover:bg-red-950/10">
+                                <td className="px-3 py-2.5">
+                                  <div className="font-semibold text-gray-800 dark:text-gray-200">
+                                    {item.nombre || `Insumo #${item.idInsumo}`}
+                                  </div>
+                                  {item.observacionIndividual && (
+                                    <div className="text-[10px] text-gray-500 italic mt-0.5">
+                                      Nota: {item.observacionIndividual}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold text-[11px]">
+                                    -{cantCanc.toLocaleString("es-CO")} {item.unidadMedida || ""}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                  <div className="text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                                    {item.motivoIndividual || "Devolución / Cancelación"}
+                                  </div>
+                                  {tieneReemplazo ? (
+                                    <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-semibold border border-blue-200 dark:border-blue-800">
+                                      <ArrowRightLeft className="w-3 h-3 text-blue-500" />
+                                      Cambiado por: {item.insumoReemplazoNombre || "Insumo de reemplazo"}
+                                      {item.cantidadReemplazo ? ` (${item.cantidadReemplazo} ${item.unidadReemplazo || ""})` : ""}
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] text-gray-400 mt-0.5">
+                                      Acción: {item.tipoAccion === "REEMBOLSO" ? "Reembolso $" : item.tipoAccion === "BAJA" ? "Desecho/Merma" : "Devolución simple"}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-bold text-red-600 dark:text-red-400">
+                                  -${Number(item.subtotal || 0).toLocaleString("es-CO")}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -264,23 +370,48 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
           )}
 
           {/* Metadata Card */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <div>
-              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
                 Proveedor
               </span>
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-800 dark:text-gray-200">
-                <User className="w-4 h-4 text-[#F05454]" />
-                {esProveedorGenerico ? "Proveedor Genérico (sin proveedor asociado)" : (compra.proveedorNombre || compra.proveedor?.nombre || "Sin Proveedor")}
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                <User className="w-3.5 h-3.5 text-[#F05454] shrink-0" />
+                <span className="truncate">{compra.proveedorNombre || compra.proveedor?.nombre || "Sin Proveedor"}</span>
               </div>
             </div>
+
             <div>
-              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
-                Fecha de Compra
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
+                Nº Factura
               </span>
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
-                <Calendar className="w-4 h-4 text-[#F05454]" />
-                {fechaFormatted}
+              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-gray-800 dark:text-gray-200">
+                <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>{compra.numeroFactura || `OC-${compra.id}`}</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
+                Fecha Factura
+              </span>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                <Calendar className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span>
+                  {compra.fechaFactura
+                    ? new Date(compra.fechaFactura).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" })
+                    : (compra.fechaCompra ? new Date(compra.fechaCompra).toLocaleDateString("es-CO") : "Sin fecha")}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide block mb-1">
+                Fecha Registro
+              </span>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 capitalize">
+                <Calendar className="w-3.5 h-3.5 text-[#F05454] shrink-0" />
+                <span>{fechaFormatted}</span>
               </div>
             </div>
           </div>
@@ -358,15 +489,31 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onUpdateEstado, on
             </div>
           </div>
 
-          {/* Total Summary */}
+          {/* Total Summary con IVA (#83) */}
           <div className="flex justify-end">
-            <div className="bg-[#F05454]/10 rounded-2xl px-5 py-3 flex items-center gap-3 border border-[#F05454]/20">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                Total de la Orden:
-              </span>
-              <span className="text-xl font-extrabold text-[#F05454]">
-                ${Number(compra.total || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
-              </span>
+            <div className="bg-gray-50 dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 min-w-[260px] space-y-2">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Subtotal:</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  ${Number(compra.subtotal || compra.total || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                </span>
+              </div>
+              {Boolean(compra.incluyeIva || Number(compra.iva) > 0) && (
+                <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                  <span>IVA (19%):</span>
+                  <span className="font-semibold">
+                    +${Number(compra.iva || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                  Total Compra:
+                </span>
+                <span className="text-xl font-black text-[#F05454]">
+                  ${Number(compra.total || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                </span>
+              </div>
             </div>
           </div>
         </div>

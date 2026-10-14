@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Power } from "lucide-react";
 
-export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
+export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleEstado }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -23,6 +23,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
               <th className="px-6 py-4">PRECIO / COSTO</th>
               <th className="px-6 py-4">PROVEEDOR / ORIGEN</th>
               <th className="px-6 py-4">STOCK</th>
+              <th className="px-6 py-4 text-center">ESTADO</th>
               <th className="px-6 py-4 text-center">ACCIONES</th>
             </tr>
           </thead>
@@ -110,12 +111,34 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        i.estado === "Activo"
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      }`}>
+                        {i.estado || "Activo"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2.5">
+                        {onToggleEstado && (
+                          <button
+                            onClick={() => onToggleEstado(i)}
+                            title={i.estado === "Activo" ? "Inactivar insumo" : "Activar insumo"}
+                            className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                              i.estado === "Activo"
+                                ? "text-emerald-600 dark:text-emerald-400 hover:text-amber-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                : "text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            }`}
+                          >
+                            <Power className="w-4 h-4 stroke-[2.2]" />
+                          </button>
+                        )}
                         {onView && (
                           <button
                             onClick={() => onView(i)}
                             title="Ver detalles del insumo"
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
                           >
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
@@ -123,14 +146,14 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                         <button
                           onClick={() => onEdit(i)}
                           title="Editar insumo"
-                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1"
+                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
                         >
                           <Edit className="w-4 h-4 stroke-[2]" />
                         </button>
                         <button
                           onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
                           title="Eliminar insumo"
-                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
+                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4 stroke-[2]" />
                         </button>
