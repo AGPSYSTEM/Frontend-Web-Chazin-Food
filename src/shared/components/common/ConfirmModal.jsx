@@ -4,6 +4,7 @@ import { AlertTriangle, Trash2, X, CheckCircle, Info } from "lucide-react";
 export function ConfirmModal({
   isOpen,
   type = "danger",
+  icon = null,
   title,
   message,
   confirmText = "Confirmar",
@@ -55,7 +56,7 @@ export function ConfirmModal({
   };
 
   const currentConfig = config[type] || config.danger;
-  const Icon = currentConfig.icon;
+  const Icon = icon || currentConfig.icon;
 
   return (
     <div
