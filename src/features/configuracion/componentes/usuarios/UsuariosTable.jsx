@@ -1,4 +1,5 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User } from "lucide-react";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User, Eye } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
   if (!raw) return "-";
@@ -86,7 +87,7 @@ const formatUltimoAcceso = (usuario) => {
   return [year, monthDay, time];
 };
 
-export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePassword }) {
+export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePassword, onView }) {
   return (
     <>
       {/* Mobile Cards View (< lg) */}
@@ -112,7 +113,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight truncate">
-                      {usuario.nombre} {usuario.apellidos}
+                      {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
                       ID #{usuario.id || usuario.idUsuario}
@@ -164,6 +165,15 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
               </div>
 
               <div className="border-t border-gray-100 dark:border-gray-700/60 px-4 py-2 flex items-center justify-end gap-2">
+                {onView && (
+                  <button
+                    onClick={() => onView(usuario)}
+                    className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                    title="Inspeccionar usuario y reseñas"
+                  >
+                    <Eye className="w-4 h-4 stroke-[2]" />
+                  </button>
+                )}
                 <button
                   onClick={() => onEdit(usuario)}
                   className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -251,13 +261,8 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                         </div>
                         <div>
                           <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                            {usuario.nombre}
+                            {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                           </p>
-                          {usuario.apellidos && (
-                            <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight">
-                              {usuario.apellidos}
-                            </p>
-                          )}
                           <p className="text-xs text-gray-400 dark:text-gray-500 font-normal mt-0.5">
                             ID #{usuario.id || usuario.idUsuario}
                           </p>
@@ -316,6 +321,15 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     {/* ACCIONES */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
+                        {onView && (
+                          <button
+                            onClick={() => onView(usuario)}
+                            className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                            title="Inspeccionar usuario y reseñas"
+                          >
+                            <Eye className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onEdit(usuario)}
                           className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"

@@ -25,12 +25,16 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const filteredCategorias = categorias.filter(
-    (c) =>
-      searchTerm.trim() === "" ||
-      c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCategorias = categorias.filter((c) => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      (c.nombre && c.nombre.toLowerCase().includes(term)) ||
+      (c.descripcion && c.descripcion.toLowerCase().includes(term)) ||
+      (c.estado && c.estado.toLowerCase().includes(term)) ||
+      String(c.id || c.idCategoriaInsumo || "").includes(term)
+    );
+  });
 
   const createCategoria = async (form) => {
     try {

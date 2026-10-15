@@ -36,6 +36,11 @@ export async function apiFetch(endpoint, options = {}) {
   const response = await fetch(url, config);
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('chazin_user');
+      } catch (_) {}
+    }
     let errorMessage = `HTTP error ${response.status}`;
     try {
       const errorData = await response.json();

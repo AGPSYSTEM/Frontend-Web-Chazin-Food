@@ -1,23 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-
-const INITIAL_EVENTOS = [
-  {
-    id: 1,
-    tipo: "Creado",
-    nombre: "Distribuidora Avícola S.A.S.",
-    descripcion: "Se registró el proveedor en el sistema.",
-    fecha: "23/07/2026 06:35"
-  },
-  {
-    id: 2,
-    tipo: "Editado",
-    nombre: "Lácteos del Valle",
-    descripcion: "Se actualizaron los datos de contacto del proveedor.",
-    fecha: "23/07/2026 06:40"
-  }
-];
+import { apiClient } from "@/shared/api/apiClient";
 
 export function useProveedores() {
   const notify = useNotifications();
@@ -27,75 +11,40 @@ export function useProveedores() {
   const [filterEstado, setFilterEstado] = useState("Todos");
   const [filterTipo, setFilterTipo] = useState("Todos");
 
-  // Traceability & Trash Bin State with localStorage persistence
-  const [eventos, setEventos] = useState(() => {
+  // Traceability State from backend
+  const [eventos, setEventos] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchTrazabilidad = useCallback(async () => {
     try {
-      const saved = localStorage.getItem("proveedores_trazabilidad_eventos");
-      return saved ? JSON.parse(saved) : INITIAL_EVENTOS;
-    } catch {
-      return INITIAL_EVENTOS;
+      const [trazabilidadData, unreadData] = await Promise.all([
+        apiClient.get("/trazabilidad").catch(() => []),
+        apiClient.get("/trazabilidad/unread-count").catch(() => ({ unreadCount: 0 }))
+      ]);
+      setEventos(Array.isArray(trazabilidadData) ? trazabilidadData : []);
+      setUnreadCount(unreadData?.unreadCount ?? 0);
+    } catch (err) {
+      console.warn("Error cargando trazabilidad:", err);
     }
-  });
-
-  const [unreadCount, setUnreadCount] = useState(() => {
-    try {
-      const saved = localStorage.getItem("proveedores_trazabilidad_unread");
-      return saved ? JSON.parse(saved) : 1;
-    } catch {
-      return 1;
-    }
-  });
-
-  // Sync to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("proveedores_trazabilidad_eventos", JSON.stringify(eventos));
-    } catch {}
-  }, [eventos]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("proveedores_trazabilidad_unread", JSON.stringify(unreadCount));
-    } catch {}
-  }, [unreadCount]);
+  }, []);
 
   const fetchProveedores = useCallback(async () => {
     try {
       setLoading(true);
       const data = await proveedoresService.getProveedores();
       setProveedores(data || []);
+      await fetchTrazabilidad();
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al cargar proveedores");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchTrazabilidad]);
 
   useEffect(() => {
     fetchProveedores();
   }, [fetchProveedores]);
-
-  const addTraceabilityEvent = (tipo, nombre, descripcion) => {
-    const now = new Date();
-    const formattedDate = `${String(now.getDate()).padStart(2, "0")}/${String(
-      now.getMonth() + 1
-    ).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(
-      2,
-      "0"
-    )}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    const newEv = {
-      id: Date.now(),
-      tipo,
-      nombre,
-      descripcion,
-      fecha: formattedDate
-    };
-
-    setEventos((prev) => [newEv, ...prev]);
-    setUnreadCount((prev) => prev + 1);
-  };
 
   // Active suppliers (estado === "Activo" or estado === 1)
   const activosProveedores = proveedores.filter((p) => p.estado === "Activo" || p.estado === 1);
@@ -104,14 +53,21 @@ export function useProveedores() {
   const papeleraProveedores = proveedores.filter((p) => p.estado === "Inactivo" || p.estado === 0);
 
   const filteredProveedores = proveedores.filter((p) => {
+    const term = searchTerm.toLowerCase().trim();
     const matchSearch =
-      searchTerm === "" ||
-      p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.nit?.includes(searchTerm) ||
-      p.numeroDocumento?.includes(searchTerm) ||
-      p.contacto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.nombreContacto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      p.nombre?.toLowerCase().includes(term) ||
+      p.nit?.toLowerCase().includes(term) ||
+      p.numeroDocumento?.toLowerCase().includes(term) ||
+      p.contacto?.toLowerCase().includes(term) ||
+      p.nombreContacto?.toLowerCase().includes(term) ||
+      p.email?.toLowerCase().includes(term) ||
+      p.correo?.toLowerCase().includes(term) ||
+      p.telefono?.includes(term) ||
+      p.direccion?.toLowerCase().includes(term) ||
+      p.tipoProveedor?.toLowerCase().includes(term) ||
+      p.tipoPersona?.toLowerCase().includes(term) ||
+      (p.estado === "Activo" || p.estado === 1 ? "activo" : "inactivo").includes(term);
 
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
     const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo;
@@ -122,11 +78,6 @@ export function useProveedores() {
     try {
       await proveedoresService.createProveedor(data);
       notify.success("Proveedor creado", "El proveedor se registró exitosamente");
-      addTraceabilityEvent(
-        "Creado",
-        data.nombre,
-        `Se registró el nuevo proveedor: ${data.nombre}`
-      );
       await fetchProveedores();
       return true;
     } catch (err) {
@@ -139,15 +90,29 @@ export function useProveedores() {
     try {
       await proveedoresService.updateProveedor(id, data);
       notify.success("Proveedor actualizado", "Se guardaron los cambios correctamente");
-      addTraceabilityEvent(
-        "Editado",
-        data.nombre,
-        `Se actualizaron los datos del proveedor: ${data.nombre}`
-      );
       await fetchProveedores();
       return true;
     } catch (err) {
       notify.error("Error", err.message || "No se pudo actualizar el proveedor");
+      return false;
+    }
+  };
+
+  // #68 – Inactivar / Activar proveedor desde la tabla
+  const toggleEstadoProveedor = async (item) => {
+    const id = item.id || item.idProveedor;
+    const isActivo = item.estado === "Activo" || item.estado === 1;
+    const nuevoEstado = isActivo ? "Inactivo" : "Activo";
+    try {
+      await proveedoresService.updateProveedor(id, { ...item, estado: nuevoEstado });
+      await fetchProveedores();
+      notify.success(
+        nuevoEstado === "Activo" ? "Proveedor activado" : "Proveedor inactivado",
+        `"${item.nombre}" ahora está ${nuevoEstado}.`
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del proveedor");
       return false;
     }
   };
@@ -161,11 +126,6 @@ export function useProveedores() {
     try {
       await proveedoresService.deleteProveedor(id);
       notify.success("Proveedor inactivado", `"${nombre}" fue movido a la papelera.`);
-      addTraceabilityEvent(
-        "Eliminado",
-        nombre,
-        `Se inactivó y envió a la papelera el proveedor: ${nombre}`
-      );
       await fetchProveedores();
       return true;
     } catch (err) {
@@ -180,22 +140,12 @@ export function useProveedores() {
     try {
       await proveedoresService.restoreProveedor(id);
       notify.success("Proveedor restaurado", `"${nombre}" volvió a estar activo.`);
-      addTraceabilityEvent(
-        "Restaurado",
-        nombre,
-        `Se restauró de la papelera el proveedor: ${nombre}`
-      );
       await fetchProveedores();
       return true;
     } catch (err) {
       try {
         await proveedoresService.updateProveedor(id, { ...item, estado: "Activo" });
         notify.success("Proveedor restaurado", `"${nombre}" volvió a estar activo.`);
-        addTraceabilityEvent(
-          "Restaurado",
-          nombre,
-          `Se restauró de la papelera el proveedor: ${nombre}`
-        );
         await fetchProveedores();
         return true;
       } catch (innerErr) {
@@ -215,11 +165,6 @@ export function useProveedores() {
     try {
       await proveedoresService.deletePermanenteProveedor(id);
       notify.success("Eliminado permanente", `El proveedor "${nombre}" fue eliminado por completo.`);
-      addTraceabilityEvent(
-        "Eliminado",
-        nombre,
-        `Se eliminó permanentemente el proveedor: ${nombre}`
-      );
       await fetchProveedores();
       return true;
     } catch (err) {
@@ -228,13 +173,24 @@ export function useProveedores() {
     }
   };
 
-  const clearEventos = () => {
-    setEventos([]);
-    notify.success("Trazabilidad limpia", "Se borró el historial de eventos.");
+  const clearEventos = async () => {
+    try {
+      await apiClient.delete("/trazabilidad/clear");
+      setEventos([]);
+      setUnreadCount(0);
+      notify.success("Trazabilidad limpia", "Se borró el historial de eventos.");
+    } catch (err) {
+      console.error("Error al limpiar eventos:", err);
+    }
   };
 
-  const resetUnreadCount = () => {
-    setUnreadCount(0);
+  const resetUnreadCount = async () => {
+    try {
+      await apiClient.put("/trazabilidad/read-all");
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Error al marcar como leídos:", err);
+    }
   };
 
   return {
@@ -254,6 +210,7 @@ export function useProveedores() {
     refetch: fetchProveedores,
     createProveedor,
     updateProveedor,
+    toggleEstadoProveedor,
     deleteProveedor,
     restoreProveedor,
     deleteDefinitivoProveedor,
@@ -261,3 +218,4 @@ export function useProveedores() {
     resetUnreadCount
   };
 }
+

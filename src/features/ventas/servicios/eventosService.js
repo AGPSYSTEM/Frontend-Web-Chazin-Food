@@ -23,5 +23,9 @@ export const eventosService = {
 
   getInsumos: async () => {
     return await apiClient.get("/insumos");
+  },
+
+  getProductos: async () => {
+    return await apiClient.get("/productos");
   }
 };

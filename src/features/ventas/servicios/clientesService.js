@@ -5,6 +5,10 @@ export const clientesService = {
     return await apiClient.get("/clientes");
   },
 
+  getStats: async () => {
+    return await apiClient.get("/clientes/stats");
+  },
+
   createCliente: async (data) => {
     return await apiClient.post("/clientes", data);
   },

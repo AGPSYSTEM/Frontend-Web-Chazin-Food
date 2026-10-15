@@ -1,4 +1,5 @@
 import { X, Mail, Phone, MapPin, TrendingUp, Clock, Calendar, Star, AlertCircle } from "lucide-react";
+import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
 
 export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   if (!isOpen || !cliente) return null;
@@ -81,7 +82,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight">
-                {cliente.nombre} {cliente.apellidos || ""}
+                {formatNombreCompleto(cliente.nombre, cliente.apellidos) || "Cliente General"}
               </h2>
               <p className="text-xs text-gray-400 font-medium">Cliente #{cliente.id || cliente.idCliente || 1}</p>
             </div>
@@ -105,35 +106,35 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
           <h3 className="text-xs font-extrabold tracking-wider text-gray-700 dark:text-gray-300 uppercase">
             Información de Contacto
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
+              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-gray-400">Teléfono</p>
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                  {cliente.telefono || "Sin registrar"}
+                </p>
+              </div>
+            </div>
+
             <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
               <Mail className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold text-gray-400">Email</p>
                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
-                  {cliente.email || "Sin email registrado"}
+                  {cliente.email || "Sin registrar"}
                 </p>
               </div>
             </div>
 
             <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
-              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-gray-400">Teléfono</p>
-                <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                  {cliente.telefono || "Sin teléfono"}
+                <p className="text-[10px] font-semibold text-gray-400">Dirección</p>
+                <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                  {formatDireccion(cliente.direccion)}
                 </p>
               </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-gray-50/70 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center gap-2.5">
-            <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold text-gray-400">Dirección</p>
-              <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
-                {cliente.direccion || "Medellín, Colombia"}
-              </p>
             </div>
           </div>
         </div>
@@ -183,45 +184,6 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
           </div>
         </div>
 
-        {/* 4. HISTORIAL DE TRANSACCIONES REALES */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-extrabold tracking-wider text-gray-700 dark:text-gray-300 uppercase">
-            Historial de Transacciones
-          </h3>
-          {transacciones.length === 0 ? (
-            <div className="p-6 bg-gray-50/60 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 text-center text-xs text-gray-400">
-              Este cliente no registra transacciones aún.
-            </div>
-          ) : (
-            <>
-              <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      <th className="px-4 py-2.5">N° TRANS.</th>
-                      <th className="px-4 py-2.5">FECHA</th>
-                      <th className="px-4 py-2.5">PRODUCTO</th>
-                      <th className="px-4 py-2.5 text-right">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium text-gray-700 dark:text-gray-300">
-                    {transacciones.slice(0, 5).map((t, idx) => (
-                      <tr key={idx} className="hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                        <td className="px-4 py-2 text-gray-400 font-mono text-[11px]">{t.idTrans}</td>
-                        <td className="px-4 py-2">{t.fecha}</td>
-                        <td className="px-4 py-2 font-bold text-gray-800 dark:text-gray-200">{t.producto}</td>
-                        <td className="px-4 py-2 text-right font-extrabold text-gray-900 dark:text-gray-100">{t.total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[11px] text-gray-400 text-center font-medium pt-0.5">
-                Mostrando las últimas {Math.min(5, transacciones.length)} de {transacciones.length} transacciones.
-              </p>
-            </>
-          )}
-        </div>
 
         {/* 5. BENEFICIOS ACTIVOS */}
         <div className="space-y-2">

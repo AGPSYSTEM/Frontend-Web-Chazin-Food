@@ -1,22 +1,77 @@
+import { Component } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { CartProvider } from '@/shared/context/CartContext';
 import { AuthProvider } from '@/shared/context/AuthContext';
 import { ToastProvider } from '@/shared/context/ToastContext';
 import { ConfirmProvider } from '@/shared/context/ConfirmContext';
 import { AppRoutes } from '@/routes/AppRoutes';
+import logoImg from '@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary capturó un error:", error, errorInfo);
+  }
+
+  handleReset = () => {
+    localStorage.removeItem("chazin_user");
+    window.location.href = "/";
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "sans-serif", background: "#f9fafb" }}>
+          <div style={{ maxWidth: "600px", width: "100%", background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+              <div style={{ width: "72px", height: "72px", borderRadius: "50%", overflow: "hidden", border: "3px solid #fecaca", boxShadow: "0 4px 14px rgba(240, 84, 84, 0.2)", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" }}>
+                <img src={logoImg} alt="Chazin Food" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 56%" }} />
+              </div>
+            </div>
+            <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", marginBottom: "8px" }}>Chazin Food</h2>
+            <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
+              Detalle del error capturado:
+            </p>
+            <div style={{ background: "#fee2e2", color: "#991b1b", padding: "12px", borderRadius: "12px", fontSize: "12px", textAlign: "left", overflowX: "auto", marginBottom: "20px", fontFamily: "monospace" }}>
+              <strong>{this.state.error?.toString()}</strong>
+              <pre style={{ marginTop: "8px", whiteSpace: "pre-wrap" }}>{this.state.error?.stack}</pre>
+            </div>
+            <button
+              onClick={this.handleReset}
+              style={{ width: "100%", padding: "12px 24px", background: "#f05454", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "bold", cursor: "pointer" }}
+            >
+              Restaurar y Recargar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <ConfirmProvider>
-          <CartProvider>
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-          </CartProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <CartProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </CartProvider>
+          </ConfirmProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

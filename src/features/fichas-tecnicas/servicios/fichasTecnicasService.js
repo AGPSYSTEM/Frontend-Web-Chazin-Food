@@ -13,16 +13,24 @@ export const fichasTecnicasService = {
     return await apiClient.get(`/fichas-tecnicas/producto/${idProducto}`);
   },
 
+  getFichaByInsumoPreparado: async (idInsumoPreparado) => {
+    return await apiClient.get(`/fichas-tecnicas/insumo-preparado/${idInsumoPreparado}`);
+  },
+
   getFichaByInsumo: async (idInsumo) => {
-    return await apiClient.get(`/fichas-tecnicas/insumo/${idInsumo}`);
+    return await apiClient.get(`/fichas-tecnicas/insumo-preparado/${idInsumo}`);
   },
 
   saveFichaProducto: async (idProducto, data) => {
     return await apiClient.put(`/fichas-tecnicas/producto/${idProducto}`, data);
   },
 
+  saveFichaInsumoPreparado: async (idInsumoPreparado, data) => {
+    return await apiClient.put(`/fichas-tecnicas/insumo-preparado/${idInsumoPreparado}`, data);
+  },
+
   saveFichaInsumo: async (idInsumo, data) => {
-    return await apiClient.put(`/fichas-tecnicas/insumo/${idInsumo}`, data);
+    return await apiClient.put(`/fichas-tecnicas/insumo-preparado/${idInsumo}`, data);
   },
 
   createFicha: async (data) => {
@@ -37,3 +45,4 @@ export const fichasTecnicasService = {
     return await apiClient.delete(`/fichas-tecnicas/${id}`);
   }
 };
+

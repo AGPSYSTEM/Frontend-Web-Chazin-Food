@@ -6,12 +6,14 @@ import { ClientesTable } from "../componentes/clientes/ClientesTable";
 import { ClienteModal } from "../componentes/clientes/ClienteModal";
 import { ClienteDetalleModal } from "../componentes/clientes/ClienteDetalleModal";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Clientes() {
   const { info } = useNotifications();
   const {
     clientes,
     filteredClientes,
+    stats,
     loading,
     searchTerm,
     setSearchTerm,
@@ -63,7 +65,7 @@ export function Clientes() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -75,7 +77,7 @@ export function Clientes() {
       </div>
 
       {/* 4 Stat Cards Grid */}
-      <ClientesStatsCards clientes={clientes} />
+      <ClientesStatsCards clientes={clientes} stats={stats} />
 
       {/* Filter and Action Bar Box */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -117,7 +119,7 @@ export function Clientes() {
 
       {/* Main Content Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-sm">Cargando clientes...</div>
+        <ChazinLoader text="CARGANDO CLIENTES" size="md" />
       ) : (
         <ClientesTable
           clientes={filteredClientes}

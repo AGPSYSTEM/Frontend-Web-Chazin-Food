@@ -7,6 +7,7 @@ export function useDashboardStats() {
     ventasVariacion: 0,
     pedidosTotal: 0,
     pedidosVariacion: 0,
+    frecuenciaVentas: 0,
     clientesActivos: 0,
     clientesVariacion: 0,
     productosTotal: 0,
@@ -18,9 +19,9 @@ export function useDashboardStats() {
   const [ventasRecientes, setVentasRecientes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const [statsRes, chartRes, popRes, alertasRes, recientesRes] = await Promise.all([
         dashboardService.getStats().catch(() => null),
         dashboardService.getVentasChart().catch(() => []),
@@ -37,12 +38,18 @@ export function useDashboardStats() {
     } catch (err) {
       console.error("Error loading dashboard metrics:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchDashboardData();
+
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
   return {

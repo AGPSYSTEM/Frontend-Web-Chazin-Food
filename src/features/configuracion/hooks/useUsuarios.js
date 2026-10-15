@@ -19,24 +19,16 @@ export function useUsuarios() {
     try {
       setLoading(true);
       const data = await usuariosService.getUsuarios();
-      setUsuarios(
-        (data || [])
-          .filter((u) => (u.rol || u.rolNombre || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1")
-          .map((u) => ({
-            ...u,
-            idRolStr: String(u.idRol || 4),
-            rolNombre: u.rol || "Cliente",
-            estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
-            iniciales: getIniciales(u.nombre)
-          }))
-      );
-      setUsuarios((data || []).map(u => ({
-        ...u,
-        idRolStr: String(u.idRol || 4),
-        rolNombre: u.rol || "Cliente",
-        estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
-        iniciales: getIniciales(u.nombre)
-      })));
+      const mapped = (data || [])
+        .filter((u) => (u.rol || u.rolNombre || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1")
+        .map((u) => ({
+          ...u,
+          idRolStr: String(u.idRol || 4),
+          rolNombre: u.rol || "Cliente",
+          estado: u.estado === "ACTIVO" || u.estado === "Activo" || u.estado === 1 ? "Activo" : "Inactivo",
+          iniciales: getIniciales(u.nombre)
+        }));
+      setUsuarios(mapped);
     } catch (err) {
       console.error(err);
       notifError("Error", err.message || "Error al obtener usuarios");

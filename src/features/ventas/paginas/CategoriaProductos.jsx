@@ -3,6 +3,7 @@ import { Plus, Search } from "lucide-react";
 import { useCategoriaProductos } from "../hooks/useCategoriaProductos";
 import { CategoriaProductosTable } from "../componentes/categorias/CategoriaProductosTable";
 import { CategoriaProductoModal } from "../componentes/categorias/CategoriaProductoModal";
+import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function CategoriaProductos() {
   const {
@@ -53,7 +54,7 @@ export function CategoriaProductos() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -113,7 +114,7 @@ export function CategoriaProductos() {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando categorías...</div>
+        <ChazinLoader text="CARGANDO CATEGORÍAS" size="md" />
       ) : (
         <CategoriaProductosTable
           categorias={filteredCategorias}

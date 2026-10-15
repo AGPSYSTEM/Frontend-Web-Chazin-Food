@@ -124,6 +124,93 @@ export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado,
                       </td>
                     </tr>
                   );
+                const permisosCount = (r.permisos || []).length;
+
+                return (
+                  <tr key={r.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">
+                      {r.id || startIndex + index + 1}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                          <Shield className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-[#1e293b] dark:text-gray-100">
+                            {r.nombre}
+                          </p>
+                          {isAdministrador && (
+                            <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400">
+                              Rol del Sistema
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                      {r.descripcion || "Sin descripción"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{r.usuarios || 0}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                        {permisosCount} módulos
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                        isActivo
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      }`}>
+                        {isActivo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => onOpenPermisos(r)}
+                          title="Gestionar Permisos"
+                          className="text-purple-600 dark:text-purple-400 hover:text-purple-700 transition-colors p-1"
+                        >
+                          <Key className="w-4 h-4 stroke-[2]" />
+                        </button>
+                        <button
+                          onClick={() => onEdit(r)}
+                          title="Editar rol"
+                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1"
+                        >
+                          <Edit className="w-4 h-4 stroke-[2]" />
+                        </button>
+                        <button
+                          onClick={() => onToggleEstado(r.id)}
+                          title={isActivo ? "Desactivar rol" : "Activar rol"}
+                          disabled={isAdministrador}
+                          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-30 transition-colors p-1"
+                        >
+                          {isActivo ? (
+                            <ToggleRight className="w-5 h-5 text-emerald-500" />
+                          ) : (
+                            <ToggleLeft className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => onDelete(r.id)}
+                          title="Eliminar rol"
+                          disabled={isAdministrador}
+                          className="text-red-500 dark:text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors p-1"
+                        >
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
               })
             )}
           </tbody>

@@ -1,22 +1,38 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+import FoodIcon from "@/shared/components/ui/FoodIcon";
 
-function formatDateSafe(dateVal, fallback = "2026-06-09") {
+function formatDateSafe(dateVal, fallback = "Hoy") {
   if (!dateVal) return fallback;
   try {
     const d = new Date(dateVal);
     if (isNaN(d.getTime())) return String(dateVal).slice(0, 10) || fallback;
-    return d.toISOString().split("T")[0];
+    return d.toLocaleDateString("es-CO", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" });
   } catch (e) {
     return String(dateVal).slice(0, 10) || fallback;
   }
+}
+
+function formatTimeSafe(dateVal, fallbackHorario = "12:30 PM") {
+  if (dateVal) {
+    try {
+      const d = new Date(dateVal);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hour12: true });
+      }
+    } catch (e) {}
+  }
+  return fallbackHorario;
 }
 
 export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const totalPages = Math.ceil(ventas.length / pageSize) || 1;
+  const totalRecords = ventas.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedVentas = ventas.slice(startIndex, startIndex + pageSize);
 
@@ -31,20 +47,23 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
     if (tipoNormalized.includes("mesa")) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <span>🍽️</span> En Mesa
+          <FoodIcon name="table" size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>En Mesa</span>
         </span>
       );
     }
     if (tipoNormalized.includes("recoger") || tipoNormalized.includes("para llevar")) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <span>🏪</span> Recoger
+          <FoodIcon name="takeout" size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>Recoger</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-        <span>🛵</span> Domicilio
+        <FoodIcon name="delivery" size={14} className="text-purple-600 dark:text-purple-400" />
+        <span>Domicilio</span>
       </span>
     );
   };
@@ -54,20 +73,23 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
     if (metodoNormalized.includes("tarjeta")) {
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <span>💳</span> Tarjeta
+          <FoodIcon name="card" size={14} className="text-gray-500" />
+          <span>Tarjeta</span>
         </span>
       );
     }
     if (metodoNormalized.includes("transfer") || metodoNormalized.includes("nequi") || metodoNormalized.includes("davi")) {
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <span>📱</span> Transferencia
+          <FoodIcon name="mobile" size={14} className="text-gray-500" />
+          <span>Transferencia</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-        <span>💵</span> Efectivo
+        <FoodIcon name="cash" size={14} className="text-gray-500" />
+        <span>Efectivo</span>
       </span>
     );
   };
@@ -92,11 +114,12 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {paginatedVentas.map((v) => {
-              const clienteNombre = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const rawName = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "Cliente General");
+              const clienteNombre = formatNombreCompleto(rawName) || "Cliente General";
               const codigoPedido = v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`;
               const initial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
               const descPct = Number(v.descuentoPorcentaje || 0);
-              const origPrice = Number(v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
+              const origPrice = Number(v.subtotal || v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
               const hasDiscount = (descPct > 0) || (origPrice > Number(v.total || 0)) || (Number(v.montoDescuento || 0) > 0);
 
               return (
@@ -108,50 +131,33 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     </div>
                   </td>
 
-                  {/* Cliente con Avatar */}
+                  {/* Cliente con Avatar e Insignia */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
                         {initial}
                       </div>
-                      <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-gray-900 dark:text-gray-100">{clienteNombre}</span>
+                        {(!clienteNombre.toLowerCase().includes("mostrador") && v.idCliente !== 26 && v.clienteFidelidad?.tieneCuenta && v.clienteFidelidad?.tipo && ["Regular", "Frecuente", "VIP"].includes(v.clienteFidelidad.tipo)) && (
+                          <FidelidadBadge
+                            tipo={v.clienteFidelidad.tipo}
+                            descuento={v.clienteFidelidad.descuentoPorcentaje}
+                            size="sm"
+                          />
+                        )}
+                      </div>
                     </div>
                   </td>
 
                   {/* Fecha */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
-                    {formatDateSafe(v.fecha || v.fechaVenta, "2026-06-09")}
+                    {formatDateSafe(v.fecha || v.fechaVenta, "Hoy")}
                   </td>
 
                   {/* Hora */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
-                    {(() => {
-                      let raw = v.horario;
-                      if (!raw || raw === "—") return "—";
-                      if (typeof raw === 'string') {
-                        if (raw.includes('AM') || raw.includes('PM')) return raw;
-                        if (raw.includes('–')) raw = raw.split('–')[0].trim();
-                        if (/^\d{1,2}:\d{2}$/.test(raw.trim())) {
-                          const parts = raw.trim().split(':');
-                          let h = parseInt(parts[0], 10);
-                          const m = parts[1];
-                          const ampm = h >= 12 ? 'PM' : 'AM';
-                          h = h % 12;
-                          h = h ? h : 12;
-                          return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
-                        }
-                      }
-                      const d = new Date(v.fecha || v.fechaVenta || raw);
-                      if (!isNaN(d.getTime())) {
-                        let h = d.getHours();
-                        const m = String(d.getMinutes()).padStart(2, '0');
-                        const ampm = h >= 12 ? 'PM' : 'AM';
-                        h = h % 12;
-                        h = h ? h : 12;
-                        return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
-                      }
-                      return String(raw);
-                    })()}
+                    {formatTimeSafe(v.fecha || v.fechaVenta, v.horario)}
                   </td>
 
                   {/* Entrega */}
@@ -224,18 +230,18 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
-            <span>registros por página</span>
+            <span>registros</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span>
-              Página {currentPage} de {totalPages} ({ventas.length} registros en total)
+              Mostrando {startIndex + 1} a {Math.min(startIndex + pageSize, totalRecords)} de {totalRecords} registros
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={() => handlePageChange(1)}
                 disabled={currentPage === 1}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Primera página"
               >
                 <ChevronsLeft className="w-4 h-4" />
@@ -243,20 +249,18 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Página anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-
-              <span className="px-2.5 py-1 bg-[#1e293b] text-white font-semibold rounded-lg text-xs">
+              <span className="px-2 py-0.5 bg-[#F05454] text-white font-bold rounded-md">
                 {currentPage}
               </span>
-
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Página siguiente"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -264,7 +268,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
               <button
                 onClick={() => handlePageChange(totalPages)}
                 disabled={currentPage === totalPages}
-                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title="Última página"
               >
                 <ChevronsRight className="w-4 h-4" />

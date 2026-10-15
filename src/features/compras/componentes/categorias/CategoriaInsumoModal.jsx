@@ -9,6 +9,8 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
   const [descripcion, setDescripcion] = useState("");
   const [estado, setEstado] = useState("Activo");
 
+  const [nombreError, setNombreError] = useState("");
+
   useEffect(() => {
     if (categoria) {
       setNombre(categoria.nombre || "");
@@ -19,13 +21,33 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
       setDescripcion("");
       setEstado("Activo");
     }
+    setNombreError("");
   }, [categoria, isOpen]);
 
   if (!isOpen) return null;
 
+  const handleNombreChange = (e) => {
+    const raw = e.target.value;
+    if (/[0-9]/.test(raw)) {
+      setNombreError("El nombre de la categoría no debe contener números.");
+    } else {
+      setNombreError("");
+    }
+    // Filtrar números en tiempo real
+    const clean = raw.replace(/[0-9]/g, "");
+    setNombre(clean);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!nombre.trim()) return;
+    if (!nombre.trim()) {
+      setNombreError("El nombre de la categoría es requerido.");
+      return;
+    }
+    if (/[0-9]/.test(nombre)) {
+      setNombreError("El nombre de la categoría no debe contener números.");
+      return;
+    }
     onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), estado });
   };
 
@@ -49,10 +71,13 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
               type="text"
               required
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className={inputCls}
-              placeholder="Ej: Frutas"
+              onChange={handleNombreChange}
+              className={`${inputCls} ${nombreError ? "border-red-500 focus:ring-red-500" : ""}`}
+              placeholder="Ej: Frutas y Verduras"
             />
+            {nombreError && (
+              <p className="text-xs text-red-500 mt-1 font-medium">{nombreError}</p>
+            )}
           </div>
 
           <div>
