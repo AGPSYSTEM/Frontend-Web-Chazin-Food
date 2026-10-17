@@ -588,53 +588,55 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
     }
 
-    // Validar ficha técnica obligatoria (todos los campos menos observaciones)
-    const ft = fichaTecnica || {};
-    const missingFichaFields = [];
+    // Validar ficha técnica obligatoria (solo para productos, NO para combos)
+    if (!configCombo.esCombo) {
+      const ft = fichaTecnica || {};
+      const missingFichaFields = [];
 
-    const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-    if (!ingredientes || ingredientes.length === 0) {
-      missingFichaFields.push("Ingredientes / Insumos necesarios (mínimo 1)");
-    }
+      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+      if (!ingredientes || ingredientes.length === 0) {
+        missingFichaFields.push("Ingredientes / Insumos necesarios (mínimo 1)");
+      }
 
-    if (!ft.procedimiento || !String(ft.procedimiento).trim()) {
-      missingFichaFields.push("Procedimiento de Preparación");
-    }
+      if (!ft.procedimiento || !String(ft.procedimiento).trim()) {
+        missingFichaFields.push("Procedimiento de Preparación");
+      }
 
-    if (!ft.tiempoPreparacion || Number(ft.tiempoPreparacion) < 1) {
-      missingFichaFields.push("Tiempo de Preparación (mínimo 1 min)");
-    }
+      if (!ft.tiempoPreparacion || Number(ft.tiempoPreparacion) < 1) {
+        missingFichaFields.push("Tiempo de Preparación (mínimo 1 min)");
+      }
 
-    if (!ft.rendimiento || !String(ft.rendimiento).trim()) {
-      missingFichaFields.push("Rendimiento / Porciones");
-    }
+      if (!ft.rendimiento || !String(ft.rendimiento).trim()) {
+        missingFichaFields.push("Rendimiento / Porciones");
+      }
 
-    if (!ft.condicionesAlmacenamiento || !String(ft.condicionesAlmacenamiento).trim()) {
-      missingFichaFields.push("Condiciones de Almacenamiento");
-    }
+      if (!ft.condicionesAlmacenamiento || !String(ft.condicionesAlmacenamiento).trim()) {
+        missingFichaFields.push("Condiciones de Almacenamiento");
+      }
 
-    if (!ft.vidaUtil || !String(ft.vidaUtil).trim()) {
-      missingFichaFields.push("Vida Útil");
-    }
+      if (!ft.vidaUtil || !String(ft.vidaUtil).trim()) {
+        missingFichaFields.push("Vida Útil");
+      }
 
-    if (!ft.especificaciones || !String(ft.especificaciones).trim()) {
-      missingFichaFields.push("Especificaciones Técnicas / Calidad");
-    }
+      if (!ft.especificaciones || !String(ft.especificaciones).trim()) {
+        missingFichaFields.push("Especificaciones Técnicas / Calidad");
+      }
 
-    if (!ft.caracteristicas || !String(ft.caracteristicas).trim()) {
-      missingFichaFields.push("Características Organolépticas");
-    }
+      if (!ft.caracteristicas || !String(ft.caracteristicas).trim()) {
+        missingFichaFields.push("Características Organolépticas");
+      }
 
-    if (!ft.informacionNutricional || !String(ft.informacionNutricional).trim()) {
-      missingFichaFields.push("Información Nutricional");
-    }
+      if (!ft.informacionNutricional || !String(ft.informacionNutricional).trim()) {
+        missingFichaFields.push("Información Nutricional");
+      }
 
-    if (missingFichaFields.length > 0) {
-      notify.error(
-        "Ficha Técnica Incompleta",
-        "Primero debes completar y guardar la ficha técnica"
-      );
-      return;
+      if (missingFichaFields.length > 0) {
+        notify.error(
+          "Ficha Técnica Incompleta",
+          "Primero debes completar y guardar la ficha técnica"
+        );
+        return;
+      }
     }
 
     try {
@@ -682,7 +684,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               bebidasPermitidas: configCombo.bebidasPermitidas || []
             }
           : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [] },
-        fichaTecnica
+        fichaTecnica: configCombo.esCombo ? null : fichaTecnica
       });
 
       setFileToUpload(null);
@@ -1386,14 +1388,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
           </div>
 
-          {/* Section: Ficha Técnica */}
-          <FichaTecnicaProducto
-            productId={producto?.id || producto?.idProducto}
-            productName={form.nombre}
-            initialData={producto?.fichaTecnica || null}
-            onChange={(data) => setFichaTecnica(data)}
-            onSave={(data) => setFichaTecnica(data)}
-          />
+          {/* Section: Ficha Técnica (solo para productos, NO para combos) */}
+          {!configCombo.esCombo && (
+            <FichaTecnicaProducto
+              productId={producto?.id || producto?.idProducto}
+              productName={form.nombre}
+              initialData={producto?.fichaTecnica || null}
+              onChange={(data) => setFichaTecnica(data)}
+              onSave={(data) => setFichaTecnica(data)}
+            />
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">

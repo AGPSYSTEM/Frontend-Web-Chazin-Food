@@ -121,7 +121,6 @@ export function Layout() {
   const allProduccionItems = [
     { to: "/ventas/categoria-productos", label: "Categoría Productos", perm: "Categoría Productos" },
     { to: "/ventas/productos", label: "Productos", perm: "Productos" },
-    { to: "/ventas/fichas-tecnicas", label: "Fichas Técnicas", perm: "Fichas Técnicas" },
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
   const produccionItems = allProduccionItems.filter(i => hasPerm(i.perm));

@@ -49,7 +49,9 @@ export function useProductos() {
     try {
       const created = await productosService.createProducto(data);
       const createdId = created?.idProducto || created?.id || created?._id;
-      if (data.fichaTecnica && createdId) {
+      // Los combos no llevan ficha técnica
+      const esCombo = data.configuracionCombo?.esCombo;
+      if (data.fichaTecnica && createdId && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(createdId, data.fichaTecnica);
         } catch (e) {
@@ -68,7 +70,9 @@ export function useProductos() {
   const updateProducto = async (id, data) => {
     try {
       await productosService.updateProducto(id, data);
-      if (data.fichaTecnica && id) {
+      // Los combos no llevan ficha técnica
+      const esCombo = data.configuracionCombo?.esCombo;
+      if (data.fichaTecnica && id && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(id, data.fichaTecnica);
         } catch (e) {
