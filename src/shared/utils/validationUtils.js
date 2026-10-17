@@ -15,6 +15,7 @@ export const DOCUMENTO_CONFIG = {
   "C.E.": { min: 6, max: 20, label: "Cédula de Extranjería", helper: "6 a 20 caracteres alfanuméricos", numericOnly: false },
   "CE": { min: 6, max: 20, label: "Cédula de Extranjería", helper: "6 a 20 caracteres alfanuméricos", numericOnly: false },
   "Pasaporte": { min: 6, max: 20, label: "Pasaporte", helper: "6 a 20 caracteres", numericOnly: false },
+  "PPT": { min: 6, max: 20, label: "Permiso por Protección Temporal (PPT)", helper: "6 a 20 caracteres", numericOnly: false },
   "NIT": { min: 6, max: 20, label: "NIT", helper: "6 a 20 dígitos", numericOnly: true },
   "Otro": { min: 4, max: 20, label: "Documento", helper: "4 a 20 caracteres", numericOnly: false }
 };
@@ -77,6 +78,39 @@ export function validateTelefono(value = "") {
   if (clean.length !== 10 && clean.length !== 7) {
     return { isValid: false, error: "El teléfono en Colombia debe tener 10 dígitos (móvil) o 7 (fijo)." };
   }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida nombre/apellido:
+ * - No puede contener números ni el símbolo '@'
+ * - Mínimo 2 caracteres
+ */
+export function validateNombre(val = "", campo = "nombre") {
+  const str = String(val || "").trim();
+  if (!str) return { isValid: false, error: `El ${campo} es obligatorio.` };
+  if (str.includes("@")) return { isValid: false, error: `El ${campo} no puede contener el símbolo '@'.` };
+  if (/\d/.test(str)) return { isValid: false, error: `El ${campo} no puede contener números.` };
+  if (str.length < 2) return { isValid: false, error: `El ${campo} debe tener al menos 2 caracteres.` };
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida correo electrónico en tiempo real:
+ * - Debe incluir '@'
+ * - Debe tener texto antes y después del '@'
+ * - Debe tener un dominio válido con punto (ej: usuario@gmail.com)
+ */
+export function validateEmail(val = "") {
+  const str = String(val || "").trim();
+  if (!str) return { isValid: false, error: "El correo electrónico es obligatorio." };
+  if (!str.includes("@")) return { isValid: false, error: "El correo debe incluir el símbolo '@'." };
+  const parts = str.split("@");
+  if (!parts[0]) return { isValid: false, error: "Falta el nombre de usuario antes del '@'." };
+  if (!parts[1]) return { isValid: false, error: "Falta el dominio después del '@' (ejemplo: gmail.com)." };
+  if (!parts[1].includes(".") || parts[1].endsWith(".")) return { isValid: false, error: "El dominio debe incluir una extensión válida (ejemplo: .com)." };
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailRegex.test(str)) return { isValid: false, error: "Formato de correo inválido (ej: usuario@gmail.com)." };
   return { isValid: true, error: "" };
 }
 

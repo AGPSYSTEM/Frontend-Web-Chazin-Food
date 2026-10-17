@@ -21,6 +21,7 @@ import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis }
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
+import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
 
 const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
 const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
@@ -1484,6 +1485,30 @@ export function ClienteLanding() {
     setCheckoutTarjetaNumero("");
     window.history.pushState({ modal: "checkout" }, "");
     setShowCheckout(true);
+  };
+
+  const handleAuthModalSuccess = (authenticatedUser) => {
+    setShowEmptyCartLoginModal(false);
+    const target = authenticatedUser || user;
+    if (cart.length > 0) {
+      const fullName = target?.nombre ? `${target.nombre} ${target.apellidos || ''}`.trim() : "";
+      setCheckoutNombre(fullName);
+      const rawDir = target?.direccion || "";
+      let cleanDir = rawDir;
+      if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
+        try { const p = JSON.parse(rawDir); cleanDir = p.direccion || rawDir; } catch (e) { /* keep raw */ }
+      }
+      setCheckoutDireccion(cleanDir);
+      setCheckoutEspecificaciones("");
+      setCheckoutMetodoPago("wompi");
+      setCheckoutTipoEntrega("domicilio");
+      setCheckoutEfectivoPaga("");
+      setCheckoutTransferReferencia("");
+      setCheckoutTransferBanco("Bancolombia");
+      setCheckoutTarjetaNumero("");
+      window.history.pushState({ modal: "checkout" }, "");
+      setShowCheckout(true);
+    }
   };
 
   const clientSubtotal = getSubtotal();
@@ -3227,66 +3252,15 @@ export function ClienteLanding() {
       )}
 
 
-      {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR */}
-      {showEmptyCartLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-center space-y-4 border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-3xl flex items-center justify-center mx-auto text-red-500 shadow-inner">
-              <LogIn className="w-8 h-8" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-gray-100">Inicia sesión para pagar</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-                Tus productos están seguros en el carrito. Para ingresar tu dirección de entrega y confirmar tu pedido, inicia sesión o crea una cuenta.
-              </p>
-            </div>
-
-            {/* Carrito preview simple */}
-            {cart.length > 0 && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-gray-300">
-                <span className="flex items-center gap-1.5">
-                  <ShoppingCart className="w-4 h-4 text-red-500" /> {getTotalItems()} productos en tu carrito
-                </span>
-                <span className="font-black text-red-600 dark:text-red-400">${clientSubtotal.toLocaleString('es-CO')}</span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEmptyCartLoginModal(false);
-                  navigate("/login");
-                }}
-                aria-label="Iniciar sesión para continuar con el pedido"
-                className="w-full py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Iniciar Sesión</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEmptyCartLoginModal(false);
-                  navigate("/login?tab=register");
-                }}
-                className="w-full py-3.5 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-sm transition-all cursor-pointer"
-              >
-                Crear Cuenta Nueva
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowEmptyCartLoginModal(false)}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors py-1 cursor-pointer"
-              >
-                Seguir viendo el menú
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR (EN LÍNEA SIN REDIRIGIR) */}
+      <ClienteAuthModal
+        isOpen={showEmptyCartLoginModal}
+        onClose={() => setShowEmptyCartLoginModal(false)}
+        onSuccess={handleAuthModalSuccess}
+        totalItems={getTotalItems()}
+        cartTotal={clientSubtotal}
+        initialView="choice"
+      />
 
       {/* Modal de Personalización Individual de Eventos */}
       {showPersonalizarEventoModal && (

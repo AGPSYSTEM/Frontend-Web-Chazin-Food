@@ -58,7 +58,7 @@ import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 const PRESET_AVATAR_CATEGORIES = [
   {
