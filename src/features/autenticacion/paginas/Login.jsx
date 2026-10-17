@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { GoogleAuthButton } from "@/features/autenticacion/componentes/GoogleAuthButton";
 import {
   Lock,
   Mail,
@@ -68,6 +69,14 @@ export function Login() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const handleGoogleSuccess = (userData) => {
+    if (userData?.rol && userData.rol.toLowerCase() !== "cliente") {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/");
+    }
+  };
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -440,6 +449,17 @@ export function Login() {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
                 </button>
 
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-400 font-medium">O continúa con</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+
                 <div className="text-center pt-2">
                   <Link to="/forgot-password" className="text-sm text-red-600 hover:text-red-700 font-semibold hover:underline transition-colors">
                     ¿Olvidaste tu contraseña?
@@ -779,6 +799,17 @@ export function Login() {
                     )}
                   </span>
                 </button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-400 font-medium">O continúa con</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
               </form>
             )}
           </div>

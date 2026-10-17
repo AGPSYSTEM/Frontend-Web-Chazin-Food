@@ -98,6 +98,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithGoogle = async (credential) => {
+    try {
+      const userData = await apiClient.post("/usuarios/google", { credential });
+      if (userData) {
+        setUser(userData);
+        localStorage.setItem("chazin_user", JSON.stringify(userData));
+        return { success: true, user: userData, message: "¡Autenticación con Google exitosa!" };
+      }
+      return { success: false, message: "Error al iniciar sesión con Google" };
+    } catch (err) {
+      console.error("Error en loginWithGoogle:", err);
+      return { success: false, message: err.message || "Fallo al conectar con Google" };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("chazin_user");
@@ -108,6 +123,7 @@ export function AuthProvider({ children }) {
       user,
       login,
       register,
+      loginWithGoogle,
       logout,
       updateProfile,
       refreshUser,
