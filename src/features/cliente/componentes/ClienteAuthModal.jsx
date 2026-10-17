@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useToast } from "@/shared/context/ToastContext";
+import { GoogleAuthButton } from "@/features/autenticacion/componentes/GoogleAuthButton";
 import {
   Lock,
   Mail,
@@ -74,6 +75,13 @@ export function ClienteAuthModal({
 
   const { login, register } = useAuth();
   const toast = useToast();
+
+  const handleGoogleSuccess = (userData) => {
+    if (onSuccess) {
+      onSuccess(userData);
+    }
+    onClose();
+  };
 
   // Cerrar dropdown al hacer click afuera
   useEffect(() => {
@@ -440,6 +448,17 @@ export function ClienteAuthModal({
                   <span>Crear Cuenta Nueva</span>
                 </button>
 
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white dark:bg-gray-900 px-2 text-gray-400 font-medium">O continúa con</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+
                 <button
                   type="button"
                   onClick={onClose}
@@ -543,6 +562,17 @@ export function ClienteAuthModal({
                   </>
                 )}
               </button>
+
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-gray-900 px-2 text-gray-400 font-medium">O continúa con</span>
+                </div>
+              </div>
+
+              <GoogleAuthButton onSuccess={handleGoogleSuccess} />
 
               <div className="text-center pt-2">
                 <button
@@ -898,6 +928,17 @@ export function ClienteAuthModal({
                   </>
                 )}
               </button>
+
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-gray-900 px-2 text-gray-400 font-medium">O continúa con</span>
+                </div>
+              </div>
+
+              <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
 
               <div className="text-center pt-2">
                 <button
