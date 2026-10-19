@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, UtensilsCrossed, Clock, Flame, CheckCircle2 } from "lucide-react";
+import { Search, UtensilsCrossed, Clock, Flame, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useGestionProduccion } from "../hooks/useGestionProduccion";
 import { ProduccionTable } from "../componentes/ProduccionTable";
-import { NuevaOrdenModal } from "../componentes/NuevaOrdenModal";
 import { VerOrdenModal } from "../componentes/VerOrdenModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
@@ -15,24 +14,20 @@ export function GestionProduccion() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
-    filterPrioridad,
-    setFilterPrioridad,
-    createOrden,
     updateEstado,
     deleteOrden
   } = useGestionProduccion();
 
-  const [nuevaModalOpen, setNuevaModalOpen] = useState(false);
   const [selectedOrden, setSelectedOrden] = useState(null);
 
   // Dynamic stat counts
   const stats = useMemo(() => {
-    const porAprobar = ordenes.filter((o) => o.estado === "Por Aprobar" || o.estadoAprobacion === "PENDIENTE" || o.estado === "En Cola").length;
+    const enCola = ordenes.filter((o) => o.estado === "En Cola").length;
     const enPreparacion = ordenes.filter((o) => o.estado === "En Preparación").length;
     const listos = ordenes.filter((o) => o.estado === "Listo" || o.estado === "Listos" || o.estado === "Despachado" || o.estado === "Entregado").length;
     const total = ordenes.length;
 
-    return { porAprobar, enPreparacion, listos, total };
+    return { enCola, enPreparacion, listos, total };
   }, [ordenes]);
 
   const statCards = [
@@ -40,16 +35,16 @@ export function GestionProduccion() {
       id: "total",
       title: "Total Órdenes",
       value: stats.total,
-      subtext: "registradas",
+      subtext: "en producción",
       subtextColor: "text-gray-400 dark:text-gray-500",
       icon: UtensilsCrossed,
       bgColor: "bg-blue-50 dark:bg-blue-950/40",
       iconColor: "text-blue-500 dark:text-blue-400"
     },
     {
-      id: "pendientes",
-      title: "Por Aprobar / En Cola",
-      value: stats.porAprobar,
+      id: "enCola",
+      title: "En Cola",
+      value: stats.enCola,
       subtext: "esperando inicio",
       subtextColor: "text-amber-600 dark:text-amber-400",
       icon: Clock,
@@ -135,7 +130,7 @@ export function GestionProduccion() {
           />
         </div>
 
-        {/* Filter Dropdowns & Primary Action Button */}
+        {/* Filter Dropdown & Automatic Generation Indicator */}
         <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
           <select
             value={filterEstado}
@@ -143,34 +138,17 @@ export function GestionProduccion() {
             className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-red-500/50 cursor-pointer w-full sm:w-auto outline-none font-medium"
           >
             <option value="Todos">Todos los estados</option>
-            <option value="Por Aprobar">Por Aprobar</option>
             <option value="En Cola">En Cola</option>
             <option value="En Preparación">En Preparación</option>
             <option value="Listo">Listo</option>
             <option value="Despachado">Despachado</option>
             <option value="Entregado">Entregado</option>
-            <option value="Rechazado">Rechazado</option>
           </select>
 
-          <select
-            value={filterPrioridad}
-            onChange={(e) => setFilterPrioridad(e.target.value)}
-            className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-red-500/50 cursor-pointer w-full sm:w-auto outline-none font-medium"
-          >
-            <option value="Todas">Todas las prioridades</option>
-            <option value="Alta">Alta</option>
-            <option value="Media">Media</option>
-            <option value="Normal">Normal</option>
-          </select>
-
-          <button
-            type="button"
-            onClick={() => setNuevaModalOpen(true)}
-            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Nueva Orden</span>
-          </button>
+          <div className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl text-xs font-bold shrink-0 shadow-2xs">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Generación Automática desde Ventas</span>
+          </div>
         </div>
       </div>
 
@@ -186,13 +164,7 @@ export function GestionProduccion() {
         />
       )}
 
-      {/* Modals */}
-      <NuevaOrdenModal
-        isOpen={nuevaModalOpen}
-        onClose={() => setNuevaModalOpen(false)}
-        onCreate={createOrden}
-      />
-
+      {/* Modal Ver Detalles */}
       <VerOrdenModal
         isOpen={Boolean(selectedOrden)}
         onClose={() => setSelectedOrden(null)}

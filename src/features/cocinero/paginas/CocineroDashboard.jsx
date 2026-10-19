@@ -1185,6 +1185,20 @@ export function CocineroDashboard() {
                           {ped.codigo || `VEN-${String(orderId).padStart(4, "0")}`}
                         </h3>
 
+                        {/* Sequential Priority Turn (Ítem 117) */}
+                        {ped.prioridad ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 shadow-2xs ${
+                              ped.prioridad === 1
+                                ? "bg-red-500 text-white ring-1 ring-red-300 dark:ring-red-900"
+                                : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                            }`}
+                            title={`Orden secuencial de preparación: #${ped.prioridad}`}
+                          >
+                            Turno #{ped.prioridad}
+                          </span>
+                        ) : null}
+
                         {/* Delivery Type Badge (Properly resolved Domicilio / Para Llevar / Mesa) */}
                         <span
                           className={`px-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-1 shrink-0 ${

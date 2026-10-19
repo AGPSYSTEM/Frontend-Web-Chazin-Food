@@ -160,17 +160,21 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
 
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Prioridad
+                Prioridad / Turno
               </p>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  orden.prioridad === "Alta"
-                    ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600"
-                }`}
-              >
-                {orden.prioridad || "Normal"}
-              </span>
+              {orden.prioridad ? (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black shadow-2xs ${
+                    orden.prioridad === 1
+                      ? "bg-red-500 text-white ring-2 ring-red-300 dark:ring-red-900"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  }`}
+                >
+                  Turno #{orden.prioridad}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xs font-medium">-</span>
+              )}
             </div>
 
             <div>
