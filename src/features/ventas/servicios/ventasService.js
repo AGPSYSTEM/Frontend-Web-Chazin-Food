@@ -27,6 +27,10 @@ export const ventasService = {
     return await apiClient.put(`/ventas/${id}/estado`, { estado });
   },
 
+  updateTiempoEntrega: async (id, tiempoEstimadoEntrega) => {
+    return await apiClient.put(`/ventas/${id}/tiempo-entrega`, { tiempoEstimadoEntrega });
+  },
+
   cancelarVenta: async (id) => {
     return await apiClient.put(`/ventas/${id}/cancelar`);
   }

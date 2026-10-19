@@ -402,13 +402,9 @@ export function ClienteLanding() {
 
   const [checkoutNombre, setCheckoutNombre] = useState("");
   const [checkoutDireccion, setCheckoutDireccion] = useState("");
-  const [checkoutMetodoPago, setCheckoutMetodoPago] = useState("wompi");
+  const [checkoutMetodoPago] = useState("wompi");
   const [checkoutEspecificaciones, setCheckoutEspecificaciones] = useState("");
   const [checkoutTipoEntrega, setCheckoutTipoEntrega] = useState("domicilio");
-  const [checkoutEfectivoPaga, setCheckoutEfectivoPaga] = useState("");
-  const [checkoutTransferReferencia, setCheckoutTransferReferencia] = useState("");
-  const [checkoutTransferBanco, setCheckoutTransferBanco] = useState("Bancolombia");
-  const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
   const [isProcessingWompi, setIsProcessingWompi] = useState(false);
 
   const [showProductModal, setShowProductModal] = useState(false);
@@ -1477,12 +1473,7 @@ export function ClienteLanding() {
     }
     setCheckoutDireccion(cleanDir);
     setCheckoutEspecificaciones("");
-    setCheckoutMetodoPago("wompi");
     setCheckoutTipoEntrega("domicilio");
-    setCheckoutEfectivoPaga("");
-    setCheckoutTransferReferencia("");
-    setCheckoutTransferBanco("Bancolombia");
-    setCheckoutTarjetaNumero("");
     window.history.pushState({ modal: "checkout" }, "");
     setShowCheckout(true);
   };
@@ -1500,12 +1491,7 @@ export function ClienteLanding() {
       }
       setCheckoutDireccion(cleanDir);
       setCheckoutEspecificaciones("");
-      setCheckoutMetodoPago("wompi");
       setCheckoutTipoEntrega("domicilio");
-      setCheckoutEfectivoPaga("");
-      setCheckoutTransferReferencia("");
-      setCheckoutTransferBanco("Bancolombia");
-      setCheckoutTarjetaNumero("");
       window.history.pushState({ modal: "checkout" }, "");
       setShowCheckout(true);
     }
@@ -1607,303 +1593,173 @@ export function ClienteLanding() {
 
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
-  const vueltoEfectivo = Math.max(0, Number(checkoutEfectivoPaga || 0) - totalCheckout);
-
   const handleConfirmarPedido = async () => {
-    if (checkoutTipoEntrega === "domicilio" && !checkoutDireccion.trim()) {
+    if (!checkoutDireccion.trim()) {
       error("Dirección requerida", "Por favor ingresa la dirección de entrega.");
       return;
     }
 
-    // Validación de comprobante y tarjeta según método de pago
-    if (checkoutMetodoPago === "transferencia") {
-      if (!checkoutTransferReferencia.trim()) {
-        error("Comprobante requerido", "Debes ingresar el número de referencia del comprobante de transferencia para verificar el pago.");
-        return;
-      }
-    } else if (checkoutMetodoPago === "tarjeta") {
-      const cleanCard = checkoutTarjetaNumero.replace(/\s+/g, '');
-      if (!cleanCard || cleanCard.length < 15) {
-        error("Tarjeta requerida", "Ingresa los 16 dígitos de tu tarjeta para procesar el pago.");
-        return;
-      }
-    }
+    const tiempoEstimadoCalculado = "35-45 min";
 
-    // ── FLUJO WOMPI (PAGOS EN LÍNEA: PSE, NEQUI, TARJETAS, BANCOLOMBIA) ──
-    if (checkoutMetodoPago === "wompi") {
-      setIsProcessingWompi(true);
-      try {
-        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
-        const ventaPayload = {
-          idCliente: user?.idCliente || null,
-          idUsuario: user?.idUsuario || user?.id || user?._id,
-          subtotal: clientSubtotal,
-          descuentoAplicado: clientDiscountMonto,
-          total: totalCheckout,
-          tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
-          tipoEntrega: tipoEntregaNormalizado,
+    // ── FLUJO EXCLUSIVO WOMPI EN WEB (PAGOS EN LÍNEA: PSE, NEQUI, TARJETAS, BANCOLOMBIA) ──
+    setIsProcessingWompi(true);
+    try {
+      const ventaPayload = {
+        idCliente: user?.idCliente || null,
+        idUsuario: user?.idUsuario || user?.id || user?._id,
+        subtotal: clientSubtotal,
+        descuentoAplicado: clientDiscountMonto,
+        total: totalCheckout,
+        tipoVenta: "DOMICILIO",
+        tipoEntrega: "Domicilio",
+        metodoPago: "Wompi",
+        origen: "ONLINE",
+        origenNombre: "Venta Online (Web)",
+        tiempoEstimadoEntrega: tiempoEstimadoCalculado,
+        direccion: checkoutDireccion,
+        estadoEntrega: "PENDIENTE",
+        observaciones: JSON.stringify({
+          tipoEntrega: "Domicilio",
           metodoPago: "Wompi",
+          origen: "ONLINE",
+          tiempoEstimadoEntrega: tiempoEstimadoCalculado,
+          horaEstado: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true }),
           direccion: checkoutDireccion,
-          estadoEntrega: "PENDIENTE",
-          observaciones: JSON.stringify({
-            tipoEntrega: tipoEntregaNormalizado,
-            metodoPago: "Wompi",
-            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
-            especificaciones: checkoutEspecificaciones || "",
-            clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "Cliente"),
-            productos: cart.map(item => {
-              const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-              const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-              return {
-                id: item.id,
-                idVariante: item.id,
-                nombre: item.nombre,
-                cantidad: item.cantidad,
-                precioUnitario: Number(item.precio) || 0,
-                total: lineTotal,
-                observaciones: item.observacion || item.observaciones || item.especificaciones || "",
-                adiciones: (item.adiciones || []).map(a => ({
-                  idAdicion: a.idAdicion || a.id,
-                  nombre: a.nombre,
-                  precio: Number(a.precio) || 0,
-                  cantidad: Number(a.cantidad || 1)
-                }))
-              };
-            })
-          }),
-          detalles: cart.map(item => {
+          especificaciones: checkoutEspecificaciones || "",
+          clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "Cliente"),
+          productos: cart.map(item => {
             const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
             return {
-              idVariante: item.id || 1,
+              id: item.id,
+              idVariante: item.id,
+              nombre: item.nombre,
               cantidad: item.cantidad,
               precioUnitario: Number(item.precio) || 0,
-              subtotal: lineTotal,
-              idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
-              adiciones: item.adiciones || [],
-              observacion: item.observacion || item.observaciones || "",
-              observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+              total: lineTotal,
+              observaciones: item.observacion || item.observaciones || item.especificaciones || "",
+              adiciones: (item.adiciones || []).map(a => ({
+                idAdicion: a.idAdicion || a.id,
+                nombre: a.nombre,
+                precio: Number(a.precio) || 0,
+                cantidad: Number(a.cantidad || 1)
+              }))
             };
           })
-        };
+        }),
+        detalles: cart.map(item => {
+          const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
+          const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+          return {
+            idVariante: item.id || 1,
+            cantidad: item.cantidad,
+            precioUnitario: Number(item.precio) || 0,
+            subtotal: lineTotal,
+            idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
+            adiciones: item.adiciones || [],
+            observacion: item.observacion || item.observaciones || "",
+            observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+          };
+        })
+      };
 
-        // 1. Crear intención y obtener firma SHA-256 en el backend
-        const intencion = await wompiService.crearIntencion(ventaPayload);
+      // 1. Crear intención y obtener firma SHA-256 en el backend
+      const intencion = await wompiService.crearIntencion(ventaPayload);
 
-        // Ocultar modal propio para que el modal oficial de Wompi sea 100% visible sin conflicto de z-index
-        setShowCheckout(false);
+      // Ocultar modal propio para que el modal oficial de Wompi sea 100% visible sin conflicto de z-index
+      setShowCheckout(false);
 
-        // 2. Abrir el Widget oficial de Wompi (con fallback a Checkout Web si el widget es bloqueado)
-        let transaction = null;
-        try {
-          transaction = await wompiService.abrirWidget({
-            referencia: intencion.referencia,
-            montoEnCentavos: intencion.montoEnCentavos,
-            moneda: intencion.moneda,
-            firma: intencion.firma,
-            publicKey: intencion.publicKey,
-            customerData: {
-              email: user?.email || "",
-              nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
-              telefono: user?.telefono || ""
-            }
-          });
-        } catch (widgetErr) {
-          console.warn("Widget embebido no disponible o bloqueado por navegador, activando Checkout Web:", widgetErr);
-          const directUrl = wompiService.generarUrlDirecta({
-            referencia: intencion.referencia,
-            montoEnCentavos: intencion.montoEnCentavos,
-            moneda: intencion.moneda,
-            firma: intencion.firma,
-            publicKey: intencion.publicKey
-          });
-          const win = window.open(directUrl, "_blank");
-          if (win) {
-            success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
-            clearCart();
-            setShowCart(false);
-            return;
-          }
-          throw widgetErr;
-        }
-
-        // 3. Evaluar resultado retornado por Wompi
-        if (transaction && transaction.id) {
-          const verificacion = await wompiService.verificarTransaccion(transaction.id);
-
-          if (verificacion.aprobado) {
-            const orderId = verificacion.ventaId || intencion.ventaId || Date.now();
-            const orderCode = verificacion.numeroVenta || intencion.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
-
-            try {
-              const userId = user?.idUsuario || user?.id || user?._id;
-              const storageKey = `mis_pedidos_${userId || 'guest'}`;
-              const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
-              localHistory.unshift({
-                id: orderId,
-                numeroVenta: orderCode,
-                fecha: new Date().toLocaleString('es-CO'),
-                items: cart.map(it => ({
-                  nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
-                  cantidad: it.cantidad,
-                  precio: it.precio
-                })),
-                total: totalCheckout,
-                estado: 'En Preparación'
-              });
-              localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
-            } catch (storageErr) {
-              console.warn("No se pudo guardar pedido en historial local:", storageErr);
-            }
-
-            success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina. Puedes ver su estado en Mi Perfil.`);
-            clearCart();
-            setShowCart(false);
-            if (refreshUser) await refreshUser();
-            navigate("/perfil");
-          } else if (verificacion.estado === 'PENDING') {
-            success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Puedes seguir su estado en Mi Perfil.");
-            clearCart();
-            setShowCart(false);
-            if (refreshUser) await refreshUser();
-            navigate("/perfil");
-          } else {
-            setShowCheckout(true);
-            error("Pago Rechazado", `La transacción fue ${verificacion.estado || 'rechazada'}. Puedes intentar con otro medio de pago.`);
-          }
-        } else if (transaction && transaction.status === 'REDIRECTED') {
-          return;
-        } else if (!transaction || transaction.status === 'CLOSED_WITHOUT_RESULT') {
-          setShowCheckout(true);
-          error("Pago cancelado", "Cerraste la pasarela antes de completar el pago.");
-        }
-      } catch (wompiErr) {
-        setShowCheckout(true);
-        console.error("Error en flujo de Wompi:", wompiErr);
-        const detail = wompiErr?.message || "No se pudo conectar con Wompi o el servidor";
-        error("Error en Wompi", detail);
-      } finally {
-        setIsProcessingWompi(false);
-      }
-      return;
-    }
-
-    const confirmed = await confirmAction(
-      "Confirmar Pedido",
-      `Total a pagar: $${totalCheckout.toLocaleString('es-CO')}. ¿Deseas confirmar tu pedido?`,
-      "Sí, confirmar"
-    );
-
-    if (confirmed) {
+      // 2. Abrir el Widget oficial de Wompi (con fallback a Checkout Web si el widget es bloqueado)
+      let transaction = null;
       try {
-        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
-        const metodoPagoNormalizado = checkoutMetodoPago === "transferencia" ? "Transferencia" : "Tarjeta";
-
-        const ventaPayload = {
-          idCliente: user?.idCliente || null,
-          idUsuario: user?.idUsuario || user?.id || user?._id,
-          subtotal: clientSubtotal,
-          descuentoAplicado: clientDiscountMonto,
-          total: totalCheckout,
-          tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
-          tipoEntrega: tipoEntregaNormalizado,
-          metodoPago: metodoPagoNormalizado,
-          direccion: checkoutDireccion,
-          estadoEntrega: "PENDIENTE",
-          observaciones: JSON.stringify({
-            tipoEntrega: tipoEntregaNormalizado,
-            metodoPago: metodoPagoNormalizado,
-            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
-            especificaciones: checkoutEspecificaciones || "",
-            efectivoConCuanto: checkoutEfectivoPaga || "",
-            vueltoEfectivo: vueltoEfectivo || 0,
-            transferenciaReferencia: checkoutTransferReferencia || "",
-            transferenciaBanco: checkoutTransferBanco || "",
-            tarjetaNumero: checkoutTarjetaNumero ? `****${checkoutTarjetaNumero.replace(/\s/g, '').slice(-4)}` : "",
-            codigoPedido: `VEN-${String(Date.now()).slice(-4)}`,
-            productos: cart.map(item => {
-              const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-              const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-              const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
-              const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
-              return {
-                id: item.id,
-                idVariante: item.id,
-                nombre: item.nombre,
-                cantidad: item.cantidad,
-                cantidadCocina: kQty,
-                is2x1Promo: is2x1,
-                precioUnitario: Number(item.precio) || 0,
-                total: lineTotal,
-                observaciones: item.observacion || item.observaciones || item.especificaciones || "",
-                adiciones: (item.adiciones || []).map(a => ({
-                  idAdicion: a.idAdicion || a.id,
-                  nombre: a.nombre,
-                  precio: Number(a.precio) || 0,
-                  cantidad: Number(a.cantidad || 1)
-                }))
-              };
-            })
-          }),
-          detalles: cart.map(item => {
-            const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-            const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-            const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
-            const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
-            return {
-              idProducto: item.idProducto || item.id,
-              idVariante: item.idVariante || item.id || 1,
-              sabor: item.sabor || null,
-              cantidad: item.cantidad,
-              cantidadCocina: kQty,
-              is2x1Promo: is2x1,
-              precioUnitario: Number(item.precio) || 0,
-              subtotal: lineTotal,
-              idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
-              adiciones: item.adiciones || [],
-              observacion: item.observacion || item.observaciones || "",
-              observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
-            };
-          })
-        };
-
-        const nuevaVentaRes = await ventasService.createVenta(ventaPayload);
-        
-        // Save to client's local orders history so it is preserved even if deleted from DB
-        try {
-          const userId = user?.idUsuario || user?.id || user?._id;
-          const storageKey = `mis_pedidos_${userId || 'guest'}`;
-          const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          const orderId = nuevaVentaRes?.idVenta || nuevaVentaRes?.id || Date.now();
-          const orderCode = nuevaVentaRes?.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
-          
-          localHistory.unshift({
-            id: orderId,
-            numeroVenta: orderCode,
-            fecha: new Date().toLocaleString('es-CO'),
-            items: cart.map(it => ({
-              nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
-              cantidad: it.cantidad,
-              precio: it.precio
-            })),
-            total: totalCheckout,
-            estado: 'Por Aprobar'
-          });
-          localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
-        } catch (storageErr) {
-          console.warn("No se pudo guardar pedido en historial local:", storageErr);
+        transaction = await wompiService.abrirWidget({
+          referencia: intencion.referencia,
+          montoEnCentavos: intencion.montoEnCentavos,
+          moneda: intencion.moneda,
+          firma: intencion.firma,
+          publicKey: intencion.publicKey,
+          customerData: {
+            email: user?.email || "",
+            nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
+            telefono: user?.telefono || ""
+          }
+        });
+      } catch (widgetErr) {
+        console.warn("Widget embebido no disponible o bloqueado por navegador, activando Checkout Web:", widgetErr);
+        const directUrl = wompiService.generarUrlDirecta({
+          referencia: intencion.referencia,
+          montoEnCentavos: intencion.montoEnCentavos,
+          moneda: intencion.moneda,
+          firma: intencion.firma,
+          publicKey: intencion.publicKey
+        });
+        const win = window.open(directUrl, "_blank");
+        if (win) {
+          success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
+          clearCart();
+          setShowCart(false);
+          return;
         }
-
-        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado. Puedes consultar el detalle en tiempo real en Mi Perfil.");
-        clearCart();
-        setShowCheckout(false);
-        setShowCart(false);
-        if (refreshUser) await refreshUser();
-        navigate("/perfil");
-      } catch (err) {
-        console.error("Error confirmando pedido:", err);
-        error("Error al procesar pedido", err.message || "No se pudo conectar con el servidor");
+        throw widgetErr;
       }
+
+      // 3. Evaluar resultado retornado por Wompi
+      if (transaction && transaction.id) {
+        const verificacion = await wompiService.verificarTransaccion(transaction.id);
+
+        if (verificacion.aprobado) {
+          const orderId = verificacion.ventaId || intencion.ventaId || Date.now();
+          const orderCode = verificacion.numeroVenta || intencion.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
+
+          try {
+            const userId = user?.idUsuario || user?.id || user?._id;
+            const storageKey = `mis_pedidos_${userId || 'guest'}`;
+            const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            localHistory.unshift({
+              id: orderId,
+              numeroVenta: orderCode,
+              fecha: new Date().toLocaleString('es-CO'),
+              items: cart.map(it => ({
+                nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
+                cantidad: it.cantidad,
+                precio: it.precio
+              })),
+              total: totalCheckout,
+              estado: 'En Preparación'
+            });
+            localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
+          } catch (storageErr) {
+            console.warn("No se pudo guardar pedido en historial local:", storageErr);
+          }
+
+          success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina. Puedes ver su estado en Mi Perfil.`);
+          clearCart();
+          setShowCart(false);
+          if (refreshUser) await refreshUser();
+          navigate("/perfil");
+        } else if (verificacion.estado === 'PENDING') {
+          success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Puedes seguir su estado en Mi Perfil.");
+          clearCart();
+          setShowCart(false);
+          if (refreshUser) await refreshUser();
+          navigate("/perfil");
+        } else {
+          setShowCheckout(true);
+          error("Pago Rechazado", `La transacción fue ${verificacion.estado || 'rechazada'}. Puedes intentar con otro medio de pago.`);
+        }
+      } else if (transaction && transaction.status === 'REDIRECTED') {
+        return;
+      } else if (!transaction || transaction.status === 'CLOSED_WITHOUT_RESULT') {
+        setShowCheckout(true);
+        error("Pago cancelado", "Cerraste la pasarela antes de completar el pago.");
+      }
+    } catch (wompiErr) {
+      setShowCheckout(true);
+      console.error("Error en flujo de Wompi:", wompiErr);
+      const detail = wompiErr?.message || "No se pudo conectar con Wompi o el servidor";
+      error("Error en Wompi", detail);
+    } finally {
+      setIsProcessingWompi(false);
     }
   };
 
@@ -2882,68 +2738,30 @@ export function ClienteLanding() {
                 </div>
               </div>
 
-              {/* ── 2. Tipo de Entrega ── */}
-              <div className="space-y-3">
+              {/* ── 2. Modalidad de Entrega (100% Domicilio en Web) ── */}
+              <div className="space-y-2.5">
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
                   <Truck className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Tipo de Entrega</span>
+                  <span>Modalidad de Entrega</span>
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Card Domicilio */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutTipoEntrega("domicilio")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                      checkoutTipoEntrega === "domicilio"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex items-center gap-2">
-                        <Truck className={`w-4 h-4 ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
-                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
-                          Domicilio
-                        </span>
-                      </div>
-                      {checkoutTipoEntrega === "domicilio" && (
-                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
-                          ✓
-                        </span>
-                      )}
+                <div className="bg-[#FFF5F5] dark:bg-red-950/20 border border-[#E03E3E]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 text-[#E03E3E] flex items-center justify-center">
+                      <Truck className="w-4 h-4" />
                     </div>
-                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
-                      Llevamos tu pedido
-                    </span>
-                  </button>
-
-                  {/* Card Recoger */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutTipoEntrega("llevar")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                      checkoutTipoEntrega === "llevar"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex items-center gap-2">
-                        <Store className={`w-4 h-4 ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
-                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
-                          Recoger en Local
-                        </span>
-                      </div>
-                      {checkoutTipoEntrega === "llevar" && (
-                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
-                          ✓
-                        </span>
-                      )}
+                    <div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-gray-100 block">
+                        Entrega a Domicilio
+                      </span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Llevamos tu pedido directamente hasta tu puerta
+                      </span>
                     </div>
-                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
-                      Pasas a recogerlo
-                    </span>
-                  </button>
+                  </div>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1 shadow-2xs">
+                    <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <span>35 - 45 min</span>
+                  </span>
                 </div>
               </div>
 
@@ -2966,27 +2784,18 @@ export function ClienteLanding() {
                   />
                 </div>
 
-                {checkoutTipoEntrega === "domicilio" ? (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Dirección de entrega <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={checkoutDireccion}
-                      onChange={(e) => setCheckoutDireccion(e.target.value)}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
-                      placeholder="Ej: Calle 45 #12-30, Apto 201"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-3 flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67. Te notificaremos cuando esté listo.
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Dirección de entrega <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={checkoutDireccion}
+                    onChange={(e) => setCheckoutDireccion(e.target.value)}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
+                    placeholder="Ej: Calle 45 #12-30, Apto 201"
+                  />
+                </div>
               </div>
 
               {/* ── 4. Método de Pago ── */}
@@ -2994,186 +2803,71 @@ export function ClienteLanding() {
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-[#B91C1C]" />
-                    <span>Método de Pago</span>
+                    <span>Método de Pago en Línea</span>
                   </span>
                   <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Pago Seguro
+                    <ShieldCheck className="w-3.5 h-3.5" /> Pago 100% Seguro
                   </span>
                 </h4>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {/* Wompi (Online) */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("wompi")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer relative ${
-                      checkoutMetodoPago === "wompi"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm ring-2 ring-[#E03E3E]/20"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="absolute -top-2 right-2 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                      En Línea
-                    </span>
-                    <Zap className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-extrabold text-inherit">Wompi</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-tight">PSE, Nequi, Tarj.</span>
-                  </button>
 
-                  {/* Tarjeta en Sitio */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("tarjeta")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      checkoutMetodoPago === "tarjeta"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <CreditCard className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-bold text-inherit">Datáfono</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Al recibir</span>
-                  </button>
-
-                  {/* Transferencia */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("transferencia")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      checkoutMetodoPago === "transferencia"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Smartphone className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-bold text-inherit">Transferencia</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Manual</span>
-                  </button>
-                </div>
-
-                {/* Sub-formulario Wompi */}
-                {checkoutMetodoPago === "wompi" && (
-                  <div className="bg-gradient-to-br from-amber-50/60 via-red-50/30 to-orange-50/50 dark:from-red-950/20 dark:to-orange-950/10 border border-red-200 dark:border-red-900/40 rounded-2xl p-4 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-xl bg-[#E03E3E] text-white flex items-center justify-center font-black text-xs">
-                          W
-                        </div>
-                        <div>
-                          <p className="text-xs font-extrabold text-gray-900 dark:text-gray-100">Pasarela Oficial Wompi (Bancolombia)</p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400">Paga al instante sin comisiones adicionales</p>
-                        </div>
+                {/* Tarjeta Destacada de Pasarela Oficial Wompi */}
+                <div className="bg-gradient-to-br from-amber-50/70 via-red-50/40 to-orange-50/50 dark:from-red-950/30 dark:to-orange-950/20 border-2 border-[#E03E3E]/30 dark:border-red-800/50 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#B91C1C] to-[#E03E3E] text-white flex items-center justify-center font-black text-sm shadow-sm ring-2 ring-red-200 dark:ring-red-900">
+                        W
                       </div>
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                        <Beaker className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                        <span>Sandbox Activo</span>
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-black text-gray-900 dark:text-gray-100">Pasarela Oficial Wompi</p>
+                          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">(Bancolombia)</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Canal exclusivo y seguro para compras web</p>
+                      </div>
                     </div>
+                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 shadow-2xs">
+                      <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 fill-current" />
+                      <span>Pago Inmediato</span>
+                    </span>
+                  </div>
 
-                    <div className="grid grid-cols-4 gap-1.5 pt-1">
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-purple-700 dark:text-purple-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="mobile" size={12} className="text-purple-600 dark:text-purple-400" />
+                  {/* Opciones disponibles dentro de Wompi */}
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Medios de pago disponibles en la pasarela:
+                    </p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-purple-700 dark:text-purple-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="mobile" size={14} className="text-purple-600 dark:text-purple-400" />
                         <span>Nequi</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="bank" size={12} className="text-blue-600 dark:text-blue-400" />
-                        <span>PSE</span>
+                      <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-blue-700 dark:text-blue-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="bank" size={14} className="text-blue-600 dark:text-blue-400" />
+                        <span>PSE (Bancos)</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="card" size={12} className="text-emerald-600 dark:text-emerald-400" />
-                        <span>Tarjetas</span>
+                      <div className="bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="card" size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Tarjetas C/D</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="bank" size={12} className="text-amber-600 dark:text-amber-400" />
+                      <div className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-amber-700 dark:text-amber-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="bank" size={14} className="text-amber-600 dark:text-amber-400" />
                         <span>Bancolombia</span>
                       </div>
                     </div>
-
-                    <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
-                      Al presionar <strong>Pagar con Wompi</strong> se abrirá la ventana emergente segura donde podrás escoger tu método favorito. Tu pedido pasará a cocina automáticamente al completarse el pago.
-                    </p>
                   </div>
-                )}
 
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
+                    Al confirmar, se abrirá el formulario seguro de Wompi. Una vez completado tu pago, el pedido pasará directamente a preparación en cocina.
+                  </p>
+                </div>
 
-                {/* Sub-formulario Tarjeta */}
-                {checkoutMetodoPago === "tarjeta" && (
-                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Número de tarjeta <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl px-4 py-2.5 shadow-2xs">
-                        <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
-                        <input
-                          type="text"
-                          value={checkoutTarjetaNumero}
-                          onChange={(e) => {
-                            const v = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
-                            setCheckoutTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, '$1 '));
-                          }}
-                          placeholder="0000 0000 0000 0000"
-                          className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Monto a cargar
-                      </label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={`$ ${totalCheckout.toLocaleString('es-CO')}`}
-                        className="w-full px-4 py-2.5 bg-white/70 dark:bg-gray-800/80 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-700 dark:text-gray-200 outline-none cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-formulario Transferencia */}
-                {checkoutMetodoPago === "transferencia" && (
-                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Entidad / Banco origen
-                      </label>
-                      <select
-                        value={checkoutTransferBanco}
-                        onChange={(e) => setCheckoutTransferBanco(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
-                      >
-                        <optgroup label="Billeteras digitales">
-                          <option value="Nequi">Nequi</option>
-                          <option value="Daviplata">Daviplata</option>
-                        </optgroup>
-                        <optgroup label="Bancos">
-                          <option value="Bancolombia">Bancolombia</option>
-                          <option value="Davivienda">Davivienda</option>
-                          <option value="BBVA">BBVA</option>
-                          <option value="Banco de Bogotá">Banco de Bogotá</option>
-                          <option value="Banco Caja Social">Banco Caja Social</option>
-                          <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
-                          <option value="Otro">Otro</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                    <div className="bg-blue-100/70 dark:bg-blue-900/30 p-2.5 rounded-xl text-xs text-[#1E40AF] dark:text-blue-300 font-medium">
-                      Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Número de referencia <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={checkoutTransferReferencia}
-                        onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
-                        placeholder="Ej: 987654321"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
+                {/* Nota informativa: Pagos en físico */}
+                <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl px-3.5 py-2.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300 shadow-2xs">
+                  <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span className="leading-snug">
+                    <strong>Aviso:</strong> En la plataforma web las órdenes se procesan únicamente mediante la pasarela segura en línea Wompi. Medios manuales (efectivo, datáfono presencial o transferencias manuales) aplican de forma exclusiva en el punto de venta físico.
+                  </span>
+                </div>
               </div>
 
               {/* ── 5. Especificaciones ── */}
@@ -3221,28 +2915,17 @@ export function ClienteLanding() {
                 type="button"
                 disabled={isProcessingWompi}
                 onClick={handleConfirmarPedido}
-                className={`w-full py-4 font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
-                  isProcessingWompi
-                    ? "bg-gray-400 text-white cursor-not-allowed"
-                    : checkoutMetodoPago === "wompi"
-                      ? "bg-gradient-to-r from-[#E03E3E] to-[#B91C1C] hover:from-[#C92A2A] hover:to-[#991B1B] text-white active:scale-98"
-                      : "bg-[#E03E3E] hover:bg-[#C92A2A] active:scale-98 text-white"
-                }`}
+                className="w-full py-4 font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-[#E03E3E] to-[#B91C1C] hover:from-[#C92A2A] hover:to-[#991B1B] text-white active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessingWompi ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Conectando con Wompi...</span>
                   </>
-                ) : checkoutMetodoPago === "wompi" ? (
-                  <>
-                    <Zap className="w-5 h-5" />
-                    <span>Pagar con Wompi en Línea (${totalCheckout.toLocaleString('es-CO')})</span>
-                  </>
                 ) : (
                   <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Confirmar Pedido</span>
+                    <Zap className="w-5 h-5 fill-current" />
+                    <span>Pagar con Wompi en Línea (${totalCheckout.toLocaleString('es-CO')} COP)</span>
                   </>
                 )}
               </button>

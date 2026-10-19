@@ -194,7 +194,16 @@ export function Login() {
       toast.success("¡Bienvenido!", "Inicio de sesión exitoso");
       setTimeout(() => navigate("/"), 500);
     } else {
-      toast.error("Error de autenticación", result?.message || "Correo o contraseña incorrectos");
+      const msg = result?.message || "";
+      if (
+        msg.toLowerCase().includes("la cuenta no existe") ||
+        msg.toLowerCase().includes("no existe") ||
+        result?.status === 404
+      ) {
+        toast.error("La cuenta no existe", "No se encontró ninguna cuenta registrada con este correo.");
+      } else {
+        toast.error("Error de autenticación", msg || "Correo o contraseña incorrectos");
+      }
     }
     setIsLoginLoading(false);
   };

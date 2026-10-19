@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
@@ -11,6 +12,7 @@ import { useToast } from "@/shared/context/ToastContext";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export default function PosVendedor() {
+  const navigate = useNavigate();
   const toast = useToast();
   const {
     categorias,
@@ -244,7 +246,18 @@ export default function PosVendedor() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
+          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
+            <button
+              type="button"
+              onClick={() => navigate("/ventas/gestion-ventas")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Volver a Gestión de Ventas"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#F05454]" />
+              <span className="hidden sm:inline">Gestión de Ventas</span>
+            </button>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
             <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
             <input
               aria-label="Buscar producto"
@@ -263,6 +276,7 @@ export default function PosVendedor() {
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
+            </div>
           </div>
         </header>
 

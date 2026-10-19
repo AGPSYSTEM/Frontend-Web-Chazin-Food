@@ -50,7 +50,7 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   const transacciones = Array.isArray(cliente.transacciones) ? cliente.transacciones : [];
 
   const totalComprasCount = cliente.compras || transacciones.length;
-  const totalGastadoStr = cliente.totalGastado || "$0";
+  const totalConsumidoStr = cliente.totalConsumido || cliente.totalGastado || "$0";
   const ticketPromedioStr = cliente.ticketPromedio || "$0";
   const comprasMes = cliente.comprasMes || (totalComprasCount > 0 ? (totalComprasCount / 3).toFixed(1) : "0.0");
   const frecuenciaTipo = cliente.frecuenciaTipo || (totalComprasCount > 10 ? "Frecuente" : totalComprasCount > 2 ? "Mensual" : "Esporádico");
@@ -150,8 +150,8 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
               <p className="text-2xl font-black text-blue-700 dark:text-blue-300 mt-0.5">{totalComprasCount}</p>
             </div>
             <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 text-center">
-              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Total Gastado</p>
-              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{totalGastadoStr}</p>
+              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Total Consumido</p>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{totalConsumidoStr}</p>
             </div>
             <div className="p-3.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900/40 text-center">
               <p className="text-[11px] font-semibold text-purple-600 dark:text-purple-400">Ticket Promedio</p>

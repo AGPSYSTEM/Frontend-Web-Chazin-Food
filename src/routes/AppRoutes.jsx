@@ -161,10 +161,16 @@ export function AppRoutes() {
       allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
+  // If user has "Gestión de Ventas", grant route access to POS for the "Crear venta" button
+  if (userPermisos.includes("Gestión de Ventas") && !allowedRoutesMap.has("ventas/pos")) {
+    allowedRoutesMap.set("ventas/pos", PERMISSION_ROUTE_MAP["Punto de Venta"]);
+  }
   const allowedRoutes = Array.from(allowedRoutesMap.values());
 
   const hasDashboard = userPermisos.includes("Dashboard");
-  const defaultPath = (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))
+  const defaultPath = userPermisos.includes("Gestión de Ventas")
+    ? "ventas/gestion-ventas"
+    : (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))
     ? "ventas/pos"
     : (allowedRoutes.length > 0 ? allowedRoutes[0].path : "");
 

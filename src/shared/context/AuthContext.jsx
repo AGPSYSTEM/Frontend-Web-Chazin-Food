@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
       return { success: false, message: "Error al iniciar sesión" };
     } catch (err) {
       console.error("Error en login:", err);
-      return { success: false, message: err.message || "Correo o contraseña incorrectos" };
+      return { success: false, message: err.message || "Correo o contraseña incorrectos", status: err.status };
     }
   };
 
@@ -98,9 +98,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithGoogle = async (credential) => {
+  const loginWithGoogle = async (credential, options = {}) => {
     try {
-      const userData = await apiClient.post("/usuarios/google", { credential });
+      const payload = typeof credential === "object" ? { ...credential, ...options } : { credential, ...options };
+      const userData = await apiClient.post("/usuarios/google", payload);
       if (userData) {
         setUser(userData);
         localStorage.setItem("chazin_user", JSON.stringify(userData));
@@ -109,7 +110,7 @@ export function AuthProvider({ children }) {
       return { success: false, message: "Error al iniciar sesión con Google" };
     } catch (err) {
       console.error("Error en loginWithGoogle:", err);
-      return { success: false, message: err.message || "Fallo al conectar con Google" };
+      return { success: false, message: err.message || "Fallo al conectar con Google", status: err.status };
     }
   };
 
