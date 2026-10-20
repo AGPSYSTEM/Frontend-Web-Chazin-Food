@@ -22,8 +22,21 @@ export function getAuthHeaders() {
  * Generic fetch wrapper for API calls
  */
 export async function apiFetch(endpoint, options = {}) {
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  let url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   
+  if (options.params && typeof options.params === 'object') {
+    const searchParams = new URLSearchParams();
+    Object.entries(options.params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        searchParams.append(key, val);
+      }
+    });
+    const qs = searchParams.toString();
+    if (qs) {
+      url += (url.includes('?') ? '&' : '?') + qs;
+    }
+  }
+
   const defaultHeaders = getAuthHeaders();
   const config = {
     ...options,
@@ -36,6 +49,11 @@ export async function apiFetch(endpoint, options = {}) {
   const response = await fetch(url, config);
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('chazin_user');
+      } catch (_) {}
+    }
     let errorMessage = `HTTP error ${response.status}`;
     try {
       const errorData = await response.json();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   X,
   Plus,
@@ -22,11 +22,13 @@ import {
   Award,
   Send,
   User as UserIcon,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Lock
 } from "lucide-react";
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import postobonUvaImg from "@/shared/assets/drinks/postobon_uva.jpg";
@@ -187,15 +189,23 @@ export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, 
 
   const prodName = String(prod?.nombre || "").toLowerCase();
 
-  const dietActive =
-    isDiet ||
-    variantName.includes("light") ||
-    variantName.includes("sin az") ||
-    variantName.includes("zero") ||
-    variantName.includes("black") ||
-    prodName.includes("light") ||
-    prodName.includes("sin az") ||
-    prodName.includes("zero");
+  const isExplicitlyRegular =
+    variantName.includes("con az") ||
+    variantName.includes("con azúcar") ||
+    variantName.includes("con azucar") ||
+    variantName.includes("original") ||
+    variantName.includes("regular");
+
+  let dietActive = false;
+  if (!isExplicitlyRegular) {
+    if (isDiet) {
+      dietActive = true;
+    } else if (variantName.includes("light") || variantName.includes("sin az") || variantName.includes("zero") || variantName.includes("black")) {
+      dietActive = true;
+    } else if (!variantName && (prodName.includes("light") || prodName.includes("sin az") || prodName.includes("zero"))) {
+      dietActive = true;
+    }
+  }
 
   const hasExplicitFlavor =
     variantName.includes("uva") ||
@@ -322,7 +332,10 @@ export const detectDefaultDrinkSize = (prod) => {
   return "400ml";
 };
 
-export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
+import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
+export { isEssentialIngredient };
+
+export const resolveInsumoPersonalizable = (detalleOrInsumo, producto = null) => {
   const rawName = String(
     detalleOrInsumo?.insumo?.nombre ||
     detalleOrInsumo?.nombreInsumo ||
@@ -350,26 +363,28 @@ export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
     return null;
   }
 
-  // Mapeo semántico de icono vectorial FoodIcon
+  // Mapeo semántico de icono vectorial FoodIcon (vegetales e ingredientes frescos primero)
   let icono = "kitchen";
-  if (n.includes("pan") || n.includes("brioche")) icono = "bread";
-  else if (n.includes("carne") || n.includes("res") || n.includes("hamburguesa")) icono = "meat";
-  else if (n.includes("pollo") || n.includes("pechuga") || n.includes("alitas")) icono = "chicken";
-  else if (n.includes("salchicha") || n.includes("chorizo") || n.includes("butifarra")) icono = "sausage";
-  else if (n.includes("papa") || n.includes("ripio") || n.includes("francesa")) icono = "fries";
+  if (n.includes("lechuga") || n.includes("lettuce")) icono = "lettuce";
+  else if (n.includes("suero") || n.includes("suero costeño") || n.includes("suero costeno")) icono = "suero_costeno";
+  else if (n.includes("tomate") || n.includes("tomato")) icono = "tomato";
+  else if (n.includes("cebolla") || n.includes("onion")) icono = "onion";
+  else if (n.includes("salsa de queso") || n.includes("salsa queso") || (n.includes("salsa") && (n.includes("queso") || n.includes("cheddar")))) icono = "salsa_queso";
   else if (n.includes("queso") || n.includes("cheddar") || n.includes("mozzarella") || n.includes("costeño") || n.includes("costeno")) icono = "cheese";
   else if (n.includes("tocineta") || n.includes("bacon") || n.includes("tocino")) icono = "bacon";
-  else if (n.includes("cebolla")) icono = "onion";
-  else if (n.includes("tomate")) icono = "tomato";
-  else if (n.includes("lechuga")) icono = "lettuce";
+  else if (n.includes("aguacate") || n.includes("guacamole") || n.includes("avocado")) icono = "avocado";
+  else if (n.includes("jalapeño") || n.includes("jalapeno") || n.includes("chile") || n.includes("picante") || n.includes("pepper")) icono = "pepper";
+  else if (n.includes("champiñon") || n.includes("champinon") || n.includes("hongo") || n.includes("mushroom")) icono = "mushroom";
+  else if (n.includes("carne") || n.includes("hamburguesa") || n.includes("de res") || /\bres\b/.test(n) || n.includes("patty") || n.includes("beef")) icono = "meat";
+  else if (n.includes("pollo") || n.includes("pechuga") || n.includes("alitas") || n.includes("chicken")) icono = "chicken";
+  else if (n.includes("salchicha") || n.includes("chorizo") || n.includes("butifarra") || n.includes("sausage")) icono = "sausage";
+  else if (n.includes("papa") || n.includes("ripio") || n.includes("francesa") || n.includes("fries")) icono = "fries";
+  else if (n.includes("pan") || n.includes("brioche") || n.includes("bread")) icono = "bread";
   else if (n.includes("salsa") || n.includes("mayonesa") || n.includes("tartara") || n.includes("tártara") || n.includes("bbq") || n.includes("mostaza") || n.includes("ketchup")) icono = "sauce";
-  else if (n.includes("huevo") || n.includes("codorniz")) icono = "egg";
-  else if (n.includes("champiñon") || n.includes("champinon") || n.includes("hongo")) icono = "mushroom";
-  else if (n.includes("jalapeño") || n.includes("jalapeno") || n.includes("chile") || n.includes("picante")) icono = "pepper";
-  else if (n.includes("aguacate") || n.includes("guacamole")) icono = "avocado";
+  else if (n.includes("huevo") || n.includes("codorniz") || n.includes("egg")) icono = "egg";
   else if (n.includes("maiz") || n.includes("maíz") || n.includes("choclo")) icono = "salad";
   else if (n.includes("pepinillo")) icono = "salad";
-  else if (n.includes("zanahoria")) icono = "carrot";
+  else if (n.includes("zanahoria") || n.includes("carrot")) icono = "carrot";
 
   // ID único normalizado
   const cleanId = rawName
@@ -380,10 +395,13 @@ export const resolveInsumoPersonalizable = (detalleOrInsumo) => {
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
 
+  const isEssential = isEssentialIngredient(rawName, producto);
+
   return {
     id: cleanId,
     nombre: rawName,
-    icono
+    icono,
+    esencial: isEssential
   };
 };
 
@@ -400,7 +418,7 @@ export const extractPersonalizables = (producto, ficha) => {
   // 1. EXTRAER DIRECTAMENTE DE LA FICHA TÉCNICA (DETALLES CON INSUMOS REALES)
   if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
     for (const d of ficha.detalles) {
-      const item = resolveInsumoPersonalizable(d);
+      const item = resolveInsumoPersonalizable(d, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
         seenNames.add(item.nombre.toLowerCase());
         items.push(item);
@@ -411,7 +429,7 @@ export const extractPersonalizables = (producto, ficha) => {
   // 2. EXTRAER DE FICHA.INGREDIENTES (SI EXISTE ARRAY DE INGREDIENTES)
   if (ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
     for (const s of ficha.ingredientes) {
-      const item = resolveInsumoPersonalizable(s);
+      const item = resolveInsumoPersonalizable(s, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
         seenNames.add(item.nombre.toLowerCase());
         items.push(item);
@@ -436,7 +454,7 @@ export const extractPersonalizables = (producto, ficha) => {
 
   const FALLBACK_CANDIDATES = [
     { id: "pan", nombre: "Pan Brioche", icono: "bread", aliases: ["pan", "brioche", "artesanal"] },
-    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "res", "beef", "patty"] },
+    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "de res", "carne de res", "beef", "patty"] },
     { id: "pollo", nombre: "Pechuga de Pollo", icono: "chicken", aliases: ["pollo", "chicken", "pechuga"] },
     { id: "salchicha", nombre: "Salchicha", icono: "sausage", aliases: ["salchicha", "suiza", "americana", "hot dog", "perro"] },
     { id: "papas", nombre: "Papas a la Francesa", icono: "fries", aliases: ["papa", "papas", "francesa", "salchipapa"] },
@@ -445,6 +463,7 @@ export const extractPersonalizables = (producto, ficha) => {
     { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion", "caramelizada"] },
     { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
     { id: "lechuga", nombre: "Lechuga Batavia", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
+    { id: "suero_costeno", nombre: "Suero Costeño", icono: "suero_costeno", aliases: ["suero", "suero costeño", "suero costeno", "suerito"] },
     { id: "salsas", nombre: "Salsas de la Casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce", "tártara", "tartara", "bbq"] },
     { id: "ripio", nombre: "Ripio de Papa", icono: "fries", aliases: ["ripio", "chips"] },
     { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] },
@@ -453,7 +472,12 @@ export const extractPersonalizables = (producto, ficha) => {
     { id: "maiz", nombre: "Maíz Tierno", icono: "salad", aliases: ["maiz", "maíz", "choclo"] }
   ];
 
-  return FALLBACK_CANDIDATES.filter((c) => c.aliases.some((alias) => combined.includes(alias)));
+  return FALLBACK_CANDIDATES
+    .filter((c) => c.aliases.some((alias) => combined.includes(alias)))
+    .map((c) => ({
+      ...c,
+      esencial: isEssentialIngredient(c.nombre, producto)
+    }));
 };
 
 const QUICK_KITCHEN_TAGS = [
@@ -629,6 +653,7 @@ export function FastFoodProductModal({
   mode = "pos", // "pos" | "cliente"
   initialTab = "personalizar"
 }) {
+  const { warning } = useNotifications();
   const { user, isAuthenticated } = useAuth?.() || {};
   const isDrink = isDrinkProduct(producto);
   const drinkHasSizes = hasDrinkSizes(producto);
@@ -716,7 +741,17 @@ export function FastFoodProductModal({
     if (distinctFlavorVariants.length > 0) {
       let origName = "Sabor Original";
       let origPid = producto?.id || producto?.idProducto;
-      if (isCoca) { origName = "Coca-Cola Original"; origPid = 8; }
+      const isCocaDiet = isCoca && (baseName.includes("sin az") || baseName.includes("light") || baseName.includes("zero"));
+
+      if (isCoca) {
+        if (isCocaDiet) {
+          origName = "Coca-Cola Sin Azúcar / Light";
+          origPid = 16;
+        } else {
+          origName = "Coca-Cola Original";
+          origPid = 8;
+        }
+      }
       else if (isPepsi) { origName = "Pepsi Regular"; origPid = 11; }
       else if (baseName.includes("uva")) { origName = "Gaseosa Uva Postobón"; origPid = 38; }
       else if (baseName.includes("naranja")) { origName = "Gaseosa Naranja Postobón"; origPid = 39; }
@@ -731,9 +766,10 @@ export function FastFoodProductModal({
         nombre: origName,
         esOriginal: true,
         precio: Number(producto?.precio || 0),
-        imagen: getDrinkBottleImage("400ml", producto, null, false) ||
-                (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
+        imagen: getDrinkBottleImage("400ml", producto, origName, isCocaDiet) ||
+                (isCocaDiet ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
                 (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
                 producto?.imagen || null
       };
 
@@ -742,9 +778,14 @@ export function FastFoodProductModal({
         let cleanDisplayName = v.nombre;
         let targetPid = v.idProducto || producto?.id || producto?.idProducto;
 
-        if (isCoca && (vn.includes("light") || vn.includes("sin az") || vn.includes("zero"))) {
-          cleanDisplayName = "Coca-Cola Sin Azúcar / Light";
-          targetPid = 16;
+        if (isCoca) {
+          if (vn.includes("light") || vn.includes("sin az") || vn.includes("zero")) {
+            cleanDisplayName = "Coca-Cola Sin Azúcar / Light";
+            targetPid = 16;
+          } else if (vn.includes("con az") || vn.includes("azucar") || vn.includes("azúcar") || vn.includes("original") || vn.includes("regular")) {
+            cleanDisplayName = "Coca-Cola Original (Con Azúcar)";
+            targetPid = 8;
+          }
         } else if (isPepsi && (vn.includes("light") || vn.includes("black") || vn.includes("zero"))) {
           cleanDisplayName = "Pepsi Light / Black";
           targetPid = 11;
@@ -762,7 +803,8 @@ export function FastFoodProductModal({
           targetPid = 9;
         }
 
-        const fallbackImg = getDrinkBottleImage("400ml", producto, v, false) || v.imagen;
+        const isDietFlag = cleanDisplayName.toLowerCase().includes("sin az") || cleanDisplayName.toLowerCase().includes("light") || cleanDisplayName.toLowerCase().includes("zero");
+        const fallbackImg = getDrinkBottleImage("400ml", producto, cleanDisplayName, isDietFlag) || v.imagen;
         return {
           ...v,
           nombre: cleanDisplayName,
@@ -929,6 +971,16 @@ export function FastFoodProductModal({
   const personalizables = useMemo(
     () => extractPersonalizables(producto, liveFicha),
     [producto, liveFicha]
+  );
+
+  const baseIngredients = useMemo(
+    () => personalizables.filter((i) => i.esencial),
+    [personalizables]
+  );
+
+  const customizableIngredients = useMemo(
+    () => personalizables.filter((i) => !i.esencial),
+    [personalizables]
   );
 
   // Imagen específica de variantes conocidas como Coca-Cola Sin Azúcar / Light
@@ -1153,9 +1205,17 @@ export function FastFoodProductModal({
     }
   };
 
-  // Re-initialize state when a new product is passed
+  const lastInitKeyRef = useRef(null);
+
+  // Re-initialize state only once when a new product is opened or modal opens
   useEffect(() => {
-    if (producto && isOpen) {
+    if (!isOpen || !producto) {
+      lastInitKeyRef.current = null;
+      return;
+    }
+    const currentKey = `${producto.id || producto.idProducto}_${isOpen}`;
+    if (lastInitKeyRef.current !== currentKey) {
+      lastInitKeyRef.current = currentKey;
       const drinkMode = isDrinkProduct(producto);
       const hasSizes = hasDrinkSizes(producto);
       if (drinkMode) {
@@ -1183,7 +1243,7 @@ export function FastFoodProductModal({
       setShowFullDesc(false);
       fetchReviews();
     }
-  }, [producto, isOpen, fetchReviews, initialTab, liveFicha]);
+  }, [producto?.id, producto?.idProducto, isOpen, fetchReviews, initialTab]);
 
   // Keyboard shortcut: Escape to close
   useEffect(() => {
@@ -1195,16 +1255,6 @@ export function FastFoodProductModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  // Si la ficha técnica se carga de forma asíncrona y contiene personalizables, enfocar automáticamente la pestaña de personalizar
-  useEffect(() => {
-    if (isOpen && producto && !isDrink && liveFicha && (!initialTab || initialTab === "personalizar")) {
-      const items = extractPersonalizables(producto, liveFicha);
-      if (items.length > 0 && activeTab !== "resenas" && activeTab !== "bebidas") {
-        setActiveTab("personalizar");
-      }
-    }
-  }, [liveFicha, producto, isDrink, initialTab, isOpen, activeTab]);
 
   // Helper de Evento Activo para el Producto (Fast-food LTO / Festival drops)
   const eventInfo = (() => {
@@ -1343,8 +1393,9 @@ export function FastFoodProductModal({
       : 99
   );
 
-  // Toggle remover ingrediente
+  // Toggle remover ingrediente (protegido por lógica humana de cocina)
   const toggleRemoveIngredient = (nombre) => {
+    if (isEssentialIngredient(nombre, producto)) return;
     setRemovedIngredients((prev) =>
       prev.includes(nombre) ? prev.filter((i) => i !== nombre) : [...prev, nombre]
     );
@@ -1462,18 +1513,27 @@ export function FastFoodProductModal({
   const isCoca = String(producto?.nombre || "").toLowerCase().includes("coca");
 
   const isDietSelected = Boolean(
-    selectedVariant && (
-      selectedVariant.idVariante === 20 ||
-      selectedVariant.idVariante === 22 ||
-      selectedVariant.idVariante === 58 ||
-      selectedVariant.idVariante === 65 ||
-      selectedVariant.idVariante === 76 ||
-      selectedVariant.idVariante === 77 ||
-      selectedVariant.idVariante === 78 ||
-      selectedVariant.idVariante === 79 ||
-      selectedVariant.idVariante === 80 ||
-      /sin azúcar|sin azucar|light|zero|black/i.test(selectedVariant.nombre || "")
-    )
+    selectedVariant && (() => {
+      const vn = String(selectedVariant.nombre || "").toLowerCase();
+      if (vn.includes("con az") || vn.includes("original") || vn.includes("regular")) return false;
+      if (selectedVariant.idVariante === 78) return false;
+      if (
+        selectedVariant.idVariante === 20 ||
+        selectedVariant.idVariante === 22 ||
+        selectedVariant.idVariante === 58 ||
+        selectedVariant.idVariante === 65 ||
+        selectedVariant.idVariante === 76 ||
+        selectedVariant.idVariante === 77 ||
+        selectedVariant.idVariante === 79 ||
+        selectedVariant.idVariante === 80 ||
+        /sin azúcar|sin azucar|light|zero|black/i.test(vn)
+      ) return true;
+      if (selectedVariant.esOriginal) {
+        const pn = String(producto?.nombre || "").toLowerCase();
+        return pn.includes("sin az") || pn.includes("light") || pn.includes("zero");
+      }
+      return false;
+    })()
   );
 
   const matchedSizeVariant = drinkHasSizes
@@ -1513,8 +1573,12 @@ export function FastFoodProductModal({
 
       if (isCocaProd && (vNameLower.includes("sin az") || vNameLower.includes("light") || vNameLower.includes("zero"))) {
         baseName = "Coca-Cola Sin Azúcar / Light";
+      } else if (isCocaProd && (vNameLower.includes("con az") || vNameLower.includes("original") || vNameLower.includes("regular"))) {
+        baseName = "Coca-Cola Original";
       } else if (isPepsiProd && (vNameLower.includes("light") || vNameLower.includes("black") || vNameLower.includes("zero"))) {
         baseName = "Pepsi Light / Black";
+      } else if (isPepsiProd && (vNameLower.includes("con az") || vNameLower.includes("original") || vNameLower.includes("regular"))) {
+        baseName = "Pepsi Regular";
       } else if (vNameLower.includes("uva")) {
         baseName = "Gaseosa Uva Postobón";
       } else if (vNameLower.includes("naranja")) {
@@ -1570,7 +1634,7 @@ export function FastFoodProductModal({
   const handleConfirm = () => {
     if (isComboWithDrinks && !isComboDrinkComplete) {
       setActiveTab("bebidas");
-      alert(`Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
+      warning("Bebidas requeridas", `Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
       return;
     }
 
@@ -1682,16 +1746,39 @@ export function FastFoodProductModal({
     }
 
     const cleanBaseName = drinkHasSizes ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : producto.nombre;
-    const customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
+    let customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
+
+    // Detección de promo 2x1 ("Paga 1 y lleva 2")
+    const is2x1Promo = Boolean(
+      eventInfo && (
+        eventInfo.tipo === "PROMOCION_2X1" ||
+        eventInfo.tipoEvento === "PROMOCION_2X1" ||
+        String(eventInfo.nombre || "").toLowerCase().includes("2x1") ||
+        String(eventInfo.descripcion || "").toLowerCase().includes("lleva 2") ||
+        String(eventInfo.descripcion || "").toLowerCase().includes("paga 1")
+      )
+    );
+
+    const kitchenPrepQty = is2x1Promo ? quantity * 2 : quantity;
+    if (is2x1Promo && !customName.toLowerCase().includes("2x1") && !customName.toLowerCase().includes("lleva 2")) {
+      customName = `${customName} (Promo 2x1 - Paga 1 Lleva 2)`;
+    }
+
+    const safeRemovedIngredients = isDrink
+      ? []
+      : removedIngredients.filter((r) => !isEssentialIngredient(r, producto));
 
     const personalizacionesFormatted = isDrink
       ? [
           formulaTitle ? `Sabor: ${formulaTitle}` : null,
           drinkHasSizes ? `Presentación: ${selectedSizeObj.label}` : null
         ].filter(Boolean)
-      : removedIngredients.map((r) => `Sin ${r}`);
+      : safeRemovedIngredients.map((r) => `Sin ${r}`);
 
     let fullNotes = [];
+    if (is2x1Promo) {
+      fullNotes.push(`🔥 ¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${quantity} pagada + ${kitchenPrepQty - quantity} gratis)`);
+    }
     if (isComboWithDrinks && selectedDrinks.length > 0) {
       const drinksSummary = selectedDrinks
         .map((d) => `${d.cantidad || 1}x ${d.nombre}`)
@@ -1715,18 +1802,22 @@ export function FastFoodProductModal({
         saborSeleccionado: formulaTitle || cleanBaseName,
         configuracionCombo: comboConfig,
         precio: basePrice,
-        imagen: heroImage
+        imagen: heroImage,
+        is2x1Promo,
+        cantidadCocina: kitchenPrepQty
       },
       idVariante: chosenVarId,
       idProducto: targetProdId,
       cantidad: quantity,
+      cantidadCocina: kitchenPrepQty,
+      is2x1Promo,
       adiciones: isDrink ? [] : selectedAdditions,
       bebidas: isDrink ? [] : selectedDrinks,
       bebidasDelCombo: isComboWithDrinks ? selectedDrinks : [],
       isCombo: isComboWithDrinks,
       sabor: formulaTitle || cleanBaseName,
       personalizaciones: personalizacionesFormatted,
-      ingredientesRemovidos: isDrink ? [] : removedIngredients,
+      ingredientesRemovidos: safeRemovedIngredients,
       observacion: finalObservationString,
       totalCalculado: grandTotal
     });
@@ -1752,7 +1843,7 @@ export function FastFoodProductModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
+      <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl sm:max-w-[700px] w-full shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         {/* ── Festival Drop Top Ribbon (Fast Food Industry Event Bar) ── */}
         {eventInfo && (
           <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
@@ -2029,24 +2120,24 @@ export function FastFoodProductModal({
           )}
 
           {/* ═══ 2. TABS NAVIGATION (CONDICIONADO: BEBIDAS TIENEN SABORES; COMIDA TIENE PERSONALIZAR Y ADICIONES) ═══ */}
-          <div className="px-4 sm:px-6 pt-3 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl overflow-x-auto no-scrollbar">
+          <div className="px-3 sm:px-4 pt-2.5 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl w-full">
               {isDrink ? (
                 <>
                   {drinkHasSizes && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("presentacion")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "presentacion"
                           ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
                       <Layers className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Tamaño & Presentación</span>
+                      <span className="truncate">Tamaño & Presentación</span>
                       <span
-                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-black leading-none whitespace-nowrap inline-flex items-center justify-center transition-colors ${
+                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black leading-none whitespace-nowrap inline-flex items-center justify-center transition-colors ${
                           activeTab === "presentacion"
                             ? "bg-[#f05454] text-white shadow-xs"
                             : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -2060,29 +2151,29 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Ficha Técnica</span>
+                    <span>Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Reseñas</span>
+                    <span>Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}
@@ -2094,17 +2185,19 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("personalizar")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "personalizar"
                           ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                           : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                       }`}
                     >
-                      <Sliders className="w-3.5 h-3.5 shrink-0" />
-                      <span className="whitespace-nowrap">Personalizar</span>
+                      <ChefHat className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
+                      </span>
                       {removedIngredients.length > 0 && (
-                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
-                          {removedIngredients.length}
+                        <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-[#f05454] text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                          -{removedIngredients.length}
                         </span>
                       )}
                     </button>
@@ -2113,16 +2206,16 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("adiciones")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "adiciones"
                         ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Flame className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Adiciones</span>
+                    <span>Adiciones</span>
                     {selectedAdditions.length > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-[#f05454] text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {selectedAdditions.length}
                       </span>
                     )}
@@ -2132,7 +2225,7 @@ export function FastFoodProductModal({
                     <button
                       type="button"
                       onClick={() => setActiveTab("bebidas")}
-                      className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                      className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                         activeTab === "bebidas"
                           ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm"
                           : isComboWithDrinks && !isComboDrinkComplete
@@ -2141,15 +2234,15 @@ export function FastFoodProductModal({
                       }`}
                     >
                       <FoodIcon name="drink" size={13} className="shrink-0" />
-                      <span className="whitespace-nowrap">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
+                      <span className="truncate">{isComboWithDrinks ? "Bebidas Combo" : "Bebidas"}</span>
                       {isComboWithDrinks ? (
-                        <span className={`shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
+                        <span className={`shrink-0 min-w-[16px] px-1 py-0.5 rounded-full text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap ${
                           isComboDrinkComplete ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
                         }`}>
                           {totalSelectedDrinkQty}/{requiredDrinkCount}
                         </span>
                       ) : selectedDrinks.length > 0 ? (
-                        <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                        <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-blue-600 text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                           {selectedDrinks.length}
                         </span>
                       ) : null}
@@ -2159,29 +2252,29 @@ export function FastFoodProductModal({
                   <button
                     type="button"
                     onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "ficha"
                         ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">Ficha Técnica</span>
+                    <span>Ficha Técnica</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTab("resenas")}
-                    className={`flex-1 min-w-max py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
                       activeTab === "resenas"
                         ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
                     <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
-                    <span className="whitespace-nowrap">Reseñas</span>
+                    <span>Reseñas</span>
                     {effectiveReviewsTotal > 0 && (
-                      <span className="shrink-0 min-w-[18px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black leading-none whitespace-nowrap">
+                      <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-amber-500 text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
                         {effectiveReviewsTotal}
                       </span>
                     )}
@@ -2330,23 +2423,17 @@ export function FastFoodProductModal({
                           (variant.esOriginal && (!selectedVariant || selectedVariant.esOriginal || selectedVariant.idVariante === (producto?.id || producto?.idProducto)));
                         const meta = getDrinkBrandMeta(variant.nombre || producto.nombre);
                         const isDietVar = /sin azúcar|sin azucar|light|zero|black/i.test(variant.nombre || "");
-                        const isPepsiVariantLimited = isPepsi && isDietVar;
+                        const isRegularVar = /con azúcar|con azucar|original|regular/i.test(variant.nombre || "");
+                        const isDietEffective = isRegularVar ? false : (isDietVar || (variant.esOriginal && (producto?.nombre || "").toLowerCase().includes("sin az")));
+                        const isPepsiVariantLimited = isPepsi && isDietEffective;
 
-                        const varImg = variant.esOriginal
-                          ? (
-                              getDrinkBottleImage("400ml", producto, null, false) ||
-                              (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
-                              (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
-                              producto.imagen
-                            )
-                          : (
-                              variant.imagen ||
-                              getDrinkBottleImage("400ml", producto, variant, isDietVar) ||
-                              (isPepsi && isDietVar ? "/images/drinks/pepsi_light-removebg-preview.png" : null) ||
-                              (isCoca && isDietVar ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
-                              getVariantImage(variant.nombre) ||
-                              producto.imagen
-                            );
+                        const varImg = variant.imagen ||
+                          getDrinkBottleImage("400ml", producto, variant, isDietEffective) ||
+                          (isPepsi && isDietEffective ? "/images/drinks/pepsi_light-removebg-preview.png" : null) ||
+                          (isCoca && isDietEffective ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
+                          (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                          (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
+                          producto.imagen;
 
                         const subtitle = variant.esOriginal
                           ? (isPepsi ? "Fórmula clásica con azúcar • Tamaños 400 ml, 1.5 L y 2.5 L" : "Sabor clásico tradicional")
@@ -2408,17 +2495,17 @@ export function FastFoodProductModal({
               </div>
             )}
 
-            {/* ─── TAB 1: PERSONALIZAR INGREDIENTES ─── */}
+            {/* ─── TAB 1: PERSONALIZAR INGREDIENTES (MISE EN PLACE CON LÓGICA HUMANA DE COCINA) ─── */}
             {!isDrink && activeTab === "personalizar" && personalizables.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                       <ChefHat className="w-4 h-4 text-red-500" />
-                      Mise en Place & Exclusiones
+                      Mise en Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Toca los ingredientes que deseas <span className="text-red-500 font-bold">quitar</span> de tu preparación:
+                      Fórmula oficial de cocina e ingredientes personalizables:
                     </p>
                   </div>
                   {removedIngredients.length > 0 && (
@@ -2432,41 +2519,94 @@ export function FastFoodProductModal({
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-                  {personalizables.map((ing) => {
-                    const isRemoved = removedIngredients.includes(ing.nombre);
-                    return (
-                      <button
-                        key={ing.id}
-                        type="button"
-                        onClick={() => toggleRemoveIngredient(ing.nombre)}
-                        className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
-                          isRemoved
-                            ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
-                            : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2.5 truncate">
-                          <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
-                            <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
-                          </span>
-                          <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
-                            {ing.nombre}
-                          </span>
-                        </span>
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
-                            isRemoved
-                              ? "bg-red-500 text-white"
-                              : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
-                          }`}
+                {/* ── SECCIÓN 1: INGREDIENTES BASE OBLIGATORIOS (PROTEGIDOS POR LÓGICA HUMANA) ── */}
+                {baseIngredients.length > 0 && (
+                  <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-800 dark:text-amber-300">
+                        <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Base Indispensable del Plato</span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> No removible
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {baseIngredients.map((baseIng) => (
+                        <div
+                          key={baseIng.id}
+                          className="p-2.5 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-2 shadow-2xs select-none"
+                          title="Ingrediente base indispensable del plato (no se puede retirar)"
                         >
-                          {isRemoved ? "Sin" : "Con"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <span className="flex items-center gap-2 truncate text-xs font-bold text-gray-800 dark:text-gray-200">
+                            <span className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/70 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300">
+                              <FoodIcon name={baseIng.icono || baseIng.nombre} size={15} stroke={1.75} />
+                            </span>
+                            <span className="truncate">{baseIng.nombre}</span>
+                          </span>
+                          <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" /> Obligatorio
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── SECCIÓN 2: INGREDIENTES PERSONALIZABLES (EXCLUSIONES A PETICIÓN) ── */}
+                {customizableIngredients.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                        ¿Deseas retirar algún ingrediente de tu pedido?
+                      </p>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                        Toca para alternar (Con / Sin)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
+                      {customizableIngredients.map((ing) => {
+                        const isRemoved = removedIngredients.includes(ing.nombre);
+                        return (
+                          <button
+                            key={ing.id}
+                            type="button"
+                            onClick={() => toggleRemoveIngredient(ing.nombre)}
+                            className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
+                              isRemoved
+                                ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
+                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2.5 truncate">
+                              <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
+                                <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
+                              </span>
+                              <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
+                                {ing.nombre}
+                              </span>
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
+                                isRemoved
+                                  ? "bg-red-500 text-white"
+                                  : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
+                              }`}
+                            >
+                              {isRemoved ? "Sin" : "Con"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                    Este plato se prepara exclusivamente con sus ingredientes base indispensables.
+                  </p>
+                )}
 
                 {/* Banner de orden personalizada para cocina */}
                 {removedIngredients.length > 0 && (
@@ -2653,15 +2793,31 @@ export function FastFoodProductModal({
                           onClick={() => dStock > 0 && toggleDrink(drink)}
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
-                          {drink.imagen && typeof drink.imagen === "string" && drink.imagen.startsWith("http") ? (
-                            <img
-                              src={drink.imagen}
-                              alt={drink.nombre}
-                              className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
-                            />
-                          ) : (
-                            <FoodIconBadge name={drink.nombre || "drink"} size="md" />
-                          )}
+                          {(() => {
+                            let imgUrl = null;
+                            if (drink.imagen && typeof drink.imagen === "string" && (drink.imagen.startsWith("http") || drink.imagen.startsWith("/") || drink.imagen.startsWith("data:"))) {
+                              imgUrl = drink.imagen;
+                            } else {
+                              const n = String(drink.nombre || "").toLowerCase();
+                              if (n.includes("naranja")) imgUrl = "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
+                              else if (n.includes("uva")) imgUrl = "/images/drinks/uva_postobon-removebg-preview.png";
+                              else if (n.includes("manzana")) imgUrl = "/images/drinks/manzana_400ml-removebg-preview.png";
+                              else if (n.includes("colombiana")) imgUrl = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
+                              else if (n.includes("coca")) imgUrl = "/images/drinks/coca_cola-removebg-preview.png";
+                              else if (n.includes("pepsi")) imgUrl = "/images/drinks/pepsi_400ml-removebg-preview.png";
+                              else if (n.includes("sprite")) imgUrl = "/images/drinks/sprite-removebg-preview.png";
+                              else if (n.includes("quatro") || n.includes("cuatro")) imgUrl = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+                            }
+                            return imgUrl ? (
+                              <img
+                                src={imgUrl}
+                                alt={drink.nombre}
+                                className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                              />
+                            ) : (
+                              <FoodIconBadge name={drink.nombre || "drink"} size="md" />
+                            );
+                          })()}
                           <div className="min-w-0">
                             <p className="text-gray-900 dark:text-gray-100 font-black text-xs sm:text-sm truncate">
                               {drink.nombre}

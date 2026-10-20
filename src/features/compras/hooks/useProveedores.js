@@ -53,14 +53,21 @@ export function useProveedores() {
   const papeleraProveedores = proveedores.filter((p) => p.estado === "Inactivo" || p.estado === 0);
 
   const filteredProveedores = proveedores.filter((p) => {
+    const term = searchTerm.toLowerCase().trim();
     const matchSearch =
-      searchTerm === "" ||
-      p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.nit?.includes(searchTerm) ||
-      p.numeroDocumento?.includes(searchTerm) ||
-      p.contacto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.nombreContacto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      p.nombre?.toLowerCase().includes(term) ||
+      p.nit?.toLowerCase().includes(term) ||
+      p.numeroDocumento?.toLowerCase().includes(term) ||
+      p.contacto?.toLowerCase().includes(term) ||
+      p.nombreContacto?.toLowerCase().includes(term) ||
+      p.email?.toLowerCase().includes(term) ||
+      p.correo?.toLowerCase().includes(term) ||
+      p.telefono?.includes(term) ||
+      p.direccion?.toLowerCase().includes(term) ||
+      p.tipoProveedor?.toLowerCase().includes(term) ||
+      p.tipoPersona?.toLowerCase().includes(term) ||
+      (p.estado === "Activo" || p.estado === 1 ? "activo" : "inactivo").includes(term);
 
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
     const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo;
@@ -87,6 +94,25 @@ export function useProveedores() {
       return true;
     } catch (err) {
       notify.error("Error", err.message || "No se pudo actualizar el proveedor");
+      return false;
+    }
+  };
+
+  // #68 – Inactivar / Activar proveedor desde la tabla
+  const toggleEstadoProveedor = async (item) => {
+    const id = item.id || item.idProveedor;
+    const isActivo = item.estado === "Activo" || item.estado === 1;
+    const nuevoEstado = isActivo ? "Inactivo" : "Activo";
+    try {
+      await proveedoresService.updateProveedor(id, { ...item, estado: nuevoEstado });
+      await fetchProveedores();
+      notify.success(
+        nuevoEstado === "Activo" ? "Proveedor activado" : "Proveedor inactivado",
+        `"${item.nombre}" ahora está ${nuevoEstado}.`
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del proveedor");
       return false;
     }
   };
@@ -184,6 +210,7 @@ export function useProveedores() {
     refetch: fetchProveedores,
     createProveedor,
     updateProveedor,
+    toggleEstadoProveedor,
     deleteProveedor,
     restoreProveedor,
     deleteDefinitivoProveedor,

@@ -1,62 +1,74 @@
-import { DollarSign, ShoppingCart, AlertCircle, Users } from "lucide-react";
+import { DollarSign, ShoppingCart, AlertCircle, Users, Layers } from "lucide-react";
 
-export function DashboardStatsCards({ stats }) {
+export function DashboardStatsCards({ stats = {} }) {
   const cards = [
     {
-      title: "Ventas del Mes",
-      value: `$${(stats.ventasTotal || 28400).toLocaleString()}`,
-      change: "+12.5% vs mes anterior",
+      title: "Total Ventas (COP)",
+      value: `$${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} COP`,
+      change: "ingresos acumulados",
       isPositive: true,
+      icon: Layers,
+      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40"
+    },
+    {
+      title: "Ventas del Mes (COP)",
+      value: `$${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} COP`,
+      change: stats.ventasVariacion !== undefined ? `${stats.ventasVariacion >= 0 ? '+' : ''}${stats.ventasVariacion}% vs mes anterior` : "+0% vs mes anterior",
+      isPositive: (stats.ventasVariacion || 0) >= 0,
       icon: DollarSign,
       color: "text-green-600 bg-green-50 dark:bg-green-900/30"
     },
     {
-      title: "Pedidos Realizados",
-      value: stats.pedidosTotal || 876,
-      change: "+8.2% este mes",
+      title: "Total Pedidos",
+      value: Number(stats.pedidosTotal || 0).toLocaleString("es-CO"),
+      change: stats.frecuenciaVentas !== undefined ? `${stats.frecuenciaVentas} ped/día` : "+8.2% este mes",
       isPositive: true,
       icon: ShoppingCart,
       color: "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
     },
     {
-      title: "Insumos Críticos",
-      value: stats.insumosBajoStock ?? 0,
-      change: (stats.insumosBajoStock ?? 0) > 0 ? "Requiere reabastecimiento" : "Inventario óptimo",
-      isPositive: (stats.insumosBajoStock ?? 0) === 0,
-      icon: AlertCircle,
-      color: (stats.insumosBajoStock ?? 0) > 0 ? "text-red-600 bg-red-50 dark:bg-red-900/30" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30"
-    },
-    {
       title: "Clientes Activos",
-      value: stats.clientesTotal || 412,
-      change: "+15 nuevos esta semana",
+      value: Number(stats.clientesActivos || stats.clientesTotal || 0).toLocaleString("es-CO"),
+      change: stats.clientesVariacion !== undefined ? `${stats.clientesVariacion >= 0 ? '+' : ''}${stats.clientesVariacion}% vs mes anterior` : "+0% este mes",
       isPositive: true,
       icon: Users,
       color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30"
+    },
+    {
+      title: "Stock Crítico",
+      value: stats.insumosBajoStock ?? 0,
+      change: (stats.insumosBajoStock ?? 0) > 0 ? "Insumos bajo mínimo" : "Inventario óptimo",
+      isPositive: (stats.insumosBajoStock ?? 0) === 0,
+      icon: AlertCircle,
+      color: (stats.insumosBajoStock ?? 0) > 0 ? "text-red-600 bg-red-50 dark:bg-red-900/30" : "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30"
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
       {cards.map((card, idx) => {
         const Icon = card.icon;
         return (
           <div
             key={idx}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                {card.title}
-              </span>
-              <div className={`p-3 rounded-xl ${card.color}`}>
-                <Icon className="w-5 h-5" />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
+                  {card.title}
+                </span>
+                <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight truncate">
+                  {card.value}
+                </h3>
+              </div>
+              <div className={`p-3 rounded-2xl ${card.color} shrink-0`}>
+                <Icon className="w-5 h-5 stroke-[2.2]" />
               </div>
             </div>
-            <div className="mt-4">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{card.value}</h3>
+            <div className="mt-3 pt-2.5 border-t border-gray-50 dark:border-gray-800/60 flex items-center justify-between">
               <p
-                className={`text-xs mt-1 font-medium ${
+                className={`text-xs font-semibold ${
                   card.isPositive
                     ? "text-green-600 dark:text-green-400"
                     : "text-red-600 dark:text-red-400"

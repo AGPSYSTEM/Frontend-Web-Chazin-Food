@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { X, UtensilsCrossed, UploadCloud, Loader2 } from "lucide-react";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { FoodIcon, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const inputCls = "w-full px-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
 export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = null }) {
   const isEditing = !!categoria;
+  const { warning, error: notifyError } = useNotifications();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [icon, setIcon] = useState("");
@@ -61,7 +63,7 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
       setPreviewIcon("");
     } catch (err) {
       console.error("Error al guardar categoría:", err);
-      alert(err.message || "Error al subir imagen o guardar categoría");
+      notifyError("Error al guardar", err.message || "Error al subir imagen o guardar categoría");
     } finally {
       setUploading(false);
     }
@@ -72,13 +74,13 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
+      warning("Formato no válido", "El archivo seleccionado debe ser una imagen (JPG, PNG, WEBP).");
       return;
     }
 
     const maxSizeInBytes = 5 * 1024 * 1024;
     if (file.size > maxSizeInBytes) {
-      alert("La imagen no debe superar los 5 MB de tamaño.");
+      warning("Tamaño excedido", "La imagen no debe superar los 5 MB de tamaño.");
       return;
     }
 

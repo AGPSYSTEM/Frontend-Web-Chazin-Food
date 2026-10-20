@@ -57,9 +57,8 @@ import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefon
 import { ventasService } from "@/features/ventas/servicios/ventasService";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
-import Swal from "sweetalert2";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 const PRESET_AVATAR_CATEGORIES = [
   {
@@ -78,13 +77,18 @@ const PRESET_AVATAR_CATEGORIES = [
       { slug: "cheese", label: "Queso Fundido" },
       { slug: "egg", label: "Huevo Frito" },
       { slug: "mushroom", label: "Champiñones" },
+      { slug: "salsa_queso", label: "Salsa de Queso" },
+      { slug: "jalapenos", label: "Jalapeños" },
+      { slug: "tomate", label: "Tomate" },
+      { slug: "tomato", label: "Tomate Fresco" },
+      { slug: "cebolla", label: "Cebolla" },
+      { slug: "onion", label: "Cebolla Crispy" },
+      { slug: "guacamole", label: "Guacamole" },
       { slug: "avocado", label: "Aguacate" },
       { slug: "pepper", label: "Picante / Ají" },
       { slug: "sauce", label: "Salsas de la Casa" },
-      { slug: "salad", label: "Ensalada Veggie" },
-      { slug: "onion", label: "Cebolla Crispy" },
-      { slug: "tomato", label: "Tomate Fresco" },
       { slug: "lettuce", label: "Lechuga" },
+      { slug: "salad", label: "Ensalada Veggie" },
       { slug: "carrot", label: "Zanahoria" },
       { slug: "bread", label: "Pan Brioche" },
       { slug: "dessert", label: "Postre / Torta" },
@@ -107,7 +111,7 @@ const PRESET_AVATAR_CATEGORIES = [
     ]
   },
   {
-    name: "Emblema & Fidelidad",
+    name: "Emblemas",
     avatars: [
       { slug: "chazin", label: "Emblema Chazin Food" },
       { slug: "chef", label: "Chef Profesional" },
@@ -119,6 +123,13 @@ const PRESET_AVATAR_CATEGORIES = [
     ]
   }
 ];
+
+const getUserInitials = (name) => {
+  if (!name || typeof name !== "string") return "CF";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
 
 const ALL_AVATAR_ITEMS = PRESET_AVATAR_CATEGORIES.flatMap((c) => c.avatars);
 const PRESET_AVATARS = ALL_AVATAR_ITEMS.map((a) => a.slug);
@@ -136,7 +147,7 @@ export function ClientePerfil() {
   const navigate = useNavigate();
   const { user, updateProfile, logout, refreshUser } = useAuth();
   const [darkMode, toggleDarkMode] = useDarkMode();
-  const { success, warning, error: notifyError } = useNotifications();
+  const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
   const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "pedidos" | "editar"
   const [pedidos, setPedidos] = useState([]);
@@ -150,6 +161,12 @@ export function ClientePerfil() {
     return user?.foto || user?.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
   });
   const [avatarFilter, setAvatarFilter] = useState("todos");
+
+  useEffect(() => {
+    if (user?.foto || user?.avatar) {
+      setAvatarUrl(user.foto || user.avatar);
+    }
+  }, [user?.foto, user?.avatar]);
 
   const filteredAvatars = useMemo(() => {
     if (avatarFilter === "todos") return ALL_AVATAR_ITEMS;
@@ -377,6 +394,12 @@ export function ClientePerfil() {
   }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
 
   useEffect(() => {
+    if (refreshUser) {
+      refreshUser();
+    }
+  }, [refreshUser]);
+
+  useEffect(() => {
     fetchMyOrders();
   }, [fetchMyOrders]);
 
@@ -473,19 +496,21 @@ export function ClientePerfil() {
 
   // Fidelity Data extraction
   const fidelidad = user?.fidelidad || {};
+  const realOrdersCount = stats.totalPedidosCount || 0;
+
   const tipoFidelidad =
-    fidelidad.tipo ||
-    user?.tipo ||
-    (stats.totalPedidosCount >= 9
+    fidelidad.tipo && fidelidad.tipo !== "Nuevo"
+      ? fidelidad.tipo
+      : realOrdersCount >= 9
       ? "VIP"
-      : stats.totalPedidosCount >= 6
+      : realOrdersCount >= 6
       ? "Frecuente"
-      : stats.totalPedidosCount >= 3
+      : realOrdersCount >= 3
       ? "Regular"
-      : "Nuevo");
+      : (fidelidad.tipo || user?.tipo || "Nuevo");
 
   const descuentoPorcentaje =
-    fidelidad.descuentoPorcentaje !== undefined
+    fidelidad.descuentoPorcentaje !== undefined && fidelidad.descuentoPorcentaje > 0
       ? fidelidad.descuentoPorcentaje
       : tipoFidelidad === "VIP"
       ? 15
@@ -495,8 +520,16 @@ export function ClientePerfil() {
       ? 5
       : 0;
 
-  const comprasCiclo = fidelidad.comprasCiclo !== undefined ? fidelidad.comprasCiclo : stats.totalPedidosCount % 3;
-  const comprasFaltantes = fidelidad.comprasFaltantes !== undefined ? fidelidad.comprasFaltantes : 3 - (comprasCiclo % 3);
+  const comprasCiclo =
+    fidelidad.comprasCiclo !== undefined && fidelidad.comprasCiclo > 0
+      ? fidelidad.comprasCiclo
+      : (realOrdersCount % 3);
+
+  const comprasFaltantes =
+    fidelidad.comprasFaltantes !== undefined && fidelidad.comprasFaltantes > 0
+      ? fidelidad.comprasFaltantes
+      : (3 - (comprasCiclo % 3));
+
   const siguienteNivel =
     fidelidad.siguienteNivel ||
     (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
@@ -689,26 +722,14 @@ export function ClientePerfil() {
 
   // ── Close other active sessions ──
   const handleCloseOtherSessions = async () => {
-    const result = await Swal.fire({
-      title: "¿Cerrar sesiones en otros dispositivos?",
-      text: "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#f05454",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sí, cerrar otras sesiones",
-      cancelButtonText: "Cancelar",
-    });
+    const isConfirmed = await confirmAction(
+      "¿Cerrar sesiones en otros dispositivos?",
+      "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
+      "Sí, cerrar otras sesiones"
+    );
 
-    if (result.isConfirmed) {
-      await Swal.fire({
-        icon: "success",
-        title: "Sesiones cerradas",
-        text: "Tus otras sesiones han sido desconectadas por seguridad.",
-        confirmButtonColor: "#f05454",
-        timer: 2000,
-        timerProgressBar: true,
-      });
+    if (isConfirmed) {
+      success("Sesiones cerradas", "Tus otras sesiones han sido desconectadas por seguridad.");
     }
   };
 
@@ -779,22 +800,10 @@ export function ClientePerfil() {
       });
 
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Perfil Actualizado!",
-          text: "Tus datos personales y foto han sido guardados correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        success("¡Perfil Actualizado!", "Tus datos personales y foto han sido guardados correctamente.");
         refreshUser?.();
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "No se pudo actualizar",
-          text: result.message || "Ocurrió un error al guardar los cambios.",
-          confirmButtonColor: "#f05454",
-        });
+        notifyError("No se pudo actualizar", result.message || "Ocurrió un error al guardar los cambios.");
       }
     } finally {
       setSaving(false);
@@ -803,50 +812,73 @@ export function ClientePerfil() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col font-sans transition-colors">
-      {/* ── Top Header Navigation ── */}
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="flex items-center gap-2 px-3.5 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs group cursor-pointer"
-              title="Volver a la tienda"
-            >
-              <ArrowLeft className="w-4 h-4 text-red-500 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Volver al Menú</span>
-            </Link>
-
-            <div className="hidden sm:flex items-center gap-2.5 pl-2 border-l border-gray-200 dark:border-gray-800">
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-2xs border border-gray-100 shrink-0">
-                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" />
+      {/* ── Top Header Navigation (Mismo navbar unificado) ── */}
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 shadow-md sticky top-0 z-40">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-4">
+              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
+                <img
+                  src={logoImg}
+                  alt="Chazin Food"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "50% 56%" }}
+                />
               </div>
               <div>
-                <h1 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 leading-tight">Chazin Food</h1>
-                <p className="text-[11px] text-gray-500 font-medium">Panel de Cliente & Fidelidad</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                  <FidelidadBadge
+                    tipo={tipoFidelidad}
+                    descuento={descuentoPorcentaje}
+                    enGracia={enGracia}
+                    size="sm"
+                  />
+                </div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                  {user?.nombre ? `¡Bienvenido, ${user.nombre}!` : "Panel de Cliente & Fidelidad"}
+                </p>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
-              title="Alternar Modo Claro / Oscuro"
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={toggleDarkMode}
+                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
+                className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
+                title="Cambiar Modo"
+              >
+                {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+              </button>
 
-            <button
-              onClick={() => {
-                logout();
-                navigate("/");
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Cerrar Sesión</span>
-            </button>
+              <Link
+                to="/"
+                aria-label="Volver al menú de comidas"
+                className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4 text-[#f05454]" />
+                <span className="hidden sm:inline">Volver al Menú</span>
+              </Link>
+
+              <div
+                className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold shadow-2xs"
+              >
+                <User className="w-5 h-5 text-[#f05454]" />
+                <span className="hidden sm:inline">Mi Perfil</span>
+              </div>
+
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+                aria-label="Cerrar sesión"
+                className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
+                title="Cerrar Sesión"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -886,7 +918,9 @@ export function ClientePerfil() {
                 ) : avatarUrl ? (
                   <FoodIcon name={avatarUrl} size={36} />
                 ) : (
-                  <FidelidadBadge tipo={tipoFidelidad} size="lg" />
+                  <span className="font-black text-xl sm:text-2xl text-gray-700 dark:text-gray-200 uppercase tracking-tight">
+                    {getUserInitials(userName)}
+                  </span>
                 )}
               </div>
 
@@ -1114,41 +1148,41 @@ export function ClientePerfil() {
 
         {/* ── Multi-Tab Navigation ── */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs overflow-hidden">
-          <div className="flex border-b border-gray-100 dark:border-gray-800">
+          <div className="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setTab("fidelidad")}
-              className={`flex-1 py-4 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border-b-2 ${
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
                 tab === "fidelidad"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
-              <Crown className="w-4 h-4" />
+              <Crown className="w-4 h-4 shrink-0" />
               <span>Fidelidad & Hábitos</span>
             </button>
 
             <button
               onClick={() => setTab("pedidos")}
-              className={`flex-1 py-4 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border-b-2 ${
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
                 tab === "pedidos"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
-              <Package className="w-4 h-4" />
+              <Package className="w-4 h-4 shrink-0" />
               <span>Mis Pedidos ({pedidos.length})</span>
             </button>
 
             <button
               onClick={() => setTab("editar")}
-              className={`flex-1 py-4 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border-b-2 ${
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
                 tab === "editar"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
-              <Edit2 className="w-4 h-4" />
-              <span>Editar Datos Personales</span>
+              <Edit2 className="w-4 h-4 shrink-0" />
+              <span>Editar Datos</span>
             </button>
           </div>
 
@@ -1669,7 +1703,9 @@ export function ClientePerfil() {
                         ) : avatarUrl ? (
                           <FoodIconBadge name={avatarUrl} size="lg" />
                         ) : (
-                          <FidelidadBadge tipo={tipoFidelidad} size="lg" />
+                          <span className="font-black text-2xl text-gray-400 dark:text-gray-500 uppercase tracking-tight">
+                            {getUserInitials(userName)}
+                          </span>
                         )}
 
                         <button
@@ -1718,7 +1754,7 @@ export function ClientePerfil() {
                       </div>
 
                       {/* Chips de filtro por categoría */}
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2">
+                      <div className="flex flex-wrap items-center gap-1.5 pb-2 mb-2">
                         <button
                           type="button"
                           onClick={() => setAvatarFilter("todos")}

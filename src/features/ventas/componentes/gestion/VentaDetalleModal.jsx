@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   CheckCircle2,
@@ -14,12 +14,73 @@ import {
   ShoppingBag,
   UserCheck,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Globe,
+  Timer,
+  Check,
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { ventasService } from "../../servicios/ventasService";
 
-export function VentaDetalleModal({ isOpen, onClose, venta }) {
+/**
+ * Validador en tiempo real de tiempo estimado
+ * Permite horas, minutos y términos de aproximación (aprox., aproximado).
+ */
+export function validateTiempoEstimado(text = "") {
+  const clean = String(text || "").trim().toLowerCase();
+  if (!clean) {
+    return {
+      isValid: false,
+      error: "Ingresa el tiempo estimado (ej: 45 min, 1 hora, aprox. 30 min).",
+      tags: []
+    };
+  }
+
+  if (clean === "listo" || clean === "listo para entrega" || clean === "entregado") {
+    return {
+      isValid: true,
+      error: null,
+      tags: ["Listo para despacho"]
+    };
+  }
+
+  const hasNumbers = /\d+/.test(clean);
+  const hasAprox = /(aprox|aproximad)/.test(clean);
+  const hasHours = /(h\b|hr|hrs|hora|horas)/.test(clean);
+  const hasMinutes = /(min|mins|minuto|minutos|m\b)/.test(clean);
+
+  if (!hasNumbers) {
+    return {
+      isValid: false,
+      error: "Debes incluir una cantidad numérica (ej: 30 min, 1 hora, aprox. 45 min).",
+      tags: []
+    };
+  }
+
+  if (!hasHours && !hasMinutes) {
+    return {
+      isValid: false,
+      error: "Especifica la unidad en minutos (min) u horas (h / hora). Ej: 'Aprox. 45 min', '1 hora'.",
+      tags: []
+    };
+  }
+
+  const tags = [];
+  if (hasAprox) tags.push("Aproximado");
+  if (hasHours) tags.push("Horas");
+  if (hasMinutes) tags.push("Minutos");
+
+  return {
+    isValid: true,
+    error: null,
+    tags
+  };
+}
+
+export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntrega }) {
   if (!isOpen || !venta) return null;
 
   let obsMeta = {};
@@ -33,6 +94,67 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
       obsMeta = { nota: venta.observaciones };
     }
   }
+
+  const initialTiempo =
+    venta.tiempoEstimadoEntrega ||
+    obsMeta.tiempoEstimadoEntrega ||
+    (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min");
+
+  const [tiempoEstimado, setTiempoEstimado] = useState(initialTiempo);
+  const [isUpdatingTiempo, setIsUpdatingTiempo] = useState(false);
+  const [tiempoActualizadoMsg, setTiempoActualizadoMsg] = useState(false);
+  const [tiempoValidationTouched, setTiempoValidationTouched] = useState(false);
+
+  const tiempoValidation = useMemo(() => validateTiempoEstimado(tiempoEstimado), [tiempoEstimado]);
+
+  useEffect(() => {
+    if (venta) {
+      setTiempoEstimado(
+        venta.tiempoEstimadoEntrega ||
+        obsMeta.tiempoEstimadoEntrega ||
+        (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min")
+      );
+    }
+  }, [venta]);
+
+  const handleSaveTiempo = async (nuevoTiempo) => {
+    const valor = nuevoTiempo || tiempoEstimado;
+    const validation = validateTiempoEstimado(valor);
+    if (!validation.isValid) {
+      setTiempoValidationTouched(true);
+      return;
+    }
+    const ventaId = venta.id || venta.idVenta;
+    if (!valor || !ventaId) return;
+    setIsUpdatingTiempo(true);
+    try {
+      if (onUpdateTiempoEntrega) {
+        await onUpdateTiempoEntrega(ventaId, valor);
+      } else {
+        await ventasService.updateTiempoEntrega(ventaId, valor);
+      }
+      setTiempoEstimado(valor);
+      setTiempoActualizadoMsg(true);
+      setTimeout(() => setTiempoActualizadoMsg(false), 2500);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdatingTiempo(false);
+    }
+  };
+
+  const handleToggleAprox = () => {
+    setTiempoValidationTouched(true);
+    const current = (tiempoEstimado || "").trim();
+    if (/^aprox\.?\s*/i.test(current)) {
+      setTiempoEstimado(current.replace(/^aprox\.?\s*/i, "").trim());
+    } else {
+      setTiempoEstimado(`Aprox. ${current}`.trim());
+    }
+  };
+
+  const origen = (venta.origen || obsMeta.origen || (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "ONLINE" : "PUNTO_FISICO")).toUpperCase();
+  const esOnline = origen.includes("ONLINE");
 
   const direccionEntrega = obsMeta.direccion || venta.direccion || "";
   const codigo =
@@ -114,9 +236,19 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Detalle del Pedido
+            </span>
+            <span
+              className={`text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
+                esOnline
+                  ? "bg-sky-500/30 text-white border border-sky-300/40"
+                  : "bg-amber-500/30 text-white border border-amber-300/40"
+              }`}
+            >
+              {esOnline ? <Globe className="w-3 h-3" /> : <Store className="w-3 h-3" />}
+              <span>{esOnline ? "Online (Web)" : "Punto Físico"}</span>
             </span>
           </div>
           <div className="text-xl sm:text-2xl font-black tracking-tight mt-1">{codigo}</div>
@@ -157,6 +289,8 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 </div>
               </div>
             </div>
+
+            {/* Fecha */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -165,6 +299,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{fecha}</div>
             </div>
 
+            {/* Horario */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-gray-400" />
@@ -173,6 +308,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{horario}</div>
             </div>
 
+            {/* Método de pago */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5 text-gray-400" />
@@ -194,12 +330,13 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 ) : (
                   <>
                     <FoodIcon name="cash" size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Efectivo</span>
+                    <span>Efectivo (Punto Físico)</span>
                   </>
                 )}
               </div>
             </div>
 
+            {/* Tipo de Entrega */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Store className="w-3.5 h-3.5 text-gray-400" />
@@ -208,6 +345,127 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                 <FoodIcon name={entregaInfo.slug} size={15} className="text-gray-600 dark:text-gray-300 shrink-0" />
                 <span>{entregaInfo.label}</span>
+              </div>
+            </div>
+
+            {/* Control y Seguimiento del Tiempo Estimado (Item 124 con Validación en Vivo) */}
+            <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl p-4 col-span-2 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                  <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors ${
+                  tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-amber-600 text-white"
+                }`}>
+                  ⏱ {tiempoEstimado || "Sin definir"}
+                </span>
+              </div>
+
+              {/* Botones de ajuste rápido y constructor */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mr-1">
+                  Ajustar:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleAprox}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                    tiempoValidation.tags.includes("Aproximado")
+                      ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
+                      : "bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  }`}
+                  title="Alternar prefijo 'Aprox.'"
+                >
+                  ⚡ + Aprox.
+                </button>
+                {["15-20 min", "25-35 min", "45 min", "1 hora", "1 h 15 min", "Listo para entrega"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setTiempoValidationTouched(true);
+                      handleSaveTiempo(preset);
+                    }}
+                    disabled={isUpdatingTiempo}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      tiempoEstimado === preset
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input manual con validación reactiva */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={tiempoEstimado}
+                      onChange={(e) => {
+                        setTiempoValidationTouched(true);
+                        setTiempoEstimado(e.target.value);
+                      }}
+                      onBlur={() => setTiempoValidationTouched(true)}
+                      placeholder="Ej: Aprox. 35 min, 1 hora, 1 h 20 min..."
+                      className={`w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none transition-colors ${
+                        !tiempoValidation.isValid && tiempoValidationTouched
+                          ? "border-amber-500 focus:ring-2 focus:ring-amber-400/50"
+                          : tiempoValidation.isValid
+                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-400/50"
+                          : "border-indigo-200 dark:border-indigo-800 focus:ring-2 focus:ring-indigo-400/50"
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTiempo(tiempoEstimado)}
+                    disabled={isUpdatingTiempo || !tiempoValidation.isValid}
+                    className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                      !tiempoValidation.isValid || isUpdatingTiempo
+                        ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                    }`}
+                  >
+                    {isUpdatingTiempo ? (
+                      <span>Guardando...</span>
+                    ) : tiempoActualizadoMsg ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>¡Guardado!</span>
+                      </>
+                    ) : (
+                      <span>Guardar</span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Feedback en vivo: Indicadores de horas, minutos o aproximado */}
+                {tiempoValidation.isValid ? (
+                  <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Formato válido:</span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {tiempoValidation.tags.map((t) => (
+                        <span
+                          key={t}
+                          className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 text-[11px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-xl border border-amber-200/80 dark:border-amber-800/60 animate-in fade-in duration-150">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <span>{tiempoValidation.error}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -227,12 +485,6 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                     <span className="font-black">
                       ${Number(obsMeta.efectivoConCuanto).toLocaleString("es-CO")}
                     </span>
-                  </div>
-                )}
-                {obsMeta.vueltoEfectivo > 0 && (
-                  <div className="flex justify-between text-emerald-700 dark:text-emerald-300 font-bold">
-                    <span>Cambio / Vueltos:</span>
-                    <span>${Number(obsMeta.vueltoEfectivo).toLocaleString("es-CO")}</span>
                   </div>
                 )}
                 {obsMeta.transferBanco && (

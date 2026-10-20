@@ -8,7 +8,6 @@ export function useGestionProduccion() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
-  const [filterPrioridad, setFilterPrioridad] = useState("Todas");
 
   const fetchOrdenes = useCallback(async (isSilent = false) => {
     try {
@@ -45,9 +44,8 @@ export function useGestionProduccion() {
       o.cocinero?.toLowerCase().includes(term);
 
     const matchEstado = filterEstado === "Todos" || o.estado === filterEstado;
-    const matchPrioridad = filterPrioridad === "Todas" || o.prioridad === filterPrioridad;
 
-    return matchSearch && matchEstado && matchPrioridad;
+    return matchSearch && matchEstado;
   });
 
   const createOrden = async (data) => {
@@ -94,8 +92,6 @@ export function useGestionProduccion() {
     setSearchTerm,
     filterEstado,
     setFilterEstado,
-    filterPrioridad,
-    setFilterPrioridad,
     refetch: fetchOrdenes,
     createOrden,
     updateEstado,

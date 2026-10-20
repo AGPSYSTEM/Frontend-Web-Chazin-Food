@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Globe, Store } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import FoodIcon from "@/shared/components/ui/FoodIcon";
@@ -87,9 +87,9 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-        <FoodIcon name="cash" size={14} className="text-gray-500" />
-        <span>Efectivo</span>
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+        <FoodIcon name="cash" size={14} className="text-emerald-600" />
+        <span>Efectivo (Punto Físico)</span>
       </span>
     );
   };
@@ -103,9 +103,11 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
             <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
               <th className="px-5 py-3.5 whitespace-nowrap">ID</th>
               <th className="px-5 py-3.5 whitespace-nowrap">CLIENTE</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">ORIGEN</th>
               <th className="px-5 py-3.5 whitespace-nowrap">FECHA</th>
               <th className="px-5 py-3.5 whitespace-nowrap">HORA</th>
               <th className="px-5 py-3.5 whitespace-nowrap">ENTREGA</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">TIEMPO ESTIMADO</th>
               <th className="px-5 py-3.5 whitespace-nowrap">MÉTODO</th>
               <th className="px-5 py-3.5 whitespace-nowrap">TOTAL</th>
               <th className="px-5 py-3.5 whitespace-nowrap">ESTADO</th>
@@ -150,6 +152,21 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
                     </div>
                   </td>
 
+                  {/* Origen de la Venta (Ítem 123) */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    {v.origen === "ONLINE" || v.tipoVenta === "DOMICILIO" || v.origenNombre === "Venta Online" ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 shadow-2xs">
+                        <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                        <span>Venta Online</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
+                        <Store className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span>Punto Físico</span>
+                      </span>
+                    )}
+                  </td>
+
                   {/* Fecha */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
                     {formatDateSafe(v.fecha || v.fechaVenta, "Hoy")}
@@ -162,6 +179,14 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                   {/* Entrega */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
+
+                  {/* Tiempo Estimado de Entrega/Recogida (Ítem 124) */}
+                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 px-2.5 py-1 rounded-xl border border-gray-200/80 dark:border-gray-700">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>{v.tiempoEstimadoEntrega || (v.tipoEntrega === 'Domicilio' ? '35 - 45 min' : '15 - 20 min')}</span>
+                    </div>
+                  </td>
 
                   {/* Método de Pago */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>

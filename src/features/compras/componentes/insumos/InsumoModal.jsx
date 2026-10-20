@@ -7,7 +7,8 @@ import {
   UploadCloud,
   Loader2,
   Check,
-  Info
+  Info,
+  Percent
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
@@ -80,8 +81,6 @@ export function InsumoModal({
     categoria: "",
     unidadMedida: "Kg",
     precioUnitario: 0,
-    idProveedor: "",
-    proveedor: "",
     stock: 0,
     stockMinimo: 5,
     fechaExpedicion: "",
@@ -141,7 +140,8 @@ export function InsumoModal({
         estado: insumo.estado === 1 || insumo.estado === "Activo" || insumo.estado === "1" ? "Activo" : "Inactivo",
         esAdicion: esAdicionVal,
         precioAdicion: precioAdicionVal,
-        imagen: imagenVal
+        imagen: imagenVal,
+        incluyeIva: !!(insumo.incluyeIva === 1 || insumo.incluyeIva === true || insumo.incluyeIva === "1")
       });
 
       if (isPrep) {
@@ -172,8 +172,6 @@ export function InsumoModal({
         categoria: defaultCat,
         unidadMedida: "Kg",
         precioUnitario: 0,
-        idProveedor: proveedores[0]?.id || proveedores[0]?.idProveedor || "",
-        proveedor: proveedores[0]?.nombre || "",
         stock: 0,
         stockMinimo: 5,
         fechaExpedicion: "",
@@ -182,7 +180,8 @@ export function InsumoModal({
         estado: "Activo",
         esAdicion: esSalsaDefault,
         precioAdicion: esSalsaDefault ? 1500 : 0,
-        imagen: esSalsaDefault ? "sauce" : "bacon"
+        imagen: esSalsaDefault ? "sauce" : "bacon",
+        incluyeIva: false
       });
       setInitialFichaTecnica(null);
       setFichaTecnica(null);
@@ -367,6 +366,7 @@ export function InsumoModal({
         unidadMedida: form.unidadMedida,
         tipo: "Preparado",
         estado: form.estado,
+        incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal,
@@ -399,6 +399,7 @@ export function InsumoModal({
         precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
         stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
         stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
+        incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal
@@ -531,32 +532,7 @@ export function InsumoModal({
                     </select>
                   </div>
 
-                  <div>
-                    <label className={labelCls}>Proveedor</label>
-                    <select
-                      value={String(form.idProveedor || "")}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const selectedProv = proveedores.find(p => String(p.id || p.idProveedor) === String(val) || p.nombre === val);
-                        setForm({
-                          ...form,
-                          idProveedor: selectedProv ? (selectedProv.id || selectedProv.idProveedor) : (val ? Number(val) : ""),
-                          proveedor: selectedProv ? selectedProv.nombre : val
-                        });
-                      }}
-                      className={`${inputCls} cursor-pointer`}
-                    >
-                      <option value="">Sin Proveedor / Ninguno</option>
-                      {proveedores.map((p) => {
-                        const provId = p.id || p.idProveedor;
-                        return (
-                          <option key={provId || p.nombre} value={String(provId)}>
-                            {p.nombre}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
 
                   <div>
                     <label className={labelCls}>Unidad de Medida / Presentación</label>
@@ -912,6 +888,48 @@ export function InsumoModal({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* ════ SECCIÓN IVA (19%) (#83) ════ */}
+            <div className="p-4 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${
+                  form.incluyeIva
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                }`}>
+                  <Percent className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <span>¿Aplica IVA (19%)?</span>
+                    {form.incluyeIva && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                        IVA 19% Activo
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Indica si este insumo grava impuesto al valor agregado (IVA) al comprarse o procesarse
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.incluyeIva}
+                onClick={() => setForm(prev => ({ ...prev, incluyeIva: !prev.incluyeIva }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    form.incluyeIva ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

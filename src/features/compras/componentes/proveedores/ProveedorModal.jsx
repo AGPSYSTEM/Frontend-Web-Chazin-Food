@@ -18,7 +18,7 @@ const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 m
 
 const errorMsgCls = "text-xs text-red-500 mt-1 font-medium flex items-center gap-1";
 
-export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
+export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, proveedores = [] }) {
   const isEditing = !!proveedor;
 
   const [form, setForm] = useState({
@@ -90,20 +90,37 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
     const errs = {};
     const esJuridica = fields.tipoPersona === "Jurídica";
 
-    // Nombre requerido
+    // Nombre requerido y sin caracteres especiales (#71)
     if (!fields.nombre.trim()) {
       errs.nombre = esJuridica
         ? "El nombre / razón social es obligatorio."
         : "El nombre completo es obligatorio.";
+    } else if (/[^a-zA-Z0-9\u00C0-\u024F\s.,&-]/.test(fields.nombre.trim())) {
+      errs.nombre = "La razón social no puede contener caracteres especiales como @, #, $, %, etc.";
     }
 
-    // Documento/NIT: solo dígitos, puntos y guiones, y requerido
+    // NIT/CC: solo dígitos, sin puntos ni guiones (#72) y verificación de duplicados (#70)
     if (!fields.nit.trim()) {
       errs.nit = esJuridica
         ? "El NIT es obligatorio."
-        : "El número de documento es obligatorio.";
-    } else if (!/^[\d.\-]+$/.test(fields.nit.trim())) {
-      errs.nit = "Solo se permiten números, puntos (.) y guiones (-).";
+        : "El número de cédula (CC) es obligatorio.";
+    } else if (!/^\d+$/.test(fields.nit.trim())) {
+      errs.nit = esJuridica
+        ? "El NIT solo debe contener dígitos, sin puntos ni guiones."
+        : "La cédula solo debe contener números.";
+    } else {
+      // Verificación de duplicado (#70)
+      const currentId = proveedor?.id || proveedor?.idProveedor;
+      const nitLimpiado = fields.nit.trim();
+      const existeDuplicado = proveedores.some((p) => {
+        const pId = p.id || p.idProveedor;
+        if (isEditing && String(pId) === String(currentId)) return false;
+        const pDoc = String(p.nit || p.numeroDocumento || "").trim();
+        return pDoc === nitLimpiado;
+      });
+      if (existeDuplicado) {
+        errs.nit = `Ya existe otro proveedor registrado con este número de ${esJuridica ? "NIT" : "cédula (CC)"}.`;
+      }
     }
 
     // Contacto: Obligatorio para Persona Jurídica, Opcional para Persona Natural
@@ -113,11 +130,16 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
       errs.contacto = "El nombre de contacto no puede contener números.";
     }
 
-    // Teléfono: solo dígitos, espacios y +, requerido
+    // Teléfono: solo dígitos
     if (!fields.telefono.trim()) {
       errs.telefono = "El teléfono / celular es obligatorio.";
-    } else if (!/^[\d\s+\-()]+$/.test(fields.telefono.trim())) {
+    } else if (!/^[\d]+$/.test(fields.telefono.trim())) {
       errs.telefono = "Solo se permiten números en el teléfono.";
+    }
+
+    // Email: validación real-time (#73) - sin guiones antes de @, formato válido
+    if (fields.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
+      errs.email = "El correo electrónico no tiene un formato válido.";
     }
 
     return errs;
@@ -136,8 +158,25 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
   // ── Manejadores de cambio con filtrado en tiempo real ──────────────────────
 
   const handleNitChange = (e) => {
-    const value = e.target.value.replace(/[^0-9.\-]/g, "").slice(0, 20);
+    // #72: Solo dígitos, sin puntos ni guiones
+    const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 20);
     const newForm = { ...form, nit: value };
+    setForm(newForm);
+    if (submitted) setErrors(validate(newForm));
+  };
+
+  const handleNombreChange = (e) => {
+    // #71: Quitar caracteres especiales (permitir letras, números, espacios, .,&,-)
+    const value = e.target.value.replace(/[^a-zA-Z0-9\u00C0-\u024F\s.,&-]/g, "");
+    const newForm = { ...form, nombre: value };
+    setForm(newForm);
+    if (submitted) setErrors(validate(newForm));
+  };
+
+  const handleEmailChange = (e) => {
+    // #73: Validación real-time, sin guiones antes de @
+    const value = e.target.value;
+    const newForm = { ...form, email: value };
     setForm(newForm);
     if (submitted) setErrors(validate(newForm));
   };
@@ -236,8 +275,43 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               </div>
             </div>
 
-            {/* Nombre */}
+            {/* NIT / Documento - PRIMERO (#70) */}
             <div className="sm:col-span-2">
+              <label className={labelCls}>
+                {esJuridica ? (
+                  <>
+                    NIT <span className="text-gray-400 font-normal">(Número de Identificación Tributaria)</span>
+                  </>
+                ) : (
+                  <>
+                    CC <span className="text-gray-400 font-normal">(Cédula de Ciudadanía)</span>
+                  </>
+                )}{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.nit}
+                onChange={handleNitChange}
+                className={getInputCls(!!errors.nit)}
+                placeholder={esJuridica ? "Ej. 900123456" : "Ej. 1043673457"}
+                maxLength={15}
+              />
+              {errors.nit && (
+                <p className={errorMsgCls}>
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nit}
+                </p>
+              )}
+              {!errors.nit && form.nit.trim() && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {esJuridica ? "Solo dígitos, sin puntos ni guiones" : "Solo números de cédula"}
+                </p>
+              )}
+            </div>
+
+            {/* Nombre / Razón Social (#71) */}
+            <div>
               <label className={labelCls}>
                 {esJuridica ? "Razón Social / Nombre Empresa" : "Nombre Completo"}{" "}
                 <span className="text-red-500">*</span>
@@ -245,7 +319,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               <input
                 type="text"
                 value={form.nombre}
-                onChange={handleGenericChange("nombre")}
+                onChange={handleNombreChange}
                 className={getInputCls(!!errors.nombre)}
                 placeholder={esJuridica ? "Ej. Distribuidora Avícola S.A.S." : "Ej. Juan Carlos Pérez"}
               />
@@ -256,7 +330,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               )}
             </div>
 
-            {/* Tipo de Proveedor (3 variantes DB) */}
+            {/* Tipo de Proveedor */}
             <div>
               <label className={labelCls}>
                 Tipo de Proveedor <span className="text-red-500">*</span>
@@ -284,23 +358,22 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               </select>
             </div>
 
-            {/* NIT / Documento */}
+            {/* Teléfono / Celular */}
             <div>
               <label className={labelCls}>
-                {esJuridica ? "NIT (Número de Identificación Tributaria)" : "Número de Documento / Cédula"}{" "}
-                <span className="text-red-500">*</span>
+                Teléfono / Celular <span className="text-red-500">*</span>
               </label>
               <input
-                type="text"
-                inputMode="numeric"
-                value={form.nit}
-                onChange={handleNitChange}
-                className={getInputCls(!!errors.nit)}
-                placeholder={esJuridica ? "Ej. 900.123.456-7" : "Ej. 1043673457"}
+                type="tel"
+                inputMode="tel"
+                value={form.telefono}
+                onChange={handleTelefonoChange}
+                className={getInputCls(!!errors.telefono)}
+                placeholder="Ej. 310 987 6543"
               />
-              {errors.nit && (
+              {errors.telefono && (
                 <p className={errorMsgCls}>
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nit}
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.telefono}
                 </p>
               )}
             </div>
@@ -324,36 +397,21 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null }) {
               )}
             </div>
 
-            {/* Teléfono / Celular */}
-            <div>
-              <label className={labelCls}>
-                Teléfono / Celular <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={form.telefono}
-                onChange={handleTelefonoChange}
-                className={getInputCls(!!errors.telefono)}
-                placeholder="Ej. 310 987 6543"
-              />
-              {errors.telefono && (
-                <p className={errorMsgCls}>
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.telefono}
-                </p>
-              )}
-            </div>
-
-            {/* Correo Electrónico */}
+            {/* Correo Electrónico (#73) */}
             <div>
               <label className={labelCls}>Correo Electrónico</label>
               <input
                 type="email"
                 value={form.email}
-                onChange={handleGenericChange("email")}
-                className={getInputCls(false)}
+                onChange={handleEmailChange}
+                className={getInputCls(!!errors.email)}
                 placeholder="contacto@empresa.com"
               />
+              {errors.email && (
+                <p className={errorMsgCls}>
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.email}
+                </p>
+              )}
             </div>
 
             {/* Dirección */}

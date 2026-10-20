@@ -130,6 +130,9 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
           <img
             src={productImage}
             alt={producto.nombre}
+            width="200"
+            height="150"
+            style={{ aspectRatio: "4 / 3" }}
             onError={() => setImageError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

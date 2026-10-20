@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { rolesService } from "../servicios/rolesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { useConfirm } from "@/shared/context/ConfirmContext";
+import { AlertTriangle, AlertCircle } from "lucide-react";
 
 export function useRoles() {
   const { success, error: notifError, confirmDelete } = useNotifications();
+  const { confirm } = useConfirm();
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,10 +35,23 @@ export function useRoles() {
       r.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const createRol = async (nombre, descripcion) => {
+  const createRol = async (nombre, descripcion, permisos = []) => {
     try {
-      await rolesService.createRol({ nombre, descripcion, estado: "Activo" });
-      success("Éxito", "Rol creado correctamente");
+      if (!nombre || !nombre.trim()) {
+        notifError("Campo obligatorio", "El nombre del rol es requerido.");
+        return false;
+      }
+      if (!permisos || permisos.length === 0) {
+        notifError("Permisos requeridos", "Debes asignar al menos un permiso o módulo al rol.");
+        return false;
+      }
+      await rolesService.createRol({
+        nombre: nombre.trim(),
+        descripcion: (descripcion || "").trim(),
+        permisos,
+        estado: "Activo"
+      });
+      success("Éxito", "Rol creado correctamente con sus permisos y privilegios");
       await fetchRoles();
       return true;
     } catch (err) {
@@ -44,9 +60,24 @@ export function useRoles() {
     }
   };
 
-  const updateRol = async (id, nombre, descripcion) => {
+  const updateRol = async (id, nombre, descripcion, permisos = null) => {
     try {
-      await rolesService.updateRol(id, { nombre, descripcion });
+      if (!nombre || !nombre.trim()) {
+        notifError("Campo obligatorio", "El nombre del rol es requerido.");
+        return false;
+      }
+      if (permisos !== null && (!permisos || permisos.length === 0)) {
+        notifError("Permisos requeridos", "El rol debe tener al menos un permiso o módulo asignado.");
+        return false;
+      }
+      const payload = {
+        nombre: nombre.trim(),
+        descripcion: (descripcion || "").trim()
+      };
+      if (permisos !== null) {
+        payload.permisos = permisos;
+      }
+      await rolesService.updateRol(id, payload);
       success("Éxito", "Rol actualizado correctamente");
       await fetchRoles();
       return true;
@@ -58,6 +89,10 @@ export function useRoles() {
 
   const updatePermisos = async (id, permisos) => {
     try {
+      if (!permisos || permisos.length === 0) {
+        notifError("Permisos requeridos", "Debes asignar al menos un permiso o módulo al rol.");
+        return false;
+      }
       await rolesService.updatePermisos(id, permisos);
       success("Éxito", "Permisos actualizados correctamente");
       await fetchRoles();
@@ -76,6 +111,23 @@ export function useRoles() {
       return false;
     }
     const nuevoEstado = rolActual.estado === "Activo" ? "Inactivo" : "Activo";
+    const isInactivar = nuevoEstado === "Inactivo";
+
+    const confirmed = await confirm({
+      type: "danger",
+      icon: isInactivar ? AlertTriangle : AlertCircle,
+      title: isInactivar
+        ? `¿Deseas inactivar el rol ${rolActual.nombre}?`
+        : `¿Deseas activar el rol ${rolActual.nombre}?`,
+      message: isInactivar
+        ? `El rol quedará inactivo y los usuarios asociados no podrán acceder a sus módulos hasta que sea activado nuevamente.`
+        : `El rol volverá a estar habilitado para sus usuarios con sus permisos configurados.`,
+      confirmText: isInactivar ? "Inactivar" : "Activar",
+      cancelText: "Cancelar"
+    });
+
+    if (!confirmed) return false;
+
     try {
       await rolesService.updateRol(id, { estado: nuevoEstado });
       success("Estado Cambiado", `El rol ahora está ${nuevoEstado}`);

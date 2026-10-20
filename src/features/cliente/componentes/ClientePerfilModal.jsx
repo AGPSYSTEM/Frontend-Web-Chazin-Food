@@ -8,9 +8,9 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
-import Swal from "sweetalert2";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -23,6 +23,7 @@ function FieldError({ msg }) {
 
 export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
   const { updateProfile } = useAuth();
+  const notify = useNotifications();
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
   const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "editar"
   const [saving, setSaving] = useState(false);
@@ -79,13 +80,23 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
 
   // Fidelity Data extraction
   const fidelidad = user?.fidelidad || {};
-  const tipoFidelidad = fidelidad.tipo || user?.tipo || (totalPedidosCount >= 9 ? "VIP" : totalPedidosCount >= 6 ? "Frecuente" : totalPedidosCount >= 3 ? "Regular" : "Nuevo");
-  const descuentoPorcentaje = fidelidad.descuentoPorcentaje !== undefined
-    ? fidelidad.descuentoPorcentaje
-    : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0);
+  const tipoFidelidad =
+    fidelidad.tipo && fidelidad.tipo !== "Nuevo"
+      ? fidelidad.tipo
+      : (totalPedidosCount >= 9 ? "VIP" : totalPedidosCount >= 6 ? "Frecuente" : totalPedidosCount >= 3 ? "Regular" : (fidelidad.tipo || user?.tipo || "Nuevo"));
+  const descuentoPorcentaje =
+    fidelidad.descuentoPorcentaje !== undefined && fidelidad.descuentoPorcentaje > 0
+      ? fidelidad.descuentoPorcentaje
+      : (tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : tipoFidelidad === "Regular" ? 5 : 0);
 
-  const comprasCiclo = fidelidad.comprasCiclo !== undefined ? fidelidad.comprasCiclo : (totalPedidosCount % 3);
-  const comprasFaltantes = fidelidad.comprasFaltantes !== undefined ? fidelidad.comprasFaltantes : (3 - comprasCiclo);
+  const comprasCiclo =
+    fidelidad.comprasCiclo !== undefined && fidelidad.comprasCiclo > 0
+      ? fidelidad.comprasCiclo
+      : (totalPedidosCount % 3);
+  const comprasFaltantes =
+    fidelidad.comprasFaltantes !== undefined && fidelidad.comprasFaltantes > 0
+      ? fidelidad.comprasFaltantes
+      : (3 - (comprasCiclo % 3));
   const siguienteNivel = fidelidad.siguienteNivel || (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
   const enGracia = Boolean(fidelidad.enGracia);
   const diasRestantesRaw = fidelidad.diasRestantes !== undefined ? fidelidad.diasRestantes : (tipoFidelidad !== "Nuevo" ? 30 : null);
@@ -191,23 +202,11 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
       });
 
       if (result.success) {
-        await Swal.fire({
-          icon: "success",
-          title: "¡Datos actualizados!",
-          text: "Tu perfil fue guardado correctamente.",
-          confirmButtonColor: "#f05454",
-          timer: 2200,
-          timerProgressBar: true,
-        });
+        notify.success("¡Datos actualizados!", "Tu perfil fue guardado correctamente.");
         setTab("fidelidad");
         onClose();
       } else {
-        Swal.fire({
-          icon: "error",
-          title: "No se pudo actualizar",
-          text: result.message || "Ocurrió un error al guardar.",
-          confirmButtonColor: "#f05454",
-        });
+        notify.error("No se pudo actualizar", result.message || "Ocurrió un error al guardar.");
       }
     } finally {
       setSaving(false);

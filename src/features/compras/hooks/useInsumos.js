@@ -124,9 +124,19 @@ export function useInsumos() {
   }, [fetchInsumos, fetchPapelera]);
 
   const filteredInsumos = insumos.filter((item) => {
+    const term = searchTerm.toLowerCase().trim();
     const matchSearch =
-      searchTerm === "" ||
-      item.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+      !term ||
+      (item.nombre && item.nombre.toLowerCase().includes(term)) ||
+      (item.categoria && item.categoria.toLowerCase().includes(term)) ||
+      (item.categoriaNombre && item.categoriaNombre.toLowerCase().includes(term)) ||
+      (item.proveedor && item.proveedor.toLowerCase().includes(term)) ||
+      (item.proveedorNombre && item.proveedorNombre.toLowerCase().includes(term)) ||
+      (item.estado && item.estado.toLowerCase().includes(term)) ||
+      (item.tipo && item.tipo.toLowerCase().includes(term)) ||
+      (item.descripcion && item.descripcion.toLowerCase().includes(term)) ||
+      (item.unidadMedida && item.unidadMedida.toLowerCase().includes(term)) ||
+      String(item.id || item.idInsumo || "").includes(term);
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
@@ -144,6 +154,7 @@ export function useInsumos() {
           unidadMedida: data.unidadMedida || "und",
           precioVenta: Number(data.precio) || 0,
           estado: data.estado || "Activo",
+          incluyeIva: data.incluyeIva ? 1 : 0,
           insumos: (data.ingredientes || []).map(i => ({
             idInsumo: i.id || i.idInsumo,
             cantidad: i.cantidad,
@@ -173,6 +184,7 @@ export function useInsumos() {
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
+          incluyeIva: data.incluyeIva ? 1 : 0,
           estado: data.estado || "Activo",
           fechaExpedicion: data.fechaExpedicion || null,
           fechaVencimiento: data.fechaVencimiento || null
@@ -231,6 +243,7 @@ export function useInsumos() {
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
+          incluyeIva: data.incluyeIva !== undefined ? (data.incluyeIva ? 1 : 0) : undefined,
           estado: data.estado !== undefined ? data.estado : "Activo",
           fechaExpedicion: data.fechaExpedicion || null,
           fechaVencimiento: data.fechaVencimiento || null
@@ -244,6 +257,33 @@ export function useInsumos() {
       return true;
     } catch (err) {
       notify.error("Error", err.message || "Error al actualizar");
+      return false;
+    }
+  };
+
+  const toggleEstadoInsumo = async (item) => {
+    const id = item.id || item.idInsumo;
+    const nuevoEstado = item.estado === "Activo" ? "Inactivo" : "Activo";
+    try {
+      if (item.tipo === "Preparado") {
+        await insumosService.updatePreparado(id, {
+          ...item,
+          estado: nuevoEstado
+        });
+      } else {
+        await insumosService.updateInsumo(id, {
+          ...item,
+          estado: nuevoEstado
+        });
+      }
+      await fetchInsumos();
+      notify.success(
+        nuevoEstado === "Activo" ? "Insumo activado" : "Insumo inactivado",
+        `"${item.nombre}" ahora está ${nuevoEstado}.`
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del insumo");
       return false;
     }
   };
@@ -374,6 +414,7 @@ export function useInsumos() {
     refetchPapelera: fetchPapelera,
     createInsumo,
     updateInsumo,
+    toggleEstadoInsumo,
     deleteInsumo,
     deletePreparado,
     restoreInsumo,

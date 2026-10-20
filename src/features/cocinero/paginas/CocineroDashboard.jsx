@@ -5,7 +5,6 @@ import {
   ChefHat,
   Clock,
   CheckCircle2,
-  Circle,
   AlertCircle,
   Package,
   User,
@@ -379,8 +378,6 @@ export function CocineroDashboard() {
   // Filter by product from Totalizador
   const [filtroProductoBatch, setFiltroProductoBatch] = useState(null);
 
-  // Interactive Checklist of prepared dishes per order { "orderId-itemIdx": boolean }
-  const [checkedItems, setCheckedItems] = useState({});
   // Collapsible tickets state (defaults to expanded)
   const [expandedTickets, setExpandedTickets] = useState({});
 
@@ -581,42 +578,10 @@ export function CocineroDashboard() {
         delete readyTimestamps.current[id];
       }
 
-      // Auto-check all items when moving to Listo
-      if (nuevoEstado === "Listo" && itemsCount > 0) {
-        setCheckedItems((prev) => {
-          const next = { ...prev };
-          for (let i = 0; i < itemsCount; i++) {
-            next[`${id}-${i}`] = true;
-          }
-          return next;
-        });
-      }
-
       success("Estado actualizado", `Comanda #${id} marcada como "${nuevoEstado}"`);
       fetchPedidos(true);
     } catch (err) {
       notifyError("Error", err.message || "No se pudo actualizar el estado");
-    }
-  };
-
-  // Toggle item check in kitchen checklist
-  const toggleItemCheck = (orderId, itemIdx, currentOrderState) => {
-    // If comanda is already Listo, it's locked for delivery
-    if (currentOrderState === "Listo" || currentOrderState === "LISTO") {
-      return;
-    }
-
-    const key = `${orderId}-${itemIdx}`;
-    const willBeChecked = !checkedItems[key];
-
-    setCheckedItems((prev) => ({
-      ...prev,
-      [key]: willBeChecked
-    }));
-
-    // If order was in queue (En Cola) and cook starts checking items, move to En Preparación automatically
-    if (willBeChecked && (currentOrderState === "En Cola" || currentOrderState === "Pendiente" || currentOrderState === "PENDIENTE")) {
-      cambiarEstado(orderId, "En Preparación", { silentConfirm: true });
     }
   };
 
@@ -802,7 +767,14 @@ export function CocineroDashboard() {
           <div className="flex items-center justify-between md:justify-start gap-3">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl overflow-hidden bg-red-50 dark:bg-red-950/40 shrink-0 border border-red-100 dark:border-red-900/50 shadow-xs flex items-center justify-center p-1.5">
-                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
+                <img
+                  src={logoImg}
+                  alt="Chazin Food"
+                  width="44"
+                  height="44"
+                  style={{ aspectRatio: "1 / 1" }}
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -837,6 +809,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setVistaPrincipal("tablero")}
+                aria-label="Ver tablero de comandas"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
                   vistaPrincipal === "tablero"
                     ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
@@ -849,6 +822,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setVistaPrincipal("historial")}
+                aria-label="Ver historial de comandas"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
                   vistaPrincipal === "historial"
                     ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
@@ -866,6 +840,7 @@ export function CocineroDashboard() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Buscar comanda"
                   placeholder="Buscar comanda..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -874,6 +849,7 @@ export function CocineroDashboard() {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
+                    aria-label="Limpiar búsqueda"
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -887,6 +863,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setShowConfigFade(!showConfigFade)}
+                aria-label="Configurar tiempo de desvanecimiento de comandas listas"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750 transition cursor-pointer"
                 title="Configurar tiempo de desvanecimiento de comandas listas"
               >
@@ -930,6 +907,7 @@ export function CocineroDashboard() {
             <button
               type="button"
               onClick={handleSoundToggle}
+              aria-label={soundEnabled ? "Silenciar sonido de cocina" : "Activar sonido de cocina"}
               className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 transition cursor-pointer ${
                 soundEnabled
                   ? "bg-red-50 dark:bg-red-950/40 text-[#F05454] border-red-200 dark:border-red-900/50"
@@ -944,6 +922,7 @@ export function CocineroDashboard() {
             <button
               type="button"
               onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Salir de pantalla completa" : "Ver en pantalla completa KDS"}
               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer hidden sm:flex"
               title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa KDS"}
             >
@@ -954,6 +933,7 @@ export function CocineroDashboard() {
             <button
               onClick={() => fetchPedidos(false)}
               disabled={loading || refreshing}
+              aria-label="Actualizar comandas"
               className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer ${
                 refreshing ? "animate-spin text-[#F05454]" : ""
               }`}
@@ -965,6 +945,7 @@ export function CocineroDashboard() {
             {/* Recetas / Fichas Técnicas link */}
             <Link
               to="/fichas-tecnicas"
+              aria-label="Ir al recetario de fichas técnicas"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-[#F05454] rounded-xl text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/60 transition cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -974,6 +955,7 @@ export function CocineroDashboard() {
             {/* Dark Mode Toggle */}
             <button
               onClick={() => toggleDarkMode()}
+              aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-600 dark:text-gray-400 transition cursor-pointer"
               title={darkMode ? "Modo Claro" : "Modo Oscuro"}
             >
@@ -983,6 +965,7 @@ export function CocineroDashboard() {
             {/* Logout */}
             <button
               onClick={handleLogout}
+              aria-label="Cerrar sesión"
               className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl transition cursor-pointer"
               title="Cerrar sesión"
             >
@@ -1128,13 +1111,6 @@ export function CocineroDashboard() {
               const timeInfo = getOrderTimeDisplay(ped, isListo);
               const items = ped.productos || [];
 
-              // Calculate how many items are checked (when order is Listo, all are 100% checked)
-              const totalItemsInOrder = items.length;
-              const checkedCount = isListo
-                ? totalItemsInOrder
-                : items.filter((_, idx) => checkedItems[`${orderId}-${idx}`]).length;
-              const isAllChecked = totalItemsInOrder > 0 && checkedCount === totalItemsInOrder;
-
               // Correct Delivery Type & Table derivation
               const rawTipo = String(ped.tipo || ped.tipoEntrega || "").toLowerCase();
               const rawMesa = String(ped.mesa || "").toLowerCase();
@@ -1209,6 +1185,20 @@ export function CocineroDashboard() {
                           {ped.codigo || `VEN-${String(orderId).padStart(4, "0")}`}
                         </h3>
 
+                        {/* Sequential Priority Turn (Ítem 117) */}
+                        {ped.prioridad ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 shadow-2xs ${
+                              ped.prioridad === 1
+                                ? "bg-red-500 text-white ring-1 ring-red-300 dark:ring-red-900"
+                                : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                            }`}
+                            title={`Orden secuencial de preparación: #${ped.prioridad}`}
+                          >
+                            Turno #{ped.prioridad}
+                          </span>
+                        ) : null}
+
                         {/* Delivery Type Badge (Properly resolved Domicilio / Para Llevar / Mesa) */}
                         <span
                           className={`px-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-1 shrink-0 ${
@@ -1275,44 +1265,6 @@ export function CocineroDashboard() {
                         <span>{timeInfo.text}</span>
                       </div>
                     </div>
-
-                    {/* Preparation Checklist Progress Bar */}
-                    {totalItemsInOrder > 0 && (
-                      <div className="pt-0.5">
-                        <div className="flex items-center justify-between text-[10px] font-black text-gray-400 mb-1">
-                          <div>
-                            {isListo ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Comanda completada al 100%
-                              </span>
-                            ) : isAllChecked ? (
-                              <span className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-bold">
-                                <Sparkles className="w-3.5 h-3.5" /> ¡Todos los platillos cocinados!
-                              </span>
-                            ) : (
-                              "Progreso de preparación"
-                            )}
-                          </div>
-                          <span
-                            className={
-                              isListo || isAllChecked
-                                ? "text-green-600 dark:text-green-400 font-extrabold"
-                                : "text-gray-600 dark:text-gray-300"
-                            }
-                          >
-                            {checkedCount} de {totalItemsInOrder} ({Math.round((checkedCount / totalItemsInOrder) * 100)}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${
-                              isListo || isAllChecked ? "bg-green-500" : "bg-[#F05454]"
-                            }`}
-                            style={{ width: `${(checkedCount / totalItemsInOrder) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* ── Card Body (Scrollable Items List) ── */}
@@ -1322,8 +1274,6 @@ export function CocineroDashboard() {
                       <p className="text-xs text-gray-400 italic text-center py-6">Sin platillos desglosados en orden</p>
                     ) : (
                       items.map((prod, idx) => {
-                        // When order is Listo, all items are displayed as completed
-                        const isChecked = isListo ? true : Boolean(checkedItems[`${orderId}-${idx}`]);
                         const noteText = cleanNote(
                           prod.observaciones || prod.observacion || prod.nota || prod.especificaciones,
                           prod.nombre
@@ -1332,55 +1282,17 @@ export function CocineroDashboard() {
                         return (
                           <div
                             key={idx}
-                            className={`p-3 rounded-2xl border transition-all text-xs ${
-                              isChecked
-                                ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 opacity-80"
-                                : "bg-gray-50/80 dark:bg-gray-800/50 border-gray-200/80 dark:border-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700"
-                            }`}
+                            className="p-3 rounded-2xl border transition-all text-xs bg-gray-50/80 dark:bg-gray-800/50 border-gray-200/80 dark:border-gray-800/80 hover:border-gray-300 dark:hover:border-gray-700"
                           >
                             <div className="flex items-start justify-between gap-2">
-                              {/* Left: Checkbox & Name */}
-                              <div
-                                onClick={() => toggleItemCheck(orderId, idx, ped.estado)}
-                                className={`flex items-start gap-2 flex-1 select-none ${
-                                  isListo ? "cursor-default" : "cursor-pointer"
-                                }`}
-                                title={
-                                  isListo
-                                    ? "Comanda ya lista para entrega"
-                                    : isChecked
-                                    ? "Clic para desmarcar platillo"
-                                    : "Clic para marcar platillo como preparado"
-                                }
-                              >
-                                <button
-                                  type="button"
-                                  disabled={isListo}
-                                  className={`mt-0.5 shrink-0 transition-colors ${
-                                    isChecked
-                                      ? "text-green-600 dark:text-green-400"
-                                      : "text-gray-300 dark:text-gray-600 hover:text-gray-400"
-                                  }`}
-                                >
-                                  {isChecked ? (
-                                    <CheckCircle2 className="w-4 h-4 fill-green-100 dark:fill-green-950" />
-                                  ) : (
-                                    <Circle className="w-4 h-4" />
-                                  )}
-                                </button>
-
-                                <div>
-                                  <p
-                                    className={`font-black text-sm text-gray-900 dark:text-gray-100 leading-snug ${
-                                      isChecked ? "line-through text-gray-500 dark:text-gray-400" : ""
-                                    }`}
-                                  >
-                                    <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#F05454]/10 text-[#F05454] text-xs font-black mr-1.5">
-                                      {prod.cantidad}x
-                                    </span>
-                                    {prod.nombre}
-                                  </p>
-                                </div>
+                              {/* Left: Quantity & Name */}
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-[#F05454]/10 text-[#F05454] text-xs font-black shrink-0 mt-0.5">
+                                  {prod.cantidad}x
+                                </span>
+                                <p className="font-black text-sm text-gray-900 dark:text-gray-100 leading-snug break-words">
+                                  {prod.nombre}
+                                </p>
                               </div>
 
                               {/* Right: Receta Button */}
@@ -1400,7 +1312,7 @@ export function CocineroDashboard() {
 
                             {/* Extra Additions Pills */}
                             {Array.isArray(prod.adiciones) && prod.adiciones.length > 0 && (
-                              <div className="mt-2 pl-6 space-y-1">
+                              <div className="mt-2 pl-2 space-y-1">
                                 <span className="text-[10px] font-black text-red-500 uppercase tracking-wider">
                                   Adiciones Extra:
                                 </span>
@@ -1436,7 +1348,7 @@ export function CocineroDashboard() {
 
                             {/* Clean Customer Note */}
                             {noteText && (
-                              <div className="mt-2 ml-6 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-2 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+                              <div className="mt-2 ml-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-2 rounded-xl text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
                                 <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                                 <div>
                                   <span className="font-black text-amber-700 dark:text-amber-400">Nota: </span>
@@ -1479,14 +1391,10 @@ export function CocineroDashboard() {
                       <button
                         type="button"
                         onClick={() => cambiarEstado(orderId, "Listo")}
-                        className={`w-full py-3 text-white rounded-2xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
-                          isAllChecked
-                            ? "bg-green-600 hover:bg-green-700 ring-2 ring-green-400/50 animate-pulse"
-                            : "bg-green-600 hover:bg-green-700 active:scale-[0.99]"
-                        }`}
+                        className="w-full py-3 bg-green-600 hover:bg-green-700 active:scale-[0.99] text-white rounded-2xl text-xs font-black transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>{isAllChecked ? "¡Todo Listo! Marcar Comanda" : "Marcar como Listo"}</span>
+                        <span>Marcar como Listo</span>
                       </button>
                     )}
 

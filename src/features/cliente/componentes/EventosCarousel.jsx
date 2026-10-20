@@ -13,135 +13,249 @@ import {
   Percent,
   ChefHat
 } from "lucide-react";
-import { FoodIcon, getEventBadgeConfig } from "@/shared/components/ui/FoodIcon";
+import {
+  FoodIcon,
+  getEventBadgeConfig,
+  StreamlineFlame,
+  StreamlinePartyPopper,
+  StreamlineCrown,
+  IconCoupleHeart,
+  IconLightningBolt,
+  IconMeatSteak,
+  IconExplosion,
+  IconServingCloche,
+  IconBaconStrip
+} from "@/shared/components/ui/FoodIcon";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 
-// Paletas de color premium cinematográficas para cada evento
-const THEMES = {
+// Paletas de color premium cinematográficas para cada evento (8 temas únicos sin repeticiones)
+export const THEMES = {
   fire: {
-    bg: "from-red-950 via-orange-950 to-stone-950",
-    glow: "rgba(239, 68, 68, 0.4)",
-    border: "border-orange-500/30",
-    badgeBg: "bg-gradient-to-r from-red-600 to-amber-500 text-white shadow-md shadow-red-900/40",
-    accent: "text-amber-400",
-    btnGrad: "from-amber-500 via-orange-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-white shadow-lg shadow-orange-950/60",
-    pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
-    tag: "🔥 SUPER PROMO FLASH"
+    bg: "from-red-950 via-stone-900 to-stone-950",
+    glow: "rgba(239, 68, 68, 0.45)",
+    border: "border-red-500/30",
+    badgeBg: "bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-md shadow-red-900/40",
+    accent: "text-red-400",
+    btnGrad: "from-red-600 via-rose-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white shadow-lg shadow-red-950/60",
+    pillBg: "bg-red-500/15 border-red-400/30 text-red-200",
+    tag: "2X1 IMPERDIBLE",
+    tagText: "2X1 IMPERDIBLE",
+    TagIcon: StreamlineFlame,
+    TitleIcon: null,
+    heroGradient: "from-red-600 via-rose-600 to-orange-600",
+    heroSubtext: "text-red-100"
   },
   violet: {
     bg: "from-purple-950 via-indigo-950 to-stone-950",
-    glow: "rgba(168, 85, 247, 0.4)",
+    glow: "rgba(168, 85, 247, 0.45)",
     border: "border-purple-500/30",
     badgeBg: "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40",
     accent: "text-purple-300",
     btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
     pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
-    tag: "⚡ COMBO EXCLUSIVO"
+    tag: "PROMO FIN DE SEMANA",
+    tagText: "PROMO FIN DE SEMANA",
+    TagIcon: StreamlinePartyPopper,
+    TitleIcon: null,
+    heroGradient: "from-purple-700 via-indigo-600 to-pink-600",
+    heroSubtext: "text-purple-100"
   },
-  emerald: {
-    bg: "from-emerald-950 via-teal-950 to-stone-950",
-    glow: "rgba(16, 185, 129, 0.4)",
-    border: "border-emerald-500/30",
-    badgeBg: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40",
-    accent: "text-emerald-300",
-    btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
-    pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
-    tag: "🌿 EDICIÓN ESPECIAL"
+  ocean: {
+    bg: "from-sky-950 via-blue-950 to-stone-950",
+    glow: "rgba(14, 165, 233, 0.45)",
+    border: "border-sky-500/30",
+    badgeBg: "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-blue-900/40",
+    accent: "text-sky-300",
+    btnGrad: "from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-blue-950/60",
+    pillBg: "bg-sky-500/15 border-sky-400/30 text-sky-200",
+    tag: "COMBO FESTIVO EN PAREJA",
+    tagText: "COMBO FESTIVO EN PAREJA",
+    TagIcon: IconCoupleHeart,
+    TitleIcon: null,
+    heroGradient: "from-blue-700 via-sky-600 to-indigo-700",
+    heroSubtext: "text-sky-100"
   },
   gold: {
     bg: "from-amber-950 via-yellow-950 to-stone-950",
-    glow: "rgba(245, 158, 11, 0.4)",
+    glow: "rgba(245, 158, 11, 0.45)",
     border: "border-amber-500/30",
     badgeBg: "bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-gray-950 shadow-md shadow-amber-900/40 font-black",
     accent: "text-amber-300",
     btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
     pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
-    tag: "👑 SELECCIÓN CHEF GOURMET"
+    tag: "EDICIÓN LIMITADA CHEF",
+    tagText: "EDICIÓN LIMITADA CHEF",
+    TagIcon: StreamlineCrown,
+    TitleIcon: StreamlineFlame,
+    heroGradient: "from-amber-600 via-yellow-600 to-orange-600",
+    heroSubtext: "text-amber-100"
+  },
+  sunset: {
+    bg: "from-orange-950 via-amber-950 to-stone-950",
+    glow: "rgba(249, 115, 22, 0.45)",
+    border: "border-orange-500/30",
+    badgeBg: "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-900/40",
+    accent: "text-orange-400",
+    btnGrad: "from-orange-500 via-amber-500 to-red-500 hover:from-orange-400 hover:to-amber-500 text-white shadow-lg shadow-orange-950/60",
+    pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
+    tag: "OFERTA RELÁMPAGO CRISPY",
+    tagText: "OFERTA RELÁMPAGO CRISPY",
+    TagIcon: IconLightningBolt,
+    TitleIcon: IconLightningBolt,
+    heroGradient: "from-orange-600 via-amber-500 to-red-500",
+    heroSubtext: "text-orange-100"
+  },
+  ruby: {
+    bg: "from-rose-950 via-red-950 to-stone-950",
+    glow: "rgba(225, 29, 72, 0.45)",
+    border: "border-rose-500/30",
+    badgeBg: "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-900/40",
+    accent: "text-rose-300",
+    btnGrad: "from-rose-500 via-red-600 to-pink-600 hover:from-rose-400 hover:to-red-500 text-white shadow-lg shadow-rose-950/60",
+    pillBg: "bg-rose-500/15 border-rose-400/30 text-rose-200",
+    tag: "MASTER PARRILLA & BACON",
+    tagText: "MASTER PARRILLA & BACON",
+    TagIcon: IconMeatSteak,
+    TitleIcon: IconExplosion,
+    heroGradient: "from-rose-700 via-red-600 to-pink-700",
+    heroSubtext: "text-rose-100"
+  },
+  emerald: {
+    bg: "from-emerald-950 via-teal-950 to-stone-950",
+    glow: "rgba(16, 185, 129, 0.45)",
+    border: "border-emerald-500/30",
+    badgeBg: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40",
+    accent: "text-emerald-300",
+    btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
+    pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
+    tag: "FESTIVAL DE TOPPINGS",
+    tagText: "FESTIVAL DE TOPPINGS",
+    TagIcon: IconBaconStrip,
+    TitleIcon: IconBaconStrip,
+    heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
+    heroSubtext: "text-emerald-100"
+  },
+  teal: {
+    bg: "from-teal-950 via-slate-900 to-stone-950",
+    glow: "rgba(20, 184, 166, 0.45)",
+    border: "border-teal-500/30",
+    badgeBg: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md shadow-teal-900/40",
+    accent: "text-teal-300",
+    btnGrad: "from-teal-500 via-cyan-600 to-emerald-600 hover:from-teal-400 hover:to-cyan-500 text-white shadow-lg shadow-teal-950/60",
+    pillBg: "bg-teal-500/15 border-teal-400/30 text-teal-200",
+    tag: "CREACIÓN DE AUTOR EXCLUSIVA",
+    tagText: "CREACIÓN DE AUTOR EXCLUSIVA",
+    TagIcon: IconServingCloche,
+    TitleIcon: IconServingCloche,
+    heroGradient: "from-teal-700 via-cyan-700 to-emerald-700",
+    heroSubtext: "text-teal-100"
   }
 };
 
-// Eventos insignia de alta conversión culinaria
-const SHOWCASE_EVENTOS = [
-  {
-    idEvento: "showcase-1",
-    idProducto: 16,
-    nombreEvento: "Combo Pareja Legendario Chazin",
-    tipoEvento: "2x1 / Combo Especial",
-    descuento: 25,
-    nuevoPrecio: 28500,
-    precioOriginal: 38000,
-    descripcion: "2 Hamburguesas Clásicas en pan brioche artesanal sellado + Porción generosa de Papas Francesas + 2 Bebidas frías de 400ml.",
-    icono: "burger",
-    perks: ["2 Hamburguesas Clásicas", "Papas Francesas Grandes", "2 Bebidas 400ml", "100% Personalizable"],
-    theme: "violet",
-    tiempoPrep: "12 min",
-    rating: "4.9",
-    calorias: "1.280 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-2",
-    idProducto: 15,
-    nombreEvento: "Festival Salchipapa Salvaje Titán",
-    tipoEvento: "Descuento",
-    descuento: 20,
-    nuevoPrecio: 18400,
-    precioOriginal: 23000,
-    descripcion: "Papas doraditas con salchicha americana y suiza ahumada, tocineta crocante y doble queso fundido con salsa Chazin.",
-    icono: "fries",
-    perks: ["Salchicha Suiza & Americana", "Lluvia de Tocineta Crocante", "Queso Mozzarella Fundido", "Salsa Chazin Incluida"],
-    theme: "fire",
-    tiempoPrep: "10 min",
-    rating: "5.0",
-    calorias: "890 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-3",
-    idProducto: 11,
-    nombreEvento: "Noche Gourmet: Doble Carne & Bacon",
-    tipoEvento: "Descuento",
-    descuento: 15,
-    nuevoPrecio: 21250,
-    precioOriginal: 25000,
-    descripcion: "300g de pura carne de res 80/20 a la parrilla, doble tocineta ahumada, doble cheddar fundido y cebolla caramelizada.",
-    icono: "burger",
-    perks: ["300g Carne 80/20 Res", "Doble Queso Cheddar", "Doble Tocineta Ahumada", "Pan Brioche Sellado"],
-    theme: "gold",
-    tiempoPrep: "14 min",
-    rating: "4.9",
-    calorias: "980 kcal",
-    fechaFin: "2026-12-31"
-  },
-  {
-    idEvento: "showcase-4",
-    idProducto: 13,
-    nombreEvento: "Dúo Perro Especial Americano",
-    tipoEvento: "2x1 / Combo Especial",
-    descuento: 30,
-    nuevoPrecio: 19600,
-    precioOriginal: 28000,
-    descripcion: "2 Perros Especiales con salchicha premium americana, tocineta crujiente, queso mozzarella gratinado y ripio de papa.",
-    icono: "hotdog",
-    perks: ["2 Perros Americanos", "Lluvia de Tocineta", "Queso Mozzarella", "Salsas de la Casa"],
-    theme: "emerald",
-    tiempoPrep: "8 min",
-    rating: "4.8",
-    calorias: "640 kcal",
-    fechaFin: "2026-12-31"
-  }
-];
+/**
+ * Asigna de forma inteligente un tema y etiqueta culinaria a cada evento
+ * para garantizar máxima armonía visual y CERO colores repetidos en el carrusel.
+ */
+export const getEventThemeAndTag = (event, index) => {
+  const name = String(event?.nombreEvento || event?.nombre || "").toLowerCase();
+  const type = String(event?.tipoEvento || "").toLowerCase();
+  const id = Number(event?.idEvento || 0);
 
-export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }) {
+  // Mapeo preciso por identidad de cada evento con iconos vectoriales SVG limpios (sin emojis unicode)
+  if (name.includes("2x1") || type.includes("2x1")) {
+    return {
+      theme: "fire",
+      tag: "2X1 IMPERDIBLE",
+      tagText: "2X1 IMPERDIBLE",
+      TagIcon: StreamlineFlame,
+      TitleIcon: null
+    };
+  }
+  if (name.includes("fin de semana")) {
+    return {
+      theme: "violet",
+      tag: "PROMO FIN DE SEMANA",
+      tagText: "PROMO FIN DE SEMANA",
+      TagIcon: StreamlinePartyPopper,
+      TitleIcon: null
+    };
+  }
+  if (name.includes("pareja") || type.includes("combo")) {
+    return {
+      theme: "ocean",
+      tag: "COMBO FESTIVO EN PAREJA",
+      tagText: "COMBO FESTIVO EN PAREJA",
+      TagIcon: IconCoupleHeart,
+      TitleIcon: null
+    };
+  }
+  if (id === 5 || name.includes("burger fest")) {
+    return {
+      theme: "gold",
+      tag: "EDICIÓN LIMITADA CHEF",
+      tagText: "EDICIÓN LIMITADA CHEF",
+      TagIcon: StreamlineCrown,
+      TitleIcon: StreamlineFlame
+    };
+  }
+  if (name.includes("pollo crispy") || name.includes("relampago") || name.includes("relámpago")) {
+    return {
+      theme: "sunset",
+      tag: "OFERTA RELÁMPAGO CRISPY",
+      tagText: "OFERTA RELÁMPAGO CRISPY",
+      TagIcon: IconLightningBolt,
+      TitleIcon: IconLightningBolt
+    };
+  }
+  if (name.includes("doble carne") || (name.includes("tocineta") && name.includes("20%"))) {
+    return {
+      theme: "ruby",
+      tag: "MASTER PARRILLA & BACON",
+      tagText: "MASTER PARRILLA & BACON",
+      TagIcon: IconMeatSteak,
+      TitleIcon: IconExplosion
+    };
+  }
+  if (name.includes("toppings") || name.includes("perro suizo")) {
+    return {
+      theme: "emerald",
+      tag: "FESTIVAL DE TOPPINGS",
+      tagText: "FESTIVAL DE TOPPINGS",
+      TagIcon: IconBaconStrip,
+      TitleIcon: IconBaconStrip
+    };
+  }
+  if (id === 9 || name.includes("edicion limitada") || name.includes("edición limitada") || type.includes("especial")) {
+    return {
+      theme: "teal",
+      tag: "CREACIÓN DE AUTOR EXCLUSIVA",
+      tagText: "CREACIÓN DE AUTOR EXCLUSIVA",
+      TagIcon: IconServingCloche,
+      TitleIcon: IconServingCloche
+    };
+  }
+
+  // Secuencia de rotación única para cualquier evento adicional sin repetir
+  const themeOrder = ["fire", "violet", "ocean", "gold", "sunset", "ruby", "emerald", "teal"];
+  const selectedTheme = themeOrder[index % themeOrder.length];
+  const tObj = THEMES[selectedTheme];
+  return {
+    theme: selectedTheme,
+    tag: tObj?.tagText || "EXPERIENCIA CHAZIN",
+    tagText: tObj?.tagText || "EXPERIENCIA CHAZIN",
+    TagIcon: tObj?.TagIcon || StreamlinePartyPopper,
+    TitleIcon: tObj?.TitleIcon || null
+  };
+};
+
+export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ dias: 2, horas: 14, minutos: 42, segundos: 30 });
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
-  const animationFrameRef = useRef(null);
-  const startTimeRef = useRef(null);
   const slideDuration = 6000; // 6 segundos por diapositiva
 
   // Referencias y estado para arrastre horizontal con mouse (drag-to-scroll)
@@ -178,12 +292,14 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
     setIsPillsDragging(false);
   };
 
-  // Desplazar suavemente hacia la píldora activa cuando cambie el slide
+  // Desplazar suavemente hacia la píldora activa cuando cambie el slide (solo en interacción, nunca en montado inicial para no afectar scroll del documento ni LCP)
   useEffect(() => {
-    if (!pillsRef.current || isPillsDragging) return;
+    if (!pillsRef.current || isPillsDragging || currentIndex === 0) return;
     const activeBtn = pillsRef.current.children[currentIndex];
     if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      const container = pillsRef.current;
+      const left = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
+      container.scrollTo({ left, behavior: "smooth" });
     }
   }, [currentIndex, isPillsDragging]);
 
@@ -199,9 +315,69 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
       return true;
     });
 
+    const getEventRating = (e, prod) => {
+      // 1. Verificar calificación del producto principal del evento en ratingsMap
+      const prodId = e.idProducto || (prod ? (prod.id || prod.idProducto) : null);
+      if (prodId && ratingsMap && ratingsMap[prodId]) {
+        const rInfo = ratingsMap[prodId];
+        if (rInfo && rInfo.total > 0 && rInfo.promedio > 0) {
+          return {
+            rating: Number(rInfo.promedio),
+            totalResenas: Number(rInfo.total)
+          };
+        }
+      }
+
+      // 2. Si es un combo con productos asociados, calcular promedio real de sus productos
+      if (e.productosAsociados && ratingsMap) {
+        try {
+          const parsed = typeof e.productosAsociados === "string" ? JSON.parse(e.productosAsociados) : e.productosAsociados;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            let sumPromedios = 0;
+            let countRated = 0;
+            let sumTotal = 0;
+            parsed.forEach((asoc) => {
+              const asocId = asoc.idProducto || asoc.id;
+              if (asocId && ratingsMap[asocId] && ratingsMap[asocId].total > 0) {
+                sumPromedios += Number(ratingsMap[asocId].promedio || 0);
+                countRated += 1;
+                sumTotal += Number(ratingsMap[asocId].total || 0);
+              }
+            });
+            if (countRated > 0 && sumTotal > 0) {
+              return {
+                rating: Math.round((sumPromedios / countRated) * 10) / 10,
+                totalResenas: sumTotal
+              };
+            }
+          }
+        } catch (err) {
+          // ignore parsing error
+        }
+      }
+
+      // 3. Si el evento trae rating explícito verificado con totalResenas
+      if (e.totalResenas && Number(e.totalResenas) > 0 && e.rating) {
+        return {
+          rating: Number(e.rating),
+          totalResenas: Number(e.totalResenas)
+        };
+      }
+
+      // 4. Sin reseñas registradas
+      return {
+        rating: null,
+        totalResenas: 0
+      };
+    };
+
     const enrichedDb = rawActive.map((e, idx) => {
-      const themeKeys = ["fire", "violet", "emerald", "gold"];
-      const theme = e.theme || themeKeys[idx % themeKeys.length];
+      const meta = getEventThemeAndTag(e, idx);
+      const theme = e.theme || meta.theme;
+      const themeConfig = THEMES[theme] || THEMES.fire;
+      const customTag = meta.tagText;
+      const TagIcon = meta.TagIcon || themeConfig.TagIcon;
+      const TitleIcon = meta.TitleIcon || themeConfig.TitleIcon;
       const prod = productos.find(
         (p) => String(p.id || p.idProducto) === String(e.idProducto)
       );
@@ -210,9 +386,14 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
       if (!finalPrice && e.descuento && originalPrice) {
         finalPrice = Math.round(originalPrice * (1 - Number(e.descuento) / 100));
       }
+      const ratingInfo = getEventRating(e, prod);
+
       return {
         ...e,
         theme,
+        customTag,
+        TagIcon,
+        TitleIcon,
         precioOriginal: originalPrice,
         nuevoPrecio: finalPrice || originalPrice,
         perks: e.perks || [
@@ -222,75 +403,61 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
           "Garantía de Calidad Chazin"
         ],
         tiempoPrep: e.tiempoPrep || "10-15 min",
-        rating: e.rating || "4.9",
+        rating: ratingInfo.rating,
+        totalResenas: ratingInfo.totalResenas,
         calorias: e.calorias || "~650 kcal"
       };
     });
 
-    if (enrichedDb.length >= 3) {
-      return enrichedDb;
-    }
-
-    const missingCount = 4 - enrichedDb.length;
-    const extraShowcases = SHOWCASE_EVENTOS.slice(0, missingCount);
-    return [...enrichedDb, ...extraShowcases];
-  }, [eventos, productos]);
+    return enrichedDb;
+  }, [eventos, productos, ratingsMap]);
 
   const totalSlides = combinedEventos.length;
 
-  // Barra de progreso y autoplay continuo
+  // Autoplay continuo mediante temporizador limpio (sin re-renders de 60fps en CPU)
   useEffect(() => {
-    if (totalSlides <= 1) return;
+    if (totalSlides <= 1 || isPaused) return;
 
-    let start = performance.now();
-    startTimeRef.current = start;
-
-    const tick = (now) => {
-      if (isPaused) {
-        startTimeRef.current = now - (progress / 100) * slideDuration;
-        animationFrameRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      const elapsed = now - startTimeRef.current;
-      const pct = Math.min(100, (elapsed / slideDuration) * 100);
-      setProgress(pct);
-
-      if (pct >= 100) {
-        setCurrentIndex((prev) => (prev + 1) % totalSlides);
-        startTimeRef.current = performance.now();
-        setProgress(0);
-      }
-
-      animationFrameRef.current = requestAnimationFrame(tick);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(tick);
+    let timer;
+    const startDelay = setTimeout(() => {
+      timer = setInterval(() => {
+        if (!document.hidden) {
+          setCurrentIndex((prev) => (prev + 1) % totalSlides);
+        }
+      }, slideDuration);
+    }, 8000);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      clearTimeout(startDelay);
+      if (timer) clearInterval(timer);
     };
-  }, [currentIndex, isPaused, totalSlides, progress]);
+  }, [totalSlides, isPaused, slideDuration]);
 
-  // Reloj de cuenta regresiva en vivo
+  // Reloj de cuenta regresiva en vivo (arranque diferido para liberar hilo principal en carga inicial)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.segundos > 0) {
-          return { ...prev, segundos: prev.segundos - 1 };
-        } else if (prev.minutos > 0) {
-          return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
-        } else if (prev.horas > 0) {
-          return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
-        } else if (prev.dias > 0) {
-          return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
-        }
-        return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
+    let timer;
+    const startDelay = setTimeout(() => {
+      timer = setInterval(() => {
+        if (document.hidden) return;
+        setTimeLeft((prev) => {
+          if (prev.segundos > 0) {
+            return { ...prev, segundos: prev.segundos - 1 };
+          } else if (prev.minutos > 0) {
+            return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
+          } else if (prev.horas > 0) {
+            return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
+          } else if (prev.dias > 0) {
+            return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
+          }
+          return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
+        });
+      }, 1000);
+    }, 8000);
+
+    return () => {
+      clearTimeout(startDelay);
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   // Navegación fluida por teclado
@@ -308,17 +475,14 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % totalSlides);
-    setProgress(0);
   }, [totalSlides]);
 
   const prevSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
-    setProgress(0);
   }, [totalSlides]);
 
   const goToSlide = (idx) => {
     setCurrentIndex(idx);
-    setProgress(0);
   };
 
   const handleTouchStart = (e) => {
@@ -336,12 +500,26 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
     }
   };
 
+  const currentEvt = combinedEventos && combinedEventos.length > 0 ? (combinedEventos[currentIndex] || combinedEventos[0]) : null;
+  const activeTheme = currentEvt ? (THEMES[currentEvt.theme] || THEMES.fire) : THEMES.fire;
+
+  useEffect(() => {
+    if (onThemeChange) {
+      if (!combinedEventos || combinedEventos.length === 0) {
+        onThemeChange(null);
+      } else if (currentEvt) {
+        onThemeChange({
+          themeKey: currentEvt.theme || "fire",
+          theme: activeTheme,
+          hasEvents: true
+        });
+      }
+    }
+  }, [currentIndex, currentEvt, activeTheme, combinedEventos, onThemeChange]);
+
   if (!combinedEventos || combinedEventos.length === 0) {
     return null;
   }
-
-  const currentEvt = combinedEventos[currentIndex] || combinedEventos[0];
-  const activeTheme = THEMES[currentEvt.theme] || THEMES.fire;
 
   return (
     <section
@@ -354,27 +532,30 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-7px); }
         }
-        .animate-float-plate {
-          animation: floatFoodPlate 3.6s ease-in-out infinite;
+        @keyframes timerPulse {
+          0% { opacity: 0.9; }
+          100% { opacity: 1; }
         }
-        @keyframes sweepLight {
-          0% { transform: translateX(-150%) skewX(-20deg); }
-          100% { transform: translateX(250%) skewX(-20deg); }
+        .animate-float-plate {
+          transform: translateY(0);
+          transition: transform 0.4s ease;
+        }
+        .animate-float-plate:hover {
+          transform: translateY(-6px);
         }
         .animate-sweep {
-          animation: sweepLight 5s ease-in-out infinite;
+          display: none;
         }
       `}</style>
 
       {/* HEADER SUPERIOR CON RELOJ DIGITAL Y ESTADO EN VIVO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 min-h-[52px]">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-orange-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <Flame className="w-6 h-6 animate-pulse" />
+              <Flame className="w-6 h-6" />
             </div>
             <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white dark:border-gray-900"></span>
             </span>
           </div>
@@ -384,7 +565,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                 Experiencias & Ofertas Exclusivas
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide uppercase bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black tracking-wide uppercase bg-red-100 dark:bg-red-950/80 text-red-900 dark:text-red-200 border border-red-300 dark:border-red-800">
                 En Vivo
               </span>
             </div>
@@ -396,7 +577,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
 
         {/* TEMPORIZADOR DIGITAL FLOTANTE */}
         <div className="flex items-center gap-2 bg-gray-100/90 dark:bg-gray-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs self-start sm:self-auto">
-          <Clock className="w-3.5 h-3.5 text-amber-500 animate-spin" style={{ animationDuration: "12s" }} />
+          <Clock className="w-3.5 h-3.5 text-amber-500" />
           <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Termina en:</span>
           <div className="flex items-center gap-1 font-mono text-xs font-black text-gray-900 dark:text-amber-300">
             <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
@@ -411,7 +592,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
               {String(timeLeft.minutos).padStart(2, "0")}m
             </span>
             <span>:</span>
-            <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-md shadow-2xs animate-pulse">
+            <span className="bg-red-800 text-white px-1.5 py-0.5 rounded-md shadow-2xs font-bold">
               {String(timeLeft.segundos).padStart(2, "0")}s
             </span>
           </div>
@@ -432,15 +613,16 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
               className="flex-1 h-1.5 sm:h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 transition-all cursor-pointer relative group"
             >
               <div
-                className={`h-full transition-all duration-150 ${
+                className={`h-full transition-all ${
                   isCurrent
-                    ? "bg-gradient-to-r from-amber-500 via-orange-500 to-red-500"
+                    ? "bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 w-full"
                     : isPast
-                    ? "bg-gray-400 dark:bg-gray-600"
+                    ? "bg-gray-400 dark:bg-gray-600 w-full"
                     : "w-0"
                 }`}
                 style={{
-                  width: isCurrent ? `${progress}%` : isPast ? "100%" : "0%"
+                  transitionDuration: isCurrent ? `${slideDuration}ms` : "200ms",
+                  transitionTimingFunction: "linear"
                 }}
               />
               <span className="absolute inset-0 group-hover:bg-white/20 transition-colors" />
@@ -488,7 +670,7 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   ? "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=800&auto=format&fit=crop&q=80"
                   : evt.icono === "hotdog"
                   ? "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=800&auto=format&fit=crop&q=80"
-                  : "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80");
+                  : "/hero-burger.webp");
 
               return (
                 <div
@@ -496,31 +678,46 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   className={`w-full shrink-0 relative bg-gradient-to-br ${theme.bg} text-white min-h-[380px] sm:min-h-[400px] flex flex-col justify-between overflow-hidden`}
                 >
                   {/* Destello suave que barre la tarjeta */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none animate-sweep" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
 
                   {/* Top Bar de la diapositiva */}
-                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 pt-5 sm:pt-6 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative z-10 px-4 sm:px-10 lg:px-16 pt-4 sm:pt-6 flex items-center justify-between gap-2.5 min-h-[56px]">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${theme.badgeBg}`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${theme.badgeBg}`}
                       >
                         <Zap className="w-3.5 h-3.5 fill-current" />
                         <span>{evt.tipoEvento || "Evento Activo"}</span>
                       </span>
 
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20">
-                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                        <span>{evt.rating || "4.9"}</span>
-                      </span>
+                      {/* Píldora de Calificación Real o Sin Reseñas (Ancho estable min-w-[88px] para 0 CLS) */}
+                      {evt.rating && Number(evt.rating) > 0 && evt.totalResenas > 0 ? (
+                        <span
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20 shrink-0 min-w-[88px]"
+                          title={`Calificación: ${Number(evt.rating).toFixed(1)} / 5 (${evt.totalResenas} ${evt.totalResenas === 1 ? "reseña" : "reseñas"})`}
+                        >
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          <span>{Number(evt.rating).toFixed(1)}</span>
+                          <span className="text-[10px] text-amber-200/80 font-normal">({evt.totalResenas})</span>
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0 min-w-[88px]"
+                          title="Este evento aún no tiene reseñas de usuarios"
+                        >
+                          <Star className="w-3 h-3 text-white/40" />
+                          <span>Sin reseñas</span>
+                        </span>
+                      )}
 
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0">
                         <Clock className="w-3 h-3" />
                         <span>{evt.tiempoPrep || "10-15 min"}</span>
                       </span>
                     </div>
 
                     {savePct > 0 && (
-                      <div className="flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-lg shadow-red-950/60">
+                      <div className="shrink-0 flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-lg shadow-red-950/60">
                         <Percent className="w-3.5 h-3.5" />
                         <span>-{savePct}% OFF</span>
                       </div>
@@ -528,15 +725,21 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                   </div>
 
                   {/* Contenido Central: Información gastronómica + Plato fotográfico */}
-                  <div className="relative z-10 px-8 sm:px-14 lg:px-16 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  <div className="relative z-10 px-4 sm:px-10 lg:px-16 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                     {/* Información y detalles */}
                     <div className="lg:col-span-7 space-y-3.5 text-left">
                       <div>
-                        <span className={`text-xs font-extrabold uppercase tracking-widest ${theme.accent} block mb-1`}>
-                          {theme.tag}
-                        </span>
-                        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight">
-                          {evt.nombreEvento || evt.nombre}
+                        <div className={`inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest ${theme.accent} mb-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 shadow-xs`}>
+                          {evt.TagIcon && (
+                            <evt.TagIcon size={14} className="shrink-0" />
+                          )}
+                          <span>{evt.customTag || theme.tagText || theme.tag}</span>
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md leading-tight flex items-center gap-2.5 flex-wrap">
+                          {evt.TitleIcon && (
+                            <evt.TitleIcon size={28} className="shrink-0 text-amber-400 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]" />
+                          )}
+                          <span>{stripEmojis(evt.nombreEvento || evt.nombre)}</span>
                         </h3>
                       </div>
 
@@ -590,13 +793,18 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
 
                         <div className="relative z-10 w-full h-full rounded-3xl overflow-hidden border-2 border-white/20 bg-black/40 shadow-2xl backdrop-blur-md p-2 flex items-center justify-center">
                           <img
-                            src={cardImage}
+                            src={getOptimizedImageUrl(cardImage, 360)}
                             alt={evt.nombreEvento || "Plato Chazin Food"}
-                            className="w-full h-full object-cover rounded-2xl filter drop-shadow-[0_12px_20px_rgba(0,0,0,0.8)]"
-                            loading="eager"
+                            width="288"
+                            height="288"
+                            style={{ aspectRatio: "1 / 1" }}
+                            className="w-full h-full object-cover rounded-2xl"
+                            loading={idx === 0 ? "eager" : "lazy"}
+                            fetchPriority={idx === 0 ? "high" : "low"}
+                            decoding="async"
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80";
+                              e.target.src = "/hero-burger.webp";
                             }}
                           />
 
@@ -625,20 +833,24 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                       </button>
                     </div>
 
-                    {/* Indicadores de diapositivas totalmente centrados */}
-                    <div className="sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex items-center justify-center gap-2 py-1 sm:py-0">
+                    {/* Indicadores de diapositivas totalmente centrados con áreas táctiles accesibles */}
+                    <div className="sm:absolute sm:left-1/2 sm:-translate-x-1/2 flex items-center justify-center gap-1 py-1 sm:py-0">
                       {combinedEventos.map((_, dotIdx) => (
                         <button
                           key={dotIdx}
                           type="button"
                           onClick={() => goToSlide(dotIdx)}
-                          className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                            currentIndex === dotIdx
-                              ? "w-8 bg-white shadow-lg shadow-white/60"
-                              : "w-2.5 bg-white/35 hover:bg-white/70"
-                          }`}
-                          aria-label={`Ir al slide ${dotIdx + 1}`}
-                        />
+                          className="p-2.5 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"
+                          aria-label={`Ir a la diapositiva ${dotIdx + 1}`}
+                        >
+                          <span
+                            className={`h-2.5 rounded-full transition-all duration-300 block ${
+                              currentIndex === dotIdx
+                                ? "w-8 bg-white shadow-lg shadow-white/60"
+                                : "w-2.5 bg-white/35 hover:bg-white/70"
+                            }`}
+                          />
+                        </button>
                       ))}
                     </div>
 
@@ -718,8 +930,8 @@ export function EventosCarousel({ eventos = [], productos = [], onSelectEvento }
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
                     isSelected
-                      ? "bg-amber-400 text-gray-950 shadow-xs"
-                      : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                      ? "bg-black text-amber-300 border border-amber-400/50 font-black"
+                      : "bg-red-800 text-white font-black"
                   }`}
                 >
                   -{evt.descuento}%

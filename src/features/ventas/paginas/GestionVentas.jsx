@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import {
   Search,
@@ -9,7 +10,10 @@ import {
   BarChart2,
   Download,
   FileSpreadsheet,
-  FileText
+  FileText,
+  Plus,
+  Globe,
+  Store
 } from "lucide-react";
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
@@ -21,6 +25,7 @@ import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function GestionVentas() {
+  const navigate = useNavigate();
   const {
     ventas,
     filteredVentas,
@@ -32,7 +37,8 @@ export function GestionVentas() {
     setFilterEstado,
     selectedPeriod,
     setSelectedPeriod,
-    updateEstado
+    updateEstado,
+    updateTiempoEntrega
   } = useGestionVentas();
 
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
@@ -40,6 +46,7 @@ export function GestionVentas() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [filterFecha, setFilterFecha] = useState("");
   const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
+  const [filterOrigen, setFilterOrigen] = useState("Todos");
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
 
 function formatDateSafe(dateVal, fallback = "") {
@@ -62,7 +69,7 @@ function formatDateSafe(dateVal, fallback = "") {
   };
   const periodText = periodLabelMap[selectedPeriod] || "Últimos 7 días";
 
-  // Apply local filters (fecha + metodo de pago) on top of hook's filteredVentas
+  // Apply local filters (fecha + metodo de pago + origen) on top of hook's filteredVentas
   const displayedVentas = filteredVentas.filter((v) => {
     if (filterFecha) {
       const ventaDate = formatDateSafe(v.fecha || v.fechaVenta, "");
@@ -72,17 +79,23 @@ function formatDateSafe(dateVal, fallback = "") {
       const metodoPago = v.metodoPago || v.metodo_pago || v.medioPago || "";
       if (metodoPago.toLowerCase() !== filterMetodoPago.toLowerCase()) return false;
     }
+    if (filterOrigen !== "Todos") {
+      const vOrigen = (v.origen || (String(v.tipoEntrega || "").toLowerCase().includes("domicilio") ? "ONLINE" : "PUNTO_FISICO")).toUpperCase();
+      if (filterOrigen === "ONLINE" && !vOrigen.includes("ONLINE")) return false;
+      if (filterOrigen === "PUNTO_FISICO" && !vOrigen.includes("PUNTO") && !vOrigen.includes("FISICO")) return false;
+    }
     return true;
   });
 
   const handleClearFilters = () => {
     setFilterFecha("");
     setFilterMetodoPago("Todos");
+    setFilterOrigen("Todos");
     setSearchTerm("");
     setFilterEstado("Todos");
   };
 
-  const hasActiveFilters = filterFecha !== "" || filterMetodoPago !== "Todos" || filterEstado !== "Todos" || searchTerm !== "";
+  const hasActiveFilters = filterFecha !== "" || filterMetodoPago !== "Todos" || filterOrigen !== "Todos" || filterEstado !== "Todos" || searchTerm !== "";
 
   const handleViewDetail = (v) => {
     setSelectedVentaDetail(v);
@@ -215,13 +228,22 @@ function formatDateSafe(dateVal, fallback = "") {
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#1e293b] dark:text-gray-100">
-          Gestión de Ventas
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Monitoreo de pedidos pagados, historial completo y análisis comercial
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1e293b] dark:text-gray-100">
+            Gestión de Ventas
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Monitoreo de pedidos pagados, historial completo y análisis comercial
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/ventas/pos")}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-[#F05454] hover:bg-[#d84040] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Crear venta</span>
+        </button>
       </div>
 
       {/* Top 4 Stats Cards */}
@@ -357,7 +379,7 @@ function formatDateSafe(dateVal, fallback = "") {
             </div>
 
             <VentasHistorialCardsView
-              ventas={ventas}
+              ventas={displayedVentas}
               onViewDetail={handleViewDetail}
             />
           </div>
@@ -372,7 +394,7 @@ function formatDateSafe(dateVal, fallback = "") {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por cliente o ID..."
+                  placeholder="Buscar por ID, cliente, teléfono, hora (12:30, AM/PM), estado, entrega, total..."
                   className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm focus:ring-2 focus:ring-[#F05454]/50 focus:border-transparent transition-colors placeholder:text-gray-400 text-gray-900 dark:text-gray-100"
                 />
               </div>
@@ -422,6 +444,22 @@ function formatDateSafe(dateVal, fallback = "") {
                       <option value="Efectivo">Efectivo</option>
                       <option value="Tarjeta">Tarjeta</option>
                       <option value="Transferencia">Transferencia</option>
+                    </select>
+                  </div>
+
+                  {/* Origen de Venta */}
+                  <div className="flex-1 w-full sm:w-auto">
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                      Canal / Origen
+                    </label>
+                    <select
+                      value={filterOrigen}
+                      onChange={(e) => setFilterOrigen(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors cursor-pointer appearance-none"
+                    >
+                      <option value="Todos">Todos los canales</option>
+                      <option value="ONLINE">🌐 Pedidos Online</option>
+                      <option value="PUNTO_FISICO">🏪 Punto Físico</option>
                     </select>
                   </div>
 
@@ -477,6 +515,7 @@ function formatDateSafe(dateVal, fallback = "") {
         isOpen={!!selectedVentaDetail}
         onClose={() => setSelectedVentaDetail(null)}
         venta={selectedVentaDetail}
+        onUpdateTiempoEntrega={updateTiempoEntrega}
       />
     </div>
   );

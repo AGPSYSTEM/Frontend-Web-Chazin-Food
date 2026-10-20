@@ -15,7 +15,7 @@ import {
   Package,
   Edit
 } from "lucide-react";
-import Swal from "sweetalert2";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 import { eventosService } from "../../servicios/eventosService";
 
 export function EventosModal({
@@ -26,6 +26,7 @@ export function EventosModal({
   onEditEvento,
   onRefresh
 }) {
+  const notify = useNotifications();
   const [activeTab, setActiveTab] = useState("todos"); // 'todos' | 'activos' | 'inactivos'
   const [togglingId, setTogglingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -121,74 +122,48 @@ export function EventosModal({
     const nuevoEstado = isActivo ? 0 : 1;
     const actionText = isActivo ? "Pausar" : "Reanudar";
 
-    const result = await Swal.fire({
-      title: `¿${actionText} este evento?`,
-      text: isActivo
+    const isConfirmed = await notify.confirmAction(
+      `¿${actionText} este evento?`,
+      isActivo
         ? `El evento "${evt.nombre || evt.nombreEvento}" dejará de aplicar descuentos en el catálogo.`
         : `El evento "${evt.nombre || evt.nombreEvento}" volverá a estar activo para los clientes.`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: `Sí, ${actionText}`,
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: isActivo ? "#f59e0b" : "#8b5cf6"
-    });
+      `Sí, ${actionText}`
+    );
 
-    if (!result.isConfirmed) return;
+    if (!isConfirmed) return;
 
     setTogglingId(evt.id || evt.idEvento);
     try {
       await eventosService.updateEvento(evt.id || evt.idEvento, {
         estado: nuevoEstado
       });
-      Swal.fire({
-        icon: "success",
-        title: isActivo ? "Evento Pausado" : "Evento Activado",
-        text: `El estado del evento fue actualizado correctamente.`,
-        timer: 1800,
-        showConfirmButton: false
-      });
+      notify.success(
+        isActivo ? "Evento Pausado" : "Evento Activado",
+        "El estado del evento fue actualizado correctamente."
+      );
       onRefresh?.();
     } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: err?.message || "No se pudo actualizar el estado del evento."
-      });
+      notify.error("Error", err?.message || "No se pudo actualizar el estado del evento.");
     } finally {
       setTogglingId(null);
     }
   };
 
   const handleDeleteEvento = async (evt) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar evento?",
-      text: `Se eliminará permanentemente la campaña "${evt.nombre || evt.nombreEvento}". Esta acción no se puede deshacer.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#ef4444"
-    });
+    const isConfirmed = await notify.confirmDelete(
+      "¿Eliminar evento?",
+      `Se eliminará permanentemente la campaña "${evt.nombre || evt.nombreEvento}". Esta acción no se puede deshacer.`
+    );
 
-    if (!result.isConfirmed) return;
+    if (!isConfirmed) return;
 
     setDeletingId(evt.id || evt.idEvento);
     try {
       await eventosService.deleteEvento(evt.id || evt.idEvento);
-      Swal.fire({
-        icon: "success",
-        title: "Evento Eliminado",
-        text: "La campaña de evento fue removida del sistema.",
-        timer: 1800,
-        showConfirmButton: false
-      });
+      notify.success("Evento Eliminado", "La campaña de evento fue removida del sistema.");
       onRefresh?.();
     } catch (err) {
-      Swal.fire({
-        icon: "error",
-        title: "Error al eliminar",
-        text: err?.message || "No se pudo eliminar el evento."
-      });
+      notify.error("Error al eliminar", err?.message || "No se pudo eliminar el evento.");
     } finally {
       setDeletingId(null);
     }

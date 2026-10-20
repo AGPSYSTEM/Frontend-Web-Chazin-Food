@@ -32,13 +32,68 @@ export function useClientes() {
   }, [fetchClientes]);
 
   const filteredClientes = clientes.filter((c) => {
-    const matchSearch =
-      searchTerm === "" ||
-      c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.telefono?.includes(searchTerm) ||
-      c.documento?.includes(searchTerm);
+    const term = (searchTerm || "").trim().toLowerCase();
+    
+    let matchSearch = true;
+    if (term !== "") {
+      const idStr = String(c.id || c.idCliente || "");
+      const idHashStr = `#${idStr}`;
+      const nombre = (c.nombre || "").toLowerCase();
+      const apellidos = (c.apellidos || "").toLowerCase();
+      const nombreCompleto = `${nombre} ${apellidos}`.trim();
+      const email = (c.email || "").toLowerCase();
+      const rawTelefono = String(c.telefono || "").toLowerCase();
+      const cleanTelefono = rawTelefono.replace(/\D/g, "");
+      const cleanTermPhone = term.replace(/\D/g, "");
+      const doc = String(c.documento || "").toLowerCase();
+      const cleanDoc = doc.replace(/\D/g, "");
+      const direccion = String(c.direccion || "").toLowerCase();
+      const comprasCount = String(c.compras ?? 0);
+
+      // Total consumido parsing (raw number, formatted, with/without '$' and dots)
+      const rawTotalStr = String(c.totalConsumido || c.totalGastado || "").toLowerCase();
+      const totalNumFromStr = Number(rawTotalStr.replace(/[^\d]/g, "")) || 0;
+      const totalNum = Number(c.totalConsumidoRaw || c.totalGastadoRaw) || totalNumFromStr;
+      const totalStr = String(totalNum);
+      const totalFormatted = `$${totalNum.toLocaleString("es-CO")}`.toLowerCase();
+      const totalFormattedNoDollar = totalNum.toLocaleString("es-CO").toLowerCase();
+      const cleanTermNumber = term.replace(/[$. ]/g, "");
+
+      // Fidelidad tier: VIP, Frecuente, Regular (handling "irregular"), Nuevo
+      const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
+      const rawTipo = clientTipo.toLowerCase();
+      const isIrregularSearch = term === "irregular" || term.includes("irregular");
+      const matchTipo = rawTipo.includes(term) || (isIrregularSearch && rawTipo.includes("regular"));
+
+      // Estado: Activo / Inactivo
+      const rawEstado = String(c.estado || (c.activo === false ? "Inactivo" : "Activo")).toLowerCase();
+      const matchEstadoSearch = rawEstado.includes(term);
+
+      // Compras match: exact match on number or e.g. "3 compras"
+      const matchCompras =
+        comprasCount === term ||
+        term === `${comprasCount} compras` ||
+        term === `${comprasCount} compra`;
+
+      matchSearch =
+        idStr === term ||
+        idHashStr === term ||
+        idStr.includes(term) ||
+        nombreCompleto.includes(term) ||
+        email.includes(term) ||
+        (cleanTermPhone.length > 0 && cleanTelefono.includes(cleanTermPhone)) ||
+        rawTelefono.includes(term) ||
+        doc.includes(term) ||
+        (cleanTermPhone.length > 0 && cleanDoc.includes(cleanTermPhone)) ||
+        direccion.includes(term) ||
+        matchCompras ||
+        (cleanTermNumber.length > 0 && totalStr.includes(cleanTermNumber)) ||
+        totalFormatted.includes(term) ||
+        totalFormattedNoDollar.includes(term) ||
+        rawTotalStr.includes(term) ||
+        matchTipo ||
+        matchEstadoSearch;
+    }
 
     const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
 
@@ -74,7 +129,16 @@ export function useClientes() {
     }
   };
 
-  const deleteCliente = async (id, nombre) => {
+  const deleteCliente = async (id, nombre, comprasCount = 0) => {
+    // Si tiene ventas asociadas, se bloquea la eliminación totalmente para proteger los registros contables
+    if (comprasCount > 0) {
+      notify.warning(
+        "No se puede eliminar",
+        `El cliente "${nombre}" cuenta con ${comprasCount} ${comprasCount === 1 ? 'venta asociada' : 'ventas asociadas'}. Por integridad contable, solo puedes cambiar su estado a Inactivo.`
+      );
+      return false;
+    }
+
     const confirmed = await notify.confirmDelete(
       "¿Eliminar cliente?",
       `¿Estás seguro de que deseas eliminar a "${nombre}"?`

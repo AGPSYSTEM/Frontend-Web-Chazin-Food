@@ -12,7 +12,15 @@ function formatDateSafe(dateVal, fallback = "2026-06-09") {
   }
 }
 
-export function VentasHistorialCardsView({ ventas = [], onViewDetail }) {
+export function VentasHistorialCardsView({ ventas, onViewDetail }) {
+  if (Array.isArray(ventas) && ventas.length === 0) {
+    return (
+      <div className="py-12 text-center text-gray-500 dark:text-gray-400 text-sm font-semibold bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+        No se encontraron ventas en el historial con los filtros aplicados.
+      </div>
+    );
+  }
+
   // Sample data fallback if list is empty
   const itemsToDisplay = Array.isArray(ventas) && ventas.length > 0 ? ventas : [
     {

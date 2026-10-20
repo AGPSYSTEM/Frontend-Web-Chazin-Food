@@ -6,7 +6,7 @@ import {
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { apiClient } from "@/shared/api/apiClient";
-import Swal from "sweetalert2";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 function formatFecha(dateStr) {
   if (!dateStr) return "";
@@ -46,6 +46,7 @@ function StarsDisplay({ valor }) {
 
 export function ProductoResenasModal({ isOpen, onClose, producto }) {
   const { user } = useAuth();
+  const notify = useNotifications();
   const [data, setData] = useState({ promedio: 0, total: 0, resenas: [] });
   const [loading, setLoading] = useState(false);
   const [miResena, setMiResena] = useState(null); // null | { id, puntuacion, comentario }
@@ -121,10 +122,7 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
           puntuacion: form.puntuacion,
           comentario: form.comentario
         });
-        await Swal.fire({
-          icon: "success", title: "¡Reseña actualizada!", timer: 1800, timerProgressBar: true,
-          showConfirmButton: false, confirmButtonColor: "#f05454"
-        });
+        notify.success("¡Reseña actualizada!", "Tu reseña ha sido guardada correctamente.");
       } else {
         // Crear
         await apiClient.post("/resenas", {
@@ -132,10 +130,7 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
           puntuacion: form.puntuacion,
           comentario: form.comentario
         });
-        await Swal.fire({
-          icon: "success", title: "¡Gracias por tu reseña!", timer: 1800, timerProgressBar: true,
-          showConfirmButton: false, confirmButtonColor: "#f05454"
-        });
+        notify.success("¡Gracias por tu reseña!", "Tu reseña ha sido publicada exitosamente.");
       }
       setModoEditar(false);
       await fetchResenas();
@@ -156,24 +151,19 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
 
   const handleEliminar = async () => {
     if (!miResena) return;
-    const confirm = await Swal.fire({
-      title: "¿Eliminar reseña?",
-      text: "Esta acción no se puede deshacer.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#f05454",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar"
-    });
-    if (!confirm.isConfirmed) return;
+    const isConfirmed = await notify.confirmDelete(
+      "¿Eliminar reseña?",
+      "Esta acción no se puede deshacer."
+    );
+    if (!isConfirmed) return;
     try {
       await apiClient.delete(`/resenas/${miResena.id}`);
       setMiResena(null);
       setForm({ puntuacion: 0, comentario: "" });
+      notify.success("Reseña eliminada", "Tu reseña fue eliminada con éxito.");
       await fetchResenas();
     } catch (err) {
-      Swal.fire({ icon: "error", title: "Error", text: err.message, confirmButtonColor: "#f05454" });
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar la reseña.");
     }
   };
 

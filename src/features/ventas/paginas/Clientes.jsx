@@ -9,7 +9,7 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Clientes() {
-  const { info } = useNotifications();
+  const { success, info } = useNotifications();
   const {
     clientes,
     filteredClientes,
@@ -49,12 +49,15 @@ export function Clientes() {
     let ok = false;
     if (editingCliente) {
       ok = await updateCliente(editingCliente.id || editingCliente.idCliente, form);
+      if (ok) {
+        success("¡Cliente actualizado!", "Los datos del cliente se modificaron correctamente.");
+      }
     } else {
       ok = await createCliente(form);
-      if (ok && form.sinCuenta) {
-        info(
-          "Cliente inactivo registrado",
-          "Cliente creado correctamente, pero quedó inactivo porque no tiene una cuenta de usuario ni credenciales de acceso."
+      if (ok) {
+        success(
+          "¡Cliente registrado con éxito!",
+          `Se ha enviado un correo electrónico de activación a ${form.email || 'su dirección'} para que configure su contraseña y active su cuenta.`
         );
       }
     }
@@ -88,7 +91,7 @@ export function Clientes() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar cliente..."
+            placeholder="Buscar por ID, nombre, teléfono, documento, compras, total, fidelidad..."
             className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors placeholder:text-gray-400 outline-none"
           />
         </div>
@@ -148,6 +151,7 @@ export function Clientes() {
         }}
         onSave={handleSave}
         cliente={editingCliente}
+        clientes={clientes}
       />
     </div>
   );

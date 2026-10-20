@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
 
 export function Toast({ id, type, title, message, duration = 4000, onClose }) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
-    const timerShow = setTimeout(() => setIsVisible(true), 10);
     const timerClose = setTimeout(() => {
       handleClose();
     }, duration);
     return () => {
-      clearTimeout(timerShow);
       clearTimeout(timerClose);
     };
   }, [duration]);
@@ -67,12 +66,15 @@ export function Toast({ id, type, title, message, duration = 4000, onClose }) {
 
   return (
     <div
+      style={{
+        zIndex: 999999999,
+        transform: isVisible && !isLeaving ? "translateX(0)" : "translateX(120%)",
+        opacity: isVisible && !isLeaving ? 1 : 0,
+        transition: "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out"
+      }}
       className={`
-        transform transition-all duration-300 ease-out
-        ${isVisible && !isLeaving ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
-        ${currentConfig.bgColor} ${currentConfig.borderColor}
-        border-l-4 rounded-lg shadow-lg ${currentConfig.glowColor}
-        backdrop-blur-sm
+        bg-white dark:bg-gray-900 ${currentConfig.borderColor}
+        border-l-4 border-y border-r border-gray-200/80 dark:border-gray-800 rounded-2xl shadow-2xl ${currentConfig.glowColor}
         min-w-[320px] max-w-md
         pointer-events-auto
       `}
@@ -84,9 +86,9 @@ export function Toast({ id, type, title, message, duration = 4000, onClose }) {
 
         <div className="flex-1 min-w-0">
           <h4 className={`font-bold text-sm ${currentConfig.titleColor} mb-1`}>
-            {title}
+            {typeof title === "string" ? title : (title && typeof title === "object" ? (title.title || title.message || JSON.stringify(title)) : (title ? String(title) : ""))}
           </h4>
-          {message && (
+          {typeof message === "string" && message.trim().length > 0 && (
             <p className={`text-sm ${currentConfig.messageColor}`}>
               {message}
             </p>
@@ -122,8 +124,24 @@ export function Toast({ id, type, title, message, duration = 4000, onClose }) {
 }
 
 export function ToastContainer({ toasts, onClose }) {
-  return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none">
+  if (typeof document === "undefined" || !toasts || toasts.length === 0) return null;
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        top: "20px",
+        right: "20px",
+        zIndex: 999999999,
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        pointerEvents: "none",
+        maxWidth: "420px",
+        width: "calc(100% - 40px)"
+      }}
+      className="fixed top-5 right-5 flex flex-col gap-3 pointer-events-none"
+    >
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -135,6 +153,7 @@ export function ToastContainer({ toasts, onClose }) {
           onClose={onClose}
         />
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }
