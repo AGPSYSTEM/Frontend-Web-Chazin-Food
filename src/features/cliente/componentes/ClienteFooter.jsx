@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Code, Heart, Sparkles, Terminal, ShieldCheck, X, ChevronRight, Laptop, Server, Database, Smartphone } from "lucide-react";
+import { Code, Heart, Sparkles, Terminal, ShieldCheck, X, ChevronRight, Laptop, Server, Database, Smartphone, Instagram, Globe, ExternalLink } from "lucide-react";
 
 export function ClienteFooter() {
   const [showModal, setShowModal] = useState(false);
@@ -7,38 +7,59 @@ export function ClienteFooter() {
   const developers = [
     {
       name: "Emanuel Henao",
-      role: "Full-Stack Developer",
+      role: "Analista y Desarrollador de Software",
       initials: "EH",
       color: "from-red-500 to-amber-500",
-      tag: "Full-Stack"
+      tag: "ADSO"
     },
     {
       name: "Jafet Caballero",
-      role: "Frontend & UI/UX Specialist",
+      role: "Analista y Desarrollador de Software",
       initials: "JC",
       color: "from-amber-500 to-yellow-500",
-      tag: "Frontend & UI"
+      tag: "ADSO"
     },
     {
       name: "Samuel Gutiérrez",
-      role: "Backend & DB Architect",
+      role: "Analista y Desarrollador de Software",
       initials: "SG",
       color: "from-emerald-500 to-teal-500",
-      tag: "Backend & DB"
+      tag: "ADSO"
     },
     {
       name: "Alexis Gómez",
-      role: "Mobile & QA Engineer",
+      role: "Analista y Desarrollador de Software",
       initials: "AG",
       color: "from-blue-500 to-cyan-500",
-      tag: "Mobile & QA"
+      tag: "ADSO"
     },
     {
-      name: "Juan José Gallego Bram",
-      role: "Software Engineer",
+      name: "Juan José Gallego Bran",
+      role: "Analista y Desarrollador de Software",
       initials: "JG",
       color: "from-purple-500 to-indigo-500",
-      tag: "Software Eng"
+      tag: "ADSO"
+    }
+  ];
+
+  const businessInfo = [
+    {
+      icon: <Instagram className="w-4 h-4 text-pink-400 shrink-0" />,
+      label: "Instagram oficial",
+      value: "@chazinfood",
+      href: "https://instagram.com/chazinfood"
+    },
+    {
+      icon: <Globe className="w-4 h-4 text-sky-400 shrink-0" />,
+      label: "Sitio web",
+      value: "chazinfood.com",
+      href: "https://chazinfood.com"
+    },
+    {
+      icon: <Instagram className="w-4 h-4 text-orange-400 shrink-0" />,
+      label: "Marca aliada",
+      value: "@saimonbread",
+      href: "https://instagram.com/saimonbread"
     }
   ];
 
@@ -61,7 +82,7 @@ export function ClienteFooter() {
               <span className="text-red-500">Chazin Food</span>
             </h3>
             <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-              Equipo ADSO • Plataforma Web & Móvil de Gestión Gastronómica
+              Equipo ADSO • Plataforma Web &amp; Móvil de Gestión Gastronómica
             </p>
           </div>
 
@@ -87,10 +108,30 @@ export function ClienteFooter() {
             ))}
           </div>
 
+          {/* Business Info Row */}
+          <div className="flex flex-wrap justify-center gap-4 text-xs">
+            {businessInfo.map((info, idx) => (
+              <a
+                key={idx}
+                href={info.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 hover:bg-slate-800 transition-all group"
+              >
+                {info.icon}
+                <div className="text-left">
+                  <span className="text-[10px] text-slate-500 block leading-none mb-0.5">{info.label}</span>
+                  <span className="font-semibold text-slate-300 group-hover:text-white transition-colors">{info.value}</span>
+                </div>
+                <ExternalLink className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors ml-0.5" />
+              </a>
+            ))}
+          </div>
+
           {/* Divider */}
           <div className="w-full max-w-3xl border-t border-slate-800/80 my-4" />
 
-          {/* Footer Bottom Bar: Version, Modal Button & Copyright */}
+          {/* Footer Bottom Bar */}
           <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-bold border border-slate-700/50">
@@ -119,7 +160,7 @@ export function ClienteFooter() {
       {/* Modal Ficha Completa de Créditos */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-left">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-left max-h-[90vh] overflow-y-auto">
             {/* Close Button */}
             <button
               type="button"
@@ -140,6 +181,31 @@ export function ClienteFooter() {
               </div>
             </div>
 
+            {/* Business Info */}
+            <div className="space-y-2 pt-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Información del Negocio:</p>
+              <div className="space-y-2">
+                {businessInfo.map((info, idx) => (
+                  <a
+                    key={idx}
+                    href={info.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      {info.icon}
+                      <div>
+                        <p className="text-[11px] text-slate-400">{info.label}</p>
+                        <p className="text-xs font-bold text-white group-hover:text-red-400 transition-colors">{info.value}</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </div>
+
             {/* Developers List */}
             <div className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Integrantes del Proyecto:</p>
@@ -155,7 +221,7 @@ export function ClienteFooter() {
                         <p className="text-[11px] text-slate-400">{dev.role}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
                       {dev.tag}
                     </span>
                   </div>

@@ -34,6 +34,8 @@ export function Usuarios() {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewingUsuario, setViewingUsuario] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
   const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo").length;
@@ -267,9 +269,9 @@ export function Usuarios() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Buscar por documento, nombre, apellido o correo..."
+              placeholder="Buscar por documento, nombre, apellido, correo, teléfono o rol..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-9 pr-4 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm"
               autoComplete="off"
             />
@@ -291,12 +293,12 @@ export function Usuarios() {
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-3 mb-6 flex flex-wrap gap-2 items-center">
         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Rol:</span>
         {ROLES_FILTRO.map((r) => (
-          <button key={r} onClick={() => setFilterRol(r)} className={pillBtn(filterRol === r)}>{r}</button>
+          <button key={r} onClick={() => { setFilterRol(r); setCurrentPage(1); }} className={pillBtn(filterRol === r)}>{r}</button>
         ))}
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Estado:</span>
         {ESTADOS_FILTRO.map((e) => (
-          <button key={e} onClick={() => setFilterEstado(e)} className={pillBtn(filterEstado === e)}>{e}</button>
+          <button key={e} onClick={() => { setFilterEstado(e); setCurrentPage(1); }} className={pillBtn(filterEstado === e)}>{e}</button>
         ))}
       </div>
 
@@ -307,6 +309,9 @@ export function Usuarios() {
         onDelete={deleteUsuario}
         onChangePassword={handleOpenPassword}
         onView={handleOpenView}
+        currentPage={currentPage}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
       />
 
       {/* Modals */}

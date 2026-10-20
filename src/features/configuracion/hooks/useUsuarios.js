@@ -59,12 +59,15 @@ export function useUsuarios() {
     const isNotAdmin = (u.rolNombre || u.rol || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1";
     if (!isNotAdmin) return false;
 
+    const term = searchTerm.toLowerCase();
     const matchSearch =
       searchTerm === "" ||
-      u.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.documento?.includes(searchTerm);
+      u.nombre?.toLowerCase().includes(term) ||
+      u.apellidos?.toLowerCase().includes(term) ||
+      u.email?.toLowerCase().includes(term) ||
+      u.documento?.includes(searchTerm) ||
+      u.telefono?.includes(searchTerm) ||
+      u.rolNombre?.toLowerCase().includes(term);
 
     const matchRol = filterRol === "Todos" || u.rolNombre.toLowerCase() === filterRol.toLowerCase();
     const matchEstado = filterEstado === "Todos" || u.estado.toLowerCase() === filterEstado.toLowerCase();

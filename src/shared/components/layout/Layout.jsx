@@ -37,6 +37,7 @@ export function Layout() {
   const [produccionExpanded, setProduccionExpanded] = useState(false);
   const [ventasExpanded, setVentasExpanded] = useState(false);
   const [configExpanded, setConfigExpanded] = useState(false);
+  const [usuariosExpanded, setUsuariosExpanded] = useState(false);
   const [perfilOpen, setPerfilOpen] = useState(false);
   const [darkMode, toggleDarkMode] = useDarkMode();
   const location = useLocation();
@@ -76,6 +77,7 @@ export function Layout() {
     setProduccionExpanded(false);
     setVentasExpanded(false);
     setConfigExpanded(false);
+    setUsuariosExpanded(false);
   };
 
   const openSection = (section) => {
@@ -83,6 +85,7 @@ export function Layout() {
     setProduccionExpanded(section === "produccion");
     setVentasExpanded(section === "ventas");
     setConfigExpanded(section === "config");
+    setUsuariosExpanded(section === "usuarios");
   };
 
   const handleSectionClick = (section, cur) => {
@@ -136,11 +139,16 @@ export function Layout() {
   const ventasPaths = ventasItems.map((i) => i.to);
 
   const allConfigItems = [
-    { to: "/configuracion/roles", label: "Roles", perm: "Roles" },
-    { to: "/configuracion/usuarios", label: "Usuarios", perm: "Usuarios" }
+    { to: "/configuracion/roles", label: "Roles", perm: "Roles" }
   ];
   const configItems = allConfigItems.filter(i => hasPerm(i.perm));
   const showConfig = hasPerm("Configuración") || configItems.length > 0;
+
+  const allUsuariosItems = [
+    { to: "/configuracion/usuarios", label: "Gestión de Usuarios", perm: "Usuarios" }
+  ];
+  const usuariosItems = allUsuariosItems.filter(i => hasPerm(i.perm));
+  const showUsuarios = hasPerm("Usuarios") || usuariosItems.length > 0;
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
@@ -196,10 +204,25 @@ export function Layout() {
                 </li>
               )}
 
+              {/* Usuarios */}
+              {showUsuarios && (
+                <li>
+                  <button onClick={() => handleSectionClick("usuarios", usuariosExpanded)} title="Usuarios" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                    <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Usuarios</span>}</div>
+                    {sidebarOpen && (usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                  </button>
+                  {sidebarOpen && usuariosExpanded && (
+                    <ul className="ml-8 mt-1 space-y-1">
+                      {usuariosItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
+                    </ul>
+                  )}
+                </li>
+              )}
+
               {/* Configuración */}
               {showConfig && (
                 <li>
-                  <button onClick={() => handleSectionClick("config", configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <button onClick={() => handleSectionClick("config", configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") && !isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Configuración</span>}</div>
                     {sidebarOpen && (configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
                   </button>
@@ -339,11 +362,39 @@ export function Layout() {
             </Link>
           )}
 
+          {showUsuarios && (
+            <div className="w-full">
+              <button
+                onClick={() => handleMobileSectionClick("usuarios", usuariosExpanded)}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              >
+                <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
+                {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              {usuariosExpanded && (
+                <ul className="ml-8 mt-1 space-y-0.5">
+                  {usuariosItems.map(({ to, label }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        onClick={handleNavClick}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive(to) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {showConfig && (
             <div className="w-full">
               <button
                 onClick={() => handleMobileSectionClick("config", configExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion") && !isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
               >
                 <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" /><span className="font-medium">Configuración</span></div>
                 {configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -351,7 +402,7 @@ export function Layout() {
               {configExpanded && (
                 <ul className="ml-8 mt-1 space-y-0.5">
                   {configItems.map(({ to, label }) => {
-                    const Icon = label === "Roles" ? Shield : Users;
+                    const Icon = Shield;
                     return (
                       <li key={to}>
                         <Link

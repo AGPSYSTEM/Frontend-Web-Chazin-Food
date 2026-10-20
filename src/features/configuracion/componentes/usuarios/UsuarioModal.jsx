@@ -189,6 +189,51 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
             </div>
           )}
 
+          {/* Tipo de Documento y Número de Documento — PRIMER campo del formulario */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Tipo de Documento</label>
+              <select
+                value={form.tipoDocumento}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  setForm({
+                    ...form,
+                    tipoDocumento: newTipo,
+                    documento: sanitizeDocumento(form.documento, newTipo)
+                  });
+                }}
+                className={`${inputCls} cursor-pointer`}
+              >
+                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
+                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="NIT">NIT</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Número de Identificación *</label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {docConfig.helper}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.documento}
+                maxLength={docConfig.max}
+                onChange={(e) => {
+                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
+                  setForm({ ...form, documento: clean });
+                }}
+                className={inputCls}
+                placeholder={docConfig.helper}
+              />
+            </div>
+          </div>
+
           {/* Nombres y Apellidos Separados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -220,51 +265,6 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 }}
                 className={inputCls}
                 placeholder="Ej: Pérez Gómez"
-              />
-            </div>
-          </div>
-
-          {/* Tipo de Documento y Número de Documento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Tipo de Documento</label>
-              <select
-                value={form.tipoDocumento}
-                onChange={(e) => {
-                  const newTipo = e.target.value;
-                  setForm({
-                    ...form,
-                    tipoDocumento: newTipo,
-                    documento: sanitizeDocumento(form.documento, newTipo)
-                  });
-                }}
-                className={`${inputCls} cursor-pointer`}
-              >
-                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
-                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
-                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
-                <option value="Pasaporte">Pasaporte</option>
-                <option value="NIT">NIT</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={labelCls}>Número de Documento</label>
-                <span className="text-[10px] text-gray-400 font-medium">
-                  {docConfig.helper}
-                </span>
-              </div>
-              <input
-                type="text"
-                value={form.documento}
-                maxLength={docConfig.max}
-                onChange={(e) => {
-                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
-                  setForm({ ...form, documento: clean });
-                }}
-                className={inputCls}
-                placeholder={docConfig.helper}
               />
             </div>
           </div>
