@@ -16,7 +16,7 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
-              <th className="px-6 py-4 w-[13%] text-left">ID</th>
+              {/* <th className="px-6 py-4 w-[13%] text-left">ID</th> */}
               <th className="px-6 py-4 w-[17%] text-left">Nombre</th>
               <th className="px-6 py-4 w-[17%] text-left">Descripción</th>
               <th className="px-6 py-4 w-[17%] text-left">Insumos</th>
@@ -32,11 +32,9 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                 </td>
               </tr>
             ) : (
-              paginatedCategorias.map((c, index) => (
+              paginatedCategorias.map((c) => (
                 <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium text-left">
-                    {c.id || startIndex + index + 1}
-                  </td>
+                
                   <td className="px-6 py-4 font-bold text-[#1e293b] dark:text-gray-100 whitespace-nowrap text-left">
                     {c.nombre}
                   </td>
