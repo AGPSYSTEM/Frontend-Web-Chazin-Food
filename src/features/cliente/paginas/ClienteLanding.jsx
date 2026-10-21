@@ -2101,11 +2101,11 @@ export function ClienteLanding() {
                 style={{ scrollSnapAlign: "start" }}
                 className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
                   selectedCategoria === "eventos"
-                    ? "bg-gradient-to-r from-purple-600 via-rose-600 to-amber-500 text-white shadow-lg shadow-purple-500/30 scale-105 font-bold"
+                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 scale-105 font-bold"
                     : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-purple-300/60 dark:border-purple-600/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 shadow-xs"
                 }`}
               >
-                <div aria-hidden="true" className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                <div aria-hidden="true" className="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-xs">
                   {eventProductsCount} DROP
                 </div>
                 <div className={`flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shadow-xs transition-all ${
@@ -2217,20 +2217,20 @@ export function ClienteLanding() {
                 }}
                 className={`bg-white dark:bg-gray-900 cv-auto rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
                   activeEvent
-                    ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-amber-400/30"
+                    ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-purple-400/20"
                     : "border border-gray-100 dark:border-gray-800"
                 }`}
               >
                 {/* ═══ FAST FOOD EVENT BANNER (BURGER FEST / EDICIÓN LIMITADA) ═══ */}
                 {activeEvent && (
-                  <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20">
+                  <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20 border-b border-purple-500/20">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse shrink-0" />
-                      <span className="truncate max-w-[170px] sm:max-w-[210px]">{activeEvent.nombre}</span>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-200 shrink-0" />
+                      <span className="truncate max-w-[170px] sm:max-w-[210px] text-white tracking-wide">{activeEvent.nombre}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-amber-200 shrink-0">
-                      <Clock className="w-3 h-3" />
-                      <span className={activeEvent.vigencia?.urgente ? "animate-pulse font-black text-amber-300" : ""}>
+                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-white shrink-0 bg-white/15 px-2 py-0.5 rounded-full backdrop-blur-xs border border-white/20">
+                      <Clock className="w-3 h-3 text-purple-200" />
+                      <span className={activeEvent.vigencia?.urgente ? "animate-pulse font-black text-white" : "text-purple-100"}>
                         {activeEvent.vigencia?.label ? activeEvent.vigencia.label : (activeEvent.formattedDate ? `Hasta ${activeEvent.formattedDate}` : "Limitado")}
                       </span>
                     </div>
@@ -2378,11 +2378,7 @@ export function ClienteLanding() {
                       e.stopPropagation();
                       handleProductClick(producto);
                     }}
-                    aria-label={
-                      producto.eventos && producto.eventos.length > 0
-                        ? `Personalizar evento ${producto.nombre}`
-                        : `Agregar ${producto.nombre} al pedido`
-                    }
+                    aria-label={`Agregar ${producto.nombre} al pedido`}
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
                       producto.eventos && producto.eventos.length > 0
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
@@ -2392,7 +2388,7 @@ export function ClienteLanding() {
                     {producto.eventos && producto.eventos.length > 0 ? (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        <span>Personalizar Evento</span>
+                        <span>Agregar</span>
                       </>
                     ) : (
                       <>

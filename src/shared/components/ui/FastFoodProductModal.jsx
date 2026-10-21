@@ -1853,11 +1853,11 @@ export function FastFoodProductModal({
       <div className="bg-white dark:bg-gray-900 rounded-[32px] max-w-2xl sm:max-w-[700px] w-full shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         {/* ── Festival Drop Top Ribbon (Fast Food Industry Event Bar) ── */}
         {eventInfo && (
-          <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
+          <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30 border-b border-purple-500/20">
             <div className="flex items-center gap-2 min-w-0">
-              <Flame className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+              <Sparkles className="w-4 h-4 text-purple-200 shrink-0" />
               <span className="truncate">{eventInfo.nombre}</span>
-              <span className="hidden sm:inline-flex bg-black/30 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
+              <span className="hidden sm:inline-flex bg-white/15 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold border border-white/20">
                 {eventInfo.tipo === "Descuento"
                   ? "DESCUENTO DIRECTO"
                   : eventInfo.tipo === "Promoción Precio"
@@ -1871,9 +1871,9 @@ export function FastFoodProductModal({
                   : "EDICIÓN ESPECIAL"}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-200 shrink-0">
-              <Clock className="w-3.5 h-3.5 text-amber-300" />
-              <span className={eventInfo.vigencia?.urgente ? "animate-pulse font-black text-amber-300" : ""}>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-white shrink-0 bg-white/15 px-2.5 py-0.5 rounded-full backdrop-blur-xs border border-white/20">
+              <Clock className="w-3.5 h-3.5 text-purple-200" />
+              <span className={eventInfo.vigencia?.urgente ? "animate-pulse font-black text-white" : "text-purple-100"}>
                 {eventInfo.vigencia?.label ? `${eventInfo.vigencia.label}${eventInfo.formattedDate ? ` • Hasta el ${eventInfo.formattedDate}` : ''}` : (eventInfo.formattedDate ? `Hasta el ${eventInfo.formattedDate}` : "Tiempo Limitado")}
               </span>
             </div>
@@ -1942,8 +1942,8 @@ export function FastFoodProductModal({
                 <span>{producto.categoria || "Plato Especial"}</span>
               </span>
               {eventInfo && (
-                <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-200" />
                   <span>{eventInfo.tipo === "Descuento" ? `-${eventInfo.discountPercent}% OFF` : eventInfo.tipo === "Promoción Precio" ? "Precio Promo" : eventInfo.tipo === "Añadir Insumos" ? "+ Toppings Gratis" : eventInfo.tipo === "COMBO_ESPECIAL" ? "Combo Festivo" : eventInfo.tipo === "PROMOCION_2X1" ? "Promo 2x1" : "Edición Especial"}</span>
                 </span>
               )}
@@ -2060,11 +2060,11 @@ export function FastFoodProductModal({
 
           {/* ═══ BENEFICIOS EXCLUSIVOS DEL EVENTO (FESTIVAL DROP HIGHLIGHT) ═══ */}
           {eventInfo && (
-            <div className="mx-4 sm:mx-6 mb-3 p-4 rounded-2xl bg-gradient-to-br from-purple-950/20 via-rose-950/10 to-amber-950/20 dark:from-purple-950/40 dark:via-rose-950/20 dark:to-amber-950/40 border border-purple-300/40 dark:border-purple-600/40 shadow-sm">
+            <div className="mx-4 sm:mx-6 mb-3 p-4 rounded-2xl bg-gradient-to-br from-purple-950/20 via-purple-900/10 to-indigo-950/20 dark:from-purple-950/40 dark:via-purple-900/20 dark:to-indigo-950/40 border border-purple-300/40 dark:border-purple-600/40 shadow-sm">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-rose-600 flex items-center justify-center text-white shadow-md shrink-0">
-                    <Sparkles className="w-4 h-4 text-amber-300" />
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
+                    <Sparkles className="w-4 h-4 text-purple-200" />
                   </div>
                   <div>
                     <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-1.5">

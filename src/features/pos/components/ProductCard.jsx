@@ -96,7 +96,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     <article
       className={`group rounded-[24px] bg-white dark:bg-gray-900 transition-all flex flex-col justify-between h-full overflow-hidden relative ${
         activeEvent
-          ? "border-2 border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 shadow-md shadow-amber-500/10 dark:shadow-none"
+          ? "border-2 border-purple-500/60 dark:border-purple-500/70 ring-2 ring-purple-400/20 shadow-md shadow-purple-500/10 dark:shadow-none"
           : "border border-[#e5e9ef] dark:border-gray-800 shadow-xs hover:shadow-md"
       }`}
     >
@@ -104,18 +104,18 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
       {activeEvent && (
         <div
           onClick={handleOpenCustomize}
-          className="bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none"
+          className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none border-b border-purple-500/20"
           title={`Evento: ${activeEvent.nombre}. Clic para personalizar.`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-200 shrink-0" />
             <span className="truncate">{activeEvent.nombre}</span>
           </div>
-          <span className="bg-black/25 backdrop-blur-xs text-amber-200 text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
-            <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+          <span className="bg-white/15 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-white/20">
+            <Clock className="w-2.5 h-2.5 text-purple-200" />
             {activeEvent.discountPercent > 0
               ? `-${activeEvent.discountPercent}% OFF`
-              : activeEvent.tipo || "Promo"}
+              : activeEvent.tipo || "Evento"}
           </span>
         </div>
       )}
