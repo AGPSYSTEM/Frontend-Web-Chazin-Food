@@ -26,12 +26,13 @@ import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { ventasService } from "../../servicios/ventasService";
 
 /**
- * Validador en tiempo real de tiempo estimado
- * Permite horas, minutos y términos de aproximación (aprox., aproximado).
+ * Validador en tiempo real de tiempo estimado (Control Exacto)
+ * Valida estrictamente formatos como: '15-20 min', '45 min', '1 hora', '1 h 15 min', 'Aprox. 30 min', 'Listo para entrega'.
+ * Rechaza emojis, símbolos no válidos y caracteres arbitrarios.
  */
 export function validateTiempoEstimado(text = "") {
-  const clean = String(text || "").trim().toLowerCase();
-  if (!clean) {
+  const raw = String(text || "").trim();
+  if (!raw) {
     return {
       isValid: false,
       error: "Ingresa el tiempo estimado (ej: 45 min, 1 hora, aprox. 30 min).",
@@ -39,44 +40,76 @@ export function validateTiempoEstimado(text = "") {
     };
   }
 
-  if (clean === "listo" || clean === "listo para entrega" || clean === "entregado") {
-    return {
-      isValid: true,
-      error: null,
-      tags: ["Listo para despacho"]
-    };
-  }
-
-  const hasNumbers = /\d+/.test(clean);
-  const hasAprox = /(aprox|aproximad)/.test(clean);
-  const hasHours = /(h\b|hr|hrs|hora|horas)/.test(clean);
-  const hasMinutes = /(min|mins|minuto|minutos|m\b)/.test(clean);
-
-  if (!hasNumbers) {
+  // Rechazar terminantemente emojis o caracteres especiales no permitidos
+  if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(raw) || /[^a-zA-Z0-9\s.,\-áéíóúñÁÉÍÓÚÑ]/i.test(raw)) {
     return {
       isValid: false,
-      error: "Debes incluir una cantidad numérica (ej: 30 min, 1 hora, aprox. 45 min).",
+      error: "No se permiten caracteres especiales ni emojis. Ej: 30 min, 1 hora.",
       tags: []
     };
   }
 
-  if (!hasHours && !hasMinutes) {
+  // Rechazar repetición anómala de signos de puntuación (ej: "...", "--")
+  if (/\.{2,}|-{2,}/.test(raw)) {
     return {
       isValid: false,
-      error: "Especifica la unidad en minutos (min) u horas (h / hora). Ej: 'Aprox. 45 min', '1 hora'.",
+      error: 'Formato no válido (evita caracteres repetidos como "..." o "--").',
+      tags: []
+    };
+  }
+
+  const clean = raw.toLowerCase().replace(/\s+/g, " ");
+
+  // Frases de estado y despacho directo
+  const statusPhrases = [
+    "listo",
+    "listo para entrega",
+    "listo para despacho",
+    "listo para recoger",
+    "en camino",
+    "despachado",
+    "entregado",
+    "inmediato"
+  ];
+  if (statusPhrases.includes(clean)) {
+    return {
+      isValid: true,
+      error: null,
+      tags: [clean.startsWith("listo") ? "Listo para entrega" : "Despacho directo"]
+    };
+  }
+
+  // Expresión regular estricta de tiempo estimado (minutos, horas o compuestos)
+  const unitMin = "(?:min\\.?|mins\\.?|minuto|minutos|m\\b)";
+  const unitHour = "(?:h\\b|hr\\.?|hrs\\.?|hora|horas)";
+
+  const pattern = new RegExp(
+    "^(?:(?:aprox\\.?|aproximadamente)\\s+)?(?:" +
+      `(?:(\\d{1,3})\\s*(?:-|a|al)\\s*(\\d{1,3})\\s*${unitMin})|` +
+      `(?:(\\d{1,3})\\s*${unitMin})|` +
+      `(?:(\\d{1,2})\\s*(?:-|a|al)\\s*(\\d{1,2})\\s*${unitHour})|` +
+      `(?:(\\d{1,2})\\s*${unitHour}(?:\\s+(?:y\\s+media|y\\s+cuarto|(\\d{1,2})\\s*${unitMin}?))?)` +
+    ")$",
+    "i"
+  );
+
+  if (!pattern.test(clean)) {
+    return {
+      isValid: false,
+      error: "Formato no válido. Usa ejemplos como: 15-20 min, 45 min, 1 hora, 1 h 15 min.",
       tags: []
     };
   }
 
   const tags = [];
-  if (hasAprox) tags.push("Aproximado");
-  if (hasHours) tags.push("Horas");
-  if (hasMinutes) tags.push("Minutos");
+  if (/(aprox|aproximad)/.test(clean)) tags.push("Aproximado");
+  if (new RegExp(unitHour, "i").test(clean)) tags.push("Horas");
+  if (new RegExp(unitMin, "i").test(clean)) tags.push("Minutos");
 
   return {
     isValid: true,
     error: null,
-    tags
+    tags: tags.length ? tags : ["Válido"]
   };
 }
 
@@ -356,7 +389,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                   <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors ${
-                  tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-amber-600 text-white"
+                  tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-red-600 text-white"
                 }`}>
                   ⏱ {tiempoEstimado || "Sin definir"}
                 </span>
@@ -412,12 +445,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                       }}
                       onBlur={() => setTiempoValidationTouched(true)}
                       placeholder="Ej: Aprox. 35 min, 1 hora, 1 h 20 min..."
-                      className={`w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none transition-colors ${
-                        !tiempoValidation.isValid && tiempoValidationTouched
-                          ? "border-amber-500 focus:ring-2 focus:ring-amber-400/50"
-                          : tiempoValidation.isValid
-                          ? "border-emerald-500 focus:ring-2 focus:ring-emerald-400/50"
-                          : "border-indigo-200 dark:border-indigo-800 focus:ring-2 focus:ring-indigo-400/50"
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none transition-colors ${
+                        !tiempoValidation.isValid
+                          ? "border-red-500 bg-red-50/40 text-red-900 dark:bg-red-950/20 dark:text-red-100 focus:ring-2 focus:ring-red-400/50"
+                          : "bg-white dark:bg-gray-800 border-emerald-500 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/50"
                       }`}
                     />
                   </div>
@@ -444,7 +475,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                   </button>
                 </div>
 
-                {/* Feedback en vivo: Indicadores de horas, minutos o aproximado */}
+                {/* Feedback en vivo: Indicadores de formato válido o alerta de error */}
                 {tiempoValidation.isValid ? (
                   <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -461,8 +492,8 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-1.5 text-[11px] text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-xl border border-amber-200/80 dark:border-amber-800/60 animate-in fade-in duration-150">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-1.5 text-[11px] text-red-700 dark:text-red-300 bg-red-50/90 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-800/60 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                     <span>{tiempoValidation.error}</span>
                   </div>
                 )}
