@@ -291,18 +291,30 @@ export function Login() {
   };
 
   const getInputClass = (hasError, isOk) =>
-    `relative w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-12 pr-4 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   const getInputWithRightClass = (hasError, isOk) =>
-    `relative w-full pl-12 pr-12 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-12 pr-12 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   const getRegInputClass = (hasError, isOk) =>
-    `relative w-full pl-10 pr-3 py-2.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-10 pr-3 py-2.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-xs sm:text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   return (

@@ -185,6 +185,7 @@ export function ClientePerfil() {
     numeroDocumento: "",
   });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Sync user profile on mount
   useEffect(() => {
@@ -217,6 +218,7 @@ export function ClientePerfil() {
       const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
       setAvatarUrl(userAvatar);
       setErrors({});
+      setTouched({});
     }
   }, [user]);
 
@@ -733,7 +735,34 @@ export function ClientePerfil() {
     }
   };
 
+  const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
+
   // ── Edit form handlers ──
+  const validateSingleField = (name, val, extra = {}) => {
+    switch (name) {
+      case "nombre":
+        return !val.trim() ? "El nombre es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "apellidos":
+        return !val.trim() ? "Los apellidos son obligatorios." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "email":
+        return !val.trim() ? "El correo es obligatorio." : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) ? "Ingresa un correo electrónico válido." : "";
+      case "numeroDocumento":
+        if (!val) return "";
+        return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+      case "telefono":
+        if (!val) return "";
+        return val.length < 7 ? "Mínimo 7 dígitos." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validateSingleField(name, form[name] || "");
+    setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     let v = value;
@@ -745,40 +774,55 @@ export function ClientePerfil() {
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (touched[name]) {
+      const err = validateSingleField(name, v);
+      setErrors((prev) => ({ ...prev, [name]: err }));
+    }
   };
 
   const handleTipoDocChange = (e) => {
     const nuevoTipo = e.target.value;
+    const sanitizedDoc = sanitizeDocumento(form.numeroDocumento, nuevoTipo);
     setForm((prev) => ({
       ...prev,
       tipoDocumento: nuevoTipo,
-      numeroDocumento: sanitizeDocumento(prev.numeroDocumento, nuevoTipo),
+      numeroDocumento: sanitizedDoc,
     }));
-    if (errors.numeroDocumento) setErrors((prev) => ({ ...prev, numeroDocumento: "" }));
+    if (touched.numeroDocumento) {
+      const err = validateSingleField("numeroDocumento", sanitizedDoc, { tipoDocumento: nuevoTipo });
+      setErrors((prev) => ({ ...prev, numeroDocumento: err }));
+    }
   };
 
   const validate = () => {
     const errs = {};
-    if (!form.nombre.trim()) errs.nombre = "El nombre es obligatorio.";
-    else if (form.nombre.trim().length < 2) errs.nombre = "Mínimo 2 caracteres.";
-
-    if (!form.apellidos.trim()) errs.apellidos = "Los apellidos son obligatorios.";
-    else if (form.apellidos.trim().length < 2) errs.apellidos = "Mínimo 2 caracteres.";
-
-    if (!form.email.trim()) errs.email = "El correo es obligatorio.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = "Ingresa un correo electrónico válido.";
-
+    const errNombre = validateSingleField("nombre", form.nombre);
+    if (errNombre) errs.nombre = errNombre;
+    const errApellidos = validateSingleField("apellidos", form.apellidos);
+    if (errApellidos) errs.apellidos = errApellidos;
+    const errEmail = validateSingleField("email", form.email);
+    if (errEmail) errs.email = errEmail;
     if (form.numeroDocumento) {
-      const docErr = validateDocumento(form.numeroDocumento, form.tipoDocumento);
-      if (docErr) errs.numeroDocumento = docErr;
+      const errDoc = validateSingleField("numeroDocumento", form.numeroDocumento);
+      if (errDoc) errs.numeroDocumento = errDoc;
     }
-    if (form.telefono && form.telefono.length < 7) errs.telefono = "Mínimo 7 dígitos.";
+    if (form.telefono) {
+      const errTel = validateSingleField("telefono", form.telefono);
+      if (errTel) errs.telefono = errTel;
+    }
     return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({
+      nombre: true,
+      apellidos: true,
+      email: true,
+      numeroDocumento: true,
+      telefono: true,
+      direccion: true,
+    });
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -1523,13 +1567,14 @@ export function ClientePerfil() {
                           type="text"
                           name="nombre"
                           value={form.nombre}
+                          onBlur={() => handleBlur("nombre")}
                           onChange={handleChange}
                           placeholder="Tu nombre"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.nombre} />
+                        <FieldError msg={touched.nombre ? errors.nombre : ""} />
                       </div>
 
                       {/* Apellidos */}
@@ -1541,13 +1586,14 @@ export function ClientePerfil() {
                           type="text"
                           name="apellidos"
                           value={form.apellidos}
+                          onBlur={() => handleBlur("apellidos")}
                           onChange={handleChange}
                           placeholder="Tus apellidos"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.apellidos} />
+                        <FieldError msg={touched.apellidos ? errors.apellidos : ""} />
                       </div>
                     </div>
 
@@ -1562,14 +1608,15 @@ export function ClientePerfil() {
                           type="email"
                           name="email"
                           value={form.email}
+                          onBlur={() => handleBlur("email")}
                           onChange={handleChange}
                           placeholder="tu@correo.com"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.email} />
+                      <FieldError msg={touched.email ? errors.email : ""} />
                     </div>
 
                     {/* Documento */}
@@ -1581,7 +1628,7 @@ export function ClientePerfil() {
                         <select
                           value={form.tipoDocumento}
                           onChange={handleTipoDocChange}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400"
+                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 cursor-pointer"
                         >
                           {TIPOS_DOCUMENTO.map((t) => (
                             <option key={t} value={t}>
@@ -1594,18 +1641,21 @@ export function ClientePerfil() {
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                           N.° Documento
+                          <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
                         </label>
                         <input
                           type="text"
                           name="numeroDocumento"
                           value={form.numeroDocumento}
+                          onBlur={() => handleBlur("numeroDocumento")}
                           onChange={handleChange}
-                          placeholder="Número de identificación"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          inputMode={docConfig.numericOnly ? "numeric" : "text"}
+                          placeholder={docConfig.helper}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.numeroDocumento} />
+                        <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
                       </div>
                     </div>
 
@@ -1620,14 +1670,16 @@ export function ClientePerfil() {
                           type="text"
                           name="telefono"
                           value={form.telefono}
+                          onBlur={() => handleBlur("telefono")}
                           onChange={handleChange}
+                          inputMode="numeric"
                           placeholder="Ej: 3001234567"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.telefono} />
+                      <FieldError msg={touched.telefono ? errors.telefono : ""} />
                     </div>
 
                     {/* Dirección de Entrega por Defecto */}

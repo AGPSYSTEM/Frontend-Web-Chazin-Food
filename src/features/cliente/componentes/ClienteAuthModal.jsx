@@ -306,7 +306,7 @@ export function ClienteAuthModal({
   const inputBaseStyle = (hasError, isOk) =>
     `relative w-full pl-10 pr-3 py-2.5 rounded-xl border-2 transition-all outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 ${
       hasError
-        ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-400"
         : isOk
         ? "border-emerald-500/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
@@ -315,7 +315,7 @@ export function ClienteAuthModal({
   const inputWithRightStyle = (hasError, isOk) =>
     `relative w-full pl-10 pr-10 py-2.5 rounded-xl border-2 transition-all outline-none text-xs sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 ${
       hasError
-        ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-400"
         : isOk
         ? "border-emerald-500/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"

@@ -800,7 +800,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                             style={{ aspectRatio: "1 / 1" }}
                             className="w-full h-full object-cover rounded-2xl"
                             loading={idx === 0 ? "eager" : "lazy"}
-                            fetchPriority={idx === 0 ? "high" : "low"}
+                            fetchpriority={idx === 0 ? "high" : "low"}
                             decoding="async"
                             onError={(e) => {
                               e.target.onerror = null;

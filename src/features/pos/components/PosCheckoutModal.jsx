@@ -575,10 +575,24 @@ export function PosCheckoutModal({
                     type="text"
                     required
                     value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
+                    onChange={(e) => {
+                      setClienteTouched(true);
+                      setClienteNombre(e.target.value);
+                    }}
+                    onBlur={() => setClienteTouched(true)}
                     placeholder="Ingresa el nombre del cliente (Obligatorio)"
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                    className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none transition ${
+                      clienteTouched && !clienteNombre.trim()
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
+                    }`}
                   />
+                  {clienteTouched && !clienteNombre.trim() && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>El nombre del cliente es obligatorio.</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -622,7 +636,7 @@ export function PosCheckoutModal({
                       onBlur={() => setClienteTouched(true)}
                       className={`w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none transition ${
                         clienteTouched && !clienteNombre.trim()
-                          ? "border-red-400 focus:ring-2 focus:ring-red-400/30"
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
                           : clienteNombre.trim()
                           ? "border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
                           : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
@@ -630,13 +644,13 @@ export function PosCheckoutModal({
                       placeholder="Ingresa el nombre del cliente (Obligatorio)"
                     />
                     {clienteTouched && !clienteNombre.trim() ? (
-                      <p className="text-[10.5px] text-red-500 font-semibold mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                      <p className="text-[10.5px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
                         <span>El nombre del cliente es obligatorio para registrar la venta.</span>
                       </p>
                     ) : clienteNombre.trim() ? (
                       <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
                         <span>Nombre registrado correctamente para recibo y cocina.</span>
                       </p>
                     ) : (
@@ -718,12 +732,8 @@ export function PosCheckoutModal({
                 </div>
 
                 <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
-                  pagoTouched && !efectivoPaga
-                    ? "border-red-400"
-                    : montoPagaNum > 0 && montoPagaNum < finalTotal
-                    ? "border-amber-400"
-                    : vueltoEfectivo > 100000
-                    ? "border-red-400"
+                  pagoTouched && (!efectivoPaga || montoPagaNum < finalTotal || vueltoEfectivo > 100000)
+                    ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
                     : montoPagaNum >= finalTotal
                     ? "border-emerald-500"
                     : "border-[#86EFAC] dark:border-emerald-700"
@@ -746,18 +756,25 @@ export function PosCheckoutModal({
 
                 {/* Live validation feedback for Cash */}
                 {!efectivoPaga ? (
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
-                  </p>
+                  pagoTouched ? (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  )
                 ) : montoPagaNum < finalTotal ? (
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                     <span>Monto insuficiente: Faltan ${(finalTotal - montoPagaNum).toLocaleString("es-CO")} para cubrir el total.</span>
                   </div>
                 ) : vueltoEfectivo > 100000 ? (
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-900/60">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
                     <span>El cambio (${vueltoEfectivo.toLocaleString("es-CO")}) excede el límite de caja ($100.000 COP). Cobrar por tarjeta.</span>
                   </div>
                 ) : (
@@ -782,10 +799,10 @@ export function PosCheckoutModal({
                     Número de tarjeta <span className="text-red-500">*</span>
                   </label>
                   <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
-                    isCardComplete
+                    pagoTouched && !isCardComplete
+                      ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
+                      : isCardComplete
                       ? "border-emerald-500"
-                      : tarjetaNumero
-                      ? "border-amber-400"
                       : "border-[#C7D2FE] dark:border-blue-700"
                   }`}>
                     <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
@@ -794,9 +811,11 @@ export function PosCheckoutModal({
                       required
                       value={tarjetaNumero}
                       onChange={(e) => {
+                        setPagoTouched(true);
                         const v = e.target.value.replace(/[^\d]/g, "").slice(0, 16);
                         setTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, "$1 "));
                       }}
+                      onBlur={() => setPagoTouched(true)}
                       placeholder="0000 0000 0000 0000"
                       className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
                     />
@@ -804,14 +823,21 @@ export function PosCheckoutModal({
 
                   {/* Live Card Feedback */}
                   {!cleanCardDigits ? (
-                    <p className="text-[10.5px] text-gray-400 mt-1 flex items-center gap-1">
-                      <Info className="w-3 h-3 text-gray-400" />
-                      <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
-                    </p>
+                    pagoTouched ? (
+                      <p className="text-[10.5px] text-red-600 font-medium mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10.5px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Info className="w-3 h-3 text-gray-400" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    )
                   ) : !isCardComplete ? (
-                    <p className="text-[10.5px] text-amber-600 dark:text-amber-400 font-semibold mt-1 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-amber-500" />
-                      <span>Faltan {16 - cleanCardDigits.length} dígitos para completar la tarjeta (16 dígitos).</span>
+                    <p className="text-[10.5px] text-red-600 dark:text-red-400 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Faltan {16 - cleanCardDigits.length} dígitos para completar la tarjeta (16 dígitos requeridos).</span>
                     </p>
                   ) : (
                     <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">

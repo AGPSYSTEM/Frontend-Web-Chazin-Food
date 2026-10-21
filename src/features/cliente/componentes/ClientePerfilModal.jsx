@@ -38,6 +38,7 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
     numeroDocumento: "",
   });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
@@ -52,6 +53,7 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
         numeroDocumento: user.numeroDocumento || user.documento || "",
       });
       setErrors({});
+      setTouched({});
     }
   }, [isOpen, user]);
 
@@ -152,6 +154,31 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
   const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
 
   // ── Edit form handlers ──
+  const validateSingleField = (name, val, extra = {}) => {
+    switch (name) {
+      case "nombre":
+        return !val.trim() ? "El nombre es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "apellidos":
+        return !val.trim() ? "Los apellidos son obligatorios." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "email":
+        return !val.trim() ? "El correo es obligatorio." : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? "Correo inválido." : "";
+      case "numeroDocumento":
+        if (!val) return "";
+        return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+      case "telefono":
+        if (!val) return "";
+        return val.length < 7 ? "Mínimo 7 dígitos." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (name) => {
+    setTouched(prev => ({ ...prev, [name]: true }));
+    const err = validateSingleField(name, form[name] || "");
+    setErrors(prev => ({ ...prev, [name]: err }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     let v = value;
@@ -167,7 +194,10 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (touched[name]) {
+      const err = validateSingleField(name, v);
+      setErrors((prev) => ({ ...prev, [name]: err }));
+    }
   };
 
   const validate = () => {
@@ -473,9 +503,10 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                     type="text"
                     name="nombre"
                     value={form.nombre}
+                    onBlur={() => handleBlur("nombre")}
                     onChange={handleChange}
                     placeholder="Ej: Juan"
-                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                   <FieldError msg={errors.nombre} />
                 </div>
@@ -487,9 +518,10 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                     type="text"
                     name="apellidos"
                     value={form.apellidos}
+                    onBlur={() => handleBlur("apellidos")}
                     onChange={handleChange}
                     placeholder="Ej: García"
-                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                   <FieldError msg={errors.apellidos} />
                 </div>
@@ -506,9 +538,10 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                     type="email"
                     name="email"
                     value={form.email}
+                    onBlur={() => handleBlur("email")}
                     onChange={handleChange}
                     placeholder="correo@ejemplo.com"
-                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                 </div>
                 <FieldError msg={errors.email} />
@@ -540,10 +573,11 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                       type="text"
                       name="numeroDocumento"
                       value={form.numeroDocumento}
+                      onBlur={() => handleBlur("numeroDocumento")}
                       onChange={handleChange}
                       inputMode={docConfig.numericOnly ? "numeric" : "text"}
                       placeholder={docConfig.helper}
-                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                     />
                   </div>
                   <FieldError msg={errors.numeroDocumento} />
@@ -559,10 +593,11 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
                     type="tel"
                     name="telefono"
                     value={form.telefono}
+                    onBlur={() => handleBlur("telefono")}
                     onChange={handleChange}
                     inputMode="numeric"
                     placeholder="3001234567"
-                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                 </div>
                 <FieldError msg={errors.telefono} />

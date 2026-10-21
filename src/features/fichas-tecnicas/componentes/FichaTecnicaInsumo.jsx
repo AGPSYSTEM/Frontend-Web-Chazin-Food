@@ -9,6 +9,15 @@ const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 d
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
 const requiredMark = <span className="text-red-500"> *</span>;
 
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return (
+    <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
+      <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {msg}
+    </p>
+  );
+}
+
 export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, onChange, readOnly = false }) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
@@ -27,7 +36,59 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   const [searchInsumo, setSearchInsumo] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingFicha, setLoadingFicha] = useState(Boolean(insumoId));
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const loadedKeyRef = useRef(null);
+
+  const validateField = (field, val, currentInsumos = insumos) => {
+    switch (field) {
+      case "insumos":
+        return (!currentInsumos || currentInsumos.length === 0) ? "Debes agregar al menos un ingrediente o insumo base." : "";
+      case "procedimiento":
+        return !val || !val.trim() ? "El procedimiento de preparación es obligatorio." : val.trim().length < 5 ? "Mínimo 5 caracteres para describir el procedimiento." : "";
+      case "tiempoPreparacion":
+        if (val === undefined || val === null || String(val).trim() === "") return "El tiempo de preparación es obligatorio.";
+        if (Number(val) < 1) return "Debe ser al menos 1 minuto.";
+        return "";
+      case "rendimiento":
+        return !val || !val.trim() ? "El rendimiento o porciones es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "especificaciones":
+        return !val || !val.trim() ? "Las especificaciones técnicas son obligatorias." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
+      case "caracteristicas":
+        return !val || !val.trim() ? "Las características organolépticas son obligatorias." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
+      case "informacionNutricional":
+        return !val || !val.trim() ? "La información nutricional es obligatoria." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
+      case "condicionesAlmacenamiento":
+        return !val || !val.trim() ? "Las condiciones de almacenamiento son obligatorias." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
+      case "vidaUtil":
+        return !val || !val.trim() ? "La vida útil es obligatoria." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (field, val) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, val);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  const handleFieldChange = (field, setter, val) => {
+    setter(val);
+    if (touched[field]) {
+      const err = validateField(field, val);
+      setErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const getInputClass = (field) => {
+    const isErr = touched[field] && errors[field];
+    return `w-full px-4 py-2 border rounded-lg text-sm outline-none transition ${
+      isErr
+        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 dark:text-red-100 focus:ring-2 focus:ring-red-400"
+        : "border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454] focus:border-transparent"
+    }`;
+  };
 
   // Load available base insumos list for ingredient selection
   useEffect(() => {
@@ -115,8 +176,8 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   }).slice(0, 6);
 
   const agregarInsumo = (ins) => {
-    setInsumos((prev) => [
-      ...prev,
+    const next = [
+      ...insumos,
       {
         idInsumo: ins.id || ins.idInsumo,
         nombreInsumo: ins.nombre,
@@ -124,11 +185,21 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
         cantidad: 1,
         unidadMedida: ins.unidadMedida || "und"
       }
-    ]);
+    ];
+    setInsumos(next);
     setSearchInsumo("");
+    if (touched.insumos) {
+      setErrors((prev) => ({ ...prev, insumos: validateField("insumos", null, next) }));
+    }
   };
 
-  const quitarInsumo = (idx) => setInsumos((prev) => prev.filter((_, i) => i !== idx));
+  const quitarInsumo = (idx) => {
+    const next = insumos.filter((_, i) => i !== idx);
+    setInsumos(next);
+    if (touched.insumos) {
+      setErrors((prev) => ({ ...prev, insumos: validateField("insumos", null, next) }));
+    }
+  };
 
   const actualizarCantidad = (idx, delta) => {
     setInsumos((prev) =>
@@ -167,36 +238,68 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
     const raw = e.target.value.replace(/[^0-9]/g, '');
     if (raw === '') {
       setTiempoPreparacion('');
+      if (touched.tiempoPreparacion) {
+        setErrors((prev) => ({ ...prev, tiempoPreparacion: validateField("tiempoPreparacion", "") }));
+      }
       return;
     }
     const num = Math.max(1, parseInt(raw, 10));
     setTiempoPreparacion(String(num));
-  };
-
-  const handleTiempoBlur = () => {
-    if (tiempoPreparacion === '' || Number(tiempoPreparacion) < 1) {
-      setTiempoPreparacion('1');
+    if (touched.tiempoPreparacion) {
+      setErrors((prev) => ({ ...prev, tiempoPreparacion: validateField("tiempoPreparacion", String(num)) }));
     }
   };
 
-  const handleSave = async () => {
-    const requiredFields = [
-      ["Procedimiento de preparación", procedimiento],
-      ["Tiempo de preparación", tiempoPreparacion],
-      ["Rendimiento / porciones", rendimiento],
-      ["Condiciones de almacenamiento", condicionesAlmacenamiento],
-      ["Vida útil", vidaUtil],
-      ["Especificaciones técnicas", especificaciones],
-      ["Características organolépticas", caracteristicas],
-      ["Información nutricional", informacionNutricional]
-    ];
-    const missingFields = requiredFields
-      .filter(([, value]) => String(value ?? "").trim() === "")
-      .map(([label]) => label);
+  const handleTiempoBlur = () => {
+    let finalVal = tiempoPreparacion;
+    if (tiempoPreparacion === '' || Number(tiempoPreparacion) < 1) {
+      finalVal = '1';
+      setTiempoPreparacion('1');
+    }
+    handleBlur("tiempoPreparacion", finalVal);
+  };
 
-    if (insumos.length === 0) missingFields.unshift("Ingredientes / insumos base necesarios");
-    if (missingFields.length > 0) {
-      notify.error("Campos obligatorios", `Completa los siguientes campos obligatorios de la ficha técnica: ${missingFields.join(", ")}.`);
+  const handleSave = async () => {
+    const allTouched = {
+      insumos: true,
+      procedimiento: true,
+      tiempoPreparacion: true,
+      rendimiento: true,
+      condicionesAlmacenamiento: true,
+      vidaUtil: true,
+      especificaciones: true,
+      caracteristicas: true,
+      informacionNutricional: true,
+    };
+    setTouched(allTouched);
+
+    const newErrors = {
+      insumos: validateField("insumos", null, insumos),
+      procedimiento: validateField("procedimiento", procedimiento),
+      tiempoPreparacion: validateField("tiempoPreparacion", tiempoPreparacion),
+      rendimiento: validateField("rendimiento", rendimiento),
+      condicionesAlmacenamiento: validateField("condicionesAlmacenamiento", condicionesAlmacenamiento),
+      vidaUtil: validateField("vidaUtil", vidaUtil),
+      especificaciones: validateField("especificaciones", especificaciones),
+      caracteristicas: validateField("caracteristicas", caracteristicas),
+      informacionNutricional: validateField("informacionNutricional", informacionNutricional),
+    };
+
+    setErrors(newErrors);
+
+    const missingLabels = [];
+    if (newErrors.insumos) missingLabels.push("Ingredientes / insumos base necesarios");
+    if (newErrors.procedimiento) missingLabels.push("Procedimiento de preparación");
+    if (newErrors.tiempoPreparacion) missingLabels.push("Tiempo de preparación");
+    if (newErrors.rendimiento) missingLabels.push("Rendimiento / porciones");
+    if (newErrors.condicionesAlmacenamiento) missingLabels.push("Condiciones de almacenamiento");
+    if (newErrors.vidaUtil) missingLabels.push("Vida útil");
+    if (newErrors.especificaciones) missingLabels.push("Especificaciones técnicas");
+    if (newErrors.caracteristicas) missingLabels.push("Características organolépticas");
+    if (newErrors.informacionNutricional) missingLabels.push("Información nutricional");
+
+    if (missingLabels.length > 0) {
+      notify.error("Campos obligatorios", `Completa los siguientes campos obligatorios de la ficha técnica: ${missingLabels.join(", ")}.`);
       return;
     }
 
@@ -431,10 +534,16 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
                 })}
               </div>
             ) : (
-              <p className="text-xs text-gray-400 italic text-center py-2">
-                Usa el buscador para añadir los ingredientes base de este preparado.
-              </p>
+              <div className={`border-2 border-dashed rounded-2xl py-6 text-center transition ${
+                touched.insumos && errors.insumos ? "border-red-400 bg-red-50/20 dark:bg-red-950/20" : "border-gray-200 dark:border-gray-700"
+              }`}>
+                <Package className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Usa el buscador para añadir los ingredientes base de este preparado.
+                </p>
+              </div>
             )}
+            <FieldError msg={touched.insumos && errors.insumos} />
           </div>
 
           {/* 2. PROCEDIMIENTO E INSTRUCCIONES */}
@@ -445,10 +554,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
             <textarea
               rows={4}
               value={procedimiento}
-              onChange={(e) => setProcedimiento(e.target.value)}
+              onChange={(e) => handleFieldChange("procedimiento", setProcedimiento, e.target.value)}
+              onBlur={() => handleBlur("procedimiento", procedimiento)}
               placeholder="1. Picar finamente la cebolla y el ajo.&#10;2. Sofreír a fuego medio durante 5 minutos.&#10;3. Licuar con las especias hasta obtener consistencia homogénea."
-              className={inputCls}
+              className={`${getInputClass("procedimiento")} resize-none`}
             />
+            <FieldError msg={touched.procedimiento && errors.procedimiento} />
           </div>
 
           {/* 3. PARÁMETROS TÉCNICOS */}
@@ -470,8 +581,9 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
                 onChange={handleTiempoChange}
                 onBlur={handleTiempoBlur}
                 placeholder="Ej. 15"
-                className={inputCls}
+                className={getInputClass("tiempoPreparacion")}
               />
+              <FieldError msg={touched.tiempoPreparacion && errors.tiempoPreparacion} />
             </div>
             <div>
               <label className={labelCls}>
@@ -480,10 +592,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <input
                 type="text"
                 value={rendimiento}
-                onChange={(e) => setRendimiento(e.target.value)}
+                onChange={(e) => handleFieldChange("rendimiento", setRendimiento, e.target.value)}
+                onBlur={() => handleBlur("rendimiento", rendimiento)}
                 placeholder="Ej. 1 Litro (10 porciones)"
-                className={inputCls}
+                className={getInputClass("rendimiento")}
               />
+              <FieldError msg={touched.rendimiento && errors.rendimiento} />
             </div>
           </div>
 
@@ -496,10 +610,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <input
                 type="text"
                 value={condicionesAlmacenamiento}
-                onChange={(e) => setCondicionesAlmacenamiento(e.target.value)}
+                onChange={(e) => handleFieldChange("condicionesAlmacenamiento", setCondicionesAlmacenamiento, e.target.value)}
+                onBlur={() => handleBlur("condicionesAlmacenamiento", condicionesAlmacenamiento)}
                 placeholder="Ej. Refrigerar entre 2°C y 4°C en recipiente hermético"
-                className={inputCls}
+                className={getInputClass("condicionesAlmacenamiento")}
               />
+              <FieldError msg={touched.condicionesAlmacenamiento && errors.condicionesAlmacenamiento} />
             </div>
             <div>
               <label className={labelCls}>
@@ -508,10 +624,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <input
                 type="text"
                 value={vidaUtil}
-                onChange={(e) => setVidaUtil(e.target.value)}
+                onChange={(e) => handleFieldChange("vidaUtil", setVidaUtil, e.target.value)}
+                onBlur={() => handleBlur("vidaUtil", vidaUtil)}
                 placeholder="Ej. 5 días refrigerado"
-                className={inputCls}
+                className={getInputClass("vidaUtil")}
               />
+              <FieldError msg={touched.vidaUtil && errors.vidaUtil} />
             </div>
           </div>
 
@@ -524,10 +642,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <textarea
                 rows={2}
                 value={especificaciones}
-                onChange={(e) => setEspecificaciones(e.target.value)}
+                onChange={(e) => handleFieldChange("especificaciones", setEspecificaciones, e.target.value)}
+                onBlur={() => handleBlur("especificaciones", especificaciones)}
                 placeholder="Textura, color, espesor o parámetros de calidad..."
-                className={inputCls}
+                className={`${getInputClass("especificaciones")} resize-none`}
               />
+              <FieldError msg={touched.especificaciones && errors.especificaciones} />
             </div>
             <div>
               <label className={labelCls}>
@@ -536,10 +656,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <textarea
                 rows={2}
                 value={caracteristicas}
-                onChange={(e) => setCaracteristicas(e.target.value)}
+                onChange={(e) => handleFieldChange("caracteristicas", setCaracteristicas, e.target.value)}
+                onBlur={() => handleBlur("caracteristicas", caracteristicas)}
                 placeholder="Sabor, aroma, aspecto visual..."
-                className={inputCls}
+                className={`${getInputClass("caracteristicas")} resize-none`}
               />
+              <FieldError msg={touched.caracteristicas && errors.caracteristicas} />
             </div>
           </div>
 
@@ -552,10 +674,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <input
                 type="text"
                 value={informacionNutricional}
-                onChange={(e) => setInformacionNutricional(e.target.value)}
+                onChange={(e) => handleFieldChange("informacionNutricional", setInformacionNutricional, e.target.value)}
+                onBlur={() => handleBlur("informacionNutricional", informacionNutricional)}
                 placeholder="Ej. Calorías: 120 kcal, Grasas: 5g por porción"
-                className={inputCls}
+                className={getInputClass("informacionNutricional")}
               />
+              <FieldError msg={touched.informacionNutricional && errors.informacionNutricional} />
             </div>
             <div>
               <label className={labelCls}>Observaciones / Alérgenos</label>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
+import { validateTexto } from "@/shared/utils/validationUtils";
 
-const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
+const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const labelCls = "block text-sm font-semibold text-slate-700 dark:text-gray-300 mb-1.5";
 
 export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null }) {
@@ -8,8 +10,8 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [estado, setEstado] = useState("Activo");
-
-  const [nombreError, setNombreError] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   useEffect(() => {
     if (categoria) {
@@ -21,33 +23,62 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
       setDescripcion("");
       setEstado("Activo");
     }
-    setNombreError("");
+    setErrors({});
+    setTouched({});
   }, [categoria, isOpen]);
 
   if (!isOpen) return null;
 
   const handleNombreChange = (e) => {
     const raw = e.target.value;
-    if (/[0-9]/.test(raw)) {
-      setNombreError("El nombre de la categoría no debe contener números.");
-    } else {
-      setNombreError("");
-    }
-    // Filtrar números en tiempo real
     const clean = raw.replace(/[0-9]/g, "");
     setNombre(clean);
+
+    let err = "";
+    if (/[0-9]/.test(raw)) {
+      err = "El nombre de la categoría no debe contener números.";
+    } else {
+      const res = validateTexto(clean, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+      if (!res.isValid) err = res.error;
+    }
+    setErrors((prev) => ({ ...prev, nombre: err }));
+  };
+
+  const handleNombreBlur = () => {
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    const res = validateTexto(nombre, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+    setErrors((prev) => ({ ...prev, nombre: res.isValid ? "" : res.error }));
+  };
+
+  const handleDescripcionChange = (e) => {
+    const val = e.target.value;
+    setDescripcion(val);
+    const res = validateTexto(val, "descripción", { min: 0, max: 255, required: false });
+    setErrors((prev) => ({ ...prev, descripcion: res.isValid ? "" : res.error }));
+  };
+
+  const handleDescripcionBlur = () => {
+    setTouched((prev) => ({ ...prev, descripcion: true }));
+    const res = validateTexto(descripcion, "descripción", { min: 0, max: 255, required: false });
+    setErrors((prev) => ({ ...prev, descripcion: res.isValid ? "" : res.error }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!nombre.trim()) {
-      setNombreError("El nombre de la categoría es requerido.");
+    setTouched({ nombre: true, descripcion: true });
+
+    const nombreRes = validateTexto(nombre, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+    const descRes = validateTexto(descripcion, "descripción", { min: 0, max: 255, required: false });
+
+    const newErrors = {};
+    if (!nombreRes.isValid) newErrors.nombre = nombreRes.error;
+    if (!descRes.isValid) newErrors.descripcion = descRes.error;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    if (/[0-9]/.test(nombre)) {
-      setNombreError("El nombre de la categoría no debe contener números.");
-      return;
-    }
+
     onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), estado });
   };
 
@@ -72,11 +103,19 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
               required
               value={nombre}
               onChange={handleNombreChange}
-              className={`${inputCls} ${nombreError ? "border-red-500 focus:ring-red-500" : ""}`}
+              onBlur={handleNombreBlur}
+              className={`${baseInputCls} ${
+                touched.nombre && errors.nombre
+                  ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300"
+                  : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent"
+              }`}
               placeholder="Ej: Frutas y Verduras"
             />
-            {nombreError && (
-              <p className="text-xs text-red-500 mt-1 font-medium">{nombreError}</p>
+            {touched.nombre && errors.nombre && (
+              <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{errors.nombre}</span>
+              </p>
             )}
           </div>
 
@@ -85,10 +124,21 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <textarea
               rows={3}
               value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              className={`${inputCls} resize-none`}
+              onChange={handleDescripcionChange}
+              onBlur={handleDescripcionBlur}
+              className={`${baseInputCls} resize-none ${
+                touched.descripcion && errors.descripcion
+                  ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300"
+                  : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent"
+              }`}
               placeholder="Describe la categoría..."
             />
+            {touched.descripcion && errors.descripcion && (
+              <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{errors.descripcion}</span>
+              </p>
+            )}
           </div>
 
           <div>
@@ -96,7 +146,7 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <select
               value={estado}
               onChange={(e) => setEstado(e.target.value)}
-              className={`${inputCls} cursor-pointer`}
+              className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
             >
               <option value="Activo">Activo</option>
               <option value="Inactivo">Inactivo</option>
@@ -108,13 +158,13 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors"
+              className="px-6 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#F05454]/80 hover:bg-[#F05454] text-white text-sm font-medium transition-colors shadow-xs"
+              className="px-6 py-2.5 rounded-2xl bg-[#F05454] hover:bg-[#d84343] text-white text-sm font-medium transition-colors shadow-xs cursor-pointer"
             >
               {isEditing ? "Guardar Cambios" : "Guardar"}
             </button>

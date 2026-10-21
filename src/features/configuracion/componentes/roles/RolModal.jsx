@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { X, Shield, Check, AlertCircle } from "lucide-react";
 import { PermisosSelector } from "./PermisosSelector";
+import { validateTexto } from "@/shared/utils/validationUtils";
 
 export function RolModal({ isOpen, onClose, onSave, rol = null }) {
   const isEditing = !!rol;
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [permisos, setPermisos] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
@@ -19,22 +22,52 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
       setDescripcion("");
       setPermisos([]);
     }
+    setErrors({});
+    setTouched({});
     setValidationError("");
   }, [rol, isOpen]);
 
   if (!isOpen) return null;
 
+  const handleNombreChange = (val) => {
+    setNombre(val);
+    const res = validateTexto(val, "nombre del rol", { min: 3, max: 50, required: true });
+    setErrors((prev) => ({ ...prev, nombre: res.isValid ? "" : res.error }));
+    if (validationError) setValidationError("");
+  };
+
+  const handleNombreBlur = () => {
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    const res = validateTexto(nombre, "nombre del rol", { min: 3, max: 50, required: true });
+    setErrors((prev) => ({ ...prev, nombre: res.isValid ? "" : res.error }));
+  };
+
+  const handlePermisosChange = (nuevosPermisos) => {
+    setPermisos(nuevosPermisos);
+    setTouched((prev) => ({ ...prev, permisos: true }));
+    const hasPermisos = nuevosPermisos && nuevosPermisos.length > 0;
+    setErrors((prev) => ({
+      ...prev,
+      permisos: hasPermisos ? "" : "Debes asignar al menos un módulo o privilegio al rol."
+    }));
+    if (validationError) setValidationError("");
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setValidationError("");
 
-    if (!nombre.trim()) {
-      setValidationError("El nombre del rol es obligatorio.");
-      return;
-    }
+    const nombreRes = validateTexto(nombre, "nombre del rol", { min: 3, max: 50, required: true });
+    const hasPermisos = permisos && permisos.length > 0;
 
-    if (!permisos || permisos.length === 0) {
-      setValidationError("Debes asignar al menos un permiso o módulo al rol antes de crearlo.");
+    const newErrors = {};
+    if (!nombreRes.isValid) newErrors.nombre = nombreRes.error;
+    if (!hasPermisos) newErrors.permisos = "Debes asignar al menos un módulo o privilegio al rol.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTouched({ nombre: true, permisos: true });
+      setValidationError(newErrors.nombre || newErrors.permisos);
       return;
     }
 
@@ -99,13 +132,21 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
                     type="text"
                     required
                     value={nombre}
-                    onChange={(e) => {
-                      setNombre(e.target.value);
-                      if (validationError) setValidationError("");
-                    }}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors font-medium outline-none"
+                    onChange={(e) => handleNombreChange(e.target.value)}
+                    onBlur={handleNombreBlur}
+                    className={`w-full px-4 py-2.5 rounded-2xl text-sm transition-all duration-150 font-medium outline-none ${
+                      touched.nombre && errors.nombre
+                        ? "border border-red-500 bg-red-50/30 text-red-900 dark:bg-red-950/20 dark:text-red-300 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                        : "border border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent"
+                    }`}
                     placeholder="Ej. Cajero Principal"
                   />
+                  {touched.nombre && errors.nombre && (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.nombre}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -134,14 +175,18 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
                 </span>
               </div>
 
+              {touched.permisos && errors.permisos && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-400 animate-in fade-in duration-150">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                  <span>{errors.permisos}</span>
+                </div>
+              )}
+
               {/* Selector interactivo con buscador, plantillas y privilegios granulares */}
               <PermisosSelector
                 value={permisos}
                 scrollable={false}
-                onChange={(nuevosPermisos) => {
-                  setPermisos(nuevosPermisos);
-                  if (validationError) setValidationError("");
-                }}
+                onChange={handlePermisosChange}
               />
             </div>
           </div>

@@ -35,9 +35,9 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
     estado: "Activo",
   });
 
-  // Errores por campo
+  // Errores por campo y campos tocados
   const [errors, setErrors] = useState({});
-  // Si el usuario ya intentó enviar
+  const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -79,6 +79,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
       });
     }
     setErrors({});
+    setTouched({});
     setSubmitted(false);
   }, [proveedor, isOpen]);
 
@@ -133,13 +134,13 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
     // Teléfono: solo dígitos
     if (!fields.telefono.trim()) {
       errs.telefono = "El teléfono / celular es obligatorio.";
-    } else if (!/^[\d]+$/.test(fields.telefono.trim())) {
-      errs.telefono = "Solo se permiten números en el teléfono.";
+    } else if (!/^[\d]{7,10}$/.test(fields.telefono.trim())) {
+      errs.telefono = "El teléfono debe tener entre 7 y 10 dígitos numéricos.";
     }
 
-    // Email: validación real-time (#73) - sin guiones antes de @, formato válido
-    if (fields.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim())) {
-      errs.email = "El correo electrónico no tiene un formato válido.";
+    // Email: validación real-time (#73) - formato válido
+    if (fields.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(fields.email.trim())) {
+      errs.email = "El correo electrónico no tiene un formato válido (ej: contacto@empresa.com).";
     }
 
     return errs;
@@ -152,53 +153,66 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
       idTipoDocumento: nuevoTipo === "Jurídica" ? 3 : 1
     };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    const updatedErrors = validate(newForm);
+    setErrors(updatedErrors);
+  };
+
+  const handleFieldBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const errs = validate(form);
+    setErrors((prev) => ({ ...prev, [field]: errs[field] }));
   };
 
   // ── Manejadores de cambio con filtrado en tiempo real ──────────────────────
 
   const handleNitChange = (e) => {
-    // #72: Solo dígitos, sin puntos ni guiones
     const value = e.target.value.replace(/[^0-9]/g, "").slice(0, 20);
     const newForm = { ...form, nit: value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    setTouched((prev) => ({ ...prev, nit: true }));
+    const errs = validate(newForm);
+    setErrors((prev) => ({ ...prev, nit: errs.nit }));
   };
 
   const handleNombreChange = (e) => {
-    // #71: Quitar caracteres especiales (permitir letras, números, espacios, .,&,-)
     const value = e.target.value.replace(/[^a-zA-Z0-9\u00C0-\u024F\s.,&-]/g, "");
     const newForm = { ...form, nombre: value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    const errs = validate(newForm);
+    setErrors((prev) => ({ ...prev, nombre: errs.nombre }));
   };
 
   const handleEmailChange = (e) => {
-    // #73: Validación real-time, sin guiones antes de @
     const value = e.target.value;
     const newForm = { ...form, email: value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    setTouched((prev) => ({ ...prev, email: true }));
+    const errs = validate(newForm);
+    setErrors((prev) => ({ ...prev, email: errs.email }));
   };
 
   const handleContactoChange = (e) => {
     const value = e.target.value.replace(/[0-9]/g, "");
     const newForm = { ...form, contacto: value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    setTouched((prev) => ({ ...prev, contacto: true }));
+    const errs = validate(newForm);
+    setErrors((prev) => ({ ...prev, contacto: errs.contacto }));
   };
 
   const handleTelefonoChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     const newForm = { ...form, telefono: value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
+    setTouched((prev) => ({ ...prev, telefono: true }));
+    const errs = validate(newForm);
+    setErrors((prev) => ({ ...prev, telefono: errs.telefono }));
   };
 
   const handleGenericChange = (field) => (e) => {
     const newForm = { ...form, [field]: e.target.value };
     setForm(newForm);
-    if (submitted) setErrors(validate(newForm));
   };
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -206,6 +220,14 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitted(true);
+    setTouched({
+      nombre: true,
+      nit: true,
+      contacto: true,
+      email: true,
+      telefono: true,
+      direccion: true
+    });
     const errs = validate(form);
     setErrors(errs);
 
@@ -294,16 +316,17 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 inputMode="numeric"
                 value={form.nit}
                 onChange={handleNitChange}
-                className={getInputCls(!!errors.nit)}
+                onBlur={() => handleFieldBlur("nit")}
+                className={getInputCls(touched.nit && !!errors.nit)}
                 placeholder={esJuridica ? "Ej. 900123456" : "Ej. 1043673457"}
                 maxLength={15}
               />
-              {errors.nit && (
+              {touched.nit && errors.nit && (
                 <p className={errorMsgCls}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nit}
                 </p>
               )}
-              {!errors.nit && form.nit.trim() && (
+              {(!touched.nit || !errors.nit) && form.nit.trim() && (
                 <p className="text-xs text-gray-400 mt-1">
                   {esJuridica ? "Solo dígitos, sin puntos ni guiones" : "Solo números de cédula"}
                 </p>
@@ -320,10 +343,11 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 type="text"
                 value={form.nombre}
                 onChange={handleNombreChange}
-                className={getInputCls(!!errors.nombre)}
+                onBlur={() => handleFieldBlur("nombre")}
+                className={getInputCls(touched.nombre && !!errors.nombre)}
                 placeholder={esJuridica ? "Ej. Distribuidora Avícola S.A.S." : "Ej. Juan Carlos Pérez"}
               />
-              {errors.nombre && (
+              {touched.nombre && errors.nombre && (
                 <p className={errorMsgCls}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.nombre}
                 </p>
@@ -368,10 +392,11 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 inputMode="tel"
                 value={form.telefono}
                 onChange={handleTelefonoChange}
-                className={getInputCls(!!errors.telefono)}
+                onBlur={() => handleFieldBlur("telefono")}
+                className={getInputCls(touched.telefono && !!errors.telefono)}
                 placeholder="Ej. 310 987 6543"
               />
-              {errors.telefono && (
+              {touched.telefono && errors.telefono && (
                 <p className={errorMsgCls}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.telefono}
                 </p>
@@ -387,10 +412,11 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 type="text"
                 value={form.contacto}
                 onChange={handleContactoChange}
-                className={getInputCls(!!errors.contacto)}
+                onBlur={() => handleFieldBlur("contacto")}
+                className={getInputCls(touched.contacto && !!errors.contacto)}
                 placeholder="Ej. Carlos Mendoza"
               />
-              {errors.contacto && (
+              {touched.contacto && errors.contacto && (
                 <p className={errorMsgCls}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.contacto}
                 </p>
@@ -404,10 +430,11 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 type="email"
                 value={form.email}
                 onChange={handleEmailChange}
-                className={getInputCls(!!errors.email)}
+                onBlur={() => handleFieldBlur("email")}
+                className={getInputCls(touched.email && !!errors.email)}
                 placeholder="contacto@empresa.com"
               />
-              {errors.email && (
+              {touched.email && errors.email && (
                 <p className={errorMsgCls}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.email}
                 </p>

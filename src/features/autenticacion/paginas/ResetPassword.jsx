@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
+import { validateContrasena, validateConfirmarContrasena } from "@/shared/utils/validationUtils";
 
 export function ResetPassword() {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ export function ResetPassword() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [touched, setTouched] = useState({ nueva: false, confirmar: false });
+  const [submitted, setSubmitted] = useState(false);
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
@@ -24,26 +27,21 @@ export function ResetPassword() {
     }
   }, [token, email, navigate, toast]);
 
-  const validatePassword = (password) => {
-    if (password.length < 6) {
-      return { valid: false, message: "La contraseña debe tener al menos 6 caracteres" };
-    }
-    return { valid: true };
-  };
+  const errorNueva = (touched.nueva || submitted) ? validateContrasena(nuevaContraseña, 6) : "";
+  const errorConfirmar = (touched.confirmar || submitted)
+    ? validateConfirmarContrasena(nuevaContraseña, confirmarContraseña)
+    : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nuevaContraseña || !confirmarContraseña) {
-      toast.error("Campos requeridos", "Por favor completa todos los campos");
-      return;
-    }
-    const validation = validatePassword(nuevaContraseña);
-    if (!validation.valid) {
-      toast.error("Contraseña inválida", validation.message);
-      return;
-    }
-    if (nuevaContraseña !== confirmarContraseña) {
-      toast.error("Las contraseñas no coinciden", "Por favor verifica que ambas contraseñas sean iguales");
+    setSubmitted(true);
+    setTouched({ nueva: true, confirmar: true });
+
+    const errPass = validateContrasena(nuevaContraseña, 6);
+    const errConf = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
+
+    if (errPass || errConf) {
+      toast.error("Campos requeridos", errPass || errConf);
       return;
     }
     setIsLoading(true);
@@ -128,7 +126,7 @@ export function ResetPassword() {
                 {/* Nueva contraseña */}
                 <div>
                   <label htmlFor="nueva" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Nueva Contraseña
+                    Nueva Contraseña <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -136,18 +134,34 @@ export function ResetPassword() {
                       id="nueva"
                       type={showPasswords ? "text" : "password"}
                       value={nuevaContraseña}
-                      onChange={(e) => setNuevaContraseña(e.target.value)}
+                      onChange={(e) => {
+                        setNuevaContraseña(e.target.value);
+                        setTouched(prev => ({ ...prev, nueva: true }));
+                      }}
+                      onBlur={() => setTouched(prev => ({ ...prev, nueva: true }))}
                       placeholder="Ingresa tu nueva contraseña"
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className={`w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:outline-none transition-all text-gray-800 font-medium ${
+                        errorNueva
+                          ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                          : touched.nueva && nuevaContraseña.length >= 6
+                          ? "border-emerald-500/80 bg-white focus:border-emerald-500"
+                          : "border-gray-200 bg-gray-50 focus:border-red-500 focus:bg-white"
+                      }`}
                       disabled={isLoading}
                     />
                   </div>
+                  {errorNueva && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{errorNueva}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Confirmar contraseña */}
                 <div>
                   <label htmlFor="confirmar" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Confirmar Contraseña
+                    Confirmar Contraseña <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -155,12 +169,28 @@ export function ResetPassword() {
                       id="confirmar"
                       type={showPasswords ? "text" : "password"}
                       value={confirmarContraseña}
-                      onChange={(e) => setConfirmarContraseña(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmarContraseña(e.target.value);
+                        setTouched(prev => ({ ...prev, confirmar: true }));
+                      }}
+                      onBlur={() => setTouched(prev => ({ ...prev, confirmar: true }))}
                       placeholder="Confirma tu nueva contraseña"
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className={`w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:outline-none transition-all text-gray-800 font-medium ${
+                        errorConfirmar
+                          ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                          : touched.confirmar && confirmarContraseña && confirmarContraseña === nuevaContraseña
+                          ? "border-emerald-500/80 bg-white focus:border-emerald-500"
+                          : "border-gray-200 bg-gray-50 focus:border-red-500 focus:bg-white"
+                      }`}
                       disabled={isLoading}
                     />
                   </div>
+                  {errorConfirmar && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{errorConfirmar}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Botón único para mostrar/ocultar ambas contraseñas */}

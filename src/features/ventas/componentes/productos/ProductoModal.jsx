@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -8,6 +8,7 @@ import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { validateTexto, validateNumeroPositivo, validateRequerido } from "@/shared/utils/validationUtils";
 
 export const isSizeVariantName = (name = "") => {
   const vn = String(name || "").toLowerCase();
@@ -89,10 +90,48 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [modoVariantesManual, setModoVariantesManual] = useState(null); // null = automático, "bebida", "comida"
   const fileInputRef = useRef(null);
 
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case "nombre":
+        return validateTexto(value, "El nombre del producto", 2, 100);
+      case "precio":
+        return validateNumeroPositivo(value, "El precio de venta", true);
+      case "descripcion":
+        if (value && value.length > 500) {
+          return "La descripción no puede exceder los 500 caracteres.";
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, form[field]);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  const handleChange = (field, val) => {
+    const updated = { ...form, [field]: val };
+    setForm(updated);
+    if (touched[field] || submitted) {
+      const err = validateField(field, val);
+      setErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
+
   const handleCancelOrClose = () => {
     // Limpiar archivo seleccionado y previsualización local sin haber subido nada a Cloudinary
     setFileToUpload(null);
     setPreviewUrl("");
+    setErrors({});
+    setTouched({});
+    setSubmitted(false);
     onClose();
   };
 
@@ -422,6 +461,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const handleMainPriceChange = (newPrice) => {
     setForm((f) => ({ ...f, precio: newPrice }));
+    if (touched.precio || submitted) {
+      const err = validateField("precio", newPrice);
+      setErrors((prev) => ({ ...prev, precio: err }));
+    }
   };
 
   const renderVariantRow = (v, idx, type) => {
@@ -560,13 +603,20 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
     if (uploading) return;
-    if (!form.nombre || !form.nombre.trim()) {
-      notify.warning("Campo Requerido", "Por favor ingresa el nombre del producto");
-      return;
-    }
-    if (form.precio === "" || form.precio === null || isNaN(Number(form.precio)) || Number(form.precio) < 0) {
-      notify.warning("Campo Requerido", "Por favor ingresa un precio de venta válido");
+    const errNombre = validateField("nombre", form.nombre);
+    const errPrecio = validateField("precio", form.precio);
+    const errDesc = validateField("descripcion", form.descripcion);
+    const errs = {};
+    if (errNombre) errs.nombre = errNombre;
+    if (errPrecio) errs.precio = errPrecio;
+    if (errDesc) errs.descripcion = errDesc;
+    setErrors(errs);
+    setTouched({ nombre: true, precio: true, descripcion: true });
+
+    if (Object.keys(errs).length > 0) {
+      notify.warning("Campo Requerido", Object.values(errs)[0]);
       return;
     }
 
@@ -760,15 +810,28 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         <form onSubmit={handleSubmit} noValidate className="p-6 overflow-y-auto flex-1 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Nombre del Producto</label>
+              <label className={labelCls}>
+                Nombre del Producto <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 required
                 value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className={inputCls}
+                onBlur={() => handleBlur("nombre")}
+                onChange={(e) => handleChange("nombre", e.target.value)}
+                className={`${inputCls} ${
+                  (touched.nombre || submitted) && errors.nombre
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : ""
+                }`}
                 placeholder="Ej. Hamburguesa Especial"
               />
+              {(touched.nombre || submitted) && errors.nombre && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.nombre}
+                </p>
+              )}
             </div>
 
             <div>
@@ -799,15 +862,28 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             <div>
-              <label className={labelCls}>Precio de Venta Base ($ COP)</label>
+              <label className={labelCls}>
+                Precio de Venta Base ($ COP) <span className="text-red-500">*</span>
+              </label>
               <NumberInput
                 required
                 min="0"
                 value={form.precio}
+                onBlur={() => handleBlur("precio")}
                 onChange={(e) => handleMainPriceChange(e.target.value)}
-                className={inputCls}
+                className={`${inputCls} ${
+                  (touched.precio || submitted) && errors.precio
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : ""
+                }`}
                 placeholder="Ej. 25000"
               />
+              {(touched.precio || submitted) && errors.precio && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.precio}
+                </p>
+              )}
             </div>
 
             <div>
@@ -1181,14 +1257,30 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             <div className="sm:col-span-2">
-              <label className={labelCls}>Descripción</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className={labelCls}>Descripción (Opcional)</label>
+                <span className={`text-[10px] ${form.descripcion?.length > 500 ? "text-red-500 font-bold" : "text-gray-400"}`}>
+                  {form.descripcion?.length || 0}/500
+                </span>
+              </div>
               <textarea
                 rows={2}
                 value={form.descripcion}
-                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                className={inputCls}
+                onBlur={() => handleBlur("descripcion")}
+                onChange={(e) => handleChange("descripcion", e.target.value)}
+                className={`${inputCls} ${
+                  (touched.descripcion || submitted) && errors.descripcion
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : ""
+                }`}
                 placeholder="Descripción del platillo e ingredientes principales..."
               />
+              {(touched.descripcion || submitted) && errors.descripcion && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.descripcion}
+                </p>
+              )}
             </div>
 
             {/* Configuración de Combo y Bebidas Incluidas */}

@@ -8,7 +8,8 @@ import {
   Loader2,
   Check,
   Info,
-  Percent
+  Percent,
+  AlertCircle
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
@@ -16,7 +17,9 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { FoodIcon, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { validateTexto, validateNumeroPositivo, validateMoneda, validateRequerido } from "@/shared/utils/validationUtils";
 
+const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
@@ -92,6 +95,8 @@ export function InsumoModal({
     precioAdicion: 0,
     imagen: ""
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Estado para Ficha Técnica (Insumo Preparado)
   const [initialFichaTecnica, setInitialFichaTecnica] = useState(null);
@@ -212,43 +217,88 @@ export function InsumoModal({
     return "Ud";
   };
 
+  const validateField = (field, val, currentForm = form) => {
+    let err = "";
+    if (field === "nombre") {
+      const res = validateTexto(val, "nombre del insumo", { min: 2, max: 100 });
+      if (!res.isValid) err = res.error;
+    } else if (field === "idCategoriaInsumo" && tipo === "Base") {
+      const res = validateRequerido(val, "categoría");
+      if (!res.isValid) err = res.error;
+    } else if (field === "precioUnitario") {
+      const res = validateMoneda(val, "precio o costo", { allowZero: true });
+      if (!res.isValid) err = res.error;
+    } else if (field === "stock" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock actual", { min: 0, allowZero: true });
+      if (!res.isValid) err = res.error;
+    } else if (field === "stockMinimo" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock mínimo", { min: 0, allowZero: true });
+      if (!res.isValid) err = res.error;
+    } else if (field === "precioAdicion" && (currentForm.esAdicion || isSalsaItem(currentForm.nombre, currentForm.categoria))) {
+      const esSalsa = isSalsaItem(currentForm.nombre, currentForm.categoria);
+      if (!esSalsa) {
+        const res = validateMoneda(val, "precio de adición", { allowZero: false });
+        if (!res.isValid) err = res.error;
+      }
+    }
+    return err;
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, form[field], form);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
   const handleNumberInput = (field, val) => {
+    let sanitized = val;
     if (val === "") {
-      setForm((prev) => ({ ...prev, [field]: "" }));
-      return;
+      sanitized = "";
+    } else {
+      if (String(val).includes("-")) {
+        sanitized = String(val).replace(/-/g, "");
+      }
+      if (sanitized.length > 1 && sanitized.startsWith("0") && !sanitized.startsWith("0.")) {
+        sanitized = sanitized.replace(/^0+/, "");
+      }
     }
-    if (String(val).includes("-")) {
-      val = String(val).replace(/-/g, "");
-    }
-    const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
-    setForm((prev) => ({ ...prev, [field]: sanitized }));
+
+    const updated = { ...form, [field]: sanitized };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, sanitized, updated);
+    setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
   const handleNombreChange = (nuevoNombre) => {
-    setForm((prev) => {
-      const esSalsa = isSalsaItem(nuevoNombre, prev.categoria);
-      return {
-        ...prev,
-        nombre: nuevoNombre,
-        esAdicion: esSalsa ? true : prev.esAdicion,
-        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
-        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
-      };
-    });
+    const esSalsa = isSalsaItem(nuevoNombre, form.categoria);
+    const updated = {
+      ...form,
+      nombre: nuevoNombre,
+      esAdicion: esSalsa ? true : form.esAdicion,
+      precioAdicion: esSalsa && (!form.precioAdicion || Number(form.precioAdicion) <= 0) ? 1500 : form.precioAdicion,
+      imagen: esSalsa && (!form.imagen || form.imagen === "bacon") ? "sauce" : form.imagen
+    };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    const err = validateField("nombre", nuevoNombre, updated);
+    setErrors((prev) => ({ ...prev, nombre: err }));
   };
 
   const handleCategoriaChange = (catId, catNombre) => {
-    setForm((prev) => {
-      const esSalsa = isSalsaItem(prev.nombre, catNombre);
-      return {
-        ...prev,
-        idCategoriaInsumo: catId,
-        categoria: catNombre,
-        esAdicion: esSalsa ? true : prev.esAdicion,
-        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
-        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
-      };
-    });
+    const esSalsa = isSalsaItem(form.nombre, catNombre);
+    const updated = {
+      ...form,
+      idCategoriaInsumo: catId,
+      categoria: catNombre,
+      esAdicion: esSalsa ? true : form.esAdicion,
+      precioAdicion: esSalsa && (!form.precioAdicion || Number(form.precioAdicion) <= 0) ? 1500 : form.precioAdicion,
+      imagen: esSalsa && (!form.imagen || form.imagen === "bacon") ? "sauce" : form.imagen
+    };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, idCategoriaInsumo: true }));
+    const err = validateField("idCategoriaInsumo", catId, updated);
+    setErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
   };
 
   // Subida de imagen a Cloudinary
@@ -282,8 +332,26 @@ export function InsumoModal({
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (!form.nombre.trim()) {
-      notify.warning("Campo Requerido", "Por favor escribe el nombre del insumo.");
+    const fieldsToValidate = ["nombre"];
+    if (tipo === "Base") {
+      fieldsToValidate.push("idCategoriaInsumo", "stock", "stockMinimo", "precioUnitario");
+    } else {
+      fieldsToValidate.push("precioUnitario");
+    }
+    if (form.esAdicion) {
+      fieldsToValidate.push("precioAdicion");
+    }
+
+    const newErrors = {};
+    fieldsToValidate.forEach((f) => {
+      const err = validateField(f, form[f], form);
+      if (err) newErrors[f] = err;
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTouched(fieldsToValidate.reduce((acc, f) => ({ ...acc, [f]: true }), {}));
+      notify.warning("Datos requeridos", Object.values(newErrors)[0]);
       return;
     }
 
@@ -502,13 +570,24 @@ export function InsumoModal({
                       required
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
-                      className={inputCls}
+                      onBlur={() => handleBlur("nombre")}
+                      className={`${baseInputCls} ${
+                        touched.nombre && errors.nombre
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                       placeholder="Ej. Queso Cheddar en Lonchas o Pan Brioche"
                     />
+                    {touched.nombre && errors.nombre && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.nombre}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className={labelCls}>Categoría</label>
+                    <label className={labelCls}>Categoría <span className="text-red-500">*</span></label>
                     <select
                       value={String(form.idCategoriaInsumo || "")}
                       onChange={(e) => {
@@ -518,7 +597,12 @@ export function InsumoModal({
                         const catNom = selectedCat ? selectedCat.nombre : val;
                         handleCategoriaChange(catId, catNom);
                       }}
-                      className={`${inputCls} cursor-pointer`}
+                      onBlur={() => handleBlur("idCategoriaInsumo")}
+                      className={`${baseInputCls} cursor-pointer ${
+                        touched.idCategoriaInsumo && errors.idCategoriaInsumo
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                     >
                       <option value="">Seleccionar categoría</option>
                       {categorias.map((c) => {
@@ -530,6 +614,12 @@ export function InsumoModal({
                         );
                       })}
                     </select>
+                    {touched.idCategoriaInsumo && errors.idCategoriaInsumo && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.idCategoriaInsumo}</span>
+                      </p>
+                    )}
                   </div>
 
                   {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
@@ -539,7 +629,7 @@ export function InsumoModal({
                     <select
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${inputCls} cursor-pointer`}
+                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                     >
                       <option value="Kg">Kilogramos (Kg) — Peso / Masa</option>
                       <option value="Gr">Gramos (Gr) — Peso / Masa</option>
@@ -562,13 +652,24 @@ export function InsumoModal({
                         step="0.01"
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                        className={`${inputCls} pl-8 pr-20`}
+                        onBlur={() => handleBlur("precioUnitario")}
+                        className={`${baseInputCls} pl-8 pr-20 ${
+                          touched.precioUnitario && errors.precioUnitario
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0.00"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase pointer-events-none">
                         / {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.precioUnitario && errors.precioUnitario && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.precioUnitario}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -581,13 +682,24 @@ export function InsumoModal({
                         step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                         value={form.stock}
                         onChange={(e) => handleNumberInput("stock", e.target.value)}
-                        className={`${inputCls} pr-20 font-semibold`}
+                        onBlur={() => handleBlur("stock")}
+                        className={`${baseInputCls} pr-20 font-semibold ${
+                          touched.stock && errors.stock
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 pointer-events-none">
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.stock && errors.stock && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stock}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -600,13 +712,24 @@ export function InsumoModal({
                         step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                         value={form.stockMinimo}
                         onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
-                        className={`${inputCls} pr-20`}
+                        onBlur={() => handleBlur("stockMinimo")}
+                        className={`${baseInputCls} pr-20 ${
+                          touched.stockMinimo && errors.stockMinimo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="5"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 pointer-events-none">
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.stockMinimo && errors.stockMinimo && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stockMinimo}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -656,9 +779,20 @@ export function InsumoModal({
                       required
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
-                      className={inputCls}
+                      onBlur={() => handleBlur("nombre")}
+                      className={`${baseInputCls} ${
+                        touched.nombre && errors.nombre
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                       placeholder="Ej. Salsa Chazin de la Casa, Carne Molida Sazonada, Cebolla Caramelizada..."
                     />
+                    {touched.nombre && errors.nombre && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.nombre}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -667,7 +801,7 @@ export function InsumoModal({
                       rows={2}
                       value={form.descripcion}
                       onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                      className={`${inputCls} resize-none`}
+                      className={`${baseInputCls} resize-none border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]`}
                       placeholder="Descripción, características sensoriales o modo de uso del preparado..."
                     />
                   </div>
@@ -683,10 +817,21 @@ export function InsumoModal({
                         required
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                        className={`${inputCls} pl-8`}
+                        onBlur={() => handleBlur("precioUnitario")}
+                        className={`${baseInputCls} pl-8 ${
+                          touched.precioUnitario && errors.precioUnitario
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0"
                       />
                     </div>
+                    {touched.precioUnitario && errors.precioUnitario && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.precioUnitario}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -694,7 +839,7 @@ export function InsumoModal({
                     <select
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${inputCls} cursor-pointer`}
+                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                     >
                       <option value="und — unidad">und — unidad</option>
                       <option value="porción">porción</option>
@@ -805,10 +950,21 @@ export function InsumoModal({
                           required={form.esAdicion}
                           value={form.precioAdicion}
                           onChange={(e) => handleNumberInput("precioAdicion", e.target.value)}
-                          className={`${inputCls} pl-8 font-bold text-purple-700 dark:text-purple-300`}
+                          onBlur={() => handleBlur("precioAdicion")}
+                          className={`${baseInputCls} pl-8 font-bold text-purple-700 dark:text-purple-300 ${
+                            touched.precioAdicion && errors.precioAdicion
+                              ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                              : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
                           placeholder="Ej. 3500"
                         />
                       </div>
+                      {touched.precioAdicion && errors.precioAdicion && (
+                        <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{errors.precioAdicion}</span>
+                        </p>
+                      )}
                       <p className="text-[11px] text-gray-400 mt-1">Valor extra que se cobrará al agregar esta adición.</p>
                     </div>
 

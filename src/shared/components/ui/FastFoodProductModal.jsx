@@ -23,7 +23,8 @@ import {
   Send,
   User as UserIcon,
   UtensilsCrossed,
-  Lock
+  Lock,
+  AlertCircle
 } from "lucide-react";
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -1092,6 +1093,7 @@ export function FastFoodProductModal({
   const [guestName, setGuestName] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState(null); // { type: 'success'|'error', message: string }
+  const [reviewTouched, setReviewTouched] = useState({ guestName: false, comment: false });
   const [showFullDesc, setShowFullDesc] = useState(false);
 
   const prodId = producto?.id || producto?.idProducto;
@@ -1120,12 +1122,17 @@ export function FastFoodProductModal({
   const handleSubmitReview = async (e) => {
     e?.preventDefault();
     if (!prodId) return;
+    setReviewTouched({ guestName: true, comment: true });
     if (newRating < 1) {
       setReviewFeedback({ type: "error", message: "Por favor selecciona una calificación de 1 a 5 estrellas." });
       return;
     }
-    if (!newComment.trim()) {
-      setReviewFeedback({ type: "error", message: "Por favor escribe un breve comentario sobre tu experiencia gastronómica." });
+    if (!user && (!guestName || guestName.trim().length < 2)) {
+      setReviewFeedback({ type: "error", message: "Por favor ingresa tu nombre (mínimo 2 caracteres)." });
+      return;
+    }
+    if (!newComment.trim() || newComment.trim().length < 5) {
+      setReviewFeedback({ type: "error", message: "Por favor escribe un comentario de al menos 5 caracteres sobre tu experiencia." });
       return;
     }
 
@@ -3202,30 +3209,52 @@ export function FastFoodProductModal({
                     {(!user || !user.nombre) && (
                       <div>
                         <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">
-                          Tu Nombre o Apodo:
+                          Tu Nombre o Apodo: <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
                           value={guestName}
+                          onBlur={() => setReviewTouched(prev => ({ ...prev, guestName: true }))}
                           onChange={(e) => setGuestName(e.target.value)}
                           placeholder="Ej. Sofía Morales"
-                          className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          className={`w-full text-xs px-3 py-2 rounded-xl border transition-colors outline-none ${
+                            reviewTouched.guestName && (!guestName || guestName.trim().length < 2)
+                              ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-400"
+                          }`}
                         />
+                        {reviewTouched.guestName && (!guestName || guestName.trim().length < 2) && (
+                          <p className="flex items-center gap-1 text-[11px] text-red-600 mt-1 font-medium">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                            <span>El nombre debe tener al menos 2 caracteres.</span>
+                          </p>
+                        )}
                       </div>
                     )}
 
                     {/* Comment Textarea */}
                     <div>
                       <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">
-                        ¿Qué tal estuvo la cocción, temperatura y salsas?
+                        ¿Qué tal estuvo la cocción, temperatura y salsas? <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         rows={3}
                         value={newComment}
+                        onBlur={() => setReviewTouched(prev => ({ ...prev, comment: true }))}
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Cuéntale a otros comensales qué fue lo que más disfrutaste de este plato..."
-                        className="w-full text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                        className={`w-full text-xs p-3 rounded-xl border transition-colors outline-none resize-none ${
+                          reviewTouched.comment && (!newComment.trim() || newComment.trim().length < 5)
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-400"
+                        }`}
                       />
+                      {reviewTouched.comment && (!newComment.trim() || newComment.trim().length < 5) && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-600 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                          <span>El comentario debe tener al menos 5 caracteres.</span>
+                        </p>
+                      )}
                     </div>
 
                     {reviewFeedback && (
@@ -3375,13 +3404,27 @@ export function FastFoodProductModal({
               </div>
 
               {/* Custom Input */}
-              <input
-                type="text"
-                placeholder={isDrink ? "Ej: Vaso con hielo adicional, sin pitillo..." : "Ej: Carne 3/4, servilletas extras, salsas en pote aparte..."}
-                value={customObservation}
-                onChange={(e) => setCustomObservation(e.target.value)}
-                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-[#f05454] transition"
-              />
+              <div>
+                <input
+                  type="text"
+                  maxLength={200}
+                  placeholder={isDrink ? "Ej: Vaso con hielo adicional, sin pitillo..." : "Ej: Carne 3/4, servilletas extras, salsas en pote aparte..."}
+                  value={customObservation}
+                  onChange={(e) => setCustomObservation(e.target.value)}
+                  className={`w-full text-xs px-3.5 py-2.5 rounded-xl border outline-none transition ${
+                    customObservation.length > 180
+                      ? "border-amber-400 focus:border-amber-500"
+                      : "border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 focus:border-[#f05454]"
+                  }`}
+                />
+                {customObservation.length > 0 && (
+                  <div className="flex justify-end mt-1">
+                    <span className={`text-[10px] ${customObservation.length > 180 ? "text-amber-500 font-bold" : "text-gray-400"}`}>
+                      {customObservation.length}/200 caracteres
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -880,12 +880,20 @@ export function CancelarCompraModal({ isOpen, onClose, compra, onConfirm }) {
                 rows={2}
                 value={motivoGeneral}
                 onChange={(e) => {
-                  setMotivoGeneral(e.target.value);
-                  if (e.target.value.trim()) setErrorMsg("");
+                  const val = e.target.value;
+                  setMotivoGeneral(val);
+                  if (val.trim()) setErrorMsg("");
                 }}
                 placeholder="Escribe el motivo general de la devolución..."
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors placeholder:text-gray-400 resize-none font-medium"
+                className={`w-full px-3.5 py-2.5 text-xs rounded-xl border transition-all duration-150 placeholder:text-gray-400 resize-none font-medium outline-none ${
+                  !motivoGeneral.trim() && errorMsg
+                    ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                    : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                }`}
               />
+              {!motivoGeneral.trim() && (
+                <p className="text-[11px] text-gray-400 mt-1">El motivo debe tener al menos 5 caracteres descriptivos.</p>
+              )}
             </div>
 
             {/* Observaciones generales adicionales */}

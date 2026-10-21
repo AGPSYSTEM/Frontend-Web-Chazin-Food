@@ -27,6 +27,7 @@ import { comprasService } from "../../servicios/comprasService";
 import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { isSalsaItem } from "../insumos/InsumoModal";
+import { validateTexto, validateNumeroPositivo, validateRequerido } from "@/shared/utils/validationUtils";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
@@ -242,8 +243,78 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const [fechaFactura, setFechaFactura] = useState(hoy());
   const [incluyeIva, setIncluyeIva] = useState(false);
 
-  // Errores de validación
+  // Errores de validación y campos tocados
   const [formErrors, setFormErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [nuevoInsumoTouched, setNuevoInsumoTouched] = useState({});
+
+  // Validaciones en vivo para campos principales de compra
+  const validateHeaderField = (name, value) => {
+    switch (name) {
+      case "numeroFactura":
+        return validateTexto(value, "El número de factura", 2, 50);
+      case "fechaFactura":
+        return validateRequerido(value, "La fecha de la factura");
+      default:
+        return null;
+    }
+  };
+
+  const handleHeaderBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    let val = "";
+    if (name === "numeroFactura") val = numeroFactura;
+    if (name === "fechaFactura") val = fechaFactura;
+    const err = validateHeaderField(name, val);
+    setFormErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const handleHeaderChange = (name, value) => {
+    if (name === "numeroFactura") setNumeroFactura(value);
+    if (name === "fechaFactura") setFechaFactura(value);
+    if (touched[name] || submitted) {
+      const err = validateHeaderField(name, value);
+      setFormErrors((prev) => ({ ...prev, [name]: err }));
+    }
+  };
+
+  // Validaciones en vivo para nuevo insumo en drawer lateral
+  const validateNuevoInsumoField = (name, value, currentForm = nuevoInsumoForm) => {
+    switch (name) {
+      case "nombre":
+        return validateTexto(value, "El nombre del insumo", 2, 80);
+      case "idCategoriaInsumo":
+        return value ? null : "Selecciona una categoría para el insumo.";
+      case "precioUnitario":
+        return validateNumeroPositivo(value, "El precio unitario", true);
+      case "stock":
+        return validateNumeroPositivo(value, "El stock inicial", true);
+      case "stockMinimo":
+        return validateNumeroPositivo(value, "El stock mínimo", true);
+      case "precioAdicion":
+        if (currentForm.esAdicion) {
+          return validateNumeroPositivo(value, "El precio de venta de la adición", false);
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleNuevoInsumoBlur = (name) => {
+    setNuevoInsumoTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validateNuevoInsumoField(name, nuevoInsumoForm[name]);
+    setNuevoInsumoErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  const handleNuevoInsumoChange = (name, value) => {
+    const updated = { ...nuevoInsumoForm, [name]: value };
+    setNuevoInsumoForm(updated);
+    if (nuevoInsumoTouched[name]) {
+      const err = validateNuevoInsumoField(name, value, updated);
+      setNuevoInsumoErrors((prev) => ({ ...prev, [name]: err }));
+    }
+  };
 
   // Ítems en la orden (panel derecho)
   const [ordenItems, setOrdenItems] = useState([]);
@@ -284,9 +355,11 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
       setIncluyeIva(false);
       setOrdenItems([]);
       setFormErrors({});
+      setTouched({});
       setPanelNuevoInsumoOpen(false);
       setNuevoInsumoForm(initialNuevoInsumoForm);
       setNuevoInsumoErrors({});
+      setNuevoInsumoTouched({});
     }
   }, [isOpen, loadCatalogos]);
 
@@ -307,24 +380,29 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
       precioAdicion: esSalsa ? "1500" : "",
     });
     setNuevoInsumoErrors({});
+    setNuevoInsumoTouched({});
     setPanelNuevoInsumoOpen(true);
   };
 
   const handleGuardarNuevoInsumo = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const errs = {};
-    if (!nuevoInsumoForm.nombre.trim()) {
-      errs.nombre = "El nombre del insumo es obligatorio.";
-    }
-    if (!nuevoInsumoForm.idCategoriaInsumo) {
-      errs.idCategoriaInsumo = "Selecciona una categoría para el insumo.";
-    }
+    const errNombre = validateNuevoInsumoField("nombre", nuevoInsumoForm.nombre);
+    if (errNombre) errs.nombre = errNombre;
+    const errCat = validateNuevoInsumoField("idCategoriaInsumo", nuevoInsumoForm.idCategoriaInsumo);
+    if (errCat) errs.idCategoriaInsumo = errCat;
     if (nuevoInsumoForm.esAdicion) {
-      const pAdic = parseFloat(nuevoInsumoForm.precioAdicion);
-      if (isNaN(pAdic) || pAdic <= 0) {
-        errs.precioAdicion = "Ingresa un precio de venta mayor a $0 para la adición.";
-      }
+      const errAdic = validateNuevoInsumoField("precioAdicion", nuevoInsumoForm.precioAdicion);
+      if (errAdic) errs.precioAdicion = errAdic;
     }
+    setNuevoInsumoTouched({
+      nombre: true,
+      idCategoriaInsumo: true,
+      precioUnitario: true,
+      stock: true,
+      stockMinimo: true,
+      precioAdicion: true,
+    });
     setNuevoInsumoErrors(errs);
     if (Object.keys(errs).length > 0) {
       notify?.warning?.("Datos requeridos", Object.values(errs)[0]);
@@ -668,19 +746,20 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   type="text"
                   placeholder="Ej. FAC-00124"
                   value={numeroFactura}
-                  onChange={(e) => {
-                    setNumeroFactura(e.target.value);
-                    if (formErrors.numeroFactura) setFormErrors((err) => ({ ...err, numeroFactura: null }));
-                  }}
+                  onBlur={() => handleHeaderBlur("numeroFactura")}
+                  onChange={(e) => handleHeaderChange("numeroFactura", e.target.value)}
                   className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold uppercase transition-colors ${
-                    formErrors.numeroFactura
-                      ? "border-red-500 bg-red-50/50 dark:bg-red-950/20"
+                    (touched.numeroFactura || submitted) && formErrors.numeroFactura
+                      ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                       : "border-gray-200 dark:border-gray-700 bg-white"
                   }`}
                 />
               </div>
-              {formErrors.numeroFactura && (
-                <p className="text-[10px] text-red-500 mt-1 font-medium">{formErrors.numeroFactura}</p>
+              {(touched.numeroFactura || submitted) && formErrors.numeroFactura && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {formErrors.numeroFactura}
+                </p>
               )}
             </div>
 
@@ -694,17 +773,21 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                 <input
                   type="date"
                   value={fechaFactura}
-                  onChange={(e) => {
-                    setFechaFactura(e.target.value);
-                    if (formErrors.fechaFactura) setFormErrors((err) => ({ ...err, fechaFactura: null }));
-                  }}
+                  onBlur={() => handleHeaderBlur("fechaFactura")}
+                  onChange={(e) => handleHeaderChange("fechaFactura", e.target.value)}
                   className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-medium transition-colors ${
-                    formErrors.fechaFactura
-                      ? "border-red-500 bg-red-50/50"
+                    (touched.fechaFactura || submitted) && formErrors.fechaFactura
+                      ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-400"
                       : "border-gray-200 dark:border-gray-700 bg-white"
                   }`}
                 />
               </div>
+              {(touched.fechaFactura || submitted) && formErrors.fechaFactura && (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {formErrors.fechaFactura}
+                </p>
+              )}
             </div>
 
             {/* Switch Aplica IVA (19%) (#83) */}
@@ -1216,29 +1299,34 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                       required
                       placeholder="Ej. Queso Mozzarella, Pan Brioche, Tomate..."
                       value={nuevoInsumoForm.nombre}
+                      onBlur={() => handleNuevoInsumoBlur("nombre")}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setNuevoInsumoForm((prev) => {
-                          const esSalsa = isSalsaItem(val, prev.categoria);
-                          return {
-                            ...prev,
-                            nombre: val,
-                            esAdicion: esSalsa ? true : prev.esAdicion,
-                            precioAdicion:
-                              esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0)
-                                ? "1500"
-                                : prev.precioAdicion,
-                          };
-                        });
-                        if (nuevoInsumoErrors.nombre)
-                          setNuevoInsumoErrors((err) => ({ ...err, nombre: null }));
+                        const esSalsa = isSalsaItem(val, nuevoInsumoForm.categoria);
+                        const updated = {
+                          ...nuevoInsumoForm,
+                          nombre: val,
+                          esAdicion: esSalsa ? true : nuevoInsumoForm.esAdicion,
+                          precioAdicion:
+                            esSalsa && (!nuevoInsumoForm.precioAdicion || Number(nuevoInsumoForm.precioAdicion) <= 0)
+                              ? "1500"
+                              : nuevoInsumoForm.precioAdicion,
+                        };
+                        setNuevoInsumoForm(updated);
+                        if (nuevoInsumoTouched.nombre) {
+                          const err = validateNuevoInsumoField("nombre", val, updated);
+                          setNuevoInsumoErrors((prev) => ({ ...prev, nombre: err }));
+                        }
                       }}
                       className={`${inputCls} ${
-                        nuevoInsumoErrors.nombre ? "border-red-500 bg-red-50/30" : ""
+                        (nuevoInsumoTouched.nombre) && nuevoInsumoErrors.nombre
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : ""
                       }`}
                     />
-                    {nuevoInsumoErrors.nombre && (
-                      <p className="text-[10px] text-red-500 mt-1 font-medium">
+                    {(nuevoInsumoTouched.nombre) && nuevoInsumoErrors.nombre && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         {nuevoInsumoErrors.nombre}
                       </p>
                     )}
@@ -1252,30 +1340,34 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                       </label>
                       <select
                         value={String(nuevoInsumoForm.idCategoriaInsumo || "")}
+                        onBlur={() => handleNuevoInsumoBlur("idCategoriaInsumo")}
                         onChange={(e) => {
                           const val = e.target.value;
                           const selectedCat = categorias.find(
                             (c) => String(c.id || c.idCategoriaInsumo) === String(val)
                           );
                           const catNom = selectedCat?.nombre || "";
-                          setNuevoInsumoForm((prev) => {
-                            const esSalsa = isSalsaItem(prev.nombre, catNom);
-                            return {
-                              ...prev,
-                              idCategoriaInsumo: val,
-                              categoria: catNom,
-                              esAdicion: esSalsa ? true : prev.esAdicion,
-                              precioAdicion:
-                                esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0)
-                                  ? "1500"
-                                  : prev.precioAdicion,
-                            };
-                          });
-                          if (nuevoInsumoErrors.idCategoriaInsumo)
-                            setNuevoInsumoErrors((err) => ({ ...err, idCategoriaInsumo: null }));
+                          const esSalsa = isSalsaItem(nuevoInsumoForm.nombre, catNom);
+                          const updated = {
+                            ...nuevoInsumoForm,
+                            idCategoriaInsumo: val,
+                            categoria: catNom,
+                            esAdicion: esSalsa ? true : nuevoInsumoForm.esAdicion,
+                            precioAdicion:
+                              esSalsa && (!nuevoInsumoForm.precioAdicion || Number(nuevoInsumoForm.precioAdicion) <= 0)
+                                ? "1500"
+                                : nuevoInsumoForm.precioAdicion,
+                          };
+                          setNuevoInsumoForm(updated);
+                          if (nuevoInsumoTouched.idCategoriaInsumo) {
+                            const err = validateNuevoInsumoField("idCategoriaInsumo", val, updated);
+                            setNuevoInsumoErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
+                          }
                         }}
                         className={`${inputCls} cursor-pointer ${
-                          nuevoInsumoErrors.idCategoriaInsumo ? "border-red-500 bg-red-50/30" : ""
+                          (nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                            : ""
                         }`}
                       >
                         <option value="">Seleccionar categoría</option>
@@ -1288,8 +1380,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           );
                         })}
                       </select>
-                      {nuevoInsumoErrors.idCategoriaInsumo && (
-                        <p className="text-[10px] text-red-500 mt-1 font-medium">
+                      {(nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           {nuevoInsumoErrors.idCategoriaInsumo}
                         </p>
                       )}
@@ -1351,15 +1444,21 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           onKeyDown={(e) => {
                             if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
                           }}
-                          onChange={(e) =>
-                            setNuevoInsumoForm((prev) => ({
-                              ...prev,
-                              precioUnitario: e.target.value,
-                            }))
-                          }
-                          className={`${inputCls} pl-8`}
+                          onBlur={() => handleNuevoInsumoBlur("precioUnitario")}
+                          onChange={(e) => handleNuevoInsumoChange("precioUnitario", e.target.value)}
+                          className={`${inputCls} pl-8 ${
+                            (nuevoInsumoTouched.precioUnitario) && nuevoInsumoErrors.precioUnitario
+                              ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                              : ""
+                          }`}
                         />
                       </div>
+                      {(nuevoInsumoTouched.precioUnitario) && nuevoInsumoErrors.precioUnitario && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {nuevoInsumoErrors.precioUnitario}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1376,11 +1475,20 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                         onKeyDown={(e) => {
                           if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
                         }}
-                        onChange={(e) =>
-                          setNuevoInsumoForm((prev) => ({ ...prev, stock: e.target.value }))
-                        }
-                        className={inputCls}
+                        onBlur={() => handleNuevoInsumoBlur("stock")}
+                        onChange={(e) => handleNuevoInsumoChange("stock", e.target.value)}
+                        className={`${inputCls} ${
+                          (nuevoInsumoTouched.stock) && nuevoInsumoErrors.stock
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                            : ""
+                        }`}
                       />
+                      {(nuevoInsumoTouched.stock) && nuevoInsumoErrors.stock && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {nuevoInsumoErrors.stock}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1394,11 +1502,20 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                         onKeyDown={(e) => {
                           if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
                         }}
-                        onChange={(e) =>
-                          setNuevoInsumoForm((prev) => ({ ...prev, stockMinimo: e.target.value }))
-                        }
-                        className={inputCls}
+                        onBlur={() => handleNuevoInsumoBlur("stockMinimo")}
+                        onChange={(e) => handleNuevoInsumoChange("stockMinimo", e.target.value)}
+                        className={`${inputCls} ${
+                          (nuevoInsumoTouched.stockMinimo) && nuevoInsumoErrors.stockMinimo
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                            : ""
+                        }`}
                       />
+                      {(nuevoInsumoTouched.stockMinimo) && nuevoInsumoErrors.stockMinimo && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {nuevoInsumoErrors.stockMinimo}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1513,26 +1630,18 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                             onKeyDown={(e) => {
                               if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
                             }}
-                            onChange={(e) => {
-                              setNuevoInsumoForm((prev) => ({
-                                ...prev,
-                                precioAdicion: e.target.value,
-                              }));
-                              if (nuevoInsumoErrors.precioAdicion)
-                                setNuevoInsumoErrors((err) => ({
-                                  ...err,
-                                  precioAdicion: null,
-                                }));
-                            }}
+                            onBlur={() => handleNuevoInsumoBlur("precioAdicion")}
+                            onChange={(e) => handleNuevoInsumoChange("precioAdicion", e.target.value)}
                             className={`${inputCls} pl-8 ${
-                              nuevoInsumoErrors.precioAdicion
-                                ? "border-red-500 bg-red-50/30"
+                              (nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion
+                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                 : ""
                             }`}
                           />
                         </div>
-                        {nuevoInsumoErrors.precioAdicion && (
-                          <p className="text-[10px] text-red-500 mt-1 font-medium">
+                        {(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion && (
+                          <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             {nuevoInsumoErrors.precioAdicion}
                           </p>
                         )}

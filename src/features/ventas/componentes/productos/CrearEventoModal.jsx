@@ -3,7 +3,7 @@ import {
   X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
   CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
   Layers, Utensils, Plus, Minus, Check, Flame, Crown, Coffee, ChevronDown, ChevronUp, Image as ImageIcon,
-  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Link, Infinity as InfinityIcon
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Link, Infinity as InfinityIcon, AlertCircle
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -12,6 +12,7 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { validateTexto, validateNumeroPositivo, validateRequerido, validatePorcentaje } from "@/shared/utils/validationUtils";
 import {
   FoodIcon,
   AVAILABLE_FOOD_SLUGS,
@@ -159,9 +160,75 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const validateEventoField = (field, val, extra = {}) => {
+    switch (field) {
+      case "nombreEvento":
+        return validateTexto(val, "El título del evento", 2, 100);
+      case "prodNombre":
+        return validateTexto(val, "El nombre del producto en menú", 2, 80);
+      case "prodPrecioRegular":
+        return validateNumeroPositivo(val, "El precio normal", false);
+      case "prodPrecioEvento":
+        return validateNumeroPositivo(val, "El precio especial de evento", false);
+      case "nuevoPrecio":
+        return validateNumeroPositivo(val, "El precio promocional", false);
+      case "descuento":
+        return validatePorcentaje(val, "El descuento");
+      case "descripcion":
+        if (val && val.length > 500) return "La descripción no puede superar los 500 caracteres.";
+        return null;
+      case "fechaFin": {
+        const start = extra.fechaInicio || fechaInicio;
+        if (start && val && new Date(val) < new Date(start)) {
+          return "La fecha fin no puede ser anterior a la fecha de inicio.";
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  };
+
+  const handleFieldBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    let val = "";
+    if (field === "nombreEvento") val = nombreEvento;
+    else if (field === "prodNombre") val = prodNombre;
+    else if (field === "prodPrecioRegular") val = prodPrecioRegular;
+    else if (field === "prodPrecioEvento") val = prodPrecioEvento;
+    else if (field === "nuevoPrecio") val = nuevoPrecio;
+    else if (field === "descuento") val = descuento;
+    else if (field === "descripcion") val = descripcion;
+    else if (field === "fechaFin") val = fechaFin;
+    const err = validateEventoField(field, val);
+    setFormErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  const handleFieldChange = (field, val) => {
+    if (field === "nombreEvento") setNombreEvento(val);
+    else if (field === "prodNombre") setProdNombre(val);
+    else if (field === "prodPrecioRegular") setProdPrecioRegular(val);
+    else if (field === "prodPrecioEvento") setProdPrecioEvento(val);
+    else if (field === "nuevoPrecio") setNuevoPrecio(val);
+    else if (field === "descuento") setDescuento(val);
+    else if (field === "descripcion") setDescripcion(val);
+    else if (field === "fechaFin") setFechaFin(val);
+
+    if (touched[field] || submitted) {
+      const err = validateEventoField(field, val);
+      setFormErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
+      setFormErrors({});
+      setTouched({});
+      setSubmitted(false);
       if (eventoToEdit) {
         // ── MODO EDICIÓN DE EVENTO EXISTENTE ──
         setModoCrearProducto(false);
@@ -573,8 +640,35 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   };
 
   const handleSubmit = async () => {
+    setSubmitted(true);
+    setTouched({
+      nombreEvento: true,
+      prodNombre: true,
+      prodPrecioRegular: true,
+      prodPrecioEvento: true,
+      nuevoPrecio: true,
+      descuento: true,
+      descripcion: true,
+      fechaFin: true
+    });
+
     // ── MODO CREAR PRODUCTO DE EVENTO DESDE CERO ──
     if (modoCrearProducto) {
+      const errNom = validateEventoField("nombreEvento", nombreEvento);
+      const errProdNom = validateEventoField("prodNombre", prodNombre);
+      const errReg = validateEventoField("prodPrecioRegular", prodPrecioRegular);
+      const errEve = validateEventoField("prodPrecioEvento", prodPrecioEvento);
+      if (errNom || errProdNom || errReg || errEve) {
+        setFormErrors(prev => ({
+          ...prev,
+          nombreEvento: errNom,
+          prodNombre: errProdNom,
+          prodPrecioRegular: errReg,
+          prodPrecioEvento: errEve
+        }));
+        notifyError("Validación Fallida", "Por favor completa correctamente los campos obligatorios del producto y evento.");
+        return;
+      }
       if (!nombreEvento.trim()) {
         notifyError("Validación Fallida", "El Título del Evento / Campaña es obligatorio.");
         return;
@@ -992,37 +1086,59 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 {/* Título del Evento / Campaña */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    Nombre del Evento / Campaña *
+                    Nombre del Evento / Campaña <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     placeholder="ej. Chazin Burger Fest 2026 - Edición Limitada"
                     value={nombreEvento}
-                    onChange={(e) => setNombreEvento(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium"
+                    onBlur={() => handleFieldBlur("nombreEvento")}
+                    onChange={(e) => handleFieldChange("nombreEvento", e.target.value)}
+                    className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-medium transition-colors ${
+                      (touched.nombreEvento || submitted) && formErrors.nombreEvento
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                    }`}
                   />
+                  {(touched.nombreEvento || submitted) && formErrors.nombreEvento && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.nombreEvento}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Nombre del Producto a Vender */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Nombre del Producto en Menú *
+                      Nombre del Producto en Menú <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="ej. Hamburguesa Burger Fest Trufada"
                       value={prodNombre}
+                      onBlur={() => handleFieldBlur("prodNombre")}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setProdNombre(val);
+                        handleFieldChange("prodNombre", val);
                         const vLow = val.toLowerCase();
                         if (vLow.includes("combo") || vLow.includes("+ bebida") || vLow.includes("+ gaseosa")) {
                           if (!configCombo.esCombo) setConfigCombo(prev => ({ ...prev, esCombo: true }));
                         }
                       }}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium"
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-medium transition-colors ${
+                        (touched.prodNombre || submitted) && formErrors.prodNombre
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                      }`}
                     />
+                    {(touched.prodNombre || submitted) && formErrors.prodNombre && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodNombre}
+                      </p>
+                    )}
                   </div>
 
                   {/* Categoría */}
@@ -1108,29 +1224,51 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 <div className="grid grid-cols-2 gap-4 pt-1">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Precio Normal de Carta ($) *
+                      Precio Normal de Carta ($) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
                       placeholder="ej. 28000"
                       value={prodPrecioRegular}
-                      onChange={(e) => setProdPrecioRegular(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-bold"
+                      onBlur={() => handleFieldBlur("prodPrecioRegular")}
+                      onChange={(e) => handleFieldChange("prodPrecioRegular", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-bold transition-colors ${
+                        (touched.prodPrecioRegular || submitted) && formErrors.prodPrecioRegular
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                      }`}
                     />
+                    {(touched.prodPrecioRegular || submitted) && formErrors.prodPrecioRegular && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodPrecioRegular}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider mb-1.5">
-                      Precio Especial de Evento ($) *
+                      Precio Especial de Evento ($) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
                       placeholder="ej. 24000"
                       value={prodPrecioEvento}
-                      onChange={(e) => setProdPrecioEvento(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border-2 border-purple-400 dark:border-purple-600 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-black text-purple-700 dark:text-purple-300"
+                      onBlur={() => handleFieldBlur("prodPrecioEvento")}
+                      onChange={(e) => handleFieldChange("prodPrecioEvento", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border-2 rounded-xl text-sm font-black text-purple-700 dark:text-purple-300 transition-colors ${
+                        (touched.prodPrecioEvento || submitted) && formErrors.prodPrecioEvento
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-purple-400 dark:border-purple-600 focus:ring-2 focus:ring-purple-500"
+                      }`}
                     />
+                    {(touched.prodPrecioEvento || submitted) && formErrors.prodPrecioEvento && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodPrecioEvento}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1770,7 +1908,14 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <input
                       type="date"
                       value={fechaInicio}
-                      onChange={(e) => setFechaInicio(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFechaInicio(val);
+                        if (fechaFin) {
+                          const err = validateEventoField("fechaFin", fechaFin, { fechaInicio: val });
+                          setFormErrors((prev) => ({ ...prev, fechaFin: err }));
+                        }
+                      }}
                       className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
                     />
                   </div>
@@ -1781,9 +1926,20 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <input
                       type="date"
                       value={fechaFin}
-                      onChange={(e) => setFechaFin(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                      onBlur={() => handleFieldBlur("fechaFin")}
+                      onChange={(e) => handleFieldChange("fechaFin", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors ${
+                        (touched.fechaFin || submitted) && formErrors.fechaFin
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      }`}
                     />
+                    {(touched.fechaFin || submitted) && formErrors.fechaFin && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.fechaFin}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1797,10 +1953,21 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   <input
                     type="text"
                     value={nombreEvento}
-                    onChange={(e) => setNombreEvento(e.target.value)}
+                    onBlur={() => handleFieldBlur("nombreEvento")}
+                    onChange={(e) => handleFieldChange("nombreEvento", e.target.value)}
                     placeholder="Ej: Temporada de verano — carne extra incluida"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm transition-colors ${
+                      (touched.nombreEvento || submitted) && formErrors.nombreEvento
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    }`}
                   />
+                  {(touched.nombreEvento || submitted) && formErrors.nombreEvento && (
+                    <p className="flex items-center gap-1 text-xs text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.nombreEvento}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1809,11 +1976,22 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   </label>
                   <textarea
                     value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
+                    onBlur={() => handleFieldBlur("descripcion")}
+                    onChange={(e) => handleFieldChange("descripcion", e.target.value)}
                     placeholder="Describe brevemente este evento..."
                     rows={2}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm transition-colors resize-none ${
+                      (touched.descripcion || submitted) && formErrors.descripcion
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    }`}
                   />
+                  {(touched.descripcion || submitted) && formErrors.descripcion && (
+                    <p className="flex items-center gap-1 text-xs text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.descripcion}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2061,10 +2239,21 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             type="number"
                             min="0"
                             value={descuento}
-                            onChange={(e) => setDescuento(e.target.value)}
+                            onBlur={() => handleFieldBlur("descuento")}
+                            onChange={(e) => handleFieldChange("descuento", e.target.value)}
                             placeholder="Ej: 10 (%) o 5000 ($)"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                            className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
+                              (touched.descuento || submitted) && formErrors.descuento
+                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            }`}
                           />
+                          {(touched.descuento || submitted) && formErrors.descuento && (
+                            <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {formErrors.descuento}
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div>
@@ -2075,10 +2264,21 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             type="number"
                             min="0"
                             value={nuevoPrecio}
-                            onChange={(e) => setNuevoPrecio(e.target.value)}
+                            onBlur={() => handleFieldBlur("nuevoPrecio")}
+                            onChange={(e) => handleFieldChange("nuevoPrecio", e.target.value)}
                             placeholder="Ej: 15000"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                            className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
+                              (touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio
+                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            }`}
                           />
+                          {(touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio && (
+                            <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {formErrors.nuevoPrecio}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

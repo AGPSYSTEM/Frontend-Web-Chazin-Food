@@ -54,10 +54,14 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
   const [comprandoCheck, setComprandoCheck] = useState(false);
   const [modoEditar, setModoEditar] = useState(false);
   const [form, setForm] = useState({ puntuacion: 0, comentario: "" });
+  const [touched, setTouched] = useState({ puntuacion: false, comentario: false });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
   const idProducto = producto?.idProducto || producto?.id;
+
+  const errorPuntuacion = touched.puntuacion && (!form.puntuacion || form.puntuacion < 1) ? "Selecciona una calificación de 1 a 5 estrellas." : "";
+  const errorComentario = touched.comentario && form.comentario.trim().length > 0 && form.comentario.trim().length < 4 ? "El comentario debe tener al menos 4 caracteres." : "";
 
   const fetchResenas = useCallback(async () => {
     if (!idProducto) return;
@@ -101,6 +105,7 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
       if (user) checkUsuarioCompro();
       setModoEditar(false);
       setFormError("");
+      setTouched({ puntuacion: false, comentario: false });
     }
   }, [isOpen, idProducto, user, fetchResenas, checkUsuarioCompro]);
 
@@ -108,9 +113,15 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ puntuacion: true, comentario: true });
     setFormError("");
+
     if (!form.puntuacion || form.puntuacion < 1) {
       setFormError("Selecciona una puntuación de 1 a 5 estrellas.");
+      return;
+    }
+    if (form.comentario && form.comentario.trim().length > 0 && form.comentario.trim().length < 4) {
+      setFormError("El comentario debe tener al menos 4 caracteres.");
       return;
     }
 
@@ -289,26 +300,50 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
                     <MessageSquare className="w-4 h-4 text-amber-500" />
                     Comparte tu opinión
                   </p>
-                  <div className="flex items-center gap-3 mb-3">
-                    <p className="text-xs text-gray-500">Puntuación:</p>
-                    <StarRating
-                      value={form.puntuacion}
-                      onChange={v => { setForm(prev => ({ ...prev, puntuacion: v })); setFormError(""); }}
-                      size="lg"
-                    />
+                  <div className="flex flex-col gap-1 mb-3">
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-gray-500">Puntuación:</p>
+                      <StarRating
+                        value={form.puntuacion}
+                        onChange={v => {
+                          setForm(prev => ({ ...prev, puntuacion: v }));
+                          setTouched(prev => ({ ...prev, puntuacion: true }));
+                          setFormError("");
+                        }}
+                        size="lg"
+                      />
+                    </div>
+                    {errorPuntuacion && (
+                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorPuntuacion}
+                      </p>
+                    )}
                   </div>
                   <form onSubmit={handleSubmit} noValidate>
                     <textarea
                       value={form.comentario}
-                      onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
+                      onBlur={() => setTouched(prev => ({ ...prev, comentario: true }))}
+                      onChange={e => {
+                        setForm(prev => ({ ...prev, comentario: e.target.value }));
+                        if (formError) setFormError("");
+                      }}
                       placeholder="Escribe un comentario (opcional)..."
                       rows={3}
                       maxLength={500}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-amber-400/40 resize-none transition"
+                      className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 dark:text-gray-100 outline-none resize-none transition ${
+                        errorComentario
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-amber-400/40"
+                      }`}
                     />
+                    {errorComentario && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorComentario}
+                      </p>
+                    )}
                     {formError && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" /> {formError}
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
                       </p>
                     )}
                     <button
@@ -333,32 +368,61 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
                     <Pencil className="w-4 h-4 text-amber-500" />
                     Editar tu reseña
                   </p>
-                  <div className="flex items-center gap-3 mb-3">
-                    <p className="text-xs text-gray-500">Puntuación:</p>
-                    <StarRating
-                      value={form.puntuacion}
-                      onChange={v => { setForm(prev => ({ ...prev, puntuacion: v })); setFormError(""); }}
-                      size="lg"
-                    />
+                  <div className="flex flex-col gap-1 mb-3">
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs text-gray-500">Puntuación:</p>
+                      <StarRating
+                        value={form.puntuacion}
+                        onChange={v => {
+                          setForm(prev => ({ ...prev, puntuacion: v }));
+                          setTouched(prev => ({ ...prev, puntuacion: true }));
+                          setFormError("");
+                        }}
+                        size="lg"
+                      />
+                    </div>
+                    {errorPuntuacion && (
+                      <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorPuntuacion}
+                      </p>
+                    )}
                   </div>
                   <form onSubmit={handleSubmit} noValidate>
                     <textarea
                       value={form.comentario}
-                      onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
+                      onBlur={() => setTouched(prev => ({ ...prev, comentario: true }))}
+                      onChange={e => {
+                        setForm(prev => ({ ...prev, comentario: e.target.value }));
+                        if (formError) setFormError("");
+                      }}
                       placeholder="Edita tu comentario..."
                       rows={3}
                       maxLength={500}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-amber-400/40 resize-none transition"
+                      className={`w-full px-3 py-2.5 rounded-xl border text-sm text-gray-800 dark:text-gray-100 outline-none resize-none transition ${
+                        errorComentario
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-amber-400/40"
+                      }`}
                     />
+                    {errorComentario && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errorComentario}
+                      </p>
+                    )}
                     {formError && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" /> {formError}
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
                       </p>
                     )}
                     <div className="flex gap-2 mt-3">
                       <button
                         type="button"
-                        onClick={() => { setModoEditar(false); setFormError(""); if(miResena) setForm({ puntuacion: miResena.puntuacion, comentario: miResena.comentario || "" }); }}
+                        onClick={() => {
+                          setModoEditar(false);
+                          setFormError("");
+                          setTouched({ puntuacion: false, comentario: false });
+                          if (miResena) setForm({ puntuacion: miResena.puntuacion, comentario: miResena.comentario || "" });
+                        }}
                         className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl transition cursor-pointer"
                       >
                         Cancelar

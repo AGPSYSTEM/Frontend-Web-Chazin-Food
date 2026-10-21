@@ -32,8 +32,8 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                 </td>
               </tr>
             ) : (
-              paginatedCategorias.map((c) => (
-                <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+              paginatedCategorias.map((c, index) => (
+                <tr key={c.id ?? `cat-${index}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                 
                   <td className="px-6 py-4 font-bold text-[#1e293b] dark:text-gray-100 whitespace-nowrap text-left">
                     {c.nombre}

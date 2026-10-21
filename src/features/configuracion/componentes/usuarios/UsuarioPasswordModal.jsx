@@ -1,28 +1,77 @@
-import { useState } from "react";
-import { X, Lock, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { validateContrasena, validateConfirmarContrasena } from "@/shared/utils/validationUtils";
 
-const inputCls = "w-full px-4 py-3 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
+const baseInputCls = "w-full px-4 py-3 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
 
 export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [showPasswords, setShowPasswords] = useState(false);
   const [notificarEmail, setNotificarEmail] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
+  useEffect(() => {
+    setPassword("");
+    setConfirmPassword("");
+    setErrors({});
+    setTouched({});
+    setErrorMsg("");
+  }, [isOpen, usuario]);
+
   if (!isOpen || !usuario) return null;
+
+  const handlePasswordChange = (val) => {
+    setPassword(val);
+    const passErr = validateContrasena(val, 8, "contraseña");
+    setErrors((prev) => {
+      const next = { ...prev, password: passErr.isValid ? "" : passErr.error };
+      if (touched.confirmPassword || confirmPassword) {
+        const confErr = validateConfirmarContrasena(val, confirmPassword);
+        next.confirmPassword = confErr.isValid ? "" : confErr.error;
+      }
+      return next;
+    });
+  };
+
+  const handleConfirmChange = (val) => {
+    setConfirmPassword(val);
+    const confErr = validateConfirmarContrasena(password, val);
+    setErrors((prev) => ({
+      ...prev,
+      confirmPassword: confErr.isValid ? "" : confErr.error
+    }));
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    if (field === "password") {
+      const res = validateContrasena(password, 8, "contraseña");
+      setErrors((prev) => ({ ...prev, password: res.isValid ? "" : res.error }));
+    } else if (field === "confirmPassword") {
+      const res = validateConfirmarContrasena(password, confirmPassword);
+      setErrors((prev) => ({ ...prev, confirmPassword: res.isValid ? "" : res.error }));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (password !== confirmPassword) {
-      setErrorMsg("Las contraseñas no coinciden.");
-      return;
-    }
-    if (password.length < 8) {
-      setErrorMsg("La contraseña debe tener al menos 8 caracteres.");
+    const passRes = validateContrasena(password, 8, "contraseña");
+    const confRes = validateConfirmarContrasena(password, confirmPassword);
+
+    const newErrors = {};
+    if (!passRes.isValid) newErrors.password = passRes.error;
+    if (!confRes.isValid) newErrors.confirmPassword = confRes.error;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTouched({ password: true, confirmPassword: true });
+      setErrorMsg(newErrors.password || newErrors.confirmPassword);
       return;
     }
 
@@ -33,6 +82,13 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
     setPassword("");
     setConfirmPassword("");
     onClose();
+  };
+
+  const getInputCls = (field) => {
+    if (touched[field] && errors[field]) {
+      return `${baseInputCls} border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300`;
+    }
+    return `${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent`;
   };
 
   const userName = `${usuario.nombre || ''} ${usuario.apellidos || ''}`.trim() || "Usuario";
@@ -68,8 +124,9 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
 
         <form onSubmit={handleSubmit} className="p-6 pt-3 space-y-4">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200">
-              {errorMsg}
+            <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
@@ -82,11 +139,18 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                   type={showPasswords ? "text" : "password"}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`${inputCls} pl-10`}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  onBlur={() => handleBlur("password")}
+                  className={`${getInputCls("password")} pl-10`}
                   placeholder="••••••••"
                 />
               </div>
+              {touched.password && errors.password && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.password}</span>
+                </p>
+              )}
             </div>
 
             <div>
@@ -97,11 +161,18 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                   type={showPasswords ? "text" : "password"}
                   required
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`${inputCls} pl-10`}
+                  onChange={(e) => handleConfirmChange(e.target.value)}
+                  onBlur={() => handleBlur("confirmPassword")}
+                  className={`${getInputCls("confirmPassword")} pl-10`}
                   placeholder="Repite tu contraseña"
                 />
               </div>
+              {touched.confirmPassword && errors.confirmPassword && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.confirmPassword}</span>
+                </p>
+              )}
             </div>
           </div>
 

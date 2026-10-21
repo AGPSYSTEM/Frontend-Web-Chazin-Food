@@ -125,13 +125,12 @@ export function Layout() {
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
-    { to: "/ventas/pos", label: "Punto de Venta", perm: "Punto de Venta" },
     { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
     { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
   ];
   const ventasItems = allVentasItems.filter(i => hasPerm(i.perm));
   const showVentas = hasPerm("Ventas") || ventasItems.length > 0;
-  const ventasPaths = ventasItems.map((i) => i.to);
+  const ventasPaths = [...ventasItems.map((i) => i.to), "/ventas/pos"];
 
   const allConfigItems = [
     { to: "/configuracion/roles", label: "Roles", perm: "Roles" }

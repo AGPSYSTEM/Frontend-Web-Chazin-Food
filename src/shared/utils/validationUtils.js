@@ -190,3 +190,108 @@ export function formatDireccion(dir = "") {
   return str;
 }
 
+/**
+ * Valida contraseñas:
+ * - Requerida
+ * - Longitud mínima (por defecto 6 o configurable)
+ */
+export function validateContrasena(val = "", minLength = 6, campo = "contraseña") {
+  const str = String(val || "");
+  if (!str) return { isValid: false, error: `La ${campo} es obligatoria.` };
+  if (str.length < minLength) {
+    return { isValid: false, error: `La ${campo} debe tener al menos ${minLength} caracteres.` };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida confirmación de contraseña en vivo
+ */
+export function validateConfirmarContrasena(pass = "", confirmPass = "", campo = "contraseña") {
+  const c = String(confirmPass || "");
+  if (!c) return { isValid: false, error: `Debe confirmar la ${campo}.` };
+  if (pass !== c) {
+    return { isValid: false, error: "Las contraseñas no coinciden." };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida si un valor es requerido (para selects, campos de texto genéricos, etc.)
+ */
+export function validateRequerido(val, campo = "Este campo") {
+  if (val === null || val === undefined) {
+    return { isValid: false, error: `${campo} es obligatorio.` };
+  }
+  const str = String(val).trim();
+  if (!str) {
+    return { isValid: false, error: `${campo} es obligatorio.` };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida texto genérico con longitud mínima y máxima
+ */
+export function validateTexto(val = "", campo = "campo", options = {}) {
+  const { min = 2, max = 255, required = true, permitirNumeros = true } = options;
+  const str = String(val || "").trim();
+  if (!str) {
+    if (required) return { isValid: false, error: `El campo ${campo} es obligatorio.` };
+    return { isValid: true, error: "" };
+  }
+  if (!permitirNumeros && /\d/.test(str)) {
+    return { isValid: false, error: `El campo ${campo} no puede contener números.` };
+  }
+  if (str.length < min) {
+    return { isValid: false, error: `El campo ${campo} debe tener al menos ${min} caracteres.` };
+  }
+  if (str.length > max) {
+    return { isValid: false, error: `El campo ${campo} no puede superar ${max} caracteres.` };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida números positivos / cantidades / stocks
+ */
+export function validateNumeroPositivo(val, campo = "valor", options = {}) {
+  const { min = 0.01, max = Infinity, integer = false, allowZero = false } = options;
+  if (val === null || val === undefined || String(val).trim() === "") {
+    return { isValid: false, error: `El ${campo} es obligatorio.` };
+  }
+  const num = Number(val);
+  if (isNaN(num)) {
+    return { isValid: false, error: `El ${campo} debe ser un número válido.` };
+  }
+  if (allowZero && num === 0) {
+    return { isValid: true, error: "" };
+  }
+  if (num < (allowZero ? 0 : min)) {
+    return { isValid: false, error: `El ${campo} debe ser mayor a ${allowZero ? "o igual a 0" : (min > 0.01 ? min - 1 : 0)}.` };
+  }
+  if (num > max) {
+    return { isValid: false, error: `El ${campo} no puede exceder ${max}.` };
+  }
+  if (integer && !Number.isInteger(num)) {
+    return { isValid: false, error: `El ${campo} debe ser un número entero sin decimales.` };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
+ * Valida precio o moneda
+ */
+export function validateMoneda(val, campo = "precio", options = {}) {
+  const { allowZero = false, max = 100000000 } = options;
+  return validateNumeroPositivo(val, campo, { min: allowZero ? 0 : 50, max, integer: false, allowZero });
+}
+
+/**
+ * Valida porcentaje entre 0 y 100
+ */
+export function validatePorcentaje(val, campo = "porcentaje") {
+  return validateNumeroPositivo(val, campo, { min: 0, max: 100, allowZero: true });
+}
+
+
