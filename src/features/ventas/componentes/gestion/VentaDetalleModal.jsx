@@ -19,7 +19,8 @@ import {
   Timer,
   Check,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Printer
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
@@ -255,6 +256,113 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
   const clienteFidelidad = venta.clienteFidelidad || {
     tipo: obsMeta.tipoFidelidad || (descuentoPorcentaje > 0 ? (descuentoPorcentaje >= 15 ? "VIP" : descuentoPorcentaje >= 10 ? "Frecuente" : "Regular") : "Nuevo"),
     descuentoPorcentaje: descuentoPorcentaje
+  };
+
+  const handlePrintComprobante = () => {
+    const printWin = window.open("", "_blank", "width=420,height=650");
+    if (!printWin) return;
+
+    const productosHtml = productos.map((p) => {
+      const pNombre = p.nombre || p.observaciones || "Platillo";
+      const pCant = p.cantidad || 1;
+      const pPrecioUnit = Number(p.precioUnitario || p.precio || 0);
+      const pTotal = pPrecioUnit * pCant;
+      const itemAdiciones = Array.isArray(p.adiciones) ? p.adiciones : [];
+      const adicionesHtml = itemAdiciones.map(adc => {
+        const aName = typeof adc === "object" ? adc.nombre : String(adc);
+        const aPrice = typeof adc === "object" && Number(adc.precio) > 0 ? ` (+${Number(adc.precio).toLocaleString("es-CO")})` : "";
+        return `<div style="font-size: 10px; color: #444; padding-left: 8px;">+ ${aName}${aPrice}</div>`;
+      }).join("");
+
+      return `
+        <div style="margin-bottom: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>${pCant}x ${pNombre}</span>
+            <span style="font-weight: bold;">$${pTotal.toLocaleString("es-CO")}</span>
+          </div>
+          ${adicionesHtml}
+        </div>
+      `;
+    }).join("");
+
+    const ticketHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Comprobante ${codigo} - Chazin Food</title>
+          <style>
+            @page { size: 80mm auto; margin: 4mm; }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 72mm;
+              margin: 0 auto;
+              padding: 6px;
+              color: #000;
+              font-size: 11px;
+              line-height: 1.3;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            .double-divider { border-top: 2px solid #000; margin: 8px 0; }
+            .row { display: flex; justify-content: space-between; margin: 2px 0; }
+            h1 { font-size: 15px; margin: 0; text-transform: uppercase; }
+            h2 { font-size: 11px; margin: 2px 0; font-weight: normal; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center">
+            <h1>CHAZIN FOOD</h1>
+            <h2>NIT: 901.458.789-2</h2>
+            <div style="font-size: 9px;">Cl. 21 #80-21, Belén, Medellín</div>
+            <div style="font-size: 9px;">Tel: (+57) 314 620 6358</div>
+            <div class="divider"></div>
+            <div class="bold" style="font-size: 12px;">FACTURA / COMPROBANTE POS</div>
+            <div class="bold" style="font-size: 13px;">${codigo}</div>
+            <div style="font-size: 10px;">${fecha} - ${horario}</div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="row"><span>Cliente:</span><span class="bold">${cliente}</span></div>
+          <div class="row"><span>Tipo:</span><span>${tipoEntrega}</span></div>
+          <div class="row"><span>Pago:</span><span>${metodoPago}</span></div>
+          <div class="row"><span>Origen:</span><span>${origen}</span></div>
+
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 10px; margin-bottom: 4px;">DESCRIPCIÓN / CANT / TOTAL</div>
+          ${productosHtml}
+
+          <div class="divider"></div>
+          <div class="row"><span>Subtotal:</span><span>$${subtotal.toLocaleString("es-CO")}</span></div>
+          ${descuentoMonto > 0 ? `<div class="row"><span>Descuento (${descuentoPorcentaje}%):</span><span>-$${descuentoMonto.toLocaleString("es-CO")}</span></div>` : ""}
+          <div class="row"><span>IVA (19% inc.):</span><span>$${iva.toLocaleString("es-CO")}</span></div>
+          
+          <div class="double-divider"></div>
+          <div class="row" style="font-size: 13px;">
+            <span class="bold">TOTAL:</span>
+            <span class="bold">$${total.toLocaleString("es-CO")} COP</span>
+          </div>
+          <div class="double-divider"></div>
+
+          <div class="text-center" style="font-size: 9px; margin-top: 8px;">
+            <div>¡Gracias por preferir Chazin Food!</div>
+            <div>Conserva este ticket para cualquier reclamo.</div>
+            <div>www.chazinfood.com</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWin.document.write(ticketHtml);
+    printWin.document.close();
   };
 
   return (
@@ -689,7 +797,16 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex justify-end">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handlePrintComprobante}
+            className="px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Imprimir Comprobante</span>
+          </button>
+
           <button
             type="button"
             onClick={onClose}
