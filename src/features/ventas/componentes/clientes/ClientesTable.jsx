@@ -42,7 +42,6 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 tracking-wider uppercase">
-              <th className="px-5 py-3.5 w-12">ID</th>
               <th className="px-5 py-3.5">CLIENTE</th>
               <th className="px-5 py-3.5">TELÉFONO</th>
               <th className="px-5 py-3.5">EMAIL</th>
@@ -56,7 +55,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
             {totalRecords === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron clientes registrados
                 </td>
               </tr>
@@ -68,10 +67,6 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
 
                 return (
                   <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-5 py-4 text-gray-500 dark:text-gray-400 font-medium text-xs">
-                      #{c.id || startIndex + index + 1}
-                    </td>
-
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${getAvatarBg(c.nombre)}`}>
