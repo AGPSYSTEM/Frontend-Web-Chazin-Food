@@ -1275,14 +1275,14 @@ export function getEventBadgeConfig(event, product = null) {
   const combined = `${rawIcon} ${rawType} ${rawName}`;
   const cleanName = stripEmojis(event.nombreEvento || event.nombre || "");
 
-  // Paleta morada consistente con degradado (from-purple-600 to-indigo-600) para todas las insignias de eventos
-  const purpleBadgeStyle = {
-    gradient: "from-purple-600 to-indigo-600",
-    border: "border-purple-300/40",
-    glow: "shadow-[0_4px_16px_rgba(168,85,247,0.45)]",
+  // Paleta naranja / ámbar consistente con degradado (degradado cálido conmemorativo según diseño)
+  const orangeBadgeStyle = {
+    gradient: "from-orange-600 via-amber-600 to-red-600",
+    border: "border-amber-300/50",
+    glow: "shadow-[0_4px_16px_rgba(249,115,22,0.45)]",
     textColor: "text-white",
-    pillBg: "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
-    accentColor: "#a855f7"
+    pillBg: "bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-750/70 font-black",
+    accentColor: "#f97316"
   };
 
   // 1. PROMOCIÓN 2X1 (Evento 1: Jueves 2x1)
@@ -1298,7 +1298,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "fire",
       label: "PROMO 2X1",
       fullLabel: cleanName || "Jueves 2x1 de Burger Artesanal",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1313,7 +1313,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "party",
       label: badgeLabel,
       fullLabel: cleanName || (pct > 0 ? `Super Fin de Semana (${pct}% OFF)` : "Super Fin de Semana"),
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1325,7 +1325,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "couple_heart",
       label: "COMBO PAREJA",
       fullLabel: cleanName || "Combo Pareja Festivo",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1337,7 +1337,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "crown",
       label: "BURGER FEST",
       fullLabel: cleanName || "Chazin Burger Fest 2026",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1355,7 +1355,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "lightning_bolt",
       label: "PROMO FLASH",
       fullLabel: cleanName || "Promo Relámpago: Pollo Crispy Gourmet",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1367,7 +1367,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "explosion",
       label: "-20% OFF",
       fullLabel: cleanName || "20% OFF en Doble Carne & Tocineta",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1384,7 +1384,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "bacon",
       label: "+ TOPPING GRATIS",
       fullLabel: cleanName || "Festival de Toppings: Perro Suizo",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1396,7 +1396,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "serving_cloche",
       label: "EDICIÓN ESPECIAL",
       fullLabel: cleanName || "Chazin Burger Fest 2026 - Edición Limitada",
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1409,7 +1409,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: matchedFood.slug,
       label: matchedFood.label.toUpperCase(),
       fullLabel: cleanName || matchedFood.label,
-      ...purpleBadgeStyle
+      ...orangeBadgeStyle
     };
   }
 
@@ -1420,7 +1420,7 @@ export function getEventBadgeConfig(event, product = null) {
     iconSlug: "party",
     label: "OFERTA EXCLUSIVA",
     fullLabel: cleanName || "Oferta Especial",
-    ...purpleBadgeStyle
+    ...orangeBadgeStyle
   };
 }
 

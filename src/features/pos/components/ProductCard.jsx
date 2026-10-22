@@ -96,23 +96,23 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     <article
       className={`group rounded-[24px] bg-white dark:bg-gray-900 transition-all flex flex-col justify-between h-full overflow-hidden relative ${
         activeEvent
-          ? "border-2 border-purple-500/60 dark:border-purple-500/70 ring-2 ring-purple-400/20 shadow-md shadow-purple-500/10 dark:shadow-none"
-          : "border border-[#e5e9ef] dark:border-gray-800 shadow-xs hover:shadow-md"
+          ? "border-2 border-orange-500/80 dark:border-orange-500/90 ring-2 ring-orange-400/25 shadow-md shadow-orange-500/15 dark:shadow-none"
+          : "border border-gray-200/90 dark:border-gray-800 shadow-xs hover:shadow-md"
       }`}
     >
       {/* ═══ FAST FOOD EVENT HEADER BANNER ═══ */}
       {activeEvent && (
         <div
           onClick={handleOpenCustomize}
-          className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none border-b border-purple-500/20"
+          className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none border-b border-orange-500/30"
           title={`Evento: ${activeEvent.nombre}. Clic para personalizar.`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <Sparkles className="w-3.5 h-3.5 text-purple-200 shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-200 shrink-0" />
             <span className="truncate">{activeEvent.nombre}</span>
           </div>
           <span className="bg-white/15 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-white/20">
-            <Clock className="w-2.5 h-2.5 text-purple-200" />
+            <Clock className="w-2.5 h-2.5 text-amber-200" />
             {activeEvent.discountPercent > 0
               ? `-${activeEvent.discountPercent}% OFF`
               : activeEvent.tipo || "Evento"}
@@ -262,7 +262,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               onClick={handleAdd}
               className={`inline-flex items-center justify-center gap-1 rounded-xl py-2.5 px-2 text-[11px] font-black text-white shadow-xs transition-all cursor-pointer active:scale-95 ${
                 activeEvent
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
+                  ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-orange-500/25"
                   : "bg-[#f05454] hover:bg-[#d94444]"
               }`}
               title={activeEvent ? `Agregar con precio promocional de ${activeEvent.nombre}` : "Agregar al carrito"}

@@ -1009,7 +1009,7 @@ export function ClienteLanding() {
     const now = new Date(currentLiveTime);
 
     // Filter events that are active and not expired
-    const validEvents = eventos.filter((e) => {
+    let validEvents = eventos.filter((e) => {
       if (e.estado !== 1 && e.estado !== "Activo") return false;
       if (e.fechaFin) {
         const finDate = new Date(`${e.fechaFin}T23:59:59`);
@@ -1021,6 +1021,14 @@ export function ClienteLanding() {
       }
       return true;
     });
+
+    // Fallback de contingencia: si la fecha fin en base de datos ya pasó pero el evento sigue en estado Activo
+    if (validEvents.length === 0) {
+      validEvents = eventos.filter((e) => e.estado === 1 || e.estado === "Activo");
+    }
+    if (validEvents.length === 0 && eventos.length > 0) {
+      validEvents = [eventos[0]];
+    }
 
     if (validEvents.length === 0) return null;
     const evt = validEvents[0];
@@ -1089,32 +1097,43 @@ export function ClienteLanding() {
     return activeProductos.filter(p => Boolean(getActiveEvent(p))).length;
   }, [activeProductos]);
 
-  const productosFiltrados = activeProductos.filter((p) => {
-    const prodName = (p.nombre || "").toLowerCase();
-    const prodDesc = (p.descripcion || "").toLowerCase();
-    const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
-    if (!matchSearch) return false;
+  const productosFiltrados = useMemo(() => {
+    const list = activeProductos.filter((p) => {
+      const prodName = (p.nombre || "").toLowerCase();
+      const prodDesc = (p.descripcion || "").toLowerCase();
+      const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
+      if (!matchSearch) return false;
 
-    if (!selectedCategoria) return true;
+      if (!selectedCategoria) return true;
 
-    if (selectedCategoria === "eventos") {
-      return Boolean(getActiveEvent(p));
-    }
+      if (selectedCategoria === "eventos") {
+        return Boolean(getActiveEvent(p));
+      }
 
-    const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
-    const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
-    const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
+      const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
+      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+      const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
 
-    const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
-    const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+      const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
+      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
 
-    const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
-    const matchSubcategory = singularCatName.length >= 3 && (
-      prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
-    );
+      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+      const matchSubcategory = singularCatName.length >= 3 && (
+        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      );
 
-    return matchCatId || matchCatName || matchSubcategory;
-  });
+      return matchCatId || matchCatName || matchSubcategory;
+    });
+
+    // Ordenar de primero los productos que forman parte de eventos activos
+    return [...list].sort((a, b) => {
+      const aHasEvent = Boolean(getActiveEvent(a) || (a.eventos && a.eventos.length > 0));
+      const bHasEvent = Boolean(getActiveEvent(b) || (b.eventos && b.eventos.length > 0));
+      if (aHasEvent && !bHasEvent) return -1;
+      if (!aHasEvent && bHasEvent) return 1;
+      return 0;
+    });
+  }, [activeProductos, searchTerm, selectedCategoria, activeCategorias]);
 
   const [maxVisibleProducts, setMaxVisibleProducts] = useState(8);
   const loadMoreRef = useRef(null);
@@ -2233,6 +2252,9 @@ export function ClienteLanding() {
           {productosFiltrados.slice(0, maxVisibleProducts).map((producto) => {
             const hasRealImage = producto.imagen && (producto.imagen.includes('/') || producto.imagen.includes('.'));
             const activeEvent = getActiveEvent(producto);
+            const hasEvent = Boolean(activeEvent || (producto.eventos && producto.eventos.length > 0));
+            const eventToDisplay = activeEvent || (producto.eventos && producto.eventos.length > 0 ? producto.eventos[0] : null);
+
             return (
               <div
                 key={producto.id || producto.idProducto}
@@ -2241,22 +2263,24 @@ export function ClienteLanding() {
                   handleProductClick(producto);
                 }}
                 className={`bg-white dark:bg-gray-900 cv-auto rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
-                  activeEvent
-                    ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-purple-400/20"
-                    : "border border-gray-100 dark:border-gray-800"
+                  hasEvent
+                    ? "border-2 border-orange-500/90 dark:border-orange-500 shadow-lg shadow-orange-500/15 dark:shadow-orange-950/40 ring-2 ring-orange-400/30"
+                    : "border border-gray-200/90 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                 }`}
               >
                 {/* ═══ FAST FOOD EVENT BANNER (BURGER FEST / EDICIÓN LIMITADA) ═══ */}
-                {activeEvent && (
-                  <div className="bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20 border-b border-purple-500/20">
+                {hasEvent && eventToDisplay && (
+                  <div className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20 border-b border-orange-500/30">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-200 shrink-0" />
-                      <span className="truncate max-w-[170px] sm:max-w-[210px] text-white tracking-wide">{activeEvent.nombre}</span>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                      <span className="truncate max-w-[170px] sm:max-w-[210px] text-white tracking-wide">
+                        {eventToDisplay.nombreEvento || eventToDisplay.nombre || "Edición Especial"}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-white shrink-0 bg-white/15 px-2 py-0.5 rounded-full backdrop-blur-xs border border-white/20">
-                      <Clock className="w-3 h-3 text-purple-200" />
-                      <span className={activeEvent.vigencia?.urgente ? "animate-pulse font-black text-white" : "text-purple-100"}>
-                        {activeEvent.vigencia?.label ? activeEvent.vigencia.label : (activeEvent.formattedDate ? `Hasta ${activeEvent.formattedDate}` : "Limitado")}
+                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-white shrink-0 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-xs border border-white/25">
+                      <Clock className="w-3 h-3 text-amber-200" />
+                      <span className={eventToDisplay.vigencia?.urgente ? "animate-pulse font-black text-white" : "text-amber-100"}>
+                        {eventToDisplay.vigencia?.label ? eventToDisplay.vigencia.label : (eventToDisplay.formattedDate ? `Hasta ${eventToDisplay.formattedDate}` : "Limitado")}
                       </span>
                     </div>
                   </div>
@@ -2374,7 +2398,7 @@ export function ClienteLanding() {
                           <>
                             <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
                             <span className="text-2xl font-black text-[#f05454] dark:text-red-400 flex items-center gap-1">
-                              <Sparkles className="w-4 h-4 text-[#f05454]" />
+                              <Sparkles className="w-4 h-4 text-amber-500" />
                               ${(() => {
                                 const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.nuevoPrecio);
                                 if (evtPrecio && evtPrecio.nuevoPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
@@ -2400,14 +2424,14 @@ export function ClienteLanding() {
                     }}
                     aria-label={`Agregar ${producto.nombre} al pedido`}
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
-                      producto.eventos && producto.eventos.length > 0
-                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25"
+                      hasEvent
+                        ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-orange-500/30"
                         : "bg-red-700 hover:bg-red-800 shadow-red-700/20"
                     }`}
                   >
-                    {producto.eventos && producto.eventos.length > 0 ? (
+                    {hasEvent ? (
                       <>
-                        <Sparkles className="w-4 h-4 text-purple-200" />
+                        <Sparkles className="w-4 h-4 text-amber-200" />
                         <span>Agregar</span>
                       </>
                     ) : (

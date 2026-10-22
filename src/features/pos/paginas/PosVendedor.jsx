@@ -181,7 +181,7 @@ export default function PosVendedor() {
   }, [productos]);
 
   const visibleProducts = useMemo(() => {
-    return (productos || []).filter((p) => {
+    const list = (productos || []).filter((p) => {
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchSearch) return false;
       if (categoriaActiva === null) return true;
@@ -211,6 +211,18 @@ export default function PosVendedor() {
       );
 
       return matchCatId || matchCatName || matchSubcategory;
+    });
+
+    const now = new Date();
+    // Priorizar productos con eventos de primero en POS
+    return [...list].sort((a, b) => {
+      const aEvts = Array.isArray(a.eventos) ? a.eventos : [];
+      const bEvts = Array.isArray(b.eventos) ? b.eventos : [];
+      const aHasEvent = aEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
+      const bHasEvent = bEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
+      if (aHasEvent && !bHasEvent) return -1;
+      if (!aHasEvent && bHasEvent) return 1;
+      return 0;
     });
   }, [productos, categoriaActiva, searchTerm, categorias]);
 
