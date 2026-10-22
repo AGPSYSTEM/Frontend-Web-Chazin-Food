@@ -109,7 +109,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden relative max-h-[92vh] border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl flex flex-col overflow-hidden relative max-h-[94vh] border border-gray-100 dark:border-gray-800">
         
         {/* Top Showcase Header */}
         <div className="relative w-full bg-gradient-to-b from-gray-50/90 via-gray-100/40 to-white dark:from-gray-800/60 dark:via-gray-850 dark:to-gray-900 p-6 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-800 shrink-0">
@@ -186,9 +186,9 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               </p>
             </div>
 
-            {/* Margen de Ganancia */}
+            {/* Rentabilidad Estimada (Ítem 108: Reemplazar Margen de Ganancia) */}
             <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-900/30">
-              <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Margen Ganancia</p>
+              <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Rentabilidad</p>
               <p className="text-lg font-black text-blue-600 dark:text-blue-400">
                 {costoProduccion > 0 ? `${margenPorcentaje}%` : "—"}
               </p>
@@ -322,13 +322,13 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                   </div>
                 )}
 
-                {/* 2. Sabores / Fórmulas de Bebida */}
+                {/* 2. Sabores / Variantes de Bebida */}
                 {flavorVariantes.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-purple-500" />
                       <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                        Sabores y Fórmulas de Bebida ({flavorVariantes.length})
+                        Variantes y Sabores de Bebida ({flavorVariantes.length})
                       </h3>
                     </div>
                     <div className="bg-purple-50/40 dark:bg-purple-950/20 rounded-2xl p-3 sm:p-4 border border-purple-200/70 dark:border-purple-900/40">
@@ -355,7 +355,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                                   {v.nombre}
                                 </span>
                                 <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                                  Fórmula / Sabor
+                                  Variante / Sabor
                                 </span>
                               </div>
                             </div>

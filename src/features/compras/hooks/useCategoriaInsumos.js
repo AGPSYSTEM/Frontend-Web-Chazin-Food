@@ -25,13 +25,20 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
+  const normalize = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
   const filteredCategorias = categorias.filter((c) => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = normalize(searchTerm);
     if (!term) return true;
     return (
-      (c.nombre && c.nombre.toLowerCase().includes(term)) ||
-      (c.descripcion && c.descripcion.toLowerCase().includes(term)) ||
-      (c.estado && c.estado.toLowerCase().includes(term)) ||
+      (c.nombre && normalize(c.nombre).includes(term)) ||
+      (c.descripcion && normalize(c.descripcion).includes(term)) ||
+      (c.estado && normalize(c.estado).includes(term)) ||
       String(c.id || c.idCategoriaInsumo || "").includes(term)
     );
   });

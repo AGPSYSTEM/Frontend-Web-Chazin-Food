@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit, Building, Mail, Phone, MapPin, Power, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleEstado }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when proveedores length changes (#65)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [proveedores.length]);
 
   const totalRecords = proveedores.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;

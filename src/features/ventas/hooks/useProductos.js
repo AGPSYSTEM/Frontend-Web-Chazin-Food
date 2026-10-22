@@ -34,10 +34,47 @@ export function useProductos() {
   }, [fetchProductos]);
 
   const filteredProductos = productos.filter((p) => {
-    const matchSearch =
-      searchTerm === "" ||
-      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!p) return false;
+
+    let matchSearch = true;
+    if (searchTerm && searchTerm.trim() !== "") {
+      const termNorm = searchTerm
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+
+      const nomNorm = String(p.nombre || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const codNorm = String(p.codigo || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const catNorm = String(p.categoria || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const descNorm = String(p.descripcion || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      const precioStr = String(p.precio || "");
+      const precioFormatted = Number(p.precio || 0).toLocaleString("es-CO");
+
+      matchSearch =
+        nomNorm.includes(termNorm) ||
+        codNorm.includes(termNorm) ||
+        catNorm.includes(termNorm) ||
+        descNorm.includes(termNorm) ||
+        precioStr.includes(termNorm) ||
+        precioFormatted.includes(termNorm);
+    }
 
     const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;

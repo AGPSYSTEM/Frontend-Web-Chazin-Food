@@ -52,21 +52,28 @@ export function useProveedores() {
   // Inactive / Trash suppliers (estado === "Inactivo" or estado === 0)
   const papeleraProveedores = proveedores.filter((p) => p.estado === "Inactivo" || p.estado === 0);
 
+  const normalize = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
   const filteredProveedores = proveedores.filter((p) => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = normalize(searchTerm);
     const matchSearch =
       !term ||
-      p.nombre?.toLowerCase().includes(term) ||
-      p.nit?.toLowerCase().includes(term) ||
-      p.numeroDocumento?.toLowerCase().includes(term) ||
-      p.contacto?.toLowerCase().includes(term) ||
-      p.nombreContacto?.toLowerCase().includes(term) ||
-      p.email?.toLowerCase().includes(term) ||
-      p.correo?.toLowerCase().includes(term) ||
-      p.telefono?.includes(term) ||
-      p.direccion?.toLowerCase().includes(term) ||
-      p.tipoProveedor?.toLowerCase().includes(term) ||
-      p.tipoPersona?.toLowerCase().includes(term) ||
+      normalize(p.nombre).includes(term) ||
+      normalize(p.nit).includes(term) ||
+      normalize(p.numeroDocumento).includes(term) ||
+      normalize(p.contacto).includes(term) ||
+      normalize(p.nombreContacto).includes(term) ||
+      normalize(p.email).includes(term) ||
+      normalize(p.correo).includes(term) ||
+      normalize(p.telefono).includes(term) ||
+      normalize(p.direccion).includes(term) ||
+      normalize(p.tipoProveedor).includes(term) ||
+      normalize(p.tipoPersona).includes(term) ||
       (p.estado === "Activo" || p.estado === 1 ? "activo" : "inactivo").includes(term);
 
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;

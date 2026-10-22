@@ -10,9 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Lock
 } from "lucide-react";
 import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export const getActiveProductEvent = (producto) => {
   if (!producto || !producto.eventos || !Array.isArray(producto.eventos) || producto.eventos.length === 0) {
@@ -41,6 +43,7 @@ export function ProductosTable({
   onView,
   onCreateEvento
 }) {
+  const { warning: notifyWarning } = useNotifications();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -221,7 +224,7 @@ export function ProductosTable({
                         title={p.hasFicha ? "Stock disponible calculado a partir de insumos en bodega" : "Stock disponible en catálogo"}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${Number(p.stockDisponible || p.stock) <= 5 ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
-                        <span>{p.stockDisponible !== undefined ? p.stockDisponible : p.stock} porciones</span>
+                        <span>{p.stockDisponible !== undefined ? p.stockDisponible : p.stock} unidades</span>
                       </span>
                     ) : (
                       <span
@@ -279,14 +282,32 @@ export function ProductosTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {/* Editar */}
-                      <button
-                        onClick={() => onEdit(p)}
-                        title="Editar producto"
-                        className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {/* Editar (Ítem 104: Restricción si tiene ventas asociadas) */}
+                      {(() => {
+                        const tieneVentas = Number(p.ventas || 0) > 0;
+                        return (
+                          <button
+                            onClick={() => {
+                              if (tieneVentas) {
+                                notifyWarning(
+                                  "Edición Restringida",
+                                  `El producto "${p.nombre}" ya registra ${p.ventas} venta(s). Para preservar la trazabilidad e integridad histórica contable, no se puede modificar su ficha o características.`
+                                );
+                                return;
+                              }
+                              onEdit(p);
+                            }}
+                            title={tieneVentas ? `No editable: registra ${p.ventas} venta(s)` : "Editar producto"}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              tieneVentas
+                                ? "opacity-50 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                : "hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {tieneVentas ? <Lock className="w-4 h-4 text-gray-400" /> : <Edit className="w-4 h-4" />}
+                          </button>
+                        );
+                      })()}
                       {/* Eliminar */}
                       <button
                         onClick={() => onDelete(p.id, p.nombre)}

@@ -27,8 +27,10 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
 
   const validateField = (name, value) => {
     switch (name) {
-      case "nombre":
-        return validateTexto(value, "El nombre de la categoría", 2, 50);
+      case "nombre": {
+        const res = validateTexto(value, "nombre de la categoría", { min: 2, max: 50, required: true, permitirNumeros: false });
+        return res.isValid ? null : res.error;
+      }
       case "descripcion":
         if (value && value.length > 200) {
           return "La descripción no puede superar los 200 caracteres.";
@@ -47,10 +49,15 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
   };
 
   const handleChange = (field, val) => {
-    if (field === "nombre") setNombre(val);
-    if (field === "descripcion") setDescripcion(val);
+    let cleanVal = val;
+    if (field === "nombre") {
+      // Requisito 92: Bloquear ingreso de números en el nombre de la categoría
+      cleanVal = val.replace(/[0-9]/g, "");
+      setNombre(cleanVal);
+    }
+    if (field === "descripcion") setDescripcion(cleanVal);
     if (touched[field] || submitted) {
-      const err = validateField(field, val);
+      const err = validateField(field, cleanVal);
       setErrors((prev) => ({ ...prev, [field]: err }));
     }
   };
@@ -189,6 +196,12 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
               required
               value={nombre}
               onBlur={() => handleBlur("nombre")}
+              onKeyDown={(e) => {
+                // Requisito 92: Bloquear dígitos en teclado
+                if (/^[0-9]$/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               onChange={(e) => handleChange("nombre", e.target.value)}
               className={`${inputCls} ${
                 (touched.nombre || submitted) && errors.nombre
@@ -317,7 +330,9 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
           </div>
 
           <div>
-            <label className={labelCls}>Estado</label>
+            <label className={labelCls}>
+              Estado <span className="text-red-500">*</span>
+            </label>
             <select
               value={estado}
               onChange={(e) => setEstado(e.target.value)}

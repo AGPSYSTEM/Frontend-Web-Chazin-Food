@@ -24,7 +24,8 @@ import {
   User as UserIcon,
   UtensilsCrossed,
   Lock,
-  AlertCircle
+  AlertCircle,
+  Globe
 } from "lucide-react";
 import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -486,7 +487,6 @@ const QUICK_KITCHEN_TAGS = [
   "Bien cocido/a",
   "Término medio",
   "Sin sal adicional",
-  "Empaque para llevar",
   "Poco picante",
   "Servir caliente"
 ];
@@ -495,7 +495,6 @@ const QUICK_DRINK_TAGS = [
   "Con hielo",
   "Sin hielo",
   "Con pitillo / pajilla",
-  "Empaque para llevar",
   "Vaso adicional",
   "Sin azúcar"
 ];
@@ -659,6 +658,12 @@ export function FastFoodProductModal({
   const isDrink = isDrinkProduct(producto);
   const drinkHasSizes = hasDrinkSizes(producto);
 
+  // Modo Solo Lectura de Reseñas: En Punto de Venta Rápida (POS) y para roles Administrador (1) o Vendedor (2)
+  const userRole = Number(user?.idRol || user?.rolId || user?.rol || 0);
+  const isStaffRole = userRole === 1 || userRole === 2 || userRole === 3;
+  const isPosMode = mode === "pos";
+  const isReadOnlyReviews = isPosMode || isStaffRole;
+
   const [liveFicha, setLiveFicha] = useState(ficha);
 
   useEffect(() => {
@@ -683,8 +688,7 @@ export function FastFoodProductModal({
 
   const specs = useMemo(() => resolveNutritionalSpecs(producto, liveFicha), [producto, liveFicha]);
   const [activeTab, setActiveTab] = useState(() => {
-    if (drinkHasSizes) return "presentacion";
-    if (isDrink) return "ficha";
+    if (isDrink) return "presentacion";
     return initialTab || "personalizar";
   });
   const [quantity, setQuantity] = useState(1);
@@ -1121,6 +1125,10 @@ export function FastFoodProductModal({
   // Handler para publicar reseña interactiva
   const handleSubmitReview = async (e) => {
     e?.preventDefault();
+    if (isReadOnlyReviews) {
+      warning("Acción no permitida", "En el punto de venta rápida, los administradores y vendedores solo pueden consultar las opiniones de los clientes de la web.");
+      return;
+    }
     if (!prodId) return;
     setReviewTouched({ guestName: true, comment: true });
     if (newRating < 1) {
@@ -1233,7 +1241,7 @@ export function FastFoodProductModal({
           setSelectedSizeId(defSize);
           setActiveTab("presentacion");
         } else {
-          setActiveTab("ficha");
+          setActiveTab("presentacion");
         }
       } else {
         const canPersonalize = extractPersonalizables(producto, liveFicha).length > 0;
@@ -1306,12 +1314,14 @@ export function FastFoodProductModal({
         const ms = finDate.getTime() - now.getTime();
         diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
         horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
-        urgente = diasRestantes <= 3;
-        countdownLabel = diasRestantes === 1
+        urgente = diasRestantes <= 3 && diasRestantes >= 0;
+        countdownLabel = diasRestantes > 1
+          ? `Quedan ${diasRestantes} días`
+          : diasRestantes === 1
           ? `¡Último día! (${horasRestantes}h)`
           : diasRestantes === 0
           ? `¡Termina hoy!`
-          : `Quedan ${diasRestantes} días`;
+          : `Edición Especial`;
       } catch (e) {}
     }
 
@@ -1329,7 +1339,7 @@ export function FastFoodProductModal({
         diasRestantes,
         horasRestantes,
         urgente,
-        label: countdownLabel || (formattedDate ? `Hasta el ${formattedDate}` : "Tiempo Limitado")
+        label: (diasRestantes >= 0 ? countdownLabel : null) || (formattedDate && diasRestantes >= 0 ? `Hasta el ${formattedDate}` : "Edición Especial")
       }
     };
   })();
@@ -1989,69 +1999,73 @@ export function FastFoodProductModal({
           </div>
 
           {/* Ratings & Quick Specs Sub-Bar (Clicking stars switches directly to Reseñas tab) */}
-          <div className="px-4 sm:px-6 py-2.5 bg-gray-50 dark:bg-gray-850/70 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+          <div className="px-4 sm:px-6 py-2.5 bg-gray-50/90 dark:bg-gray-850/80 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 text-xs">
             <button
               type="button"
               onClick={() => {
                 setActiveTab("resenas");
-                setShowWriteReview(true);
+                setShowWriteReview(isReadOnlyReviews ? false : true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-bold hover:bg-amber-200/80 dark:hover:bg-amber-900/60 transition cursor-pointer border border-amber-300/40 dark:border-amber-800/60 shadow-2xs group"
-              title="Ver calificaciones y escribir una reseña"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer border border-amber-200/80 dark:border-amber-800/60 shadow-2xs group shrink-0"
+              title={isReadOnlyReviews ? "Ver calificaciones y opiniones de clientes en la web" : "Ver calificaciones y escribir una reseña"}
             >
               {hasRealRatings ? (
                 <>
-                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 group-hover:scale-110 transition-transform" />
-                  <span>{effectiveRating.toFixed(1)}</span>
-                  <span className="opacity-80 font-semibold">
-                    ({effectiveReviewsTotal} {effectiveReviewsTotal === 1 ? "opinión" : "opiniones"})
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <span className="font-black text-amber-800 dark:text-amber-200">{effectiveRating.toFixed(1)}</span>
+                  <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80 font-medium">
+                    ({effectiveReviewsTotal})
                   </span>
                 </>
               ) : (
                 <>
-                  <Star className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="opacity-80 font-semibold">Sin opiniones aún</span>
+                  <Star className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
+                  <span className="text-amber-800 dark:text-amber-300 font-medium text-[11px]">Sin opiniones aún</span>
                 </>
               )}
-              <span className="text-[10.5px] text-amber-700 dark:text-amber-300 font-black underline ml-1">
-                • Calificar
+              <span className="h-3 w-px bg-amber-300/60 dark:bg-amber-700/60 mx-0.5" />
+              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-bold underline hover:text-amber-900 dark:hover:text-amber-100">
+                {isReadOnlyReviews ? "Ver opiniones" : "Calificar"}
               </span>
             </button>
 
-            <div className="flex items-center gap-3 text-[11.5px] font-bold text-gray-700 dark:text-gray-300">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-red-500" />
-                {ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : "1 - 2 min"}
+            {/* Chips de especificaciones con diseño armónico y alineación perfecta */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 shadow-2xs" title="Tiempo de preparación artesanal en cocina">
+                <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>{isDrink ? "Servido frío inmediato" : ficha?.tiempoPreparacion ? `Prep: ${ficha.tiempoPreparacion}-${ficha.tiempoPreparacion + 3} min` : "Prep: 12-15 min"}</span>
               </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <Utensils className="w-3.5 h-3.5 text-amber-500" />
-                {isDrink ? selectedSizeObj.porciones : (ficha?.rendimiento || "1 porción")}
+
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 shadow-2xs" title="Rendimiento y porción">
+                <Utensils className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>{isDrink ? selectedSizeObj.porciones : (ficha?.rendimiento || "1 porción")}</span>
               </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                {stockMax > 0 ? `${stockMax} disp.` : "Agotado"}
+
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 shadow-2xs" title="Disponibilidad actual en cocina">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                <span className={stockMax > 0 ? "text-emerald-700 dark:text-emerald-400 font-bold" : "text-rose-500 font-bold"}>
+                  {stockMax > 0 ? `${stockMax} disp.` : "Agotado"}
+                </span>
               </span>
             </div>
           </div>
 
           {/* ═══ DESCRIPCIÓN COMPLETA DEL PLATILLO (MÁXIMA LEGIBILIDAD Y ALTO CONTRASTE) ═══ */}
           {producto.descripcion && (
-            <div className="mx-4 sm:mx-6 mt-3.5 p-4 rounded-2xl bg-white dark:bg-gray-850 border-2 border-amber-300/80 dark:border-amber-600/50 shadow-sm flex items-start gap-3.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+            <div className="mx-4 sm:mx-6 mt-3.5 mb-2.5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50/70 via-amber-50/30 to-transparent dark:from-amber-950/30 dark:via-amber-950/15 dark:to-transparent border border-amber-200/80 dark:border-amber-700/50 shadow-2xs flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
                 <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="font-black text-xs text-amber-800 dark:text-amber-400 uppercase tracking-wider">
-                    Descripción & Preparación:
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-extrabold text-xs text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                    Descripción & Preparación
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-700/60">
                     Receta de la Casa
                   </span>
                 </div>
-                <p className="text-sm sm:text-[15px] font-medium text-gray-900 dark:text-gray-100 leading-relaxed">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
                   {producto.descripcion}
                 </p>
               </div>
@@ -2060,16 +2074,18 @@ export function FastFoodProductModal({
 
           {/* ═══ BENEFICIOS EXCLUSIVOS DEL EVENTO (FESTIVAL DROP HIGHLIGHT) ═══ */}
           {eventInfo && (
-            <div className="mx-4 sm:mx-6 mb-3 p-4 rounded-2xl bg-gradient-to-br from-purple-950/20 via-purple-900/10 to-indigo-950/20 dark:from-purple-950/40 dark:via-purple-900/20 dark:to-indigo-950/40 border border-purple-300/40 dark:border-purple-600/40 shadow-sm">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
-                    <Sparkles className="w-4 h-4 text-purple-200" />
+            <div className="mx-4 sm:mx-6 mt-1 mb-3.5 p-4 rounded-2xl bg-gradient-to-br from-purple-50 via-purple-50/40 to-indigo-50/60 dark:from-purple-950/40 dark:via-purple-900/20 dark:to-indigo-950/40 border border-purple-200/80 dark:border-purple-600/40 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0">
+                    <Sparkles className="w-5 h-5 text-purple-100" />
                   </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                      {eventInfo.nombre}
-                      <span className="text-[10px] font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">
+                        {eventInfo.nombre}
+                      </h4>
+                      <span className="text-[10px] font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800/60 shrink-0">
                         {eventInfo.tipo === "Descuento"
                           ? "DESCUENTO"
                           : eventInfo.tipo === "Promoción Precio"
@@ -2082,18 +2098,20 @@ export function FastFoodProductModal({
                           ? "PROMO 2X1"
                           : "FESTIVAL DROP"}
                       </span>
-                    </h4>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
                       {eventInfo.descripcion || "Receta conmemorativa de edición limitada con precio y presentación especial."}
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-200/50 dark:border-purple-800/50 text-center">
+
+              {/* Grid simétrico y perfectamente balanceado en altura */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-3 border-t border-purple-200/60 dark:border-purple-800/50">
                 {eventInfo.tipo === "Añadir Insumos" ? (
-                  <div className="p-2 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-purple-100 dark:border-purple-900/40 col-span-2">
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Toppings Incluidos Sin Costo</p>
-                    <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 truncate">
+                  <div className="p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-purple-100 dark:border-purple-900/40 col-span-2 flex flex-col justify-center text-center shadow-2xs">
+                    <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Toppings Incluidos Sin Costo</p>
+                    <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">
                       {Array.isArray(eventInfo.insumosAsociados) && eventInfo.insumosAsociados.length > 0
                         ? eventInfo.insumosAsociados.map(i => i.nombre).join(" + ")
                         : "Toppings seleccionados gratis"}
@@ -2101,25 +2119,25 @@ export function FastFoodProductModal({
                   </div>
                 ) : (
                   <>
-                    <div className="p-2 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-purple-100 dark:border-purple-900/40">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Ahorro Directo</p>
-                      <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-purple-100 dark:border-purple-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
+                      <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Ahorro Directo</p>
+                      <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
                         {eventInfo.savings > 0 ? `$${eventInfo.savings.toLocaleString('es-CO')} (-${eventInfo.discountPercent}%)` : `${eventInfo.discountPercent}% OFF`}
                       </p>
                     </div>
-                    <div className="p-2 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-purple-100 dark:border-purple-900/40">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Receta Exclusiva</p>
-                      <p className="text-xs font-black text-purple-600 dark:text-purple-400">100% Gourmet</p>
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-purple-100 dark:border-purple-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
+                      <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Receta Exclusiva</p>
+                      <p className="text-xs sm:text-sm font-black text-purple-700 dark:text-purple-300">100% Gourmet</p>
                     </div>
                   </>
                 )}
-                <div className="p-2 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-purple-100 dark:border-purple-900/40">
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Disponibilidad</p>
-                  <p className={`text-xs font-black ${eventInfo.vigencia?.urgente ? 'text-rose-600 dark:text-rose-400 animate-pulse' : 'text-amber-600 dark:text-amber-400'}`}>
+                <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-purple-100 dark:border-purple-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
+                  <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Disponibilidad</p>
+                  <p className={`text-xs sm:text-sm font-black ${eventInfo.vigencia?.urgente ? 'text-rose-600 dark:text-rose-400 animate-pulse' : 'text-purple-700 dark:text-purple-300'}`}>
                     {eventInfo.vigencia?.label || (eventInfo.formattedDate || "Limitada")}
                   </p>
-                  {eventInfo.formattedDate && (
-                    <p className="text-[9px] text-gray-400 mt-0.5">Hasta {eventInfo.formattedDate}</p>
+                  {eventInfo.formattedDate && eventInfo.vigencia?.diasRestantes > 0 && (
+                    <p className="text-[9.5px] text-gray-400 font-medium mt-0.5">Hasta {eventInfo.formattedDate}</p>
                   )}
                 </div>
               </div>
@@ -2154,19 +2172,6 @@ export function FastFoodProductModal({
                       </span>
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-0 py-2 px-1.5 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
-                      activeTab === "ficha"
-                        ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span>Ficha Técnica</span>
-                  </button>
 
                   <button
                     type="button"
@@ -2255,19 +2260,6 @@ export function FastFoodProductModal({
                       ) : null}
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ficha")}
-                    className={`flex-1 min-w-0 py-2 px-1 sm:px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none whitespace-nowrap ${
-                      activeTab === "ficha"
-                        ? "bg-white dark:bg-gray-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span>Ficha Técnica</span>
-                  </button>
 
                   <button
                     type="button"
@@ -2405,23 +2397,23 @@ export function FastFoodProductModal({
                       <div>
                         <p className="font-bold">Presentación exclusiva de 400 ml</p>
                         <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 mt-0.5">
-                          La versión <strong>{selectedVariant?.nombre || "Light / Cero Azúcar"}</strong> únicamente está disponible en botella personal de 400 ml. Los tamaños 1.5 L y 2.5 L corresponden a la fórmula tradicional de <strong>{isPepsi ? "Pepsi Regular con azúcar" : "fórmula tradicional"}</strong>.
+                          La versión <strong>{selectedVariant?.nombre || "Light / Cero Azúcar"}</strong> únicamente está disponible en botella personal de 400 ml. Los tamaños 1.5 L y 2.5 L corresponden a la versión tradicional de <strong>{isPepsi ? "Pepsi Regular con azúcar" : "versión tradicional"}</strong>.
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Variantes de Fórmula o Sabor (ej. Pepsi Regular vs Pepsi Light) */}
+                {/* Variantes de Sabor (ej. Pepsi Regular vs Pepsi Light) */}
                 {drinkFormulaVariants.length > 1 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5 uppercase tracking-wide">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        Variante o Fórmula
+                        Variante
                       </h3>
                       <span className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">
-                        {selectedVariant?.nombre || "Selecciona tu fórmula preferida"}
+                        {selectedVariant?.nombre || "Selecciona tu variante preferida"}
                       </span>
                     </div>
                     <div className="space-y-2">
@@ -2443,10 +2435,10 @@ export function FastFoodProductModal({
                           producto.imagen;
 
                         const subtitle = variant.esOriginal
-                          ? (isPepsi ? "Fórmula clásica con azúcar • Tamaños 400 ml, 1.5 L y 2.5 L" : "Sabor clásico tradicional")
+                          ? (isPepsi ? "Variante clásica con azúcar • Tamaños 400 ml, 1.5 L y 2.5 L" : "Sabor clásico tradicional")
                           : (isPepsiVariantLimited
                               ? "Cero azúcar • Disponible exclusivamente en 400 ml"
-                              : (isDietVar ? "Cero azúcar, sin calorías y con todo el sabor" : "Fórmula y sabor especial refrescante"));
+                              : (isDietVar ? "Cero azúcar, sin calorías y con todo el sabor" : "Variante y sabor especial refrescante"));
 
                         return (
                           <div
@@ -2512,7 +2504,7 @@ export function FastFoodProductModal({
                       Mise en Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Fórmula oficial de cocina e ingredientes personalizables:
+                      Variante e ingredientes personalizables:
                     </p>
                   </div>
                   {removedIngredients.length > 0 && (
@@ -2894,192 +2886,7 @@ export function FastFoodProductModal({
               </div>
             )}
 
-            {/* ─── TAB 4: FICHA TÉCNICA OFICIAL ─── */}
-            {activeTab === "ficha" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-emerald-500" />
-                      Ficha Técnica Oficial del Producto
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Estándares de calidad, porciones, almacenamiento y preparación:
-                    </p>
-                  </div>
-                </div>
 
-                {/* Grid de Métricas Técnicas */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 rounded-2xl border border-amber-200/60 dark:border-amber-900/40 text-center">
-                    <Clock className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-                    <span className="text-[10px] uppercase font-extrabold text-amber-700 dark:text-amber-400 tracking-wider">
-                      Preparación
-                    </span>
-                    <p className="text-sm font-black text-gray-800 dark:text-gray-100 mt-0.5">
-                      {specs.tiempoPrep} min
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-2xl border border-blue-200/60 dark:border-blue-900/40 text-center">
-                    <Utensils className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                    <span className="text-[10px] uppercase font-extrabold text-blue-700 dark:text-blue-400 tracking-wider">
-                      Rendimiento
-                    </span>
-                    <p className="text-sm font-black text-gray-800 dark:text-gray-100 mt-0.5">
-                      {specs.rendimiento}
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/40 text-center">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
-                    <span className="text-[10px] uppercase font-extrabold text-emerald-700 dark:text-emerald-400 tracking-wider">
-                      Peso Aprox.
-                    </span>
-                    <p className="text-sm font-black text-gray-800 dark:text-gray-100 mt-0.5">
-                      {specs.peso}
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-2xl border border-purple-200/60 dark:border-purple-900/40 text-center">
-                    <Zap className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                    <span className="text-[10px] uppercase font-extrabold text-purple-700 dark:text-purple-400 tracking-wider">
-                      Calorías
-                    </span>
-                    <p className="text-sm font-black text-gray-800 dark:text-gray-100 mt-0.5">
-                      {specs.calorias}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Receta e Insumos */}
-                <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-200 dark:border-gray-700 space-y-2.5">
-                  <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
-                    <ChefHat className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>Ingredientes Oficiales que Componen la Receta:</span>
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {(() => {
-                      let list = [];
-                      if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
-                        list = ficha.detalles.map((d) => ({
-                          nombre: d.insumo?.nombre || d.nombreInsumo || "Insumo",
-                          cant: d.cantidad ? `${d.cantidad} ${d.unidadMedida || d.insumo?.unidadMedida || ""}` : ""
-                        }));
-                      } else if (ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
-                        list = ficha.ingredientes.map((i) => ({ nombre: String(i), cant: "" }));
-                      } else {
-                        const nameLower = String(producto?.nombre || "").toLowerCase();
-                        if (nameLower.includes("agua") || nameLower.includes("gaseosa") || nameLower.includes("coca") || nameLower.includes("pepsi") || nameLower.includes("postob")) {
-                          list = [
-                            { nombre: "Bebida embotellada sellada", cant: specs.peso },
-                            { nombre: "Servida fría", cant: "Temperatura óptima" }
-                          ];
-                        } else if (nameLower.includes("francesa") || nameLower.includes("corral") || nameLower.includes("casco") || nameLower.includes("espiral")) {
-                          list = [
-                            { nombre: "Papas seleccionadas premium", cant: specs.peso },
-                            { nombre: "Sal marina y especias de la casa", cant: "Al gusto" },
-                            { nombre: "Aceite vegetal para fritura", cant: "30ml" }
-                          ];
-                        } else if (nameLower.includes("perro")) {
-                          list = [
-                            { nombre: "Pan perro artesanal", cant: "1 und" },
-                            { nombre: "Salchicha premium seleccionada", cant: "120g" },
-                            { nombre: "Tocineta ahumada crujiente", cant: "30g" },
-                            { nombre: "Queso mozzarella fundido", cant: "40g" },
-                            { nombre: "Ripio de papa y salsas de la casa", cant: "Al gusto" }
-                          ];
-                        } else if (nameLower.includes("salchipapa")) {
-                          list = [
-                            { nombre: "Papas francesas crujientes", cant: "250g" },
-                            { nombre: "Salchichas premium picadas", cant: "180g" },
-                            { nombre: "Tocineta ahumada en cubos", cant: "40g" },
-                            { nombre: "Queso mozzarella fundido", cant: "50g" },
-                            { nombre: "Salsas de la casa", cant: "40ml" }
-                          ];
-                        } else if (nameLower.includes("combo")) {
-                          list = [
-                            { nombre: "Hamburguesas Clásicas de Res", cant: "2 und" },
-                            { nombre: "Porción de papas a la francesa", cant: "1 und" },
-                            { nombre: "Gaseosas frías 400ml", cant: "2 und" }
-                          ];
-                        } else {
-                          list = [
-                            { nombre: "Pan brioche artesanal", cant: "1 und" },
-                            { nombre: "Carne de res 80/20 seleccionada", cant: "150g" },
-                            { nombre: "Tocineta ahumada", cant: "30g" },
-                            { nombre: "Queso cheddar fundido", cant: "40g" },
-                            { nombre: "Vegetales frescos y salsas de la casa", cant: "Al gusto" }
-                          ];
-                        }
-                      }
-                      return list.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-750 text-xs"
-                        >
-                          <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            {item.nombre}
-                          </span>
-                          {item.cant && (
-                            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
-                              {item.cant}
-                            </span>
-                          )}
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
-
-                {/* Condiciones de Conservación y Procedimiento */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1">
-                    <span className="font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-[10.5px]">
-                      Conservación & Almacenamiento:
-                    </span>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      {ficha?.condicionesConservacion ||
-                        ficha?.almacenamiento ||
-                        ficha?.condicionesAlmacenamiento ||
-                        (() => {
-                          const n = String(producto?.nombre || "").toLowerCase();
-                          if (n.includes("agua") || n.includes("gaseosa") || n.includes("coca") || n.includes("pepsi") || n.includes("postob")) {
-                            return "Mantener en refrigeración de 2°C a 6°C para conservar su frescura óptima.";
-                          }
-                          if (n.includes("francesa") || n.includes("corral") || n.includes("casco")) {
-                            return "Mantener congelado a -18°C. Freír en caliente sin descongelar previamente.";
-                          }
-                          return "Mantener en refrigeración de 0°C a 4°C antes de la cocción inmediata.";
-                        })()}
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs space-y-1">
-                    <span className="font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-wider text-[10.5px]">
-                      Procedimiento de Cocina:
-                    </span>
-                    <p className="text-gray-600 dark:text-gray-300 italic line-clamp-3">
-                      {ficha?.procedimiento ||
-                        (() => {
-                          const n = String(producto?.nombre || "").toLowerCase();
-                          if (n.includes("agua") || n.includes("gaseosa") || n.includes("coca") || n.includes("pepsi") || n.includes("postob")) {
-                            return "Verificar sello hermético, servir bien fría en vaso con hielo a petición del cliente.";
-                          }
-                          if (n.includes("francesa") || n.includes("corral") || n.includes("casco")) {
-                            return "Freír en aceite limpio a 175°C durante 4 a 5 minutos hasta alcanzar el dorado crujiente ideal.";
-                          }
-                          if (n.includes("perro")) {
-                            return "Calentar pan al vapor, sellar salchicha a la plancha, fundir queso y coronar con ripio y salsas.";
-                          }
-                          return "Asar proteína a la plancha a 180°C, fundir queso, tostar pan con mantequilla y ensamblar con salsas.";
-                        })()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* ─── TAB 5: RESEÑAS Y OPINIONES DE COMENSALES (ESPACIO DEDICADO) ─── */}
             {activeTab === "resenas" && (
@@ -3091,17 +2898,26 @@ export function FastFoodProductModal({
                       Opiniones de Clientes & Comensales
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Experiencias reales de quienes han degustado este plato:
+                      {isReadOnlyReviews
+                        ? "Reseñas verificadas de comensales registradas en la web (Modo Consulta POS):"
+                        : "Experiencias reales de quienes han degustado este plato:"}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowWriteReview((prev) => !prev)}
-                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5 shrink-0"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>{showWriteReview ? "Cerrar" : "Calificar / Opinar"}</span>
-                  </button>
+                  {isReadOnlyReviews ? (
+                    <div className="px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200/70 dark:border-blue-800/60 shadow-2xs flex items-center gap-1.5 shrink-0">
+                      <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span>Solo Lectura Web</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowWriteReview((prev) => !prev)}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5 shrink-0"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>{showWriteReview ? "Cerrar" : "Calificar / Opinar"}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Score Summary Card */}
@@ -3145,7 +2961,9 @@ export function FastFoodProductModal({
                         </span>
                       ) : (
                         <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1 mt-0.5">
-                          Tu opinión ayudará a otros comensales a elegir
+                          {isReadOnlyReviews
+                            ? "No hay reseñas de clientes en la web todavía."
+                            : "Tu opinión ayudará a otros comensales a elegir"}
                         </span>
                       )}
                     </div>
@@ -3157,8 +2975,8 @@ export function FastFoodProductModal({
                   </div>
                 </div>
 
-                {/* ═══ FORMULARIO INTERACTIVO PARA ESCRIBIR / PUBLICAR RESEÑA ═══ */}
-                {showWriteReview && (
+                {/* ═══ FORMULARIO INTERACTIVO PARA ESCRIBIR / PUBLICAR RESEÑA (SOLO CLIENTES WEB) ═══ */}
+                {!isReadOnlyReviews && showWriteReview && (
                   <form
                     onSubmit={handleSubmitReview}
                     className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border-2 border-dashed border-amber-300 dark:border-amber-800/80 space-y-3.5 animate-in fade-in zoom-in-95 duration-200"
@@ -3501,7 +3319,11 @@ export function FastFoodProductModal({
           <button
             type="button"
             onClick={handleConfirm}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#f05454] hover:bg-[#d94444] text-white font-black text-sm shadow-[0_8px_20px_rgba(240,84,84,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0"
+            className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl text-white font-black text-sm transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0 ${
+              eventInfo
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-[0_8px_20px_rgba(168,85,247,0.35)]"
+                : "bg-[#f05454] hover:bg-[#d94444] shadow-[0_8px_20px_rgba(240,84,84,0.35)]"
+            }`}
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
             <span>

@@ -1,4 +1,4 @@
-import { Calendar, Clock, Eye } from "lucide-react";
+import { Calendar, Clock, Eye, Globe, Store } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
@@ -21,70 +21,8 @@ export function VentasHistorialCardsView({ ventas, onViewDetail }) {
     );
   }
 
-  // Sample data fallback if list is empty
-  const itemsToDisplay = Array.isArray(ventas) && ventas.length > 0 ? ventas : [
-    {
-      id: 1,
-      clienteNombre: "María López",
-      codigoPedido: "PED-002",
-      fecha: "2026-06-09",
-      horario: "13:05 – 13:20",
-      total: 40500,
-      descuentoPorcentaje: 0,
-      montoDescuento: 0,
-      productos: [
-        { cantidad: 1, nombre: "Hamburguesa Chazin Clásica" },
-        { cantidad: 1, nombre: "Papas Fritas Medianas" },
-        { cantidad: 1, nombre: "Coca-Cola 400ml" }
-      ]
-    },
-    {
-      id: 2,
-      clienteNombre: "Juan Garcia",
-      codigoPedido: "PED-003",
-      fecha: "2026-06-09",
-      horario: "13:12 – 13:30",
-      total: 78500,
-      descuentoPorcentaje: 10,
-      montoDescuento: 8722,
-      precioOriginal: 87222,
-      productos: [
-        { cantidad: 2, nombre: "Hamburguesa Doble Carne" },
-        { cantidad: 1, nombre: "Salchipapa Especial" },
-        { cantidad: 2, nombre: "Limonada Natural" }
-      ]
-    },
-    {
-      id: 3,
-      clienteNombre: "Luis Rodríguez",
-      codigoPedido: "PED-004",
-      fecha: "2026-06-09",
-      horario: "13:25 – 13:40",
-      total: 25000,
-      descuentoPorcentaje: 0,
-      montoDescuento: 0,
-      productos: [
-        { cantidad: 1, nombre: "Perro Caliente Especial" },
-        { cantidad: 1, nombre: "Jugo Hit Mora 500ml" }
-      ]
-    },
-    {
-      id: 4,
-      clienteNombre: "Ana Martínez",
-      codigoPedido: "PED-005",
-      fecha: "2026-06-09",
-      horario: "13:40 – 14:00",
-      total: 55000,
-      descuentoPorcentaje: 15,
-      montoDescuento: 9705,
-      precioOriginal: 64705,
-      productos: [
-        { cantidad: 1, nombre: "Pizza Personal Jamón y Queso" },
-        { cantidad: 1, nombre: "Porción de Alitas BBQ" },
-        { cantidad: 1, nombre: "Cerveza Corona 355ml" }
-      ]
-    }
-  ];
+  // Usar ventas directamente
+  const itemsToDisplay = Array.isArray(ventas) ? ventas : [];
 
   return (
     <div className="flex flex-col divide-y divide-gray-100 dark:divide-gray-800">
@@ -96,6 +34,7 @@ export function VentasHistorialCardsView({ ventas, onViewDetail }) {
         const fechaStr = formatDateSafe(v?.fecha || v?.fechaVenta, "2026-06-09");
         const horarioStr = v?.horario || "13:05 – 13:20";
         const totalNum = Number(v?.total || v?.subtotal || 40500);
+        const isOnline = v?.origen === "ONLINE" || v?.tipoVenta === "DOMICILIO" || v?.origenNombre === "Venta Online";
         
         const descPct = Number(v?.descuentoPorcentaje || 0);
         const descMonto = Number(v?.descuentoAplicado || v?.montoDescuento || 0);
@@ -128,6 +67,18 @@ export function VentasHistorialCardsView({ ventas, onViewDetail }) {
                     <span className="text-xs font-mono text-gray-400">
                       {codigo}
                     </span>
+                    {/* Origen de la Venta (Ítem 123) */}
+                    {isOnline ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 shadow-2xs">
+                        <Globe className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span>Venta Online</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
+                        <Store className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>Punto Físico</span>
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-mono">
                     <div className="flex items-center gap-1">

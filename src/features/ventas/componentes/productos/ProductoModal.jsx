@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -302,6 +302,23 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const isDrink = modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink;
 
+  // Requisito 99: Precio de Referencia calculado a partir de los insumos asociados en la ficha técnica
+  const costoTotalInsumos = useMemo(() => {
+    const list = fichaTecnica?.detalles || fichaTecnica?.insumos || [];
+    if (!list || list.length === 0) return 0;
+    return list.reduce((acc, item) => {
+      const cant = Number(item.cantidad || 0);
+      const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
+      return acc + (cant * unitCost);
+    }, 0);
+  }, [fichaTecnica]);
+
+  const precioReferenciaSugerido = useMemo(() => {
+    if (costoTotalInsumos <= 0) return 0;
+    // Food Cost gastronómico estándar (~35-40% del precio de venta final)
+    return Math.round((costoTotalInsumos * 2.5) / 500) * 500;
+  }, [costoTotalInsumos]);
+
   const sizeVariantes = useMemo(() => {
     return variantes.filter((v) => {
       if (v.tipo === "tamano") return true;
@@ -570,17 +587,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           />
         </div>
 
-        {/* Price input */}
-        <div className="w-full sm:w-36 shrink-0">
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">$</span>
-            <NumberInput
-              min="0"
-              value={v.precio}
-              onChange={(e) => handleUpdateVarianteByKey(v._key, "precio", e.target.value)}
-              placeholder="Precio"
-              className={`w-full pl-6 pr-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs font-semibold focus:ring-2 focus:border-transparent transition-colors ${borderFocusCls}`}
-            />
+        {/* Requisito 100: Retirar precio independiente en variantes (heredan el precio base del producto) */}
+        <div className="w-full sm:w-48 shrink-0">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-lg text-xs" title="Las variantes heredan el precio base del producto">
+            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Precio base:</span>
+            <span className="font-bold text-gray-800 dark:text-gray-100 font-mono">
+              ${Number(form.precio || 0).toLocaleString("es-CO")} COP
+            </span>
           </div>
         </div>
 
@@ -626,13 +639,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         const v = variantes[i];
         if (!v.nombre || !v.nombre.trim()) {
           const typeLabel = isDrink 
-            ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / fórmula")
+            ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
             : "de variante";
           notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
-          return;
-        }
-        if (v.precio === "" || v.precio === null || isNaN(Number(v.precio)) || Number(v.precio) < 0) {
-          notify.warning("Campo Requerido", `Por favor ingresa un precio válido para "${v.nombre}"`);
           return;
         }
       }
@@ -715,7 +724,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           return {
             idVariante: v.idVariante || null,
             nombre: v.nombre.trim(),
-            precio: Number(v.precio) >= 0 ? Number(v.precio) : basePrice,
+            precio: basePrice, // Requisito 100: Retirado precio independiente; variante hereda precio base
             imagen: varImg || null
           };
         })
@@ -788,7 +797,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl max-h-[94vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
           <div className="flex items-center gap-2">
@@ -884,6 +893,37 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   {errors.precio}
                 </p>
               )}
+
+              {/* Requisito 99: Precio de referencia basado en el costo de los insumos */}
+              {costoTotalInsumos > 0 ? (
+                <div className="mt-2.5 p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-xl flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0">
+                      <Calculator className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-amber-900 dark:text-amber-200 truncate">
+                        Precio de Referencia (Costo Insumos):
+                      </p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Costo Insumos: <span className="font-semibold font-mono">${costoTotalInsumos.toLocaleString("es-CO")} COP</span> &bull; Sugerido: <span className="font-bold font-mono text-amber-900 dark:text-amber-100">${precioReferenciaSugerido.toLocaleString("es-CO")} COP</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMainPriceChange(String(precioReferenciaSugerido))}
+                    className="shrink-0 text-xs font-semibold px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs active:scale-95"
+                    title="Aplicar precio sugerido"
+                  >
+                    Usar Sugerido
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  * El precio de referencia se calcula automáticamente con los insumos asignados en la ficha técnica.
+                </p>
+              )}
             </div>
 
             <div>
@@ -916,7 +956,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                   {isDrink
-                    ? "Organiza botellas/tamaños (1.5L, 2.5L) y fórmulas/sabores (Light, Zero, Frutales) por separado."
+                    ? "Organiza botellas/tamaños (1.5L, 2.5L) y variantes/sabores (Light, Zero, Frutales) por separado."
                     : "Organiza presentaciones generales (ej. Doble Carne, Tamaño Grande, Porción Extra)."}
                 </p>
               </div>
@@ -1038,7 +1078,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   </div>
                 </div>
 
-                {/* ── 2. SABORES & FÓRMULAS DE BEBIDA (Sin Azúcar, Light, Zero, Frutales) ── */}
+                {/* ── 2. SABORES & VARIANTES DE BEBIDA (Sin Azúcar, Light, Zero, Frutales) ── */}
                 <div className="sm:col-span-2 border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/40 dark:bg-purple-950/15 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-2.5">
@@ -1048,14 +1088,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                            Sabores o Fórmulas de la Bebida
+                            Sabores o Variantes de la Bebida
                           </h4>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 border border-purple-200 dark:border-purple-800">
-                            {flavorVariantes.length} {flavorVariantes.length === 1 ? "fórmula" : "fórmulas"}
+                            {flavorVariantes.length} {flavorVariantes.length === 1 ? "variante" : "variantes"}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Agrega fórmulas alternativas (ej. Sin Azúcar / Light, Zero, Sabor Uva, Naranja, etc.) que el cliente puede conmutar.
+                          Agrega variantes alternativas (ej. Sin Azúcar / Light, Zero, Sabor Uva, Naranja, etc.) que el cliente puede conmutar.
                         </p>
                       </div>
                     </div>
@@ -1066,11 +1106,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-xl text-xs font-bold transition-all shadow-2xs self-start sm:self-auto cursor-pointer active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Agregar Sabor / Fórmula
+                      Agregar Sabor / Variante
                     </button>
                   </div>
 
-                  {/* Sugerencias Rápidas de Sabores / Fórmulas */}
+                  {/* Sugerencias Rápidas de Sabores / Variantes */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
                       Sugerencias de sabor:
@@ -1120,7 +1160,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   {flavorVariantes.length === 0 ? (
                     <div className="text-center py-4 px-4 rounded-xl border border-dashed border-purple-200/90 dark:border-purple-900/40 bg-white/50 dark:bg-gray-800/30">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        No hay fórmulas alternativas registradas. La bebida se venderá en su sabor tradicional original.
+                        No hay variantes alternativas registradas. La bebida se venderá en su sabor tradicional original.
                       </p>
                       <button
                         type="button"
@@ -1140,7 +1180,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-purple-100 dark:border-purple-950">
                     <Lightbulb className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                     <span>
-                      Estos sabores aparecerán en la sección <strong>"VARIANTE O FÓRMULA"</strong> del modal del comensal.
+                      Estos sabores aparecerán en la sección <strong>"VARIANTE"</strong> del modal del comensal.
                     </span>
                   </div>
                 </div>

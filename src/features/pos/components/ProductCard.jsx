@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Sliders, Sparkles, Flame, Layers } from "lucide-react";
+import { Plus, Sliders, Sparkles, Flame, Layers, Clock } from "lucide-react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
@@ -262,7 +262,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               onClick={handleAdd}
               className={`inline-flex items-center justify-center gap-1 rounded-xl py-2.5 px-2 text-[11px] font-black text-white shadow-xs transition-all cursor-pointer active:scale-95 ${
                 activeEvent
-                  ? "bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-amber-500/20"
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
                   : "bg-[#f05454] hover:bg-[#d94444]"
               }`}
               title={activeEvent ? `Agregar con precio promocional de ${activeEvent.nombre}` : "Agregar al carrito"}

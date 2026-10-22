@@ -316,6 +316,12 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
                 inputMode="numeric"
                 value={form.nit}
                 onChange={handleNitChange}
+                onKeyDown={(e) => {
+                  // Bloquear puntos, guiones y notación científica (#72)
+                  if (['.', '-', 'e', 'E', '+', ','].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
                 onBlur={() => handleFieldBlur("nit")}
                 className={getInputCls(touched.nit && !!errors.nit)}
                 placeholder={esJuridica ? "Ej. 900123456" : "Ej. 1043673457"}

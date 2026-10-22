@@ -77,6 +77,10 @@ export function InsumoModal({
   // Switch de tipo: "Base" (Normal) | "Preparado"
   const [tipo, setTipo] = useState("Base");
 
+  // Borradores para persistencia de datos al alternar (#61)
+  const draftBaseRef = useRef(null);
+  const draftPreparadoRef = useRef(null);
+
   // Estado del formulario
   const [form, setForm] = useState({
     nombre: "",
@@ -86,7 +90,6 @@ export function InsumoModal({
     precioUnitario: 0,
     stock: 0,
     stockMinimo: 5,
-    fechaExpedicion: "",
     fechaVencimiento: "",
     descripcion: "",
     estado: "Activo",
@@ -139,7 +142,6 @@ export function InsumoModal({
         proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: Math.max(0, Number(insumo.stock || 0)),
         stockMinimo: Math.max(0, Number(insumo.stockMinimo !== undefined && insumo.stockMinimo !== null ? insumo.stockMinimo : 5)),
-        fechaExpedicion: insumo.fechaExpedicion || "",
         fechaVencimiento: insumo.fechaVencimiento || "",
         descripcion: insumo.descripcion || "",
         estado: insumo.estado === 1 || insumo.estado === "Activo" || insumo.estado === "1" ? "Activo" : "Inactivo",
@@ -179,7 +181,6 @@ export function InsumoModal({
         precioUnitario: 0,
         stock: 0,
         stockMinimo: 5,
-        fechaExpedicion: "",
         fechaVencimiento: "",
         descripcion: "",
         estado: "Activo",
@@ -196,12 +197,31 @@ export function InsumoModal({
   if (!isOpen) return null;
 
   const handleTipoChange = (nuevoTipo) => {
+    if (nuevoTipo === tipo) return;
+
+    // Guardar borrador del formulario actual (#61)
+    if (tipo === "Base") {
+      draftBaseRef.current = { ...form };
+    } else {
+      draftPreparadoRef.current = { ...form, fichaTecnica };
+    }
+
     setTipo(nuevoTipo);
-    // Ajustar unidad de medida por defecto según el tipo si está vacío
-    if (nuevoTipo === "Preparado" && form.unidadMedida === "Kg") {
-      setForm(prev => ({ ...prev, unidadMedida: "und — unidad" }));
-    } else if (nuevoTipo === "Base" && form.unidadMedida === "und — unidad") {
-      setForm(prev => ({ ...prev, unidadMedida: "Kg" }));
+
+    // Restaurar borrador del formulario destino si existe (#61)
+    if (nuevoTipo === "Base" && draftBaseRef.current) {
+      setForm(draftBaseRef.current);
+    } else if (nuevoTipo === "Preparado" && draftPreparadoRef.current) {
+      const { fichaTecnica: ftDraft, ...formDraft } = draftPreparadoRef.current;
+      setForm(formDraft);
+      if (ftDraft) setFichaTecnica(ftDraft);
+    } else {
+      // Ajustar unidad de medida por defecto según el tipo si está vacío
+      if (nuevoTipo === "Preparado" && form.unidadMedida === "Kg") {
+        setForm(prev => ({ ...prev, unidadMedida: "und — unidad" }));
+      } else if (nuevoTipo === "Base" && form.unidadMedida === "und — unidad") {
+        setForm(prev => ({ ...prev, unidadMedida: "Kg" }));
+      }
     }
   };
 
@@ -454,9 +474,9 @@ export function InsumoModal({
         ingredientes
       });
     } else {
-      // Guardado como Insumo Base / Directo
-      const defaultCatId = form.idCategoriaInsumo || (categorias[0]?.id || categorias[0]?.idCategoriaInsumo || 1);
-      const defaultProvId = form.idProveedor || (proveedores[0]?.id || proveedores[0]?.idProveedor || null);
+      // Guardado como Insumo Base / Directo (#62, #63)
+      const defaultCatId = form.idCategoriaInsumo ? Number(form.idCategoriaInsumo) : (categorias[0]?.id || categorias[0]?.idCategoriaInsumo || 1);
+      const defaultProvId = form.idProveedor && String(form.idProveedor).trim() !== "" ? Number(form.idProveedor) : null;
 
       onSave({
         ...form,
@@ -467,6 +487,8 @@ export function InsumoModal({
         precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
         stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
         stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
+        fechaExpedicion: null, // #62: Eliminada fecha de expedición
+        fechaVencimiento: form.fechaVencimiento && String(form.fechaVencimiento).trim() !== "" ? form.fechaVencimiento : null,
         incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
@@ -732,18 +754,8 @@ export function InsumoModal({
                     )}
                   </div>
 
-                  <div>
-                    <label className={labelCls}>Fecha de Expedición</label>
-                    <input
-                      type="date"
-                      value={form.fechaExpedicion}
-                      onChange={(e) => setForm({ ...form, fechaExpedicion: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Fecha de Vencimiento</label>
+                  <div className="sm:col-span-2">
+                    <label className={labelCls}>Fecha de Vencimiento (Opcional)</label>
                     <input
                       type="date"
                       value={form.fechaVencimiento}

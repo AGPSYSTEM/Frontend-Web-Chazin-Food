@@ -123,19 +123,26 @@ export function useInsumos() {
     fetchPapelera();
   }, [fetchInsumos, fetchPapelera]);
 
+  const normalize = (str) =>
+    String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
   const filteredInsumos = insumos.filter((item) => {
-    const term = searchTerm.toLowerCase().trim();
+    const term = normalize(searchTerm);
     const matchSearch =
       !term ||
-      (item.nombre && item.nombre.toLowerCase().includes(term)) ||
-      (item.categoria && item.categoria.toLowerCase().includes(term)) ||
-      (item.categoriaNombre && item.categoriaNombre.toLowerCase().includes(term)) ||
-      (item.proveedor && item.proveedor.toLowerCase().includes(term)) ||
-      (item.proveedorNombre && item.proveedorNombre.toLowerCase().includes(term)) ||
-      (item.estado && item.estado.toLowerCase().includes(term)) ||
-      (item.tipo && item.tipo.toLowerCase().includes(term)) ||
-      (item.descripcion && item.descripcion.toLowerCase().includes(term)) ||
-      (item.unidadMedida && item.unidadMedida.toLowerCase().includes(term)) ||
+      (item.nombre && normalize(item.nombre).includes(term)) ||
+      (item.categoria && normalize(item.categoria).includes(term)) ||
+      (item.categoriaNombre && normalize(item.categoriaNombre).includes(term)) ||
+      (item.proveedor && normalize(item.proveedor).includes(term)) ||
+      (item.proveedorNombre && normalize(item.proveedorNombre).includes(term)) ||
+      (item.estado && normalize(item.estado).includes(term)) ||
+      (item.tipo && normalize(item.tipo).includes(term)) ||
+      (item.descripcion && normalize(item.descripcion).includes(term)) ||
+      (item.unidadMedida && normalize(item.unidadMedida).includes(term)) ||
       String(item.id || item.idInsumo || "").includes(term);
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
@@ -179,15 +186,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo) || 0,
           unidadMedida: data.unidadMedida || "und",
           precioUnitario: Number(data.precioUnitario) || 0,
-          idProveedor: data.idProveedor || null,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion || "",
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
           incluyeIva: data.incluyeIva ? 1 : 0,
           estado: data.estado || "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.createInsumo(payload);
       }
@@ -238,15 +245,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo),
           unidadMedida: data.unidadMedida,
           precioUnitario: Number(data.precioUnitario),
-          idProveedor: data.idProveedor,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion,
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
           incluyeIva: data.incluyeIva !== undefined ? (data.incluyeIva ? 1 : 0) : undefined,
           estado: data.estado !== undefined ? data.estado : "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.updateInsumo(id, payload);
       }

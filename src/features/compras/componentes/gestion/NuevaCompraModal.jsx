@@ -591,9 +591,12 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const ivaCalculado = incluyeIva ? Math.round(subtotalGeneral * 0.19) : 0;
   const totalGeneral = subtotalGeneral + ivaCalculado;
 
-  /* ── Validaciones de compra ── */
+  /* ── Validaciones de compra (#74) ── */
   const validateForm = () => {
     const errs = {};
+    if (!idProveedor || String(idProveedor).trim() === "") {
+      errs.idProveedor = "Debes seleccionar un proveedor obligatorio para registrar la compra.";
+    }
     if (!numeroFactura.trim()) {
       errs.numeroFactura = "El número de factura es obligatorio.";
     }
@@ -614,7 +617,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     setFormErrors(errs);
 
     if (Object.keys(errs).length > 0) {
-      if (errs.numeroFactura) {
+      if (errs.idProveedor) {
+        notify?.warning?.("Proveedor requerido", errs.idProveedor);
+      } else if (errs.numeroFactura) {
         notify?.warning?.("Número de factura requerido", errs.numeroFactura);
       } else if (errs.ordenItems) {
         notify?.warning?.("Orden vacía", errs.ordenItems);
@@ -710,10 +715,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
         {/* ── Barra superior: Proveedor, Factura, Fecha e IVA (#74, #75, #76, #83) ── */}
         <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-850 shrink-0 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-            {/* Proveedor Opcional */}
+            {/* Proveedor Obligatorio (#74) */}
             <div className="sm:col-span-4">
               <label className={labelCls}>
-                Proveedor <span className="text-gray-400 font-normal text-[11px]">(Opcional)</span>
+                Proveedor <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -722,9 +727,13 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     setIdProveedor(e.target.value);
                     if (formErrors.idProveedor) setFormErrors((err) => ({ ...err, idProveedor: null }));
                   }}
-                  className="w-full pl-3 pr-8 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold appearance-none transition-colors border-gray-200 dark:border-gray-700 bg-white"
+                  className={`w-full pl-3 pr-8 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold appearance-none transition-colors ${
+                    (touched.idProveedor || submitted) && formErrors.idProveedor
+                      ? "border-red-500 bg-red-50/40 text-red-900 focus:ring-red-400"
+                      : "border-gray-200 dark:border-gray-700 bg-white"
+                  }`}
                 >
-                  <option value="">-- Sin proveedor (Compra directa) --</option>
+                  <option value="">-- Selecciona un proveedor obligatorio --</option>
                   {proveedores.map((p) => (
                     <option key={p.idProveedor || p.id} value={p.idProveedor || p.id}>
                       {p.nombre} {p.nit ? `(${p.nit})` : ""}
@@ -733,6 +742,12 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                 </select>
                 <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+              {(touched.idProveedor || submitted) && formErrors.idProveedor && (
+                <p className="text-[11px] text-red-500 mt-1 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{formErrors.idProveedor}</span>
+                </p>
+              )}
             </div>
 
             {/* Número de Factura (#76) */}

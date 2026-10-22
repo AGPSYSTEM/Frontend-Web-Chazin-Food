@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   X, Star, MessageSquare, User as UserIcon, Pencil, Trash2,
-  CheckCircle2, AlertCircle, Send, ShieldAlert
+  CheckCircle2, AlertCircle, Send, ShieldAlert, Globe
 } from "lucide-react";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
@@ -46,6 +46,8 @@ function StarsDisplay({ valor }) {
 
 export function ProductoResenasModal({ isOpen, onClose, producto }) {
   const { user } = useAuth();
+  const userRole = Number(user?.idRol || user?.rolId || user?.rol || 0);
+  const isStaff = userRole === 1 || userRole === 2 || userRole === 3;
   const notify = useNotifications();
   const [data, setData] = useState({ promedio: 0, total: 0, resenas: [] });
   const [loading, setLoading] = useState(false);
@@ -261,8 +263,13 @@ export function ProductoResenasModal({ isOpen, onClose, producto }) {
             </div>
           )}
 
-          {/* ── Zona de formulario para el usuario ── */}
-          {user && (
+          {/* ── Zona informativa para personal staff o formulario para comensales ── */}
+          {isStaff ? (
+            <div className="p-4 mx-5 my-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 flex items-center gap-2.5 text-xs text-blue-800 dark:text-blue-300 font-medium">
+              <Globe className="w-4 h-4 text-blue-500 shrink-0" />
+              <span>Modo consulta web: como administrador o vendedor puedes ver todas las opiniones registradas por clientes en la plataforma.</span>
+            </div>
+          ) : user && (
             <div className="p-5 border-b border-gray-100 dark:border-gray-800">
               {miResena && !modoEditar ? (
                 /* Ya tiene reseña - muestra un resumen + botones editar/eliminar */

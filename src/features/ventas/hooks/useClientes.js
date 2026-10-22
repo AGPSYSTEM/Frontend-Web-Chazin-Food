@@ -1,14 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { clientesService } from "../servicios/clientesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchClienteMultiCriteria } from "@/shared/utils/searchUtils";
 
 export function useClientes() {
   const notify = useNotifications();
   const [clientes, setClientes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Criterios de búsqueda y filtrado multicriterio
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterTipo, setFilterTipo] = useState("Todos");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [comprasMin, setComprasMin] = useState("");
+  const [montoMin, setMontoMin] = useState("");
+  const [montoMax, setMontoMax] = useState("");
 
   const fetchClientes = useCallback(async () => {
     try {
@@ -31,79 +38,49 @@ export function useClientes() {
     fetchClientes();
   }, [fetchClientes]);
 
-  const filteredClientes = clientes.filter((c) => {
-    const term = (searchTerm || "").trim().toLowerCase();
-    
-    let matchSearch = true;
-    if (term !== "") {
-      const idStr = String(c.id || c.idCliente || "");
-      const idHashStr = `#${idStr}`;
-      const nombre = (c.nombre || "").toLowerCase();
-      const apellidos = (c.apellidos || "").toLowerCase();
-      const nombreCompleto = `${nombre} ${apellidos}`.trim();
-      const email = (c.email || "").toLowerCase();
-      const rawTelefono = String(c.telefono || "").toLowerCase();
-      const cleanTelefono = rawTelefono.replace(/\D/g, "");
-      const cleanTermPhone = term.replace(/\D/g, "");
-      const doc = String(c.documento || "").toLowerCase();
-      const cleanDoc = doc.replace(/\D/g, "");
-      const direccion = String(c.direccion || "").toLowerCase();
-      const comprasCount = String(c.compras ?? 0);
+  // Filtrado multicriterio exhaustivo
+  const filteredClientes = useMemo(() => {
+    const criteria = {
+      searchTerm,
+      filterTipo,
+      filterEstado,
+      comprasMin,
+      montoMin,
+      montoMax
+    };
 
-      // Total consumido parsing (raw number, formatted, with/without '$' and dots)
-      const rawTotalStr = String(c.totalConsumido || c.totalGastado || "").toLowerCase();
-      const totalNumFromStr = Number(rawTotalStr.replace(/[^\d]/g, "")) || 0;
-      const totalNum = Number(c.totalConsumidoRaw || c.totalGastadoRaw) || totalNumFromStr;
-      const totalStr = String(totalNum);
-      const totalFormatted = `$${totalNum.toLocaleString("es-CO")}`.toLowerCase();
-      const totalFormattedNoDollar = totalNum.toLocaleString("es-CO").toLowerCase();
-      const cleanTermNumber = term.replace(/[$. ]/g, "");
+    return clientes.filter((c) => matchClienteMultiCriteria(c, criteria));
+  }, [clientes, searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
 
-      // Fidelidad tier: VIP, Frecuente, Regular (handling "irregular"), Nuevo
-      const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
-      const rawTipo = clientTipo.toLowerCase();
-      const isIrregularSearch = term === "irregular" || term.includes("irregular");
-      const matchTipo = rawTipo.includes(term) || (isIrregularSearch && rawTipo.includes("regular"));
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm("");
+    setFilterTipo("Todos");
+    setFilterEstado("Todos");
+    setComprasMin("");
+    setMontoMin("");
+    setMontoMax("");
+  }, []);
 
-      // Estado: Activo / Inactivo
-      const rawEstado = String(c.estado || (c.activo === false ? "Inactivo" : "Activo")).toLowerCase();
-      const matchEstadoSearch = rawEstado.includes(term);
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== "" ||
+      filterTipo !== "Todos" ||
+      filterEstado !== "Todos" ||
+      comprasMin !== "" ||
+      montoMin !== "" ||
+      montoMax !== ""
+    );
+  }, [searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
 
-      // Compras match: exact match on number or e.g. "3 compras"
-      const matchCompras =
-        comprasCount === term ||
-        term === `${comprasCount} compras` ||
-        term === `${comprasCount} compra`;
-
-      matchSearch =
-        idStr === term ||
-        idHashStr === term ||
-        idStr.includes(term) ||
-        nombreCompleto.includes(term) ||
-        email.includes(term) ||
-        (cleanTermPhone.length > 0 && cleanTelefono.includes(cleanTermPhone)) ||
-        rawTelefono.includes(term) ||
-        doc.includes(term) ||
-        (cleanTermPhone.length > 0 && cleanDoc.includes(cleanTermPhone)) ||
-        direccion.includes(term) ||
-        matchCompras ||
-        (cleanTermNumber.length > 0 && totalStr.includes(cleanTermNumber)) ||
-        totalFormatted.includes(term) ||
-        totalFormattedNoDollar.includes(term) ||
-        rawTotalStr.includes(term) ||
-        matchTipo ||
-        matchEstadoSearch;
-    }
-
-    const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
-
-    const matchEstado =
-      filterEstado === "Todos" ||
-      clientTipo.toLowerCase() === filterEstado.toLowerCase() ||
-      c.estado === filterEstado;
-
-    return matchSearch && matchEstado;
-  });
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm.trim() !== "") count++;
+    if (filterTipo !== "Todos") count++;
+    if (filterEstado !== "Todos") count++;
+    if (comprasMin !== "") count++;
+    if (montoMin !== "" || montoMax !== "") count++;
+    return count;
+  }, [searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
 
   const createCliente = async (data) => {
     try {
@@ -162,8 +139,19 @@ export function useClientes() {
     loading,
     searchTerm,
     setSearchTerm,
+    filterTipo,
+    setFilterTipo,
     filterEstado,
     setFilterEstado,
+    comprasMin,
+    setComprasMin,
+    montoMin,
+    setMontoMin,
+    montoMax,
+    setMontoMax,
+    clearAllFilters,
+    hasActiveFilters,
+    activeFiltersCount,
     refetch: fetchClientes,
     createCliente,
     updateCliente,

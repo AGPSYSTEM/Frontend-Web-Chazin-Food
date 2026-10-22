@@ -1,9 +1,58 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf, Calculator, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
+
+const FASES_DEFAULT = [
+  { id: "p1", fase: "Alistamiento / Mise en place", descripcion: "" },
+  { id: "p2", fase: "Cocción / Procesamiento térmico", descripcion: "" },
+  { id: "p3", fase: "Ensamblaje y Montaje", descripcion: "" },
+  { id: "p4", fase: "Control de Calidad y Empaque", descripcion: "" }
+];
+
+function desglosarProcedimiento(texto) {
+  if (!texto || !String(texto).trim()) {
+    return FASES_DEFAULT.map((f, i) => ({ ...f, id: `fase-${i}-${Date.now()}` }));
+  }
+  const str = String(texto).trim();
+  const lineas = str.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const parsed = [];
+
+  for (let l of lineas) {
+    const match = l.match(/^(?:(?:\d+[\.\)-]|Paso\s*\d+:?))\s*(?:([^:]+):)?\s*(.*)$/i);
+    if (match) {
+      const faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
+      const desc = match[2] ? match[2].trim() : "";
+      parsed.push({
+        id: `p-${Date.now()}-${parsed.length}-${Math.random().toString(36).slice(2, 6)}`,
+        fase: faseNombre,
+        descripcion: desc
+      });
+    } else {
+      if (parsed.length > 0) {
+        parsed[parsed.length - 1].descripcion += (parsed[parsed.length - 1].descripcion ? "\n" : "") + l;
+      } else {
+        parsed.push({
+          id: `p-${Date.now()}-0`,
+          fase: "Proceso Inicial",
+          descripcion: l
+        });
+      }
+    }
+  }
+
+  return parsed.length > 0 ? parsed : FASES_DEFAULT.map((f, i) => ({ ...f, id: `fase-${i}-${Date.now()}` }));
+}
+
+function serializarPasos(pasos) {
+  if (!Array.isArray(pasos) || pasos.length === 0) return "";
+  return pasos
+    .filter(p => p && p.descripcion && String(p.descripcion).trim())
+    .map((p, idx) => `${idx + 1}. ${p.fase || 'Paso ' + (idx + 1)}: ${String(p.descripcion).trim()}`)
+    .join("\n\n");
+}
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#F05454] focus:border-transparent text-sm";
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
@@ -24,6 +73,8 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
+  // Requisito 102: Estructura de orden lógico de procesos de preparación
+  const [pasosProceso, setPasosProceso] = useState(FASES_DEFAULT);
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [rendimiento, setRendimiento] = useState("");
   const [especificaciones, setEspecificaciones] = useState("");
@@ -113,12 +164,16 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       condicionesAlmacenamiento,
       vidaUtil,
       observaciones,
-      detalles: insumos.map(i => ({
-        idInsumo: i.idInsumo || i.id,
-        nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
-        cantidad: Number(i.cantidad || 1),
-        unidadMedida: i.unidadMedida || 'und'
-      }))
+      detalles: insumos.map(i => {
+        const cost = Number(i.costoUnitario || i.precioUnitario || i.insumo?.precioUnitario || i.insumo?.costo || 0);
+        return {
+          idInsumo: i.idInsumo || i.id,
+          nombreInsumo: i.nombreInsumo || i.insumo?.nombre,
+          cantidad: Number(i.cantidad || 1),
+          unidadMedida: i.unidadMedida || 'und',
+          costoUnitario: cost
+        };
+      })
     };
     const key = JSON.stringify(payload);
     if (key !== lastSentRef.current) {
@@ -166,8 +221,18 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   }, [loadFichaData]);
 
   const populateFields = (f) => {
-    setInsumos(f.detalles || f.insumos || []);
-    setProcedimiento(f.procedimiento || f.descripcion || "");
+    const rawInsumos = f.detalles || f.insumos || [];
+    setInsumos(rawInsumos.map(item => {
+      const matchDb = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id));
+      const cost = Number(item.costoUnitario || item.precioUnitario || matchDb?.precioUnitario || matchDb?.costo || 0);
+      return {
+        ...item,
+        costoUnitario: cost
+      };
+    }));
+    const procText = f.procedimiento || f.descripcion || "";
+    setProcedimiento(procText);
+    setPasosProceso(desglosarProcedimiento(procText));
     setTiempoPreparacion(f.tiempoPreparacion ?? "");
     setRendimiento(f.rendimiento || "");
     setEspecificaciones(f.especificaciones || "");
@@ -186,14 +251,16 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   }).slice(0, 6);
 
   const agregarInsumo = (ins) => {
+    const cost = Number(ins.precioUnitario || ins.costo || ins.precio || 0);
     const next = [
       ...insumos,
       {
         idInsumo: ins.id || ins.idInsumo,
         nombreInsumo: ins.nombre,
-        insumo: { nombre: ins.nombre, unidadMedida: ins.unidadMedida },
+        insumo: { nombre: ins.nombre, unidadMedida: ins.unidadMedida, precioUnitario: cost },
         cantidad: 1,
-        unidadMedida: ins.unidadMedida || "und"
+        unidadMedida: ins.unidadMedida || "und",
+        costoUnitario: cost
       }
     ];
     setInsumos(next);
@@ -249,6 +316,67 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       setTiempoPreparacion('1');
     }
     handleBlur("tiempoPreparacion", finalVal);
+  };
+
+  // Requisito 102: Manejadores de pasos de proceso lógico
+  const actualizarPaso = (idx, campo, valor) => {
+    const nuevos = pasosProceso.map((p, i) => i === idx ? { ...p, [campo]: valor } : p);
+    setPasosProceso(nuevos);
+    const textSerializado = serializarPasos(nuevos);
+    setProcedimiento(textSerializado);
+    if (touched.procedimiento) {
+      const err = validateField("procedimiento", textSerializado);
+      setErrors((prev) => ({ ...prev, procedimiento: err }));
+    }
+  };
+
+  const agregarPaso = () => {
+    const nuevo = {
+      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      fase: `Paso ${pasosProceso.length + 1}`,
+      descripcion: ""
+    };
+    const nuevos = [...pasosProceso, nuevo];
+    setPasosProceso(nuevos);
+  };
+
+  const eliminarPaso = (idx) => {
+    if (pasosProceso.length <= 1) return;
+    const nuevos = pasosProceso.filter((_, i) => i !== idx);
+    setPasosProceso(nuevos);
+    const textSerializado = serializarPasos(nuevos);
+    setProcedimiento(textSerializado);
+    if (touched.procedimiento) {
+      const err = validateField("procedimiento", textSerializado);
+      setErrors((prev) => ({ ...prev, procedimiento: err }));
+    }
+  };
+
+  const moverPaso = (idx, direccion) => {
+    const targetIdx = idx + direccion;
+    if (targetIdx < 0 || targetIdx >= pasosProceso.length) return;
+    const copia = [...pasosProceso];
+    const temp = copia[idx];
+    copia[idx] = copia[targetIdx];
+    copia[targetIdx] = temp;
+    setPasosProceso(copia);
+    const textSerializado = serializarPasos(copia);
+    setProcedimiento(textSerializado);
+  };
+
+  const aplicarFasesEstandar = () => {
+    const defaultSteps = [
+      { id: `p-${Date.now()}-1`, fase: "Alistamiento / Mise en place", descripcion: "Selección, pesaje, lavado y porcionado de insumos requeridos." },
+      { id: `p-${Date.now()}-2`, fase: "Cocción / Procesamiento térmico", descripcion: "Cocción de proteínas y preparación térmica de ingredientes." },
+      { id: `p-${Date.now()}-3`, fase: "Ensamblaje y Montaje", descripcion: "Montaje secuencial de base, ingredientes, salsas y presentación final." },
+      { id: `p-${Date.now()}-4`, fase: "Control de Calidad y Empaque", descripcion: "Verificación de temperatura, apariencia visual y empaque térmico para despacho." }
+    ];
+    setPasosProceso(defaultSteps);
+    const textSerializado = serializarPasos(defaultSteps);
+    setProcedimiento(textSerializado);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: "" }));
+    }
   };
 
   const actualizarUnidad = (idx, unidadMedida) => {
@@ -520,11 +648,16 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                       <th className="px-4 py-3">Insumo</th>
                       <th className="px-4 py-3 text-center">Cantidad</th>
                       <th className="px-4 py-3 text-center">Unidad</th>
+                      <th className="px-4 py-3 text-right">Costo Unit.</th>
+                      <th className="px-4 py-3 text-right">Subtotal</th>
                       <th className="px-4 py-3 text-right">Quitar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {insumos.map((item, idx) => (
+                    {insumos.map((item, idx) => {
+                      const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
+                      const subtotal = unitCost * (Number(item.cantidad) || 0);
+                      return (
                       <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40">
                         <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                           {item.nombreInsumo || item.insumo?.nombre || `Insumo #${item.idInsumo}`}
@@ -585,6 +718,12 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                             <option value="porción">porción</option>
                           </select>
                         </td>
+                        <td className="px-4 py-3 text-right text-xs font-mono text-gray-600 dark:text-gray-400">
+                          ${unitCost.toLocaleString("es-CO")}
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs font-mono font-bold text-gray-900 dark:text-gray-100">
+                          ${subtotal.toLocaleString("es-CO")}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <button
                             type="button"
@@ -595,10 +734,40 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+
+              {/* Requisito 99: Costeo de Insumos y Precio de Referencia Sugerido */}
+              {(() => {
+                const totalCosto = insumos.reduce((acc, item) => {
+                  const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
+                  return acc + (unitCost * (Number(item.cantidad) || 0));
+                }, 0);
+                const precioSugerido = totalCosto > 0 ? Math.round((totalCosto * 2.5) / 500) * 500 : 0;
+                return (
+                  <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700/80 gap-3">
+                    <div className="flex items-center gap-2">
+                      <Calculator className="w-4 h-4 text-amber-500" />
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Cálculo de Costos de Insumos:
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Costo Insumos: </span>
+                        <span className="font-bold font-mono text-gray-900 dark:text-gray-100">${totalCosto.toLocaleString("es-CO")} COP</span>
+                      </div>
+                      <div className="border-l border-gray-200 dark:border-gray-700 pl-4">
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">Precio Ref. Sugerido: </span>
+                        <span className="font-black font-mono text-amber-700 dark:text-amber-300">${precioSugerido.toLocaleString("es-CO")} COP</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className={`border-2 border-dashed rounded-2xl py-6 text-center transition ${
@@ -610,17 +779,103 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
           )}
           <FieldError msg={touched.insumos && errors.insumos} />
 
-          {/* Section 2: Procedimiento */}
-          <div>
-            <label className={labelCls}>Procedimiento de Preparación{requiredMark}</label>
-            <textarea
-              value={procedimiento}
-              onChange={(e) => handleFieldChange("procedimiento", setProcedimiento, e.target.value)}
-              onBlur={() => handleBlur("procedimiento", procedimiento)}
-              className={`${getInputClass("procedimiento")} resize-none`}
-              rows={4}
-              placeholder="Describe paso a paso cómo se prepara el producto..."
-            />
+          {/* Section 2: Requisito 102 - Orden Lógico de Procesos de Preparación */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
+              <div>
+                <label className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4 text-[#F05454]" />
+                  Orden Lógico de Procesos de Preparación{requiredMark}
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Estructura secuencial de las etapas culinarias (Alistamiento, Cocción, Ensamblaje y Control de calidad).
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={aplicarFasesEstandar}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200 dark:border-amber-800 cursor-pointer"
+                  title="Cargar fases culinarias estándar"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Cargar Fases Estándar
+                </button>
+                <button
+                  type="button"
+                  onClick={agregarPaso}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-white bg-[#F05454] hover:bg-[#d84343] rounded-lg transition-colors cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Agregar Paso
+                </button>
+              </div>
+            </div>
+
+            {/* Listado de Pasos Secuenciales */}
+            <div className="space-y-3">
+              {pasosProceso.map((paso, idx) => (
+                <div
+                  key={paso.id || idx}
+                  className="p-3.5 rounded-xl border border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-850 shadow-2xs hover:shadow-xs transition-all space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="w-6 h-6 rounded-lg bg-red-100 dark:bg-red-950/60 text-[#F05454] text-xs font-black flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={paso.fase}
+                        onChange={(e) => actualizarPaso(idx, "fase", e.target.value)}
+                        placeholder={`Fase ${idx + 1} (ej. Alistamiento, Cocción, Montaje)`}
+                        className="w-full sm:max-w-xs px-2.5 py-1 text-xs font-bold border border-gray-200 dark:border-gray-700 dark:bg-gray-800 rounded-lg text-gray-800 dark:text-gray-100 focus:ring-1 focus:ring-[#F05454]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => moverPaso(idx, -1)}
+                        disabled={idx === 0}
+                        className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+                        title="Mover arriba"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moverPaso(idx, 1)}
+                        disabled={idx === pasosProceso.length - 1}
+                        className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded"
+                        title="Mover abajo"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      {pasosProceso.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => eliminarPaso(idx)}
+                          className="p-1 text-gray-400 hover:text-rose-500 rounded"
+                          title="Eliminar este paso"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={paso.descripcion}
+                    onChange={(e) => actualizarPaso(idx, "descripcion", e.target.value)}
+                    onBlur={() => handleBlur("procedimiento", procedimiento)}
+                    rows={2}
+                    placeholder={`Describe las instrucciones operativas de "${paso.fase || 'esta fase'}"...`}
+                    className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-1 focus:ring-[#F05454] outline-none resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+
             <FieldError msg={touched.procedimiento && errors.procedimiento} />
           </div>
 

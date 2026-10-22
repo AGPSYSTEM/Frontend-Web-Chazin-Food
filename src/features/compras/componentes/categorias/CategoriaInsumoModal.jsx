@@ -103,6 +103,11 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
               required
               value={nombre}
               onChange={handleNombreChange}
+              onKeyDown={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               onBlur={handleNombreBlur}
               className={`${baseInputCls} ${
                 touched.nombre && errors.nombre

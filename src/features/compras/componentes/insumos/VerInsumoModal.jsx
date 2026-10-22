@@ -250,16 +250,6 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                 {/* Fechas */}
                 <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Fecha Expedición</span>
-                  </div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300">
-                    {insumo.fechaExpedicion || "No registrada"}
-                  </p>
-                </div>
-
-                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
                     <Calendar className="w-3.5 h-3.5 text-amber-500" />
                     <span>Fecha Vencimiento</span>
                   </div>

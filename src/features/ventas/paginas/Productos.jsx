@@ -124,8 +124,8 @@ export function Productos() {
       {/* Separator */}
       <hr className="border-gray-200 dark:border-gray-700" />
 
-      {/* Stat Cards - 2x2 Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Stat Cards - Grid Balanceado de 4 Columnas (Ítem 113) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Productos */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">

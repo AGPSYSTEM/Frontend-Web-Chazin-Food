@@ -3,6 +3,61 @@
  * Permite manejar tanto notas simples como payloads JSON serializados desde el checkout.
  */
 
+export function extractCleanSpecifications(raw) {
+  if (!raw) return "";
+  if (typeof raw === "object") {
+    if (raw.especificaciones !== undefined && raw.especificaciones !== raw) {
+      const res = extractCleanSpecifications(raw.especificaciones);
+      if (res) return res;
+    }
+    if (raw.nota !== undefined && raw.nota !== raw) {
+      const res = extractCleanSpecifications(raw.nota);
+      if (res) return res;
+    }
+    if (raw.observacion !== undefined && raw.observacion !== raw) {
+      const res = extractCleanSpecifications(raw.observacion);
+      if (res) return res;
+    }
+    if (raw.instrucciones !== undefined && raw.instrucciones !== raw) {
+      const res = extractCleanSpecifications(raw.instrucciones);
+      if (res) return res;
+    }
+    return "";
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]")) ||
+      trimmed.includes('"tipoEntrega"') ||
+      trimmed.includes('"especificaciones"') ||
+      trimmed.includes('"codigoPedido"')
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return extractCleanSpecifications(parsed);
+      } catch (e) {
+        return "";
+      }
+    }
+    const lower = trimmed.toLowerCase();
+    if ([
+      "sin observaciones",
+      "ninguna",
+      "ninguno",
+      "n/a",
+      "null",
+      "undefined",
+      ""
+    ].includes(lower)) {
+      return "";
+    }
+    return trimmed;
+  }
+  return "";
+}
+
 export function parseKitchenOrderNotes(rawObservaciones) {
   if (!rawObservaciones) {
     return {
@@ -59,26 +114,7 @@ export function parseKitchenOrderNotes(rawObservaciones) {
 
   // Si era JSON:
   // 1. Extraer la nota real de preparación / especificaciones del cliente
-  const rawNota = (
-    data.especificaciones ||
-    data.nota ||
-    data.observaciones ||
-    data.instrucciones ||
-    data.observacion ||
-    ""
-  ).trim();
-
-  const isGeneric = [
-    "sin observaciones",
-    "ninguna",
-    "ninguno",
-    "n/a",
-    "null",
-    "undefined",
-    ""
-  ].includes(rawNota.toLowerCase());
-
-  const cleanNota = isGeneric ? "" : rawNota;
+  const cleanNota = extractCleanSpecifications(data);
 
   // 2. Extraer dirección
   const direccion = (

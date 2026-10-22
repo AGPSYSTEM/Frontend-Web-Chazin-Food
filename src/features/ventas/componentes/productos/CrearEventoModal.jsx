@@ -2219,35 +2219,59 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio" || tipoEvento === "Añadir Insumos") && (
                 <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                    {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
+                    {tipoEvento === "Descuento"
+                      ? "Asignación de Producto y Configuración del Descuento"
+                      : tipoEvento === "Añadir Insumos"
+                      ? "Asignación de Producto y Precio con Insumos Adicionales"
+                      : "Asignación de Productos y Configuración de Precios del Evento"}
                   </h3>
                   
                   {currentProducto ? (
                     // Single product event
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto en Catálogo</label>
                         <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                          ${currentProducto?.precio ? currentProducto.precio.toLocaleString() : "0"}
+                          ${currentProducto?.precio ? Number(currentProducto.precio).toLocaleString("es-CO") : "0"} COP
                         </div>
                       </div>
                       
                       {tipoEvento === "Descuento" ? (
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Monto o % de Descuento (Valor a restar del precio original)
+                          </label>
                           <input
                             type="number"
                             min="0"
                             value={descuento}
                             onBlur={() => handleFieldBlur("descuento")}
                             onChange={(e) => handleFieldChange("descuento", e.target.value)}
-                            placeholder="Ej: 10 (%) o 5000 ($)"
+                            placeholder="Ej: 15 (%) o 5000 (COP)"
                             className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
                               (touched.descuento || submitted) && formErrors.descuento
                                 ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                 : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             }`}
                           />
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                            {descuento && Number(descuento) > 0 ? (
+                              <span>
+                                Precio con descuento:{" "}
+                                <strong className="text-emerald-600 dark:text-emerald-400">
+                                  ${Math.max(
+                                    0,
+                                    Number(descuento) <= 100
+                                      ? Math.round((currentProducto?.precio || 0) * (1 - Number(descuento) / 100))
+                                      : (currentProducto?.precio || 0) - Number(descuento)
+                                  ).toLocaleString("es-CO")} COP
+                                </strong>{" "}
+                                ({Number(descuento) <= 100 ? `${descuento}% OFF` : `-$${Number(descuento).toLocaleString("es-CO")} COP`})
+                              </span>
+                            ) : (
+                              "Indica el porcentaje (%) o valor exacto en pesos que se descontará."
+                            )}
+                          </p>
                           {(touched.descuento || submitted) && formErrors.descuento && (
                             <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -2258,7 +2282,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                       ) : (
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">
-                            {tipoEvento === "Añadir Insumos" ? "Precio Final con Adiciones" : "Nuevo Precio Promocional"}
+                            {tipoEvento === "Añadir Insumos"
+                              ? "Precio Final de Venta con Insumos Extras (Valor a pagar)"
+                              : "Precio Final Rebajado de Promoción (Valor a pagar por el comensal)"}
                           </label>
                           <input
                             type="number"
@@ -2266,13 +2292,27 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             value={nuevoPrecio}
                             onBlur={() => handleFieldBlur("nuevoPrecio")}
                             onChange={(e) => handleFieldChange("nuevoPrecio", e.target.value)}
-                            placeholder="Ej: 15000"
+                            placeholder="Ej: 18000 (precio final de venta)"
                             className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
                               (touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio
                                 ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                 : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             }`}
                           />
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                            {nuevoPrecio && Number(nuevoPrecio) > 0 ? (
+                              <span className="text-purple-600 dark:text-purple-400 font-bold">
+                                El cliente pagará exactamente ${Number(nuevoPrecio).toLocaleString("es-CO")} COP
+                                {(currentProducto?.precio && Number(nuevoPrecio) < currentProducto.precio) && (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">
+                                    (Ahorro: ${(currentProducto.precio - Number(nuevoPrecio)).toLocaleString("es-CO")} COP)
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              "El valor ingresado aquí es el precio final completo que pagará el cliente."
+                            )}
+                          </p>
                           {(touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio && (
                             <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                               <AlertCircle className="w-3.5 h-3.5 shrink-0" />

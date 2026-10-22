@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when categorias length changes (#51)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categorias.length]);
 
   const totalRecords = categorias.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;

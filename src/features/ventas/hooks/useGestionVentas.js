@@ -1,15 +1,27 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ventasService } from "../servicios/ventasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchVentaMultiCriteria } from "@/shared/utils/searchUtils";
 
 export function useGestionVentas() {
   const notify = useNotifications();
   const [ventas, setVentas] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Criterios de búsqueda y filtrado multicriterio
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
   const [selectedPeriod, setSelectedPeriod] = useState("personalizado");
+  const [filterFecha, setFilterFecha] = useState("");
+  const [filterFechaInicio, setFilterFechaInicio] = useState("");
+  const [filterFechaFin, setFilterFechaFin] = useState("");
+  const [filterMetodoPago, setFilterMetodoPago] = useState("Todos");
+  const [filterOrigen, setFilterOrigen] = useState("Todos");
+  const [filterTipoEntrega, setFilterTipoEntrega] = useState("Todos");
+  const [filterFidelidad, setFilterFidelidad] = useState("Todos");
+  const [montoMin, setMontoMin] = useState("");
+  const [montoMax, setMontoMax] = useState("");
 
   const fetchVentas = useCallback(async () => {
     try {
@@ -32,174 +44,105 @@ export function useGestionVentas() {
     fetchVentas();
   }, [fetchVentas]);
 
-  const filteredVentas = ventas.filter((v) => {
-    const term = (searchTerm || "").trim().toLowerCase();
+  // Filtrado multicriterio exhaustivo en tiempo real
+  const filteredVentas = useMemo(() => {
+    const criteria = {
+      searchTerm,
+      filterEstado,
+      filterFecha,
+      filterFechaInicio,
+      filterFechaFin,
+      filterMetodoPago,
+      filterOrigen,
+      filterTipoEntrega,
+      filterFidelidad,
+      montoMin,
+      montoMax
+    };
 
-    let matchSearch = true;
-    if (term !== "") {
-      const idStr = String(v.id || v.idVenta || "");
-      const idHashStr = `#${idStr}`;
-      const numVenta = String(v.numeroVenta || v.codigoPedido || `VEN-${idStr.padStart(4, "0")}`).toLowerCase();
-      const pedVenta = `ped-${idStr.padStart(3, "0")}`;
+    return ventas.filter((v) => matchVentaMultiCriteria(v, criteria));
+  }, [
+    ventas,
+    searchTerm,
+    filterEstado,
+    filterFecha,
+    filterFechaInicio,
+    filterFechaFin,
+    filterMetodoPago,
+    filterOrigen,
+    filterTipoEntrega,
+    filterFidelidad,
+    montoMin,
+    montoMax
+  ]);
 
-      // Cliente info
-      const rawClient = typeof v.cliente === "string" ? v.cliente : (v.clienteNombre || v.cliente?.nombre || "");
-      const clientApellidos = typeof v.cliente === "object" ? (v.cliente?.apellidos || "") : "";
-      const clientFullName = `${rawClient} ${clientApellidos}`.trim().toLowerCase();
-      const rawTelefono = String(v.clienteTelefono || v.telefono || v.cliente?.telefono || "").toLowerCase();
-      const cleanTelefono = rawTelefono.replace(/\D/g, "");
-      const cleanTermPhone = term.replace(/\D/g, "");
-      const clientDoc = String(v.clienteDocumento || v.documento || v.cliente?.documento || "").toLowerCase();
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm("");
+    setFilterEstado("Todos");
+    setFilterFecha("");
+    setFilterFechaInicio("");
+    setFilterFechaFin("");
+    setFilterMetodoPago("Todos");
+    setFilterOrigen("Todos");
+    setFilterTipoEntrega("Todos");
+    setFilterFidelidad("Todos");
+    setMontoMin("");
+    setMontoMax("");
+  }, []);
 
-      // Observaciones / Metadata
-      let obsMeta = {};
-      if (typeof v.observaciones === "string" && v.observaciones.startsWith("{")) {
-        try { obsMeta = JSON.parse(v.observaciones); } catch (e) {}
-      } else if (typeof v.observaciones === "object" && v.observaciones) {
-        obsMeta = v.observaciones;
-      }
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== "" ||
+      filterEstado !== "Todos" ||
+      filterFecha !== "" ||
+      filterFechaInicio !== "" ||
+      filterFechaFin !== "" ||
+      filterMetodoPago !== "Todos" ||
+      filterOrigen !== "Todos" ||
+      filterTipoEntrega !== "Todos" ||
+      filterFidelidad !== "Todos" ||
+      montoMin !== "" ||
+      montoMax !== ""
+    );
+  }, [
+    searchTerm,
+    filterEstado,
+    filterFecha,
+    filterFechaInicio,
+    filterFechaFin,
+    filterMetodoPago,
+    filterOrigen,
+    filterTipoEntrega,
+    filterFidelidad,
+    montoMin,
+    montoMax
+  ]);
 
-      // Dirección
-      const direccion = String(v.direccion || v.direccionEntrega || obsMeta.direccion || v.cliente?.direccion || "").toLowerCase();
-
-      // Tipo de entrega / canal
-      const rawTipoEntrega = String(v.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase();
-      const origen = String(v.origen || (rawTipoEntrega.includes("domicilio") ? "ONLINE" : "PUNTO_FISICO")).toLowerCase();
-      const matchEntrega =
-        rawTipoEntrega.includes(term) ||
-        (term === "domicilio" && (rawTipoEntrega.includes("domicilio") || origen.includes("online"))) ||
-        ((term === "recoger" || term === "llevar" || term === "para llevar") && (rawTipoEntrega.includes("recoger") || rawTipoEntrega.includes("llevar"))) ||
-        ((term === "mesa" || term === "en mesa") && rawTipoEntrega.includes("mesa")) ||
-        ((term === "online" || term === "web") && origen.includes("online")) ||
-        ((term === "fisico" || term === "físico" || term === "punto fisico" || term === "mostrador") && (origen.includes("punto") || origen.includes("fisico")));
-
-      // Estado
-      const rawEstado = String(v.estado || "").toLowerCase();
-      const rawEstadoEntrega = String(v.estadoEntrega || "").toLowerCase();
-      const matchEstadoSearch =
-        rawEstado.includes(term) ||
-        rawEstadoEntrega.includes(term) ||
-        (term === "pendiente" && (rawEstado.includes("pendiente") || rawEstadoEntrega.includes("pendiente"))) ||
-        ((term === "preparando" || term === "en preparacion" || term === "en preparación" || term === "cocina") && (rawEstado.includes("prepar") || rawEstadoEntrega.includes("prepar"))) ||
-        ((term === "listo" || term === "completada" || term === "entregado") && (rawEstado.includes("complet") || rawEstadoEntrega.includes("listo") || rawEstadoEntrega.includes("entregado"))) ||
-        ((term === "anulada" || term === "cancelado" || term === "cancelada") && (rawEstado.includes("anul") || rawEstadoEntrega.includes("cancel")));
-
-      // Fidelidad
-      const fidelidadTipo = String(v.clienteFidelidad?.tipo || v.cliente?.tipo || (v.esVip ? "VIP" : "")).toLowerCase();
-      const isIrregularSearch = term === "irregular" || term.includes("irregular");
-      const matchFidelidad =
-        fidelidadTipo.includes(term) ||
-        (isIrregularSearch && fidelidadTipo.includes("regular"));
-
-      // Total consumido / venta (raw number, formatted with/without '$' and dots)
-      const totalNum = Number(v.total || v.subtotal || 0);
-      const totalStr = String(totalNum);
-      const totalFormatted = `$${totalNum.toLocaleString("es-CO")}`.toLowerCase();
-      const totalFormattedNoDollar = totalNum.toLocaleString("es-CO").toLowerCase();
-      const cleanTermNumber = term.replace(/[$. ]/g, "");
-      const matchTotal =
-        (cleanTermNumber.length > 0 && totalStr.includes(cleanTermNumber)) ||
-        totalFormatted.includes(term) ||
-        totalFormattedNoDollar.includes(term);
-
-      // Fecha, Hora, Minutos, Período (AM / PM)
-      let hourStr = "";
-      let minuteStr = "";
-      let periodStr = "";
-      let timeFullStr = "";
-      let time24Str = "";
-      let dateFormattedStr = "";
-
-      if (v.fecha || v.fechaVenta) {
-        try {
-          const d = new Date(v.fecha || v.fechaVenta);
-          if (!isNaN(d.getTime())) {
-            dateFormattedStr = d.toLocaleDateString("es-CO", { timeZone: "America/Bogota" }).toLowerCase();
-            const timeParts = d.toLocaleTimeString("es-CO", {
-              timeZone: "America/Bogota",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true
-            }).toLowerCase();
-            timeFullStr = timeParts;
-
-            const timeMatch = timeParts.match(/(\d{1,2}):(\d{2})\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?/i);
-            if (timeMatch) {
-              hourStr = timeMatch[1];
-              minuteStr = timeMatch[2];
-              periodStr = (timeMatch[3] || "").replace(/\./g, "").replace(/\s/g, "").toLowerCase();
-            }
-            const hours24 = String(d.getHours()).padStart(2, "0");
-            time24Str = `${hours24}:${minuteStr}`;
-          }
-        } catch (e) {}
-      }
-
-      const horarioField = String(v.horario || "").toLowerCase();
-
-      // Período AM / PM matching
-      const isAmSearch = term === "am" || term === "a.m." || term === "a. m." || term === "mañana";
-      const isPmSearch = term === "pm" || term === "p.m." || term === "p. m." || term === "tarde" || term === "noche";
-      const matchPeriod =
-        (isAmSearch && (periodStr === "am" || timeFullStr.includes("a. m.") || timeFullStr.includes("am") || horarioField.includes("am"))) ||
-        (isPmSearch && (periodStr === "pm" || timeFullStr.includes("p. m.") || timeFullStr.includes("pm") || horarioField.includes("pm")));
-
-      // Minutos exactos e.g. "30", "44", ":44", "30 min"
-      const cleanTermMin = term.replace(/[^\d]/g, "");
-      const matchMinutes =
-        (cleanTermMin.length > 0 && minuteStr === cleanTermMin) ||
-        (minuteStr.length > 0 && term === `:${minuteStr}`) ||
-        (minuteStr.length > 0 && term === `${minuteStr} min`) ||
-        (minuteStr.length > 0 && term === `${minuteStr} minutos`);
-
-      // Hora exacta e.g. "12", "04", "12:30"
-      const matchHour =
-        (hourStr.length > 0 && (term === hourStr || term === String(Number(hourStr)))) ||
-        timeFullStr.includes(term) ||
-        time24Str.includes(term) ||
-        horarioField.includes(term) ||
-        dateFormattedStr.includes(term);
-
-      // Tiempo estimado de entrega
-      const tiempoEstimado = String(v.tiempoEstimadoEntrega || obsMeta.tiempoEstimadoEntrega || "").toLowerCase();
-      const matchTiempoEstimado = tiempoEstimado.includes(term);
-
-      // Método de pago
-      const metodoPago = String(v.metodoPago || v.metodo_pago || "").toLowerCase();
-      const matchMetodo = metodoPago.includes(term);
-
-      matchSearch =
-        idStr === term ||
-        idHashStr === term ||
-        numVenta.includes(term) ||
-        pedVenta.includes(term) ||
-        clientFullName.includes(term) ||
-        (cleanTermPhone.length > 0 && cleanTelefono.includes(cleanTermPhone)) ||
-        rawTelefono.includes(term) ||
-        clientDoc.includes(term) ||
-        direccion.includes(term) ||
-        matchEntrega ||
-        matchEstadoSearch ||
-        matchFidelidad ||
-        matchTotal ||
-        matchPeriod ||
-        matchMinutes ||
-        matchHour ||
-        matchTiempoEstimado ||
-        matchMetodo;
-    }
-
-    const matchEstado =
-      filterEstado === "Todos" ||
-      v.estado === filterEstado ||
-      v.estadoEntrega === filterEstado ||
-      (filterEstado === "Pendiente" && (v.estado === "Pendiente" || v.estadoEntrega === "PENDIENTE")) ||
-      (filterEstado === "En Preparación" && (v.estado === "En Preparación" || v.estadoEntrega === "PREPARANDO")) ||
-      (filterEstado === "Completada" && (v.estado === "Completada" || v.estadoEntrega === "ENTREGADO" || v.estadoEntrega === "LISTO")) ||
-      (filterEstado === "Anulada" && (v.estado === "Anulada" || v.estadoEntrega === "CANCELADO"));
-
-    return matchSearch && matchEstado;
-  });
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm.trim() !== "") count++;
+    if (filterEstado !== "Todos") count++;
+    if (filterFecha !== "") count++;
+    if (filterFechaInicio !== "" || filterFechaFin !== "") count++;
+    if (filterMetodoPago !== "Todos") count++;
+    if (filterOrigen !== "Todos") count++;
+    if (filterTipoEntrega !== "Todos") count++;
+    if (filterFidelidad !== "Todos") count++;
+    if (montoMin !== "" || montoMax !== "") count++;
+    return count;
+  }, [
+    searchTerm,
+    filterEstado,
+    filterFecha,
+    filterFechaInicio,
+    filterFechaFin,
+    filterMetodoPago,
+    filterOrigen,
+    filterTipoEntrega,
+    filterFidelidad,
+    montoMin,
+    montoMax
+  ]);
 
   const createVenta = async (data) => {
     try {
@@ -266,6 +209,27 @@ export function useGestionVentas() {
     setFilterEstado,
     selectedPeriod,
     setSelectedPeriod,
+    filterFecha,
+    setFilterFecha,
+    filterFechaInicio,
+    setFilterFechaInicio,
+    filterFechaFin,
+    setFilterFechaFin,
+    filterMetodoPago,
+    setFilterMetodoPago,
+    filterOrigen,
+    setFilterOrigen,
+    filterTipoEntrega,
+    setFilterTipoEntrega,
+    filterFidelidad,
+    setFilterFidelidad,
+    montoMin,
+    setMontoMin,
+    montoMax,
+    setMontoMax,
+    clearAllFilters,
+    hasActiveFilters,
+    activeFiltersCount,
     refetch: fetchVentas,
     createVenta,
     updateEstado,
@@ -273,4 +237,3 @@ export function useGestionVentas() {
     cancelarVenta
   };
 }
-

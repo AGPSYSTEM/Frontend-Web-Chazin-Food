@@ -31,7 +31,6 @@ const QUICK_KITCHEN_TAGS = [
   "Bien cocido/a",
   "Término medio",
   "Sin sal adicional",
-  "Empaque para llevar",
   "Poco picante",
   "Servir caliente"
 ];
@@ -489,14 +488,8 @@ export function PersonalizarEventoModal({
         tipoEvento: evento.tipoEvento,
         icono: evento.icono || "party"
       },
-      adiciones: selectedAdditions.map((a) => ({
-        idAdicion: a.idAdicion,
-        nombre: a.nombre,
-        precio: Number(a.precio) || 0,
-        cantidad: Number(a.cantidad) || 1,
-        imagen: a.imagen || "sauce"
-      })),
-      ingredientesRemovidos: removedIngredients.filter((r) => !isEssentialIngredient(r, selectedProduct)),
+      adiciones: [], // Restricción en eventos (Item 17): adiciones únicamente en productos normales
+      ingredientesRemovidos: [], // Restricción en eventos (Item 8 y 17): receta fija
       observaciones: kitchenNotes || undefined,
       observacion: kitchenNotes || undefined
     };
@@ -535,7 +528,7 @@ export function PersonalizarEventoModal({
       <div className="bg-white dark:bg-gray-900 rounded-3xl sm:rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[94vh] sm:h-[90vh] sm:max-h-[860px] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         
         {/* ── 1. Festival Drop Top Ribbon (Evento Activo) ── */}
-        <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
+        <div className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
           <div className="flex items-center gap-2 min-w-0">
             <FoodIcon name={evento.icono || "party"} size={16} className="shrink-0 animate-pulse" />
             <span className="truncate">{stripEmojis(evento.nombreEvento || evento.nombre || "Promoción Especial")}</span>
@@ -576,12 +569,12 @@ export function PersonalizarEventoModal({
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `radial-gradient(ellipse at center, rgba(168,85,247,0.22) 0%, rgba(79,70,229,0.12) 45%, transparent 70%)`
+                    background: `radial-gradient(ellipse at center, rgba(239,68,68,0.25) 0%, rgba(245,158,11,0.12) 45%, transparent 70%)`
                   }}
                 />
               </>
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-indigo-950/50 to-gray-950" />
+              <div className="absolute inset-0 bg-gradient-to-br from-red-950/40 via-stone-900/50 to-gray-950" />
             )}
 
             {/* Dark gradient scrim at bottom to ensure 100% text readability */}
@@ -608,7 +601,7 @@ export function PersonalizarEventoModal({
                 <FoodIcon name={selectedProduct?.nombre} category={selectedProduct?.categoria} size={15} stroke={2} className="text-amber-400" />
                 <span>{selectedProduct?.categoria || selectedProduct?.categoriaNombre || "Plato del Evento"}</span>
               </span>
-              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
+              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>
                   {evento.tipoEvento === "Descuento"
@@ -644,9 +637,9 @@ export function PersonalizarEventoModal({
           {eventProducts.length > 1 && (
             <div className="px-4 sm:px-6 pt-3 pb-1 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Elige el plato a personalizar:
+                  Platos incluidos en la promoción:
                 </span>
                 <span className="text-[10.5px] font-bold text-gray-400">
                   {eventProducts.length} opciones
@@ -665,7 +658,7 @@ export function PersonalizarEventoModal({
                       }}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                         isSelected
-                          ? "border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 ring-2 ring-purple-500/30 font-black shadow-xs"
+                          ? "border-red-600 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 ring-2 ring-red-500/30 font-black shadow-xs"
                           : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
                       }`}
                     >
@@ -746,13 +739,13 @@ export function PersonalizarEventoModal({
           )}
 
           {/* ═══ 6. BENEFICIOS EXCLUSIVOS DEL EVENTO ═══ */}
-          <div className="mx-4 sm:mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 text-sm shadow-xs font-bold mt-0.5">
+          <div className="mx-4 sm:mx-6 mt-3 p-3.5 rounded-2xl bg-red-50/80 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#f05454] text-white flex items-center justify-center shrink-0 text-sm shadow-xs font-bold mt-0.5">
               <Sparkles className="w-4 h-4 text-amber-300" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-black text-xs text-purple-800 dark:text-purple-300 uppercase tracking-wider">
+                <span className="font-black text-xs text-red-800 dark:text-red-300 uppercase tracking-wider">
                   Beneficios de esta Promoción:
                 </span>
                 {savings > 0 && (
@@ -761,49 +754,29 @@ export function PersonalizarEventoModal({
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-purple-900/90 dark:text-purple-200 leading-relaxed font-medium">
-                {evento.descripcion || "Disfruta de esta oferta gastronómica especial por tiempo limitado."}
+              <p className="text-xs sm:text-sm text-red-900/90 dark:text-red-200 leading-relaxed font-medium">
+                {evento.descripcion || "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta cerrada de la casa."}
               </p>
             </div>
           </div>
 
-          {/* ═══ 7. SEGMENTED TABS NAVIGATION (IDÉNTICO A FASTFOODPRODUCTMODAL) ═══ */}
+          {/* ═══ 7. SEGMENTED TABS NAVIGATION (PRODUCCIÓN & RECETA PROMOCIONAL) ═══ */}
           <div className="px-4 sm:px-6 pt-3 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveTab("personalizar")}
-                className={`flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                className={`flex-1 min-w-[120px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
                   activeTab === "personalizar"
                     ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                 }`}
               >
                 <ChefHat className="w-3.5 h-3.5" />
-                <span>
-                  {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
-                </span>
+                <span>Receta de la Promoción</span>
                 {removedIngredients.length > 0 && (
                   <span className="h-4 w-4 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
                     {removedIngredients.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("adiciones")}
-                className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
-                  activeTab === "adiciones"
-                    ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <span>Adiciones</span>
-                {selectedAdditions.length > 0 && (
-                  <span className="h-4 min-w-[16px] px-1 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
-                    {selectedAdditions.length}
                   </span>
                 )}
               </button>
@@ -861,7 +834,7 @@ export function PersonalizarEventoModal({
                       Mise en Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Fórmula oficial de cocina e ingredientes personalizables:
+                      Variante e ingredientes personalizables:
                     </p>
                   </div>
                   {removedIngredients.length > 0 && (
@@ -1350,7 +1323,7 @@ export function PersonalizarEventoModal({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
                               {r.usuario?.nombre ? r.usuario.nombre.slice(0, 2).toUpperCase() : "C"}
                             </div>
                             <span className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">
@@ -1437,7 +1410,7 @@ export function PersonalizarEventoModal({
                 placeholder="Ej: Término medio, salsas aparte, servilletas adicionales..."
                 value={customObservation}
                 onChange={(e) => setCustomObservation(e.target.value)}
-                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-purple-600 transition"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-red-500 transition"
               />
             </div>
           </div>
@@ -1477,7 +1450,7 @@ export function PersonalizarEventoModal({
               <span className="text-[10px] text-gray-400 uppercase font-black tracking-wider block">
                 Total a pagar
               </span>
-              <span className="text-lg font-black text-purple-700 dark:text-purple-400">
+              <span className="text-lg font-black text-[#f05454] dark:text-red-400">
                 ${grandTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -1492,7 +1465,7 @@ export function PersonalizarEventoModal({
             </div>
             <div className="flex items-baseline gap-1 justify-end">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total:</span>
-              <span className="text-xl font-black text-purple-700 dark:text-purple-400 leading-none">
+              <span className="text-xl font-black text-[#f05454] dark:text-red-400 leading-none">
                 ${grandTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -1502,11 +1475,11 @@ export function PersonalizarEventoModal({
           <button
             type="button"
             onClick={handleConfirmAddToCart}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-800 hover:to-indigo-700 text-white font-black text-sm shadow-[0_8px_20px_rgba(126,34,206,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-amber-600 to-[#f05454] hover:from-red-700 hover:to-amber-700 text-white font-black text-sm shadow-[0_8px_20px_rgba(240,84,84,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0"
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
             <span>
-              Agregar al Carrito • ${grandTotal.toLocaleString("es-CO")}
+              Aprovechar Promoción • ${grandTotal.toLocaleString("es-CO")}
             </span>
           </button>
         </div>

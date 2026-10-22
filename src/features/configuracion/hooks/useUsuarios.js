@@ -7,7 +7,7 @@ function getIniciales(nombre = "") {
 }
 
 export function useUsuarios() {
-  const { success, error: notifError, confirmDelete } = useNotifications();
+  const { success, error: notifError, warning, confirmDelete, confirmAction } = useNotifications();
   const [usuarios, setUsuarios] = useState([]);
   const [rolesList, setRolesList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,11 +131,43 @@ export function useUsuarios() {
     if (!confirmed) return false;
     try {
       await usuariosService.deleteUsuario(id);
-      success("Eliminado", "El usuario ha sido eliminado");
+      success("Eliminado", "El usuario ha sido eliminado exitosamente");
       await fetchUsers();
       return true;
     } catch (err) {
-      notifError("Error", err.message || "No se pudo eliminar el usuario");
+      const msg = err.message || "";
+      // Si el usuario tiene ventas, compras o registros asociados y la BD/backend indica que se debe inactivar
+      if (
+        msg.includes("Inactivo") ||
+        msg.includes("venta") ||
+        msg.includes("pedido") ||
+        msg.includes("compra") ||
+        msg.includes("integridad") ||
+        msg.includes("foreign key") ||
+        msg.includes("CONSTRAINT")
+      ) {
+        const deseaInactivar = await confirmAction(
+          "¿Cambiar estado a Inactivo?",
+          `No es posible eliminar a "${nombre}" porque tiene transacciones históricas registradas (ventas, pedidos o compras).\n\n¿Deseas cambiar su estado a Inactivo para suspender su acceso al sistema de forma segura?`,
+          "Sí, cambiar a Inactivo"
+        );
+        if (deseaInactivar) {
+          try {
+            await usuariosService.toggleEstado(id, "INACTIVO");
+            success("Estado actualizado", `El usuario ${nombre} ahora está Inactivo`);
+            await fetchUsers();
+            return true;
+          } catch (toggleErr) {
+            notifError("Error", toggleErr.message || "No se pudo cambiar el estado a Inactivo");
+            return false;
+          }
+        } else {
+          warning("Acción cancelada", "No se modificó el registro del usuario.");
+          return false;
+        }
+      }
+
+      notifError("Error", msg || "No se pudo eliminar el usuario");
       return false;
     }
   };
