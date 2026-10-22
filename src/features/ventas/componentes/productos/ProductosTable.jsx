@@ -162,10 +162,10 @@ export function ProductosTable({
                               return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(evt.descuento)}% OFF)</span>;
                             }
                             if (evt.tipoEvento === "Promoción Precio" && evt.nuevoPrecio) {
-                              return <span className="text-purple-600 dark:text-purple-400 font-bold">(Promo: ${Number(evt.nuevoPrecio).toLocaleString("es-CO")})</span>;
+                              return <span className="text-orange-600 dark:text-orange-400 font-bold">(Promo: ${Number(evt.nuevoPrecio).toLocaleString("es-CO")})</span>;
                             }
                             if (evt.tipoEvento === "Añadir Insumos") {
-                              return <span className="text-indigo-600 dark:text-indigo-400 font-bold">(Insumos extra)</span>;
+                              return <span className="text-amber-600 dark:text-amber-400 font-bold">(Insumos extra)</span>;
                             }
                             return null;
                           })()}
@@ -189,8 +189,8 @@ export function ProductosTable({
                             <span className="text-xs text-gray-400 line-through block font-normal">
                               ${Number(p.precio || 0).toLocaleString("es-CO")}
                             </span>
-                            <span className="font-extrabold text-purple-600 dark:text-purple-400 text-sm flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5" />
+                            <span className="font-extrabold text-orange-600 dark:text-orange-400 text-sm flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                               ${Number(evtPrecio.nuevoPrecio).toLocaleString("es-CO")}
                             </span>
                           </div>
@@ -257,9 +257,9 @@ export function ProductosTable({
                             <button
                               onClick={() => onCreateEvento && onCreateEvento(p, activeEvt)}
                               title={`Editar Evento Activo: ${activeEvt.nombreEvento || activeEvt.nombre || "Evento"}`}
-                              className="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
+                              className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 text-orange-700 dark:text-orange-300 border border-orange-300/80 dark:border-orange-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
                             >
-                              <Zap className="w-4 h-4 fill-purple-600 dark:fill-purple-400 drop-shadow-xs" />
+                              <Zap className="w-4 h-4 fill-orange-500 dark:fill-orange-400 text-orange-600 drop-shadow-xs" />
                               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900 animate-pulse" title="Evento Activo y Vigente" />
                             </button>
                           );
@@ -268,7 +268,7 @@ export function ProductosTable({
                           <button
                             onClick={() => onCreateEvento && onCreateEvento(p, null)}
                             title="Crear Evento / Promoción"
-                            className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-500 dark:text-orange-400 transition-colors cursor-pointer"
                           >
                             <Zap className="w-4 h-4" />
                           </button>

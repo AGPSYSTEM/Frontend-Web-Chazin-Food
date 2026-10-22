@@ -416,15 +416,15 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           {eventosActivos.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <FoodIcon name="party" size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                <FoodIcon name="party" size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
                   Eventos y Promociones Activas ({eventosActivos.length})
                 </h3>
               </div>
-              <div className="bg-purple-50/60 dark:bg-purple-950/20 rounded-2xl p-4 border border-purple-100 dark:border-purple-900/30">
+              <div className="bg-orange-50/60 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-200/80 dark:border-orange-900/40">
                 <ul className="space-y-2.5">
                   {eventosActivos.map((evt, i) => (
-                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-purple-100 dark:border-purple-900/20">
+                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-orange-200/70 dark:border-orange-900/30">
                       <div className="flex items-start gap-2.5">
                         <div className="shrink-0">
                           <FoodIconBadge name={evt.icono || "party"} size="sm" />
@@ -433,7 +433,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                           <span className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
                             {evt.nombreEvento || evt.nombre}
                             {evt.tipoEvento && (
-                              <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-semibold">
+                              <span className="text-[10px] bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 px-2 py-0.5 rounded-md font-semibold border border-orange-200 dark:border-orange-800">
                                 {evt.tipoEvento}
                               </span>
                             )}
@@ -453,7 +453,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                           </span>
                         )}
                         {(evt.tipoEvento === "Promoción Precio" || evt.nuevoPrecio) && (
-                          <span className="text-purple-700 dark:text-purple-300 font-extrabold bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg">
+                          <span className="text-orange-700 dark:text-orange-300 font-extrabold bg-orange-100 dark:bg-orange-950/60 px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/40">
                             ${Number(evt.nuevoPrecio).toLocaleString("es-CO")}
                           </span>
                         )}

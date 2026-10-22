@@ -2145,21 +2145,21 @@ export function ClienteLanding() {
                 style={{ scrollSnapAlign: "start" }}
                 className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
                   selectedCategoria === "eventos"
-                    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30 scale-105 font-bold"
-                    : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-purple-300/60 dark:border-purple-600/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 shadow-xs"
+                    ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-400/40 scale-105 font-bold"
+                    : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-orange-400/70 dark:border-orange-500/60 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 shadow-xs"
                 }`}
               >
-                <div aria-hidden="true" className="absolute top-1 right-1 bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-xs">
+                <div aria-hidden="true" className="absolute top-1 right-1 bg-gradient-to-r from-orange-600 to-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-xs">
                   {eventProductsCount} DROP
                 </div>
                 <div className={`flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shadow-xs transition-all ${
                   selectedCategoria === "eventos"
-                    ? "bg-white text-purple-600"
-                    : "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/80 dark:border-orange-800/40"
                 }`}>
                   <Flame size={26} strokeWidth={2} />
                 </div>
-                <p className={`text-xs font-black truncate w-full ${selectedCategoria === "eventos" ? "text-white" : "text-purple-700 dark:text-purple-300"}`}>
+                <p className={`text-xs font-black truncate w-full ${selectedCategoria === "eventos" ? "text-white" : "text-orange-700 dark:text-orange-300"}`}>
                   Edición Evento
                 </p>
               </button>
