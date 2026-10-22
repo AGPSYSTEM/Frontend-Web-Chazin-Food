@@ -115,10 +115,8 @@ export function validateTiempoEstimado(text = "") {
 }
 
 export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntrega }) {
-  if (!isOpen || !venta) return null;
-
   let obsMeta = {};
-  if (venta.observaciones) {
+  if (venta?.observaciones) {
     try {
       obsMeta =
         typeof venta.observaciones === "string" && venta.observaciones.startsWith("{")
@@ -130,9 +128,9 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
   }
 
   const initialTiempo =
-    venta.tiempoEstimadoEntrega ||
+    venta?.tiempoEstimadoEntrega ||
     obsMeta.tiempoEstimadoEntrega ||
-    (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min");
+    (String(venta?.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min");
 
   const [tiempoEstimado, setTiempoEstimado] = useState(initialTiempo);
   const [isUpdatingTiempo, setIsUpdatingTiempo] = useState(false);
@@ -150,6 +148,8 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
       );
     }
   }, [venta]);
+
+  if (!isOpen || !venta) return null;
 
   const handleSaveTiempo = async (nuevoTiempo) => {
     const valor = nuevoTiempo || tiempoEstimado;

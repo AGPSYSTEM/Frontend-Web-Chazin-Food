@@ -34,14 +34,10 @@
     <!-- Preload del emblema oficial del Splash Screen para LCP instantáneo (< 100ms) -->
     <link rel="preload" as="image" href="/favicon_256.webp" type="image/webp" fetchpriority="high" />
 
-    <!-- Tipografía Inter oficial (Carga optimizada con display=optional para 0 CLS) -->
+    <!-- Tipografía Inter oficial (Carga optimizada con preconnect) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" media="print" onload="this.media='all'" />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=optional" />
-    </noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
 
     <!-- Detección y persistencia inmediata de Modo Oscuro / Claro -->
     <script>

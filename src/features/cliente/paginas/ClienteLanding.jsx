@@ -2515,7 +2515,7 @@ export function ClienteLanding() {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tu Carrito de Compras</h3>
                 {cart.length > 0 && (
                   <span className="text-[11px] bg-red-100 dark:bg-red-950/60 text-[#f05454] dark:text-red-400 font-black px-2 py-0.5 rounded-full">
-                    {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0)} items
+                    {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0)} {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0) === 1 ? "ítem" : "ítems"}
                   </span>
                 )}
               </div>
@@ -2741,7 +2741,7 @@ export function ClienteLanding() {
               <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3 shrink-0">
                 <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100">
                   <span>Total Pedido:</span>
-                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${clientSubtotal.toLocaleString()}</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${clientSubtotal.toLocaleString("es-CO")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
