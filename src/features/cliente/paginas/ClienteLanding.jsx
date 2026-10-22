@@ -227,14 +227,72 @@ const fichasTecnicasDefault = {
   26: { ingredientes: ["Pan Brioche Artesanal Sellado", "Carne Angus Premium 200g", "Queso Brie Fundido", "Reducción de Champiñones al Tartufo", "Cebolla Caramelizada"], peso: "430g", tamano: "Gourmet Especial", calorias: "~790 kcal", tiempoPreparacion: 12, rendimiento: "1 hamburguesa gourmet (430g)" }
 };
 
+export const OFFICIAL_DRINK_IMAGES = {
+  coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
+  coca_cola_light: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png",
+  manzana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135903/lhmojjdrn1bzp3dsz47f.png",
+  pepsi: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135953/upv7fsv9osr2f7ap6cbn.png",
+  colombiana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png",
+  sprite: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136141/cpxa3npdfd0lyxjizicy.png",
+  quatro: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342730/tqchagzkgl2z1jckvyrb.png",
+  agua: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342838/pj5qlfpmxeddkkmjauyw.png",
+  uva: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790137310/fxidthj8xu1nuvp0khfo.png",
+  naranja: "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png"
+};
+
+export const resolveDrinkImage = (item) => {
+  if (!item) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/images/"))) {
+    return item.imagen;
+  }
+  const name = String(item.nombre || item || "").toLowerCase();
+  if (name.includes("coca") && (name.includes("sin az") || name.includes("light") || name.includes("zero"))) {
+    return OFFICIAL_DRINK_IMAGES.coca_cola_light;
+  }
+  if (name.includes("coca")) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (name.includes("manzana")) return OFFICIAL_DRINK_IMAGES.manzana;
+  if (name.includes("pepsi")) return OFFICIAL_DRINK_IMAGES.pepsi;
+  if (name.includes("colombiana")) return OFFICIAL_DRINK_IMAGES.colombiana;
+  if (name.includes("sprite")) return OFFICIAL_DRINK_IMAGES.sprite;
+  if (name.includes("quatro") || name.includes("cuatro")) return OFFICIAL_DRINK_IMAGES.quatro;
+  if (name.includes("agua") || name.includes("cristal")) return OFFICIAL_DRINK_IMAGES.agua;
+  if (name.includes("uva")) return OFFICIAL_DRINK_IMAGES.uva;
+  if (name.includes("naranja")) return OFFICIAL_DRINK_IMAGES.naranja;
+  return OFFICIAL_DRINK_IMAGES.coca_cola;
+};
+
 export const isDrinkProduct = (item) => {
   if (!item) return false;
-  const catId = item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria;
-  if (catId === 4 || catId === "4") return true;
-  const name = String(item.nombre || "").toLowerCase();
+  const catId = Number(item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria);
   const catName = String(item.categoriaNombre || item.categoria?.nombre || (typeof item.categoria === "string" ? item.categoria : "") || "").toLowerCase();
+  const name = String(item.nombre || "").toLowerCase();
   const tipo = String(item.tipo || "").toLowerCase();
+
+  // EXCLUSIÓN ESTRICTA: Platos fuertes, combos, hamburguesas, perros y papas NUNCA son bebidas simples
+  if (
+    catId === 1 || // Hamburguesas
+    catId === 2 || // Perros Calientes
+    catId === 3 || // Salchipapas Gourmet
+    catId === 5 || // Combos
+    catName.includes("hamburguesa") ||
+    catName.includes("combo") ||
+    catName.includes("perro") ||
+    catName.includes("salchipapa") ||
+    catName.includes("acompañamiento") ||
+    name.includes("hamburguesa") ||
+    name.includes("burger") ||
+    name.includes("combo") ||
+    name.includes("perro") ||
+    name.includes("salchipapa") ||
+    name.includes("papas con") ||
+    tipo === "combo" ||
+    tipo === "plato fuerte"
+  ) {
+    return false;
+  }
+
   return (
+    catId === 4 ||
     tipo === "bebida" ||
     catName.includes("bebida") ||
     catName.includes("gaseosa") ||
@@ -818,9 +876,9 @@ export function ClienteLanding() {
 
   // Las 3 bebidas oficiales listas para acompañar
   const fallbackBebidas = [
-    { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: "drink", stock: 60 },
-    { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, imagen: "drink", stock: 45 },
-    { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: "drink", stock: 50 }
+    { id: 8, idProducto: 8, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.coca_cola, stock: 60 },
+    { id: 9, idProducto: 9, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.manzana, stock: 45 },
+    { id: 10, idProducto: 10, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: OFFICIAL_DRINK_IMAGES.agua, stock: 50 }
   ];
   const bebidasDisponibles = (() => {
     const list = activeProductos.filter(p => isDrinkProduct(p));
@@ -1376,7 +1434,7 @@ export function ClienteLanding() {
         precio: Number(b.precio),
         cantidad: Number(b.cantidad) || 1,
         stock: Number(b.stock !== undefined ? b.stock : 30),
-        imagen: b.imagen || "drink",
+        imagen: resolveDrinkImage(b),
         adiciones: []
       });
       if (!bRes || bRes.success !== false) {
@@ -1444,8 +1502,12 @@ export function ClienteLanding() {
     }
 
     let bebidasCount = 0;
-    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
-    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let comboCfg = producto.configuracionCombo;
+    if (typeof comboCfg === "string") {
+      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
+    }
+    const isComboProd = Boolean(comboCfg?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
     let includedQuotaRemaining = requiredDrinks;
 
     if (!isDrink && Array.isArray(bebidas)) {
@@ -1464,7 +1526,7 @@ export function ClienteLanding() {
             precio: Number(b.precio),
             cantidad: isComboProd ? extraQty : qty,
             stock: Number(b.stock !== undefined ? b.stock : 30),
-            imagen: b.imagen || "drink",
+            imagen: resolveDrinkImage(b),
             adiciones: []
           });
           if (!bRes || bRes.success !== false) {
@@ -2554,20 +2616,35 @@ export function ClienteLanding() {
 
                     return (
                       <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
-                        {item.imagen && typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/") || item.imagen.startsWith("data:")) ? (
-                          <img
-                            src={item.imagen}
-                            alt={item.nombre}
-                            width="48"
-                            height="48"
-                            style={{ aspectRatio: "1 / 1" }}
-                            className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
-                          />
-                        ) : (
-                          <FoodIconBadge name={item.nombre} size="md" />
-                        )}
+                        {(() => {
+                          let displayImg = item.imagen;
+                          if (!displayImg || typeof displayImg !== "string" || (!displayImg.startsWith("http") && !displayImg.startsWith("/") && !displayImg.startsWith("data:"))) {
+                            if (isDrinkProduct(item) || String(item.nombre || "").toLowerCase().includes("gaseosa") || String(item.nombre || "").toLowerCase().includes("coca")) {
+                              displayImg = resolveDrinkImage(item);
+                            }
+                          }
+                          return displayImg && (displayImg.startsWith("http") || displayImg.startsWith("/") || displayImg.startsWith("data:")) ? (
+                            <img
+                              src={displayImg}
+                              alt={item.nombre}
+                              width="48"
+                              height="48"
+                              style={{ aspectRatio: "1 / 1" }}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                            />
+                          ) : (
+                            <FoodIconBadge name={item.nombre} size="md" />
+                          );
+                        })()}
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
+                          
+                          {/* Resumen de Bebida o Acompañante de Combo */}
+                          {item.observaciones && item.observaciones.toLowerCase().includes("bebida") && (
+                            <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-bold block mt-0.5">
+                              🥤 {item.observaciones.split("•").find(s => s.toLowerCase().includes("bebida"))?.trim() || item.observaciones}
+                            </span>
+                          )}
                           
                           {/* Badge de Promoción / Evento cerrado */}
                           {isPromoEvent && (

@@ -62,14 +62,72 @@ export const getAdicionDisplayImage = (ad) => {
   return FALLBACK_ADICION_IMAGES.default;
 };
 
+export const OFFICIAL_DRINK_IMAGES = {
+  coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
+  coca_cola_light: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png",
+  manzana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135903/lhmojjdrn1bzp3dsz47f.png",
+  pepsi: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135953/upv7fsv9osr2f7ap6cbn.png",
+  colombiana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png",
+  sprite: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136141/cpxa3npdfd0lyxjizicy.png",
+  quatro: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342730/tqchagzkgl2z1jckvyrb.png",
+  agua: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342838/pj5qlfpmxeddkkmjauyw.png",
+  uva: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790137310/fxidthj8xu1nuvp0khfo.png",
+  naranja: "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png"
+};
+
+export const resolveDrinkImage = (item) => {
+  if (!item) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/images/"))) {
+    return item.imagen;
+  }
+  const name = String(item.nombre || item || "").toLowerCase();
+  if (name.includes("coca") && (name.includes("sin az") || name.includes("light") || name.includes("zero"))) {
+    return OFFICIAL_DRINK_IMAGES.coca_cola_light;
+  }
+  if (name.includes("coca")) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (name.includes("manzana")) return OFFICIAL_DRINK_IMAGES.manzana;
+  if (name.includes("pepsi")) return OFFICIAL_DRINK_IMAGES.pepsi;
+  if (name.includes("colombiana")) return OFFICIAL_DRINK_IMAGES.colombiana;
+  if (name.includes("sprite")) return OFFICIAL_DRINK_IMAGES.sprite;
+  if (name.includes("quatro") || name.includes("cuatro")) return OFFICIAL_DRINK_IMAGES.quatro;
+  if (name.includes("agua") || name.includes("cristal")) return OFFICIAL_DRINK_IMAGES.agua;
+  if (name.includes("uva")) return OFFICIAL_DRINK_IMAGES.uva;
+  if (name.includes("naranja")) return OFFICIAL_DRINK_IMAGES.naranja;
+  return OFFICIAL_DRINK_IMAGES.coca_cola;
+};
+
 export const isDrinkProduct = (item) => {
   if (!item) return false;
-  const catId = item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria;
-  if (catId === 4 || catId === "4") return true;
-  const name = String(item.nombre || "").toLowerCase();
+  const catId = Number(item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria);
   const catName = String(item.categoriaNombre || item.categoria?.nombre || (typeof item.categoria === "string" ? item.categoria : "") || "").toLowerCase();
+  const name = String(item.nombre || "").toLowerCase();
   const tipo = String(item.tipo || "").toLowerCase();
+
+  // EXCLUSIÓN ESTRICTA: Platos fuertes, combos, hamburguesas, perros y papas NUNCA son bebidas simples
+  if (
+    catId === 1 || // Hamburguesas
+    catId === 2 || // Perros Calientes
+    catId === 3 || // Salchipapas Gourmet
+    catId === 5 || // Combos
+    catName.includes("hamburguesa") ||
+    catName.includes("combo") ||
+    catName.includes("perro") ||
+    catName.includes("salchipapa") ||
+    catName.includes("acompañamiento") ||
+    name.includes("hamburguesa") ||
+    name.includes("burger") ||
+    name.includes("combo") ||
+    name.includes("perro") ||
+    name.includes("salchipapa") ||
+    name.includes("papas con") ||
+    tipo === "combo" ||
+    tipo === "plato fuerte"
+  ) {
+    return false;
+  }
+
   return (
+    catId === 4 ||
     tipo === "bebida" ||
     catName.includes("bebida") ||
     catName.includes("gaseosa") ||
@@ -1472,7 +1530,7 @@ export function FastFoodProductModal({
             nombre: drink.nombre,
             precio: Number(drink.precio || 0),
             cantidad: 1,
-            imagen: drink.imagen || "drink",
+            imagen: resolveDrinkImage(drink),
             stock: Number(drink.stock !== undefined ? drink.stock : 30)
           }
         ];
@@ -2793,20 +2851,7 @@ export function FastFoodProductModal({
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
                           {(() => {
-                            let imgUrl = null;
-                            if (drink.imagen && typeof drink.imagen === "string" && (drink.imagen.startsWith("http") || drink.imagen.startsWith("/") || drink.imagen.startsWith("data:"))) {
-                              imgUrl = drink.imagen;
-                            } else {
-                              const n = String(drink.nombre || "").toLowerCase();
-                              if (n.includes("naranja")) imgUrl = "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";
-                              else if (n.includes("uva")) imgUrl = "/images/drinks/uva_postobon-removebg-preview.png";
-                              else if (n.includes("manzana")) imgUrl = "/images/drinks/manzana_400ml-removebg-preview.png";
-                              else if (n.includes("colombiana")) imgUrl = "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
-                              else if (n.includes("coca")) imgUrl = "/images/drinks/coca_cola-removebg-preview.png";
-                              else if (n.includes("pepsi")) imgUrl = "/images/drinks/pepsi_400ml-removebg-preview.png";
-                              else if (n.includes("sprite")) imgUrl = "/images/drinks/sprite-removebg-preview.png";
-                              else if (n.includes("quatro") || n.includes("cuatro")) imgUrl = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
-                            }
+                            const imgUrl = resolveDrinkImage(drink);
                             return imgUrl ? (
                               <img
                                 src={imgUrl}

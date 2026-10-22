@@ -18,32 +18,55 @@ export function ResetPassword() {
   const [submitted, setSubmitted] = useState(false);
 
   const token = searchParams.get("token");
-  const email = searchParams.get("email");
+  let emailParam = searchParams.get("email");
+
+  // Fallback: Si no viene email en query params, extraerlo del payload JWT del token
+  if (!emailParam && token) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload?.email) {
+          emailParam = payload.email;
+        }
+      }
+    } catch {
+      // Ignorar fallback si falla el atob
+    }
+  }
+
+  const email = emailParam ? decodeURIComponent(emailParam) : "";
 
   useEffect(() => {
-    if (!token || !email) {
+    if (!token) {
       toast.error("Enlace inválido", "El enlace de recuperación no es válido");
       setTimeout(() => navigate("/login"), 2000);
     }
-  }, [token, email, navigate, toast]);
+  }, [token, navigate, toast]);
 
-  const errorNueva = (touched.nueva || submitted) ? validateContrasena(nuevaContraseña, 6) : "";
-  const errorConfirmar = (touched.confirmar || submitted)
-    ? validateConfirmarContrasena(nuevaContraseña, confirmarContraseña)
-    : "";
+  const valNueva = validateContrasena(nuevaContraseña, 6);
+  const valConfirmar = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
+
+  const errorNueva = (touched.nueva || submitted) && !valNueva.isValid ? valNueva.error : "";
+  const errorConfirmar = (touched.confirmar || submitted) && !valConfirmar.isValid ? valConfirmar.error : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
     setTouched({ nueva: true, confirmar: true });
 
-    const errPass = validateContrasena(nuevaContraseña, 6);
-    const errConf = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
+    const checkPass = validateContrasena(nuevaContraseña, 6);
+    const checkConf = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
 
-    if (errPass || errConf) {
-      toast.error("Campos requeridos", errPass || errConf);
+    if (!checkPass.isValid) {
+      toast.error("Campos requeridos", checkPass.error);
       return;
     }
+    if (!checkConf.isValid) {
+      toast.error("Campos requeridos", checkConf.error);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -52,7 +75,7 @@ export function ResetPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          email: decodeURIComponent(email),
+          email: email || undefined,
           contrasena: nuevaContraseña
         })
       });
@@ -76,7 +99,7 @@ export function ResetPassword() {
     }
   };
 
-  if (!token || !email) {
+  if (!token) {
     return null;
   }
 
@@ -114,12 +137,20 @@ export function ResetPassword() {
               <h1 className="text-3xl font-bold text-center text-gray-800 mb-3">
                 Restablecer Contraseña
               </h1>
-              <p className="text-center text-gray-600 mb-2">
-                Restableciendo contraseña para:
-              </p>
-              <p className="text-center font-semibold text-red-600 mb-6">
-                {decodeURIComponent(email)}
-              </p>
+              {email ? (
+                <>
+                  <p className="text-center text-gray-600 mb-2">
+                    Restableciendo contraseña para:
+                  </p>
+                  <p className="text-center font-semibold text-red-600 mb-6">
+                    {email}
+                  </p>
+                </>
+              ) : (
+                <p className="text-center text-gray-600 mb-6">
+                  Ingresa tu nueva contraseña para continuar
+                </p>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
