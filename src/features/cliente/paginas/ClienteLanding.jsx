@@ -1417,19 +1417,14 @@ export function ClienteLanding() {
       }))
     };
 
-    const res = addToCart(itemToAdd);
-    if (res && res.success === false) {
-      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-      return;
-    }
-
-    // Agregar al carrito cualquier bebida seleccionada como producto independiente
+    const itemsToBatch = [itemToAdd];
     const bebidasToAdd = productoSeleccionado.bebidasSeleccionadas || [];
     let bebidasCount = 0;
     for (const b of bebidasToAdd) {
-      const bRes = addToCart({
+      itemsToBatch.push({
         id: b.id || b.idProducto,
         idProducto: b.idProducto || b.id,
+        idVariante: b.idVariante || b.id || b.idProducto,
         nombre: b.nombre,
         precio: Number(b.precio),
         cantidad: Number(b.cantidad) || 1,
@@ -1437,9 +1432,13 @@ export function ClienteLanding() {
         imagen: resolveDrinkImage(b),
         adiciones: []
       });
-      if (!bRes || bRes.success !== false) {
-        bebidasCount += (Number(b.cantidad) || 1);
-      }
+      bebidasCount += (Number(b.cantidad) || 1);
+    }
+
+    const res = addToCart(itemsToBatch);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
     }
 
     setShowProductModal(false);
@@ -1495,12 +1494,7 @@ export function ClienteLanding() {
       }))
     };
 
-    const res = addToCart(itemToAdd);
-    if (res && res.success === false) {
-      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-      return;
-    }
-
+    const itemsToBatch = [itemToAdd];
     let bebidasCount = 0;
     let comboCfg = producto.configuracionCombo;
     if (typeof comboCfg === "string") {
@@ -1519,9 +1513,10 @@ export function ClienteLanding() {
 
         // Solo cobrar en carrito si es producto estándar o bebidas extra por encima del combo
         if (!isComboProd || extraQty > 0) {
-          const bRes = addToCart({
+          itemsToBatch.push({
             id: b.id || b.idProducto,
             idProducto: b.idProducto || b.id,
+            idVariante: b.idVariante || b.id || b.idProducto,
             nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
             precio: Number(b.precio),
             cantidad: isComboProd ? extraQty : qty,
@@ -1529,11 +1524,15 @@ export function ClienteLanding() {
             imagen: resolveDrinkImage(b),
             adiciones: []
           });
-          if (!bRes || bRes.success !== false) {
-            bebidasCount += (isComboProd ? extraQty : qty);
-          }
+          bebidasCount += (isComboProd ? extraQty : qty);
         }
       }
+    }
+
+    const res = addToCart(itemsToBatch);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
     }
 
     setShowProductModal(false);
@@ -3172,23 +3171,28 @@ export function ClienteLanding() {
               setShowResenasModal(true);
             }}
             onAddToCart={(item, selectedDrinks = []) => {
-              const res = addToCart(item);
+              const itemsToBatch = [item];
+              if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
+                for (const b of selectedDrinks) {
+                  itemsToBatch.push({
+                    id: b.id || b.idProducto,
+                    idProducto: b.idProducto || b.id,
+                    idVariante: b.idVariante || b.id || b.idProducto,
+                    nombre: b.nombre,
+                    precio: Number(b.precio || 0),
+                    cantidad: Number(b.cantidad || 1),
+                    stock: Number(b.stock !== undefined ? b.stock : 30),
+                    imagen: resolveDrinkImage(b),
+                    esBebida: true,
+                    categoria: "Bebidas",
+                    adiciones: []
+                  });
+                }
+              }
+              const res = addToCart(itemsToBatch);
               if (res && res.success === false) {
                 error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
                 return;
-              }
-              if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
-                for (const b of selectedDrinks) {
-                  addToCart({
-                    id: b.id || b.idProducto,
-                    idProducto: b.idProducto || b.id,
-                    nombre: b.nombre,
-                    precio: Number(b.precio || 0),
-                    cantidad: 1,
-                    esBebida: true,
-                    categoria: "Bebidas"
-                  });
-                }
               }
               const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
               success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
