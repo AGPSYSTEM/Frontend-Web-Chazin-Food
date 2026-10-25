@@ -26,8 +26,9 @@ import {
   IconServingCloche,
   IconBaconStrip
 } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
+import { calculateCountdown } from "@/shared/utils/dateUtils";
 
 // Paleta de color unificada premium gastronómica para la sección de eventos (Color Chazin Red/Amber)
 const UNIFIED_EVENT_THEME = {
@@ -200,7 +201,7 @@ export const getEventThemeAndTag = (event, index) => {
 export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({ dias: 2, horas: 14, minutos: 42, segundos: 30 });
+  const [currentTick, setCurrentTick] = useState(() => Date.now());
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -362,50 +363,28 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
 
   const totalSlides = combinedEventos.length;
 
-  // Autoplay continuo mediante temporizador limpio (sin re-renders de 60fps en CPU)
+  // Autoplay continuo mediante temporizador limpio
   useEffect(() => {
     if (totalSlides <= 1 || isPaused) return;
 
-    let timer;
-    const startDelay = setTimeout(() => {
-      timer = setInterval(() => {
-        if (!document.hidden) {
-          setCurrentIndex((prev) => (prev + 1) % totalSlides);
-        }
-      }, slideDuration);
-    }, 8000);
+    const timer = setInterval(() => {
+      if (!document.hidden) {
+        setCurrentIndex((prev) => (prev + 1) % totalSlides);
+      }
+    }, slideDuration);
 
-    return () => {
-      clearTimeout(startDelay);
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [totalSlides, isPaused, slideDuration]);
 
-  // Reloj de cuenta regresiva en vivo (arranque diferido para liberar hilo principal en carga inicial)
+  // Reloj de cuenta regresiva en vivo (descuenta segundo a segundo con precisión absoluta sin demoras)
   useEffect(() => {
-    let timer;
-    const startDelay = setTimeout(() => {
-      timer = setInterval(() => {
-        if (document.hidden) return;
-        setTimeLeft((prev) => {
-          if (prev.segundos > 0) {
-            return { ...prev, segundos: prev.segundos - 1 };
-          } else if (prev.minutos > 0) {
-            return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
-          } else if (prev.horas > 0) {
-            return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
-          } else if (prev.dias > 0) {
-            return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
-          }
-          return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
-        });
-      }, 1000);
-    }, 8000);
+    const timer = setInterval(() => {
+      if (!document.hidden) {
+        setCurrentTick(Date.now());
+      }
+    }, 1000);
 
-    return () => {
-      clearTimeout(startDelay);
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // Navegación fluida por teclado
@@ -612,7 +591,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${theme.badgeBg}`}
                       >
                         <Zap className="w-3.5 h-3.5 fill-current" />
-                        <span>{evt.tipoEvento || "Evento Activo"}</span>
+                        <span>{formatTipoEvento(evt.tipoEvento) || "Evento Activo"}</span>
                       </span>
 
                       {/* Píldora de Calificación Real o Sin Reseñas (Ancho estable min-w-[88px] para 0 CLS) */}
@@ -644,23 +623,35 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta de Promoción (Ítem #2) */}
                       {(() => {
                         const evtTimeLeft = (() => {
-                          if (!evt.fechaFin) return timeLeft;
-                          const diff = new Date(evt.fechaFin).getTime() - Date.now();
-                          if (diff <= 0) return { dias: 0, horas: 0, minutos: 0, segundos: 0 };
+                          if (evt.fechaFin) {
+                            return calculateCountdown(evt.fechaFin, currentTick);
+                          }
+                          // Descuento en vivo cíclico de 48 horas si el evento es genérico
+                          const fallbackBase = Math.floor(currentTick / 1000);
+                          const diffSec = Math.max(0, (48 * 3600) - (fallbackBase % (48 * 3600)));
                           return {
-                            dias: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                            horas: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                            minutos: Math.floor((diff / 1000 / 60) % 60),
-                            segundos: Math.floor((diff / 1000) % 60)
+                            dias: Math.floor(diffSec / 86400),
+                            horas: Math.floor((diffSec % 86400) / 3600),
+                            minutos: Math.floor((diffSec % 3600) / 60),
+                            segundos: diffSec % 60,
+                            expirado: false
                           };
                         })();
 
                         return (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-black/60 backdrop-blur-md text-amber-300 border border-amber-400/40 shadow-md shrink-0">
-                            <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                            <span className="text-[10.5px] font-bold text-gray-200">Termina en:</span>
-                            <span className="font-mono font-black text-amber-300">
-                              {String(evtTimeLeft.dias).padStart(2, "0")}d : {String(evtTimeLeft.horas).padStart(2, "0")}h : {String(evtTimeLeft.minutos).padStart(2, "0")}m : {String(evtTimeLeft.segundos).padStart(2, "0")}s
+                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black backdrop-blur-md border shadow-md shrink-0 ${
+                            evtTimeLeft.expirado
+                              ? "bg-rose-950/80 text-rose-300 border-rose-500/40"
+                              : "bg-black/60 text-amber-300 border-amber-400/40"
+                          }`}>
+                            <Clock className={`w-3.5 h-3.5 ${evtTimeLeft.expirado ? "text-rose-400" : "text-amber-400 animate-pulse"}`} />
+                            <span className="text-[10.5px] font-bold text-gray-200">
+                              {evtTimeLeft.expirado ? "Estado:" : "Termina en:"}
+                            </span>
+                            <span className={`font-mono font-black ${evtTimeLeft.expirado ? "text-rose-300" : "text-amber-300"}`}>
+                              {evtTimeLeft.expirado
+                                ? "¡Finalizado!"
+                                : `${String(evtTimeLeft.dias).padStart(2, "0")}d : ${String(evtTimeLeft.horas).padStart(2, "0")}h : ${String(evtTimeLeft.minutos).padStart(2, "0")}m : ${String(evtTimeLeft.segundos).padStart(2, "0")}s`}
                             </span>
                           </div>
                         );
@@ -695,7 +686,9 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       </div>
 
                       <p className="text-xs sm:text-sm text-gray-200/90 leading-relaxed font-normal max-w-xl line-clamp-2 sm:line-clamp-3">
-                        {evt.descripcion}
+                        {evt.descripcion && !/^(test|prueba|asdf)$/i.test(evt.descripcion.trim())
+                          ? evt.descripcion
+                          : "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta de la casa."}
                       </p>
 
                       {/* Comparativa de precio */}
@@ -862,7 +855,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                 <FoodIcon name={evt.icono || "burger"} size={16} />
               )}
               <span className="truncate max-w-[150px] sm:max-w-[200px] whitespace-nowrap">{cleanName}</span>
-              {evt.descuento && (
+              {Number(evt.descuento) > 0 && (
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
                     isSelected

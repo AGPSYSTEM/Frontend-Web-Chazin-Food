@@ -54,6 +54,11 @@ export async function apiFetch(endpoint, options = {}) {
       try {
         localStorage.removeItem('chazin_user');
       } catch (_) {}
+      setTimeout(() => {
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }, 1800);
     }
     let errorMessage = `HTTP error ${response.status}`;
     let parsedErrorData = null;
@@ -74,6 +79,14 @@ export async function apiFetch(endpoint, options = {}) {
     } catch {
       // JSON parse error, use default message
     }
+
+    // Mensaje coherente y amigable cuando la sesión se cerró o el token expiró
+    if (response.status === 401 && !isLoginEndpoint) {
+      if (!errorMessage || errorMessage.toLowerCase().includes('token') || errorMessage === `HTTP error ${response.status}`) {
+        errorMessage = 'Tu sesión ha expirado o has cerrado sesión. Por favor ingresa nuevamente.';
+      }
+    }
+
     const error = new Error(errorMessage);
     error.status = response.status;
     if (parsedErrorData) error.data = parsedErrorData;

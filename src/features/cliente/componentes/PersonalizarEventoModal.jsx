@@ -24,7 +24,7 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 
 const QUICK_KITCHEN_TAGS = [
   "Salsas aparte",
@@ -533,7 +533,7 @@ export function PersonalizarEventoModal({
             <FoodIcon name={evento.icono || "party"} size={16} className="shrink-0 animate-pulse" />
             <span className="truncate">{stripEmojis(evento.nombreEvento || evento.nombre || "Promoción Especial")}</span>
             <span className="hidden sm:inline-flex bg-white/20 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
-              {evento.tipoEvento || "EVENTO ESPECIAL"}
+              {formatTipoEvento(evento.tipoEvento) || "EVENTO ESPECIAL"}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-200 shrink-0">
@@ -606,7 +606,7 @@ export function PersonalizarEventoModal({
                 <span>
                   {evento.tipoEvento === "Descuento"
                     ? `-${evento.descuento}% OFF`
-                    : evento.tipoEvento || "Promoción Especial"}
+                    : formatTipoEvento(evento.tipoEvento) || "Promoción Especial"}
                 </span>
               </span>
             </div>
@@ -755,7 +755,9 @@ export function PersonalizarEventoModal({
                 )}
               </div>
               <p className="text-xs sm:text-sm text-red-900/90 dark:text-red-200 leading-relaxed font-medium">
-                {evento.descripcion || "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta cerrada de la casa."}
+                {evento.descripcion && !/^(test|prueba|asdf)$/i.test(evento.descripcion.trim())
+                  ? evento.descripcion
+                  : "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta de la casa."}
               </p>
             </div>
           </div>

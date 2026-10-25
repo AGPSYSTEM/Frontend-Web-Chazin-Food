@@ -36,6 +36,8 @@ export const getActiveProductEvent = (producto) => {
   );
 };
 
+export const getActiveEvent = getActiveProductEvent;
+
 export function ProductosTable({
   productos = [],
   onEdit,
@@ -148,30 +150,36 @@ export function ProductosTable({
                         </div>
                       )}
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {p.nombre}
-                          </span>
-                          {p.eventos && p.eventos.length > 0 && (
-                            <EventBadge event={p.eventos[0]} product={p} variant="pill" className="text-[10px] py-0.5" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
-                          <span>{p.codigo || `PRD-${p.id}`}</span>
-                          {p.eventos && p.eventos.length > 0 && (() => {
-                            const evt = p.eventos[0];
-                            if (evt.tipoEvento === "Descuento" && evt.descuento) {
-                              return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(evt.descuento)}% OFF)</span>;
-                            }
-                            if (evt.tipoEvento === "Promoción Precio" && evt.nuevoPrecio) {
-                              return <span className="text-orange-600 dark:text-orange-400 font-bold">(Promo: ${Number(evt.nuevoPrecio).toLocaleString("es-CO")})</span>;
-                            }
-                            if (evt.tipoEvento === "Añadir Insumos") {
-                              return <span className="text-amber-600 dark:text-amber-400 font-bold">(Insumos extra)</span>;
-                            }
-                            return null;
-                          })()}
-                        </div>
+                        {(() => {
+                          const activeEvt = getActiveEvent(p);
+                          return (
+                            <>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                  {p.nombre}
+                                </span>
+                                {activeEvt && (
+                                  <EventBadge event={activeEvt} product={p} variant="pill" className="text-[10px] py-0.5" />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
+                                <span>{p.codigo || `PRD-${p.id}`}</span>
+                                {activeEvt && (() => {
+                                  if (activeEvt.tipoEvento === "Descuento" && activeEvt.descuento) {
+                                    return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(activeEvt.descuento)}% OFF)</span>;
+                                  }
+                                  if (activeEvt.tipoEvento === "Promoción Precio" && activeEvt.nuevoPrecio) {
+                                    return <span className="text-orange-600 dark:text-orange-400 font-bold">(Promo: ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")})</span>;
+                                  }
+                                  if (activeEvt.tipoEvento === "Añadir Insumos" || String(activeEvt.tipoEvento).toLowerCase().includes("insumo") || String(activeEvt.tipoEvento).toLowerCase().includes("topping")) {
+                                    return <span className="text-amber-600 dark:text-amber-400 font-bold">(Topping extra)</span>;
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </td>
@@ -182,10 +190,12 @@ export function ProductosTable({
                     </span>
                   </td>
                   <td className="px-5 py-2.5 font-bold text-gray-900 dark:text-gray-100">
-                    {p.eventos && p.eventos.length > 0 && (() => {
-                      const evtDesc = p.eventos.find(e => e.tipoEvento === "Descuento");
-                      const evtPrecio = p.eventos.find(e => e.tipoEvento === "Promoción Precio");
-                      if (evtPrecio && evtPrecio.nuevoPrecio) {
+                    {(() => {
+                      const activeEvt = getActiveEvent(p);
+                      if (!activeEvt) {
+                        return <span>${Number(p.precio || 0).toLocaleString("es-CO")}</span>;
+                      }
+                      if (activeEvt.nuevoPrecio && Number(activeEvt.nuevoPrecio) > 0) {
                         return (
                           <div>
                             <span className="text-xs text-gray-400 line-through block font-normal">
@@ -193,27 +203,27 @@ export function ProductosTable({
                             </span>
                             <span className="font-extrabold text-orange-600 dark:text-orange-400 text-sm flex items-center gap-1">
                               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                              ${Number(evtPrecio.nuevoPrecio).toLocaleString("es-CO")}
+                              ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")}
                             </span>
                           </div>
                         );
                       }
-                      if (evtDesc && evtDesc.descuento) {
-                        const finalP = Number(p.precio || 0) * (1 - Number(evtDesc.descuento) / 100);
+                      if (activeEvt.descuento && Number(activeEvt.descuento) > 0) {
+                        const finalP = Number(p.precio || 0) * (1 - Number(activeEvt.descuento) / 100);
                         return (
                           <div>
                             <span className="text-xs text-gray-400 line-through block font-normal">
                               ${Number(p.precio || 0).toLocaleString("es-CO")}
                             </span>
                             <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
-                              <Zap className="w-3.5 h-3.5" />
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                               ${Math.round(finalP).toLocaleString("es-CO")}
                             </span>
                           </div>
                         );
                       }
-                      return `$${Number(p.precio || 0).toLocaleString("es-CO")}`;
-                    })() || `$${Number(p.precio || 0).toLocaleString("es-CO")}`}
+                      return <span>${Number(p.precio || 0).toLocaleString("es-CO")}</span>;
+                    })()}
                   </td>
                   <td className="px-5 py-2.5">
                     {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (

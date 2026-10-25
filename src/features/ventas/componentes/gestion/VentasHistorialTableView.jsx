@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Globe, Store } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 import FoodIcon from "@/shared/components/ui/FoodIcon";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
@@ -232,7 +233,7 @@ export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado 
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5 font-mono">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      <span>{v.horario || "12:30 – 12:48"}</span>
+                      <span>{formatTime12h(v.horario || v.fecha || v.fechaVenta, "12:30 PM")}</span>
                     </div>
                   </td>
 

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 import { ventasService } from "../../servicios/ventasService";
 
 /**
@@ -215,8 +216,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
       fecha = String(venta.fecha || venta.fechaVenta).slice(0, 10);
     }
   }
-  if (venta.horario && !venta.horario.includes("–")) {
-    horario = venta.horario;
+  if (venta.horario) {
+    horario = formatTime12h(venta.horario, horario);
+  } else {
+    horario = formatTime12h(horario);
   }
 
   const metodoPago = obsMeta.metodoPago || venta.metodoPago || "Efectivo";

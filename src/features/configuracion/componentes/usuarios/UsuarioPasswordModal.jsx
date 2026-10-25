@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { validateContrasena, validateConfirmarContrasena } from "@/shared/utils/validationUtils";
+import { X, Lock, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { validateContrasena, validateConfirmarContrasena, getPasswordCriteria } from "@/shared/utils/validationUtils";
 
 const baseInputCls = "w-full px-4 py-3 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
@@ -26,6 +26,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
 
   const handlePasswordChange = (val) => {
     setPassword(val);
+    setTouched((prev) => ({ ...prev, password: true }));
     const passErr = validateContrasena(val, 8, "contraseña");
     setErrors((prev) => {
       const next = { ...prev, password: passErr.isValid ? "" : passErr.error };
@@ -39,6 +40,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
 
   const handleConfirmChange = (val) => {
     setConfirmPassword(val);
+    setTouched((prev) => ({ ...prev, confirmPassword: true }));
     const confErr = validateConfirmarContrasena(password, val);
     setErrors((prev) => ({
       ...prev,
@@ -85,8 +87,13 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
   };
 
   const getInputCls = (field) => {
-    if (touched[field] && errors[field]) {
+    const val = field === "password" ? password : confirmPassword;
+    const hasValue = val && val.length > 0;
+    if ((touched[field] || hasValue) && errors[field]) {
       return `${baseInputCls} border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300`;
+    }
+    if ((touched[field] || hasValue) && !errors[field] && hasValue) {
+      return `${baseInputCls} border-emerald-400/80 bg-emerald-50/15 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/40 dark:border-emerald-600 dark:bg-emerald-950/10`;
     }
     return `${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent`;
   };
@@ -122,7 +129,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 pt-3 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 pt-3 space-y-4" noValidate autoComplete="off">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -137,7 +144,8 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                 <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPasswords ? "text" : "password"}
-                  required
+                  autoComplete="new-password"
+                  name="modal_new_password"
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   onBlur={() => handleBlur("password")}
@@ -145,11 +153,41 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                   placeholder="••••••••"
                 />
               </div>
-              {touched.password && errors.password && (
+              {(touched.password || password) && errors.password && (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.password}</span>
                 </p>
+              )}
+
+              {/* Checklist en vivo de requisitos */}
+              {(touched.password || password) && (
+                <div className="mt-2 space-y-1 bg-purple-50/50 dark:bg-purple-950/20 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900/50 text-[10.5px]">
+                  <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Requisitos de contraseña:</p>
+                  {(() => {
+                    const crit = getPasswordCriteria(password, 8);
+                    return (
+                      <div className="grid grid-cols-2 gap-1 font-medium">
+                        <span className={`flex items-center gap-1 ${crit.hasLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                          <CheckCircle2 className={`w-3 h-3 ${crit.hasLength ? "text-emerald-500" : "text-gray-300"}`} />
+                          Mín. 8 caracteres
+                        </span>
+                        <span className={`flex items-center gap-1 ${crit.hasUpper ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                          <CheckCircle2 className={`w-3 h-3 ${crit.hasUpper ? "text-emerald-500" : "text-gray-300"}`} />
+                          1 Mayúscula
+                        </span>
+                        <span className={`flex items-center gap-1 ${crit.hasLower ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                          <CheckCircle2 className={`w-3 h-3 ${crit.hasLower ? "text-emerald-500" : "text-gray-300"}`} />
+                          1 Minúscula
+                        </span>
+                        <span className={`flex items-center gap-1 ${crit.hasNumber ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                          <CheckCircle2 className={`w-3 h-3 ${crit.hasNumber ? "text-emerald-500" : "text-gray-300"}`} />
+                          1 Número
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
               )}
             </div>
 
@@ -159,7 +197,8 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                 <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPasswords ? "text" : "password"}
-                  required
+                  autoComplete="new-password"
+                  name="modal_confirm_password"
                   value={confirmPassword}
                   onChange={(e) => handleConfirmChange(e.target.value)}
                   onBlur={() => handleBlur("confirmPassword")}
@@ -167,11 +206,25 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                   placeholder="Repite tu contraseña"
                 />
               </div>
-              {touched.confirmPassword && errors.confirmPassword && (
-                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{errors.confirmPassword}</span>
-                </p>
+              {(touched.confirmPassword || confirmPassword) && (
+                confirmPassword ? (
+                  password === confirmPassword ? (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Las contraseñas coinciden</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Las contraseñas no coinciden</span>
+                    </p>
+                  )
+                ) : errors.confirmPassword ? (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{errors.confirmPassword}</span>
+                  </p>
+                ) : null
               )}
             </div>
           </div>

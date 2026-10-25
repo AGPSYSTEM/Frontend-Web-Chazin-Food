@@ -24,6 +24,7 @@ import { VentasReportesView } from "../componentes/gestion/VentasReportesView";
 import { VentaDetalleModal } from "../componentes/gestion/VentaDetalleModal";
 import { VentasBuscadorMulticriterio } from "../componentes/gestion/VentasBuscadorMulticriterio";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 
 export function GestionVentas() {
   const navigate = useNavigate();
@@ -161,7 +162,7 @@ export function GestionVentas() {
         </head>
         <body>
           <h1>Chazin Food — Historial de Pedidos</h1>
-          <h2>Período: ${periodText} | Registros: ${filteredVentas.length} | Generado el: ${new Date().toLocaleDateString("es-CO")} ${new Date().toLocaleTimeString("es-CO")}</h2>
+          <h2>Período: ${periodText} | Registros: ${filteredVentas.length} | Generado el: ${new Date().toLocaleDateString("es-CO")} ${new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</h2>
           <table>
             <thead>
               <tr>
@@ -179,7 +180,7 @@ export function GestionVentas() {
                 <tr>
                   <td><strong>${v.numeroVenta || v.codigoPedido || `PED-${String(v.id).padStart(3, "0")}`}</strong></td>
                   <td>${v.clienteNombre || v.cliente || "Cliente General"}</td>
-                  <td>${v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"} (${v.horario || "13:45"})</td>
+                  <td>${v.fecha ? new Date(v.fecha).toISOString().split("T")[0] : "2026-08-06"} (${formatTime12h(v.horario || v.fecha, "12:30 PM")})</td>
                   <td>${v.tipoEntrega || "En Mesa"}</td>
                   <td>${v.metodoPago || "Efectivo"}</td>
                   <td><strong>$${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}</strong></td>

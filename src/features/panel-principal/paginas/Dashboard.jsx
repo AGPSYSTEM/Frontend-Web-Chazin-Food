@@ -30,6 +30,7 @@ import {
   Cell
 } from "recharts";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 
 function StatVariation({ value, label = "vs mes anterior" }) {
   const num = Number(value || 0);
@@ -245,7 +246,7 @@ export function Dashboard() {
                 Total de ventas (COP)
               </span>
               <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")}
+                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} COP
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -268,7 +269,7 @@ export function Dashboard() {
                 Ventas del Período (COP)
               </span>
               <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")}
+                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} COP
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-green-100/80 dark:bg-green-950/50 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -419,7 +420,7 @@ export function Dashboard() {
                   ...p,
                   nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
                 }))}
-                margin={{ top: 5, right: 25, left: 20, bottom: 25 }}
+                margin={{ top: 10, right: 25, left: 25, bottom: 30 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "#374151" : "#f1f5f9"} />
                 {/* Eje X Etiquetado claramente (Ítem 32) */}
@@ -429,7 +430,7 @@ export function Dashboard() {
                   label={{
                     value: "Cantidad de unidades vendidas",
                     position: "insideBottom",
-                    offset: -12,
+                    offset: -16,
                     fill: axisColorMuted,
                     fontSize: 11,
                     fontWeight: 600
@@ -447,7 +448,7 @@ export function Dashboard() {
                     value: "Productos",
                     angle: -90,
                     position: "insideLeft",
-                    offset: -5,
+                    offset: -8,
                     fill: axisColorMuted,
                     fontSize: 11,
                     fontWeight: 600
@@ -558,13 +559,13 @@ export function Dashboard() {
                   : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50";
 
                 const formatHoraDynamic = (dateStr, fallback) => {
-                  if (fallback) return fallback;
+                  if (fallback) return formatTime12h(fallback);
                   if (!dateStr) return "Reciente";
                   const d = new Date(dateStr);
-                  return isNaN(d.getTime()) ? dateStr : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+                  return isNaN(d.getTime()) ? formatTime12h(dateStr) : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
                 };
 
-                const horaEstado = venta.horaEstado || formatHoraDynamic(venta.fechaVenta || venta.fecha, venta.horario);
+                const horaEstado = formatTime12h(venta.horaEstado || formatHoraDynamic(venta.fechaVenta || venta.fecha, venta.horario));
 
                 return (
                   <div

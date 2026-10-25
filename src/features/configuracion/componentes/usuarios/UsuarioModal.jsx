@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Upload, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
+import { X, Upload, Eye, EyeOff, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   sanitizeTelefono,
   sanitizeDocumento,
@@ -10,10 +10,12 @@ import {
   validateEmail,
   validateContrasena,
   validateConfirmarContrasena,
+  getPasswordCriteria,
   formatNombreCompleto
 } from "@/shared/utils/validationUtils";
 
 const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-xs placeholder:text-gray-400 outline-none";
+const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 transition-colors text-xs placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
 
 export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesList = [] }) {
@@ -93,6 +95,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
   const handleFieldChange = (name, value) => {
     const updatedForm = { ...form, [name]: value };
     setForm(updatedForm);
+    setTouched((prev) => ({ ...prev, [name]: true }));
 
     const err = validateSingleField(name, value, updatedForm);
     setErrors((prev) => {
@@ -195,9 +198,14 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
   };
 
   const getInputClass = (fieldName) => {
-    const hasError = touched[fieldName] && errors[fieldName];
+    const hasValue = form[fieldName] && String(form[fieldName]).length > 0;
+    const hasError = (touched[fieldName] || hasValue) && errors[fieldName];
+    const isValid = (touched[fieldName] || hasValue) && !errors[fieldName] && hasValue;
     if (hasError) {
       return `${baseInputCls} border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300`;
+    }
+    if (isValid) {
+      return `${baseInputCls} border-emerald-400/80 bg-emerald-50/15 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/40 dark:border-emerald-600 dark:bg-emerald-950/10`;
     }
     return `${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent`;
   };
@@ -245,7 +253,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" noValidate autoComplete="off">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-800">
               {errorMsg}
@@ -283,10 +291,9 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   const newDoc = sanitizeDocumento(form.documento, newTipo);
                   const updated = { ...form, tipoDocumento: newTipo, documento: newDoc };
                   setForm(updated);
-                  if (touched.documento) {
-                    const err = validateSingleField("documento", newDoc, updated);
-                    setErrors((prev) => ({ ...prev, documento: err }));
-                  }
+                  setTouched((prev) => ({ ...prev, tipoDocumento: true, documento: true }));
+                  const err = validateSingleField("documento", newDoc, updated);
+                  setErrors((prev) => ({ ...prev, documento: err }));
                 }}
                 className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 cursor-pointer`}
               >
@@ -318,12 +325,17 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 className={getInputClass("documento")}
                 placeholder={docConfig.helper}
               />
-              {touched.documento && errors.documento && (
+              {(touched.documento || form.documento) && errors.documento ? (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.documento}</span>
                 </p>
-              )}
+              ) : form.documento && !errors.documento ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Documento válido</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -345,12 +357,17 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 className={getInputClass("nombre")}
                 placeholder="Ej: Juan Carlos"
               />
-              {touched.nombre && errors.nombre && (
+              {(touched.nombre || form.nombre) && errors.nombre ? (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.nombre}</span>
                 </p>
-              )}
+              ) : form.nombre && !errors.nombre ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Nombre válido</span>
+                </p>
+              ) : null}
             </div>
             <div>
               <label className={labelCls}>Apellidos</label>
@@ -367,12 +384,17 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 className={getInputClass("apellidos")}
                 placeholder="Ej: Pérez Gómez"
               />
-              {touched.apellidos && errors.apellidos && (
+              {(touched.apellidos || form.apellidos) && errors.apellidos ? (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.apellidos}</span>
                 </p>
-              )}
+              ) : form.apellidos && !errors.apellidos ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Apellido válido</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -383,18 +405,25 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               <input
                 type="email"
                 required
+                autoComplete="off"
+                name="new_user_email"
                 value={form.email}
                 onChange={(e) => handleFieldChange("email", e.target.value)}
                 onBlur={() => handleFieldBlur("email")}
                 className={getInputClass("email")}
                 placeholder="usuario@chazinfood.com"
               />
-              {touched.email && errors.email && (
+              {(touched.email || form.email) && errors.email ? (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.email}</span>
                 </p>
-              )}
+              ) : form.email && !errors.email ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Correo electrónico válido</span>
+                </p>
+              ) : null}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -416,12 +445,17 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 placeholder="3190000000"
                 inputMode="numeric"
               />
-              {touched.telefono && errors.telefono && (
+              {(touched.telefono || form.telefono) && errors.telefono ? (
                 <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.telefono}</span>
                 </p>
-              )}
+              ) : form.telefono && !errors.telefono ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Teléfono válido</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -497,6 +531,8 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                       <input
                         type={showPasswords ? "text" : "password"}
                         required
+                        autoComplete="new-password"
+                        name="new_user_password"
                         value={form.password}
                         onChange={(e) => handleFieldChange("password", e.target.value)}
                         onBlur={() => handleFieldBlur("password")}
@@ -504,11 +540,33 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                         placeholder="••••••••"
                       />
                     </div>
-                    {touched.password && errors.password && (
-                      <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{errors.password}</span>
-                      </p>
+                    {(touched.password || form.password) && (
+                      <div className="mt-2 space-y-1 bg-white/80 dark:bg-gray-900/80 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 text-[10.5px]">
+                        <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Requisitos de seguridad:</p>
+                        {(() => {
+                          const crit = getPasswordCriteria(form.password, 8);
+                          return (
+                            <div className="grid grid-cols-2 gap-1 font-medium">
+                              <span className={`flex items-center gap-1 ${crit.hasLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasLength ? "text-emerald-500" : "text-gray-300"}`} />
+                                Mín. 8 caracteres
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasUpper ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasUpper ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Mayúscula
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasLower ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasLower ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Minúscula
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasNumber ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasNumber ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Número
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     )}
                   </div>
                   <div>
@@ -518,6 +576,8 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                       <input
                         type={showPasswords ? "text" : "password"}
                         required
+                        autoComplete="new-password"
+                        name="new_user_confirm_password"
                         value={form.confirmPassword}
                         onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
                         onBlur={() => handleFieldBlur("confirmPassword")}
@@ -525,11 +585,20 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                         placeholder="Repite tu contraseña"
                       />
                     </div>
-                    {touched.confirmPassword && errors.confirmPassword && (
-                      <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{errors.confirmPassword}</span>
-                      </p>
+                    {(touched.confirmPassword || form.confirmPassword) && (
+                      form.confirmPassword ? (
+                        form.password === form.confirmPassword ? (
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span>Las contraseñas coinciden</span>
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>Las contraseñas no coinciden</span>
+                          </p>
+                        )
+                      ) : null
                     )}
                   </div>
                 </div>

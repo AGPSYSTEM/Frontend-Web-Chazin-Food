@@ -1334,8 +1334,21 @@ export function FastFoodProductModal({
     if (!producto) return null;
     const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
     if (eventos.length === 0) return null;
-    const evt = eventos.find((e) => e.estado === 1 || e.estado === "Activo") || eventos[0];
-    if (!evt) return null;
+    const now = new Date();
+    const validEvents = eventos.filter((e) => {
+      if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+      if (e.fechaFin) {
+        const finDate = new Date(`${e.fechaFin}T23:59:59`);
+        if (now > finDate) return false;
+      }
+      if (e.fechaInicio) {
+        const inicioDate = new Date(`${e.fechaInicio}T00:00:00`);
+        if (now < inicioDate) return false;
+      }
+      return true;
+    });
+    if (validEvents.length === 0) return null;
+    const evt = validEvents[0];
 
     const rawPrice = selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0
       ? Number(selectedVariant.precio)
@@ -1356,10 +1369,11 @@ export function FastFoodProductModal({
     let formattedDate = "";
     let diasRestantes = null;
     let horasRestantes = null;
+    let minutosRestantes = null;
+    let segundosRestantes = null;
     let urgente = false;
     let countdownLabel = "";
 
-    const now = new Date();
     if (evt.fechaFin) {
       try {
         const parts = String(evt.fechaFin).split('T')[0].split('-');
@@ -1372,13 +1386,18 @@ export function FastFoodProductModal({
         const ms = finDate.getTime() - now.getTime();
         diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
         horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+        minutosRestantes = Math.max(0, Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60)));
+        segundosRestantes = Math.max(0, Math.floor((ms % (1000 * 60)) / 1000));
         urgente = diasRestantes <= 3 && diasRestantes >= 0;
+
         countdownLabel = diasRestantes > 1
           ? `Quedan ${diasRestantes} días`
-          : diasRestantes === 1
-          ? `¡Último día! (${horasRestantes}h)`
-          : diasRestantes === 0
-          ? `¡Termina hoy!`
+          : horasRestantes > 0
+          ? `¡Último día! (${horasRestantes}h ${minutosRestantes}m)`
+          : minutosRestantes > 0
+          ? `¡Termina hoy! (${minutosRestantes}m ${segundosRestantes}s)`
+          : ms > 0
+          ? `¡Últimos segundos! (${segundosRestantes}s)`
           : `Edición Especial`;
       } catch (e) {}
     }
@@ -1931,8 +1950,8 @@ export function FastFoodProductModal({
                   ? "DESCUENTO DIRECTO"
                   : eventInfo.tipo === "Promoción Precio"
                   ? "PRECIO PROMOCIONAL"
-                  : eventInfo.tipo === "Añadir Insumos"
-                  ? "TOPPINGS ESPECIALES GRATIS"
+                  : (eventInfo.tipo === "Añadir Insumos" || String(eventInfo.tipo).toLowerCase().includes("topping") || String(eventInfo.tipo).toLowerCase().includes("insumo"))
+                  ? "TOPPING EXTRA GRATIS"
                   : eventInfo.tipo === "COMBO_ESPECIAL"
                   ? "COMBO FESTIVO"
                   : eventInfo.tipo === "PROMOCION_2X1"
@@ -2013,7 +2032,7 @@ export function FastFoodProductModal({
               {eventInfo && (
                 <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>{eventInfo.tipo === "Descuento" ? `-${eventInfo.discountPercent}% OFF` : eventInfo.tipo === "Promoción Precio" ? "Precio Promo" : eventInfo.tipo === "Añadir Insumos" ? "+ Toppings Gratis" : eventInfo.tipo === "COMBO_ESPECIAL" ? "Combo Festivo" : eventInfo.tipo === "PROMOCION_2X1" ? "Promo 2x1" : "Edición Especial"}</span>
+                  <span>{eventInfo.tipo === "Descuento" ? `-${eventInfo.discountPercent}% OFF` : eventInfo.tipo === "Promoción Precio" ? "Precio Promo" : (eventInfo.tipo === "Añadir Insumos" || String(eventInfo.tipo).toLowerCase().includes("topping") || String(eventInfo.tipo).toLowerCase().includes("insumo")) ? "+ Topping Extra" : eventInfo.tipo === "COMBO_ESPECIAL" ? "Combo Festivo" : eventInfo.tipo === "PROMOCION_2X1" ? "Promo 2x1" : "Edición Especial"}</span>
                 </span>
               )}
             </div>
@@ -2149,8 +2168,8 @@ export function FastFoodProductModal({
                           ? "DESCUENTO"
                           : eventInfo.tipo === "Promoción Precio"
                           ? "PRECIO ESPECIAL"
-                          : eventInfo.tipo === "Añadir Insumos"
-                          ? "TOPPINGS EXTRA GRATIS"
+                          : (eventInfo.tipo === "Añadir Insumos" || String(eventInfo.tipo).toLowerCase().includes("topping") || String(eventInfo.tipo).toLowerCase().includes("insumo"))
+                          ? "TOPPING EXTRA GRATIS"
                           : eventInfo.tipo === "COMBO_ESPECIAL"
                           ? "COMBO AHORRO"
                           : eventInfo.tipo === "PROMOCION_2X1"
@@ -2159,7 +2178,9 @@ export function FastFoodProductModal({
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-                      {eventInfo.descripcion || "Receta conmemorativa de edición limitada con precio y presentación especial."}
+                      {eventInfo.descripcion && !/^(test|prueba|asdf)$/i.test(eventInfo.descripcion.trim())
+                        ? eventInfo.descripcion
+                        : "Receta conmemorativa de edición limitada con precio y presentación especial."}
                     </p>
                   </div>
                 </div>
@@ -2167,7 +2188,7 @@ export function FastFoodProductModal({
 
               {/* Grid simétrico y perfectamente balanceado en altura */}
               <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-3 border-t border-amber-200/70 dark:border-amber-800/50">
-                {eventInfo.tipo === "Añadir Insumos" ? (
+                {(eventInfo.tipo === "Añadir Insumos" || String(eventInfo.tipo).toLowerCase().includes("topping") || String(eventInfo.tipo).toLowerCase().includes("insumo")) ? (
                   <div className="p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 col-span-2 flex flex-col justify-center text-center shadow-2xs">
                     <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Toppings Incluidos Sin Costo</p>
                     <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">

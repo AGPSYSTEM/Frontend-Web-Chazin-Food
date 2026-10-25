@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, FlaskConical, AlertCircle } from "lucide-react";
+import { X, FlaskConical, AlertCircle, CheckCircle2 } from "lucide-react";
 import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { validateTexto, validateMoneda } from "@/shared/utils/validationUtils";
 
 const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
+const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
 export function InsumoPreparadoModal({
@@ -97,9 +98,16 @@ export function InsumoPreparadoModal({
   };
 
   const handlePrecioChange = (val) => {
-    setPrecio(val);
+    let sanitized = val;
+    if (val !== "") {
+      if (String(val).includes("-")) sanitized = String(val).replace(/-/g, "");
+      if (sanitized.length > 1 && sanitized.startsWith("0") && !sanitized.startsWith("0.")) {
+        sanitized = sanitized.replace(/^0+/, "");
+      }
+    }
+    setPrecio(sanitized);
     setTouched((prev) => ({ ...prev, precio: true }));
-    const err = validateField("precio", val);
+    const err = validateField("precio", sanitized);
     setErrors((prev) => ({ ...prev, precio: err }));
   };
 
@@ -236,7 +244,7 @@ export function InsumoPreparadoModal({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6" noValidate>
           <div className="space-y-4">
             <div>
               <label className={labelCls}>
@@ -251,16 +259,23 @@ export function InsumoPreparadoModal({
                 className={`${baseInputCls} ${
                   touched.nombre && errors.nombre
                     ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                    : touched.nombre && nombre && !errors.nombre
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                     : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                 }`}
                 placeholder="Ej: Salsa de la Casa, Carne Especial, Masa para Pizza..."
               />
-              {touched.nombre && errors.nombre && (
+              {touched.nombre && errors.nombre ? (
                 <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{errors.nombre}</span>
                 </p>
-              )}
+              ) : touched.nombre && nombre && !errors.nombre ? (
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Nombre válido</span>
+                </p>
+              ) : null}
             </div>
 
             <div>
@@ -291,17 +306,24 @@ export function InsumoPreparadoModal({
                     className={`${baseInputCls} pl-8 ${
                       touched.precio && errors.precio
                         ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : touched.precio && precio !== "" && !errors.precio
+                        ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                         : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                     }`}
                     placeholder="0"
                   />
                 </div>
-                {touched.precio && errors.precio && (
+                {touched.precio && errors.precio ? (
                   <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{errors.precio}</span>
                   </p>
-                )}
+                ) : touched.precio && precio !== "" && !errors.precio ? (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Costo estimado válido</span>
+                  </p>
+                ) : null}
               </div>
 
               <div>

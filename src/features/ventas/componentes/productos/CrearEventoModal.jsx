@@ -33,7 +33,7 @@ import {
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Añadir Insumos", desc: "Modifica receta base" },
+  { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Topping Extra", desc: "Toppings o insumos extras" },
   { value: "Promoción Precio", icon: StreamlineTag, defaultIcon: "tag", label: "Promoción Precio", desc: "Rebaja temporal" },
   { value: "Descuento", icon: StreamlineDiscountTicket, defaultIcon: "discount", label: "Descuento %", desc: "Descuento directo" },
   { value: "2x1 / Combo Especial", icon: StreamlineDoubleBurger, defaultIcon: "2x1", label: "2x1 / Combo", desc: "Oferta por volumen" },
@@ -2242,7 +2242,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     {tipoEvento === "Descuento"
                       ? "Asignación de Producto y Configuración del Descuento"
                       : tipoEvento === "Añadir Insumos"
-                      ? "Asignación de Producto y Precio con Insumos Adicionales"
+                      ? "Asignación de Producto y Precio con Topping Extra"
                       : "Asignación de Productos y Configuración de Precios del Evento"}
                   </h3>
                   
@@ -2303,7 +2303,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">
                             {tipoEvento === "Añadir Insumos"
-                              ? "Precio Final de Venta con Insumos Extras (Valor a pagar)"
+                              ? "Precio Final de Venta con Topping Extra (Valor a pagar)"
                               : "Precio Final Rebajado de Promoción (Valor a pagar por el comensal)"}
                           </label>
                           <input

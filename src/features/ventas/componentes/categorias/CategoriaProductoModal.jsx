@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, UtensilsCrossed, UploadCloud, Loader2, AlertCircle } from "lucide-react";
+import { X, UtensilsCrossed, UploadCloud, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { FoodIcon, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -56,10 +56,9 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
       setNombre(cleanVal);
     }
     if (field === "descripcion") setDescripcion(cleanVal);
-    if (touched[field] || submitted) {
-      const err = validateField(field, cleanVal);
-      setErrors((prev) => ({ ...prev, [field]: err }));
-    }
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, cleanVal);
+    setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
   const handleCancelOrClose = () => {
@@ -186,14 +185,13 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" noValidate>
           <div>
             <label className={labelCls}>
               Nombre de la Categoría <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              required
               value={nombre}
               onBlur={() => handleBlur("nombre")}
               onKeyDown={(e) => {
@@ -204,18 +202,25 @@ export function CategoriaProductoModal({ isOpen, onClose, onSave, categoria = nu
               }}
               onChange={(e) => handleChange("nombre", e.target.value)}
               className={`${inputCls} ${
-                (touched.nombre || submitted) && errors.nombre
+                (touched.nombre || submitted || nombre.length > 0) && errors.nombre
                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                  : (touched.nombre || submitted || nombre.length > 0) && !errors.nombre && nombre.trim().length >= 2
+                  ? "border-emerald-500/80 bg-emerald-50/15 text-gray-900 dark:text-gray-100 focus:ring-emerald-400"
                   : ""
               }`}
               placeholder="Ej. Comidas Rápidas, Bebidas"
             />
-            {(touched.nombre || submitted) && errors.nombre && (
-              <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+            {(touched.nombre || submitted || nombre.length > 0) && errors.nombre ? (
+              <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium animate-in fade-in duration-150">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                {errors.nombre}
+                <span>{errors.nombre}</span>
               </p>
-            )}
+            ) : nombre.trim().length >= 2 && !errors.nombre ? (
+              <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium animate-in fade-in duration-150">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Nombre válido</span>
+              </p>
+            ) : null}
           </div>
 
           <div>

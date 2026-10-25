@@ -129,7 +129,7 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
                         </span>
                         {c.fechaCancelacion && (
                           <span className="text-[10px] text-gray-400 font-mono" title="Fecha y hora de devolución / cancelación">
-                            {new Date(c.fechaCancelacion).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" })} {new Date(c.fechaCancelacion).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(c.fechaCancelacion).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" })} {new Date(c.fechaCancelacion).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}
                           </span>
                         )}
                       </div>

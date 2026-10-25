@@ -127,10 +127,9 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
   const handleChange = (field, val) => {
     const updated = { ...form, [field]: val };
     setForm(updated);
-    if (touched[field] || submitted) {
-      const err = validateField(field, val, updated);
-      setErrors((prev) => ({ ...prev, [field]: err }));
-    }
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, val, updated);
+    setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
   const handleSubmit = (e) => {
@@ -237,7 +236,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs" noValidate>
 
           {/* ── ÍTEM 120: Número y Tipo de Documento en Primer Lugar ── */}
           <div className="bg-gray-50/70 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-2.5">
@@ -259,11 +258,15 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                   aria-required="true"
                   onChange={(e) => {
                     const newTipo = e.target.value;
+                    const cleanDoc = sanitizeDocumento(form.documento, newTipo);
                     setForm({
                       ...form,
                       tipoDocumento: newTipo,
-                      documento: sanitizeDocumento(form.documento, newTipo)
+                      documento: cleanDoc
                     });
+                    setTouched((prev) => ({ ...prev, documento: true }));
+                    const err = validateField("documento", cleanDoc, { ...form, tipoDocumento: newTipo, documento: cleanDoc });
+                    setErrors((prev) => ({ ...prev, documento: err }));
                   }}
                   className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer font-medium"
                   required
@@ -304,16 +307,23 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                       ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                       : existingClient
                       ? "border-amber-400 dark:border-amber-500 focus:ring-2 focus:ring-amber-400 bg-amber-50/20"
+                      : touched.documento && form.documento && !errors.documento
+                      ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                       : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                   }`}
                   placeholder={docConfig.helper}
                 />
-                {(touched.documento || submitted) && errors.documento && (
+                {(touched.documento || submitted) && errors.documento ? (
                   <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {errors.documento}
                   </p>
-                )}
+                ) : touched.documento && form.documento && !errors.documento && !existingClient ? (
+                  <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    Documento válido
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -356,16 +366,23 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
                   (touched.nombre || submitted) && errors.nombre
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.nombre && form.nombre && !errors.nombre
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                     : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                 }`}
                 placeholder="Ej: Juan Carlos"
               />
-              {(touched.nombre || submitted) && errors.nombre && (
+              {(touched.nombre || submitted) && errors.nombre ? (
                 <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {errors.nombre}
                 </p>
-              )}
+              ) : touched.nombre && form.nombre && !errors.nombre ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Nombre válido
+                </p>
+              ) : null}
             </div>
             <div>
               <label htmlFor="cliente-apellidos" className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -385,16 +402,23 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
                   (touched.apellidos || submitted) && errors.apellidos
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.apellidos && form.apellidos && !errors.apellidos
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                     : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                 }`}
                 placeholder="Ej: Pérez Gómez"
               />
-              {(touched.apellidos || submitted) && errors.apellidos && (
+              {(touched.apellidos || submitted) && errors.apellidos ? (
                 <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {errors.apellidos}
                 </p>
-              )}
+              ) : touched.apellidos && form.apellidos && !errors.apellidos ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Apellidos válidos
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -415,16 +439,23 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
                   (touched.email || submitted) && errors.email
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.email && form.email && !errors.email
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                     : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                 }`}
                 placeholder="juan.perez@email.com"
               />
-              {(touched.email || submitted) && errors.email && (
+              {(touched.email || submitted) && errors.email ? (
                 <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {errors.email}
                 </p>
-              )}
+              ) : touched.email && form.email && !errors.email ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Correo electrónico válido
+                </p>
+              ) : null}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -450,16 +481,23 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
                   (touched.telefono || submitted) && errors.telefono
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.telefono && form.telefono && !errors.telefono
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                     : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                 }`}
                 placeholder="3191234567"
               />
-              {(touched.telefono || submitted) && errors.telefono && (
+              {(touched.telefono || submitted) && errors.telefono ? (
                 <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {errors.telefono}
                 </p>
-              )}
+              ) : touched.telefono && form.telefono && !errors.telefono ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Teléfono móvil válido
+                </p>
+              ) : null}
             </div>
           </div>
 

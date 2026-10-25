@@ -207,7 +207,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                           ${origPrice.toLocaleString("es-CO")}
                         </span>
                         <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
-                          ${Number(v.total).toLocaleString("es-CO")}
+                          ${Number(v.total).toLocaleString("es-CO")} COP
                         </span>
                         <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
                           -{descPct || Math.round(((origPrice - v.total) / origPrice) * 100)}% desc.
@@ -215,7 +215,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                       </div>
                     ) : (
                       <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
-                        ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")}
+                        ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")} COP
                       </span>
                     )}
                   </td>

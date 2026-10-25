@@ -115,8 +115,13 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100">
-                      {c.totalConsumido || c.totalGastado || "$0"}
+                    {/* Total Consumido (Ítem 118 e Ítem 111) */}
+                    <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {(() => {
+                        const raw = c.totalConsumido || c.totalGastado || 0;
+                        const num = typeof raw === "string" ? Number(raw.replace(/[^0-9]/g, "")) || 0 : Number(raw) || 0;
+                        return `$${num.toLocaleString("es-CO")} COP`;
+                      })()}
                     </td>
 
                     <td className="px-5 py-4">

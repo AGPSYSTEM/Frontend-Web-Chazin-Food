@@ -7,6 +7,7 @@ import {
   UploadCloud,
   Loader2,
   Check,
+  CheckCircle2,
   Info,
   Percent,
   AlertCircle
@@ -313,7 +314,16 @@ export function InsumoModal({
     setForm(updated);
     setTouched((prev) => ({ ...prev, [field]: true }));
     const err = validateField(field, sanitized, updated);
-    setErrors((prev) => ({ ...prev, [field]: err }));
+    const nextErrors = { ...errors, [field]: err };
+
+    // Validación cruzada coherente de stock mínimo vs stock máximo en tiempo real
+    if (field === "stockMinimo" && (touched.stockMaximo || updated.stockMaximo !== "")) {
+      nextErrors.stockMaximo = validateField("stockMaximo", updated.stockMaximo, updated);
+    } else if (field === "stockMaximo" && (touched.stockMinimo || updated.stockMinimo !== "")) {
+      nextErrors.stockMinimo = validateField("stockMinimo", updated.stockMinimo, updated);
+    }
+
+    setErrors(nextErrors);
   };
 
   const handleNombreChange = (nuevoNombre) => {
@@ -623,16 +633,23 @@ export function InsumoModal({
                       className={`${baseInputCls} ${
                         touched.nombre && errors.nombre
                           ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.nombre && form.nombre && !errors.nombre
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                           : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                       }`}
                       placeholder="Ej. Queso Cheddar en Lonchas o Pan Brioche"
                     />
-                    {touched.nombre && errors.nombre && (
+                    {touched.nombre && errors.nombre ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.nombre}</span>
                       </p>
-                    )}
+                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Nombre de insumo válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -650,6 +667,8 @@ export function InsumoModal({
                       className={`${baseInputCls} cursor-pointer ${
                         touched.idCategoriaInsumo && errors.idCategoriaInsumo
                           ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                           : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                       }`}
                     >
@@ -663,12 +682,17 @@ export function InsumoModal({
                         );
                       })}
                     </select>
-                    {touched.idCategoriaInsumo && errors.idCategoriaInsumo && (
+                    {touched.idCategoriaInsumo && errors.idCategoriaInsumo ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.idCategoriaInsumo}</span>
                       </p>
-                    )}
+                    ) : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Categoría seleccionada</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
@@ -705,6 +729,8 @@ export function InsumoModal({
                         className={`${baseInputCls} pl-8 pr-20 ${
                           touched.precioUnitario && errors.precioUnitario
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                             : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                         }`}
                         placeholder="0.00"
@@ -713,12 +739,17 @@ export function InsumoModal({
                         / {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.precioUnitario && errors.precioUnitario && (
+                    {touched.precioUnitario && errors.precioUnitario ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.precioUnitario}</span>
                       </p>
-                    )}
+                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Precio de compra válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -735,6 +766,8 @@ export function InsumoModal({
                         className={`${baseInputCls} pr-20 font-semibold ${
                           touched.stock && errors.stock
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stock && form.stock !== "" && !errors.stock
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                             : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                         }`}
                         placeholder="0"
@@ -743,12 +776,17 @@ export function InsumoModal({
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.stock && errors.stock && (
+                    {touched.stock && errors.stock ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.stock}</span>
                       </p>
-                    )}
+                    ) : touched.stock && form.stock !== "" && !errors.stock ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Stock inicial válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -765,6 +803,8 @@ export function InsumoModal({
                         className={`${baseInputCls} pr-20 ${
                           touched.stockMinimo && errors.stockMinimo
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stockMinimo && form.stockMinimo !== "" && !errors.stockMinimo
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                             : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                         }`}
                         placeholder="5"
@@ -773,12 +813,17 @@ export function InsumoModal({
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.stockMinimo && errors.stockMinimo && (
+                    {touched.stockMinimo && errors.stockMinimo ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.stockMinimo}</span>
                       </p>
-                    )}
+                    ) : touched.stockMinimo && form.stockMinimo !== "" && !errors.stockMinimo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Mínimo coherente</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -795,6 +840,8 @@ export function InsumoModal({
                         className={`${baseInputCls} pr-20 ${
                           touched.stockMaximo && errors.stockMaximo
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stockMaximo && form.stockMaximo !== "" && !errors.stockMaximo
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                             : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                         }`}
                         placeholder="100"
@@ -803,12 +850,17 @@ export function InsumoModal({
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.stockMaximo && errors.stockMaximo && (
+                    {touched.stockMaximo && errors.stockMaximo ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.stockMaximo}</span>
                       </p>
-                    )}
+                    ) : touched.stockMaximo && form.stockMaximo !== "" && !errors.stockMaximo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Capacidad máxima coherente</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -842,16 +894,23 @@ export function InsumoModal({
                       className={`${baseInputCls} ${
                         touched.nombre && errors.nombre
                           ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.nombre && form.nombre && !errors.nombre
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                           : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                       }`}
                       placeholder="Ej. Salsa Chazin de la Casa, Carne Molida Sazonada, Cebolla Caramelizada..."
                     />
-                    {touched.nombre && errors.nombre && (
+                    {touched.nombre && errors.nombre ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.nombre}</span>
                       </p>
-                    )}
+                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Nombre de preparado válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -880,17 +939,24 @@ export function InsumoModal({
                         className={`${baseInputCls} pl-8 ${
                           touched.precioUnitario && errors.precioUnitario
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                             : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
                         }`}
                         placeholder="0"
                       />
                     </div>
-                    {touched.precioUnitario && errors.precioUnitario && (
+                    {touched.precioUnitario && errors.precioUnitario ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.precioUnitario}</span>
                       </p>
-                    )}
+                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Costo estimado válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -1013,17 +1079,24 @@ export function InsumoModal({
                           className={`${baseInputCls} pl-8 font-bold text-purple-700 dark:text-purple-300 ${
                             touched.precioAdicion && errors.precioAdicion
                               ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                              : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion
+                              ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                               : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-[#F05454]"
                           }`}
                           placeholder="Ej. 3500"
                         />
                       </div>
-                      {touched.precioAdicion && errors.precioAdicion && (
+                      {touched.precioAdicion && errors.precioAdicion ? (
                         <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           <span>{errors.precioAdicion}</span>
                         </p>
-                      )}
+                      ) : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion ? (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Precio de adición válido</span>
+                        </p>
+                      ) : null}
                       <p className="text-[11px] text-gray-400 mt-1">Valor extra que se cobrará al agregar esta adición.</p>
                     </div>
 

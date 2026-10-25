@@ -456,8 +456,13 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                         const cantDisp = parseFloat(lot.cantidadDisponible ?? lot.cantidad ?? 0);
                         const fechaVenc = lot.fechaVencimiento;
                         let estaVencido = false;
+                        let diasPorVencer = null;
                         if (fechaVenc) {
-                          estaVencido = new Date(fechaVenc) < new Date();
+                          const vDate = new Date(`${String(fechaVenc).split("T")[0]}T23:59:59`);
+                          const now = new Date();
+                          const diffMs = vDate.getTime() - now.getTime();
+                          diasPorVencer = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                          estaVencido = diffMs < 0;
                         }
 
                         return (
@@ -483,11 +488,17 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                                 <span className={`inline-flex items-center gap-1 text-xs font-medium ${
                                   estaVencido
                                     ? "text-red-600 dark:text-red-400 font-bold"
+                                    : diasPorVencer <= 5
+                                    ? "text-amber-600 dark:text-amber-400 font-bold"
                                     : "text-gray-700 dark:text-gray-300"
                                 }`}>
                                   <Calendar className="w-3 h-3 text-amber-500" />
                                   {fechaVenc}
-                                  {estaVencido && <span className="text-[10px] text-red-500 font-bold">(Vencido)</span>}
+                                  {estaVencido ? (
+                                    <span className="text-[10px] text-red-500 font-bold">(Vencido hace {Math.abs(diasPorVencer)}d)</span>
+                                  ) : diasPorVencer <= 5 ? (
+                                    <span className="text-[10px] text-amber-600 font-bold">(Vence en {diasPorVencer}d)</span>
+                                  ) : null}
                                 </span>
                               ) : (
                                 <span className="text-gray-400 text-xs">Sin fecha</span>

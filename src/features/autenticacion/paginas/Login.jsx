@@ -93,6 +93,17 @@ export function Login() {
     };
   }, [isTipoDocOpen]);
 
+  // Evitar que el autocompletado del navegador ensucie el registro con credenciales guardadas
+  useEffect(() => {
+    if (tab === "register") {
+      const timer = setTimeout(() => {
+        setRegDireccion((prev) => (prev.includes("@") ? "" : prev));
+        setRegContraseña((prev) => (!touched.regContraseña && prev ? "" : prev));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [tab, touched.regContraseña]);
+
   useEffect(() => {
     const wasDark = document.documentElement.classList.contains("dark");
     if (wasDark) document.documentElement.classList.remove("dark");
@@ -491,7 +502,7 @@ export function Login() {
 
             {/* REGISTRO */}
             {tab === "register" && (
-              <form onSubmit={handleRegister} className="space-y-3">
+              <form onSubmit={handleRegister} className="space-y-3" noValidate autoComplete="off">
                 <p className="text-xs text-gray-500 text-center -mt-1 mb-2">
                   Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
                 </p>
@@ -505,6 +516,8 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_first_name"
+                        autoComplete="off"
                         value={regNombre}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[@0-9]/g, "");
@@ -532,6 +545,8 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_last_name"
+                        autoComplete="off"
                         value={regApellidos}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[@0-9]/g, "");
@@ -687,6 +702,8 @@ export function Login() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="email"
+                        name="reg_user_email"
+                        autoComplete="off"
                         value={regCorreo}
                         onChange={(e) => {
                           setRegCorreo(e.target.value);
@@ -719,6 +736,8 @@ export function Login() {
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="delivery_address_reg"
+                        autoComplete="street-address"
                         value={regDireccion}
                         onChange={(e) => {
                           setRegDireccion(e.target.value);
@@ -745,6 +764,8 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_password"
+                        autoComplete="new-password"
                         value={regContraseña}
                         onChange={(e) => {
                           setRegContraseña(e.target.value);
@@ -771,6 +792,8 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_confirm_password"
+                        autoComplete="new-password"
                         value={regConfirmar}
                         onChange={(e) => {
                           setRegConfirmar(e.target.value);

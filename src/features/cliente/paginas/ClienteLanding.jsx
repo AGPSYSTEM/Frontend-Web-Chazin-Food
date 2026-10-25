@@ -23,6 +23,7 @@ import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
 import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
 import { validateNombre } from "@/shared/utils/validationUtils";
+import { formatTime12h, formatDateSafe } from "@/shared/utils/dateUtils";
 
 const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
 const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
@@ -473,21 +474,14 @@ export function ClienteLanding() {
   const [modalInitialTab, setModalInitialTab] = useState("personalizar");
   const [showResenasModal, setShowResenasModal] = useState(false);
 
-  // Real-time ticker for live countdowns (only when authenticated to save CPU)
+  // Real-time ticker for live countdowns (descuenta segundo a segundo de forma fluida)
   const [liveTick, setLiveTick] = useState(() => Date.now());
   useEffect(() => {
-    if (!isAuthenticated) return;
-    let t;
-    const delay = setTimeout(() => {
-      t = setInterval(() => {
-        if (!document.hidden) setLiveTick(Date.now());
-      }, 1000);
-    }, 2500);
-    return () => {
-      clearTimeout(delay);
-      if (t) clearInterval(t);
-    };
-  }, [isAuthenticated]);
+    const t = setInterval(() => {
+      if (!document.hidden) setLiveTick(Date.now());
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
   const [productoParaResenas, setProductoParaResenas] = useState(null);
   const [ratingsMap, setRatingsMap] = useState({});
 
@@ -1044,31 +1038,16 @@ export function ClienteLanding() {
     return ordenados;
   }, [activeProductos, cart]);
 
-  // Live ticker for real-time countdown
-  const [currentLiveTime, setCurrentLiveTime] = useState(() => Date.now());
-  useEffect(() => {
-    let timer;
-    const delay = setTimeout(() => {
-      timer = setInterval(() => {
-        if (!document.hidden) setCurrentLiveTime(Date.now());
-      }, 60000);
-    }, 3000);
-    return () => {
-      clearTimeout(delay);
-      if (timer) clearInterval(timer);
-    };
-  }, []);
-
   // Helper ultra-preciso de Evento Activo (Burger Fest / Drops / Promos con Vigencia en Tiempo Real)
   const getActiveEvent = (producto) => {
     if (!producto) return null;
     const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
     if (eventos.length === 0) return null;
 
-    const now = new Date(currentLiveTime);
+    const now = new Date(liveTick);
 
     // Filter events that are active and not expired
-    let validEvents = eventos.filter((e) => {
+    const validEvents = eventos.filter((e) => {
       if (e.estado !== 1 && e.estado !== "Activo") return false;
       if (e.fechaFin) {
         const finDate = new Date(`${e.fechaFin}T23:59:59`);
@@ -1080,14 +1059,6 @@ export function ClienteLanding() {
       }
       return true;
     });
-
-    // Fallback de contingencia: si la fecha fin en base de datos ya pasó pero el evento sigue en estado Activo
-    if (validEvents.length === 0) {
-      validEvents = eventos.filter((e) => e.estado === 1 || e.estado === "Activo");
-    }
-    if (validEvents.length === 0 && eventos.length > 0) {
-      validEvents = [eventos[0]];
-    }
 
     if (validEvents.length === 0) return null;
     const evt = validEvents[0];
@@ -1108,6 +1079,8 @@ export function ClienteLanding() {
     let formattedDate = "";
     let diasRestantes = null;
     let horasRestantes = null;
+    let minutosRestantes = null;
+    let segundosRestantes = null;
     let urgente = false;
     let countdownLabel = "";
 
@@ -1123,13 +1096,18 @@ export function ClienteLanding() {
         const ms = finDate.getTime() - now.getTime();
         diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
         horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+        minutosRestantes = Math.max(0, Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60)));
+        segundosRestantes = Math.max(0, Math.floor((ms % (1000 * 60)) / 1000));
         urgente = diasRestantes <= 3 && diasRestantes >= 0;
+
         countdownLabel = diasRestantes > 1
           ? `Quedan ${diasRestantes} días`
-          : diasRestantes === 1
-          ? `¡Último día! (${horasRestantes}h)`
-          : diasRestantes === 0
-          ? `¡Termina hoy!`
+          : horasRestantes > 0
+          ? `¡Último día! (${horasRestantes}h ${minutosRestantes}m)`
+          : minutosRestantes > 0
+          ? `¡Termina hoy! (${minutosRestantes}m ${segundosRestantes}s)`
+          : ms > 0
+          ? `¡Últimos segundos! (${segundosRestantes}s)`
           : `Edición Especial`;
       } catch (e) {}
     }
@@ -2320,8 +2298,8 @@ export function ClienteLanding() {
           {productosFiltrados.slice(0, maxVisibleProducts).map((producto) => {
             const hasRealImage = producto.imagen && (producto.imagen.includes('/') || producto.imagen.includes('.'));
             const activeEvent = getActiveEvent(producto);
-            const hasEvent = Boolean(activeEvent || (producto.eventos && producto.eventos.length > 0));
-            const eventToDisplay = activeEvent || (producto.eventos && producto.eventos.length > 0 ? producto.eventos[0] : null);
+            const hasEvent = Boolean(activeEvent);
+            const eventToDisplay = activeEvent;
 
             return (
               <div
@@ -2398,8 +2376,8 @@ export function ClienteLanding() {
                   )}
 
                 {/* ═══ BADGE STREAMLINE DE ALTO IMPACTO (BURGER FEST / 2X1 / FLASH / DESCUENTO) ═══ */}
-                {producto.eventos && producto.eventos.length > 0 && (
-                  <EventBadge event={producto.eventos[0]} product={producto} variant="card" />
+                {activeEvent && (
+                  <EventBadge event={activeEvent} product={producto} variant="card" />
                 )}
               </div>
 
@@ -2457,21 +2435,19 @@ export function ClienteLanding() {
                   </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-col">
-                    {producto.eventos && producto.eventos.length > 0 ? (
+                    {activeEvent ? (
                       <>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <EventBadge event={producto.eventos[0]} product={producto} variant="pill" />
+                          <EventBadge event={activeEvent} product={producto} variant="pill" />
                         </div>
-                        {producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento" || e.nuevoPrecio) ? (
+                        {(activeEvent.tipoEvento === "Promoción Precio" || activeEvent.tipoEvento === "Descuento" || activeEvent.nuevoPrecio) ? (
                           <>
                             <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
                             <span className="text-2xl font-black text-[#f05454] dark:text-red-400 flex items-center gap-1">
                               <Sparkles className="w-4 h-4 text-amber-500" />
                               ${(() => {
-                                const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.nuevoPrecio);
-                                if (evtPrecio && evtPrecio.nuevoPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
-                                const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
-                                if (evtDesc) return Math.round(producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                                if (activeEvent.nuevoPrecio) return Number(activeEvent.nuevoPrecio).toLocaleString();
+                                if (activeEvent.descuento) return Math.round(producto.precio * (1 - Number(activeEvent.descuento)/100)).toLocaleString();
                                 return producto.precio.toLocaleString();
                               })()}
                             </span>

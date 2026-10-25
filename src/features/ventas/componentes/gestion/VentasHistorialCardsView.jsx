@@ -1,5 +1,6 @@
 import { Calendar, Clock, Eye, Globe, Store } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 
 function formatDateSafe(dateVal, fallback = "2026-06-09") {
   if (!dateVal) return fallback;
@@ -32,7 +33,7 @@ export function VentasHistorialCardsView({ ventas, onViewDetail }) {
         const inicial = clienteNombre.trim().charAt(0).toUpperCase() || "C";
         const codigo = v?.numeroVenta || v?.codigoPedido || `PED-${String(v?.id || index + 1).padStart(3, "0")}`;
         const fechaStr = formatDateSafe(v?.fecha || v?.fechaVenta, "2026-06-09");
-        const horarioStr = v?.horario || "13:05 – 13:20";
+        const horarioStr = formatTime12h(v?.horario || v?.fecha || v?.fechaVenta, "01:05 PM");
         const totalNum = Number(v?.total || v?.subtotal || 40500);
         const isOnline = v?.origen === "ONLINE" || v?.tipoVenta === "DOMICILIO" || v?.origenNombre === "Venta Online";
         

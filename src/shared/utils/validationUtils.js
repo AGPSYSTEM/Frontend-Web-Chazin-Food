@@ -211,15 +211,49 @@ export function formatDireccion(dir = "") {
 }
 
 /**
- * Valida contraseñas:
- * - Requerida
- * - Longitud mínima (por defecto 6 o configurable)
+ * Criterios de seguridad de contraseña en tiempo real:
+ * - Longitud mínima (por defecto 8)
+ * - Letra mayúscula
+ * - Letra minúscula
+ * - Número
  */
-export function validateContrasena(val = "", minLength = 6, campo = "contraseña") {
+export function getPasswordCriteria(password = "", minLength = 8) {
+  const p = String(password || "");
+  const hasLength = p.length >= minLength;
+  const hasUpper = /[A-ZÁÉÍÓÚÑ]/.test(p);
+  const hasLower = /[a-záéíóúñ]/.test(p);
+  const hasNumber = /[0-9]/.test(p);
+  const isValid = hasLength && hasUpper && hasLower && hasNumber;
+  return {
+    hasLength,
+    hasUpper,
+    hasLower,
+    hasNumber,
+    isValid,
+    score: [hasLength, hasUpper, hasLower, hasNumber].filter(Boolean).length
+  };
+}
+
+/**
+ * Valida contraseñas con feedback en vivo:
+ * - Requerida
+ * - Longitud mínima (8 caracteres recomendados)
+ * - Mayúsculas, minúsculas y números
+ */
+export function validateContrasena(val = "", minLength = 8, campo = "contraseña") {
   const str = String(val || "");
   if (!str) return { isValid: false, error: `La ${campo} es obligatoria.` };
   if (str.length < minLength) {
     return { isValid: false, error: `La ${campo} debe tener al menos ${minLength} caracteres.` };
+  }
+  if (!/[A-ZÁÉÍÓÚÑ]/.test(str)) {
+    return { isValid: false, error: `La ${campo} debe incluir al menos una letra mayúscula.` };
+  }
+  if (!/[a-záéíóúñ]/.test(str)) {
+    return { isValid: false, error: `La ${campo} debe incluir al menos una letra minúscula.` };
+  }
+  if (!/[0-9]/.test(str)) {
+    return { isValid: false, error: `La ${campo} debe incluir al menos un número.` };
   }
   return { isValid: true, error: "" };
 }

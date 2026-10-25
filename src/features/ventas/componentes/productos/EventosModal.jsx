@@ -16,6 +16,7 @@ import {
   Edit
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 import { eventosService } from "../../servicios/eventosService";
 
 export function EventosModal({
@@ -31,12 +32,31 @@ export function EventosModal({
   const [togglingId, setTogglingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Live timer for real-time countdown
+  // Live timer for real-time countdown (1 segundo de precisión)
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30000); // 30s tick
+    const timer = setInterval(() => setNow(new Date()), 1000); // 1s tick
     return () => clearInterval(timer);
   }, []);
+
+  // Sincronizar automáticamente con la API cualquier evento expirado para que su estado en BD pase a inactivo
+  useEffect(() => {
+    if (!isOpen || !Array.isArray(eventos) || eventos.length === 0) return;
+    const expActivos = eventos.filter((e) => {
+      const isDbActivo = e.estado === "Activo" || e.estado === 1;
+      if (!isDbActivo || !e.fechaFin) return false;
+      const finDate = new Date(`${e.fechaFin}T23:59:59`);
+      return new Date() > finDate;
+    });
+
+    if (expActivos.length > 0) {
+      Promise.allSettled(
+        expActivos.map((e) => eventosService.updateEvento(e.id || e.idEvento, { estado: 0 }))
+      ).then(() => {
+        if (onRefresh) onRefresh();
+      });
+    }
+  }, [isOpen, eventos, onRefresh]);
 
   if (!isOpen) return null;
 
@@ -47,6 +67,9 @@ export function EventosModal({
         estadoVigencia: "PERMANENTE",
         estaVigente: evt.estado === "Activo" || evt.estado === 1,
         diasRestantes: null,
+        horasRestantes: null,
+        minutosRestantes: null,
+        segundosRestantes: null,
         label: "Vigencia Permanente",
         urgente: false
       };
@@ -58,6 +81,8 @@ export function EventosModal({
     const ms = finDate.getTime() - now.getTime();
     const diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
     const horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+    const minutosRestantes = Math.max(0, Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60)));
+    const segundosRestantes = Math.max(0, Math.floor((ms % (1000 * 60)) / 1000));
 
     if (inicioDate && now < inicioDate) {
       const msInicio = inicioDate.getTime() - now.getTime();
@@ -66,6 +91,9 @@ export function EventosModal({
         estadoVigencia: "PROGRAMADO",
         estaVigente: false,
         diasRestantes,
+        horasRestantes,
+        minutosRestantes,
+        segundosRestantes,
         label: `Inicia en ${diasInicio} día${diasInicio !== 1 ? "s" : ""}`,
         urgente: false
       };
@@ -77,6 +105,9 @@ export function EventosModal({
         estadoVigencia: "EXPIRADO",
         estaVigente: false,
         diasRestantes: 0,
+        horasRestantes: 0,
+        minutosRestantes: 0,
+        segundosRestantes: 0,
         label: `Finalizado hace ${diasExpirado} día${diasExpirado !== 1 ? "s" : ""}`,
         urgente: false
       };
@@ -84,10 +115,14 @@ export function EventosModal({
 
     const urgente = diasRestantes <= 3;
     let label = `Quedan ${diasRestantes} días`;
-    if (diasRestantes === 1) {
+    if (horasRestantes < 24) {
+      if (horasRestantes === 0) {
+        label = `¡Termina pronto! (${minutosRestantes}m ${segundosRestantes}s restantes)`;
+      } else {
+        label = `¡Termina hoy! (${horasRestantes}h ${minutosRestantes}m restantes)`;
+      }
+    } else if (diasRestantes === 1) {
       label = `¡Último día! (${horasRestantes}h restantes)`;
-    } else if (diasRestantes === 0) {
-      label = `¡Termina hoy! (${horasRestantes}h restantes)`;
     }
 
     return {
@@ -95,6 +130,8 @@ export function EventosModal({
       estaVigente: evt.estado === "Activo" || evt.estado === 1,
       diasRestantes,
       horasRestantes,
+      minutosRestantes,
+      segundosRestantes,
       label,
       urgente
     };
@@ -279,7 +316,8 @@ export function EventosModal({
             filteredEventos.map((evt) => {
               const vig = evt.vigenciaEvaluada;
               const hasProduct = Boolean(evt.producto || evt.idProducto);
-              const isActivo = evt.estado === "Activo" || evt.estado === 1;
+              const isExpirado = vig.estadoVigencia === "EXPIRADO";
+              const isRealmenteActivo = evt.isActivo;
 
               return (
                 <div
@@ -314,12 +352,14 @@ export function EventosModal({
                           {evt.nombre || evt.nombreEvento}
                         </h4>
                         <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200/80 dark:border-orange-900/50 font-black">
-                          {evt.tipoEvento || "EDICION_LIMITADA"}
+                          {formatTipoEvento(evt.tipoEvento) || "EDICION_LIMITADA"}
                         </span>
                       </div>
 
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {evt.descripcion || "Promoción gastronómica especial de tiempo limitado."}
+                        {evt.descripcion && !/^(test|prueba|asdf)$/i.test(evt.descripcion.trim())
+                          ? evt.descripcion
+                          : "Promoción gastronómica especial de tiempo limitado."}
                       </p>
 
                       {/* Product & Price details */}
@@ -370,19 +410,36 @@ export function EventosModal({
 
                   {/* Right: Actions */}
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 dark:border-gray-800">
-                    <button
-                      onClick={() => handleToggleEstado(evt)}
-                      disabled={togglingId === (evt.id || evt.idEvento)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                        isActivo
-                          ? "bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                          : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      }`}
-                      title={isActivo ? "Pausar evento" : "Activar evento"}
-                    >
-                      <Power className="w-3.5 h-3.5" />
-                      <span>{isActivo ? "Pausar" : "Reanudar"}</span>
-                    </button>
+                    {isRealmenteActivo ? (
+                      <button
+                        onClick={() => handleToggleEstado(evt)}
+                        disabled={togglingId === (evt.id || evt.idEvento)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                        title="Pausar evento"
+                      >
+                        <Power className="w-3.5 h-3.5" />
+                        <span>Pausar</span>
+                      </button>
+                    ) : isExpirado ? (
+                      <button
+                        onClick={() => onEditEvento && onEditEvento(evt)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                        title="Promoción finalizada. Haz clic para renovar fecha y reactivar"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Renovar Fecha</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleEstado(evt)}
+                        disabled={togglingId === (evt.id || evt.idEvento)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                        title="Activar evento"
+                      >
+                        <Power className="w-3.5 h-3.5" />
+                        <span>Reanudar</span>
+                      </button>
+                    )}
 
                     <div className="flex items-center gap-1">
                       <button

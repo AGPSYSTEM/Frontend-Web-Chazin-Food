@@ -5,6 +5,7 @@ import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 
 export function VerProductoModal({ isOpen, onClose, producto }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -434,7 +435,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                             {evt.nombreEvento || evt.nombre}
                             {evt.tipoEvento && (
                               <span className="text-[10px] bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 px-2 py-0.5 rounded-md font-semibold border border-orange-200 dark:border-orange-800">
-                                {evt.tipoEvento}
+                                {formatTipoEvento(evt.tipoEvento)}
                               </span>
                             )}
                             {evt.isTemporal && (
