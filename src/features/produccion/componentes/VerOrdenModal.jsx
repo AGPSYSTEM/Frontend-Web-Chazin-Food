@@ -300,15 +300,31 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                         {/* Badges rápidos de resumen */}
                         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                           {itemAdds.length > 0 && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-300 border border-red-200/60 dark:border-red-900/40">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(idx);
+                              }}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-[#F05454] dark:text-red-300 border border-red-200/60 dark:border-red-900/40 transition cursor-pointer shadow-2xs"
+                              title={isExpanded ? "Ocultar adiciones" : "Ver adiciones de este platillo"}
+                            >
                               +{itemAdds.length} {itemAdds.length === 1 ? "adición" : "adiciones"}
-                            </span>
+                            </button>
                           )}
                           {itemObs && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(idx);
+                              }}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                              title={isExpanded ? "Ocultar notas" : "Ver notas del cliente"}
+                            >
                               <FileText className="w-2.5 h-2.5" />
                               <span>Nota</span>
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>

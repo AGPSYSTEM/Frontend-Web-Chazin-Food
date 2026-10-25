@@ -104,15 +104,28 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                                 return (
                                   <div key={pIdx} className="text-[11px] space-y-0.5">
                                     {adds.length > 0 && (
-                                      <div className="flex flex-wrap gap-1">
-                                        {adds.map((ad, aIdx) => (
+                                      <div className="flex flex-wrap gap-1 items-center">
+                                        {adds.slice(0, 2).map((ad, aIdx) => (
                                           <span
                                             key={aIdx}
                                             className="px-1.5 py-0.5 bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-300 font-bold rounded text-[10px] border border-red-100 dark:border-red-900/50"
                                           >
-                                            + {typeof ad === "object" ? ad.nombre : String(ad)}
+                                            + {typeof ad === "object" ? (ad.nombre || ad.nombreAdicion) : String(ad)}
                                           </span>
                                         ))}
+                                        {adds.length > 2 && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onViewDetails && onViewDetails(o);
+                                            }}
+                                            className="px-1.5 py-0.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-[#F05454] dark:text-red-300 font-bold rounded text-[10px] border border-red-200 dark:border-red-800 transition cursor-pointer"
+                                            title="Ver todas las adiciones en el detalle de la orden"
+                                          >
+                                            +{adds.length - 2} más adiciones →
+                                          </button>
+                                        )}
                                       </div>
                                     )}
                                     {obs && (
@@ -130,8 +143,11 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                               {o.productos.length > 2 && o.productos.slice(2).some(p => (Array.isArray(p.adiciones) && p.adiciones.length > 0) || p.observaciones) && (
                                 <button
                                   type="button"
-                                  onClick={() => onViewDetails && onViewDetails(o)}
-                                  className="text-[10px] font-bold text-gray-400 hover:text-[#F05454] transition cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewDetails && onViewDetails(o);
+                                  }}
+                                  className="text-[10px] font-bold text-gray-400 hover:text-[#F05454] dark:hover:text-red-400 transition cursor-pointer inline-flex items-center gap-1"
                                 >
                                   + más adiciones en detalle →
                                 </button>
