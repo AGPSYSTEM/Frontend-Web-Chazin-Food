@@ -337,15 +337,15 @@ export function Login() {
       <div className={`relative w-full ${tab === "register" ? "max-w-xl" : "max-w-md"} z-10 my-4 transition-all duration-300`}>
         {/* Logo */}
         <div className="text-center mb-4 sm:mb-6">
-          <div className="inline-flex items-center justify-center relative mb-3 sm:mb-4">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 animate-pulse" />
-            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20">
+          <Link to="/" className="inline-flex items-center justify-center relative mb-3 sm:mb-4 group cursor-pointer" title="Volver al inicio">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 group-hover:opacity-50 transition-opacity animate-pulse" />
+            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20 group-hover:scale-105 transition-transform">
               <img src={logoImg} alt="Chazin Food" className={`transition-all duration-300 ${tab === "register" ? "w-14 h-14" : "w-20 h-20"} object-contain`} />
             </div>
             <div className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-rose-600 p-1.5 rounded-full shadow-lg">
               <ChefHat className="w-4 h-4 text-white" />
             </div>
-          </div>
+          </Link>
           <h1 className="text-3xl sm:text-4xl font-bold mb-1 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 bg-clip-text text-transparent">
             Chazin Food
           </h1>

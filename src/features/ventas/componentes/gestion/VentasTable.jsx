@@ -27,7 +27,7 @@ function formatTimeSafe(dateVal, fallbackHorario = "12:30 PM") {
   return fallbackHorario;
 }
 
-export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
+export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprobarPago, canEdit = true }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -70,6 +70,14 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
   const getMetodoIcon = (metodo) => {
     const metodoNormalized = (metodo || "").toLowerCase();
+    if (metodoNormalized.includes("wompi") || metodoNormalized.includes("pasarela") || metodoNormalized.includes("pse")) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-900/60">
+          <FoodIcon name="card" size={14} className="text-indigo-600" />
+          <span>Wompi (Online)</span>
+        </span>
+      );
+    }
     if (metodoNormalized.includes("tarjeta")) {
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -222,14 +230,26 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado }) {
 
                   {/* Acciones */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
-                    <button
-                      onClick={() => onViewDetail && onViewDetail(v)}
-                      title="Ver Detalle del Pedido"
-                      className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
-                    >
-                      <Eye className="w-4 h-4 text-[#F05454]" />
-                      <span>Ver detalle</span>
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      {(v.estado === "Pendiente" || v.estado === "PENDIENTE" || v.estadoPago === "PENDIENTE") && onAprobarPago && (
+                        <button
+                          type="button"
+                          onClick={() => onAprobarPago(v.id)}
+                          title="Aprobar pago y enviar pedido a cocina"
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer text-xs font-bold shadow-2xs"
+                        >
+                          Aprobar pago
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onViewDetail && onViewDetail(v)}
+                        title="Ver Detalle del Pedido"
+                        className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
+                      >
+                        <Eye className="w-4 h-4 text-[#F05454]" />
+                        <span>Ver detalle</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

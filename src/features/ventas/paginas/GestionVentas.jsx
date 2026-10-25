@@ -13,6 +13,8 @@ import {
   List,
   Search
 } from "lucide-react";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useGestionVentas } from "../hooks/useGestionVentas";
 import { VentasStatsCards } from "../componentes/gestion/VentasStatsCards";
 import { VentasTable } from "../componentes/gestion/VentasTable";
@@ -58,8 +60,13 @@ export function GestionVentas() {
     hasActiveFilters,
     activeFiltersCount,
     updateEstado,
-    updateTiempoEntrega
+    updateTiempoEntrega,
+    aprobarPago
   } = useGestionVentas();
+
+  const { user } = useAuth();
+  const canEdit = hasPrivilege(user, "Gestión de Ventas", "editar");
+  const canCancel = hasPrivilege(user, "Gestión de Ventas", "eliminar");
 
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
   const [historialViewMode, setHistorialViewMode] = useState("cards"); // "cards" | "table"
@@ -466,7 +473,9 @@ export function GestionVentas() {
               <VentasTable
                 ventas={filteredVentas}
                 onViewDetail={handleViewDetail}
-                onUpdateEstado={updateEstado}
+                onUpdateEstado={canEdit ? updateEstado : null}
+                onAprobarPago={canEdit ? aprobarPago : null}
+                canEdit={canEdit}
               />
             )}
           </div>
@@ -478,7 +487,9 @@ export function GestionVentas() {
         isOpen={!!selectedVentaDetail}
         onClose={() => setSelectedVentaDetail(null)}
         venta={selectedVentaDetail}
-        onUpdateTiempoEntrega={updateTiempoEntrega}
+        onUpdateTiempoEntrega={canEdit ? updateTiempoEntrega : null}
+        onAprobarPago={canEdit ? aprobarPago : null}
+        canEdit={canEdit}
       />
     </div>
   );

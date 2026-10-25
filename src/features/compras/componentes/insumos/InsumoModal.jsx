@@ -90,7 +90,7 @@ export function InsumoModal({
     precioUnitario: 0,
     stock: 0,
     stockMinimo: 5,
-    fechaVencimiento: "",
+    stockMaximo: 100,
     descripcion: "",
     estado: "Activo",
     // Adición integrada
@@ -142,7 +142,7 @@ export function InsumoModal({
         proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: Math.max(0, Number(insumo.stock || 0)),
         stockMinimo: Math.max(0, Number(insumo.stockMinimo !== undefined && insumo.stockMinimo !== null ? insumo.stockMinimo : 5)),
-        fechaVencimiento: insumo.fechaVencimiento || "",
+        stockMaximo: Math.max(0, Number(insumo.stockMaximo !== undefined && insumo.stockMaximo !== null ? insumo.stockMaximo : 100)),
         descripcion: insumo.descripcion || "",
         estado: insumo.estado === 1 || insumo.estado === "Activo" || insumo.estado === "1" ? "Activo" : "Inactivo",
         esAdicion: esAdicionVal,
@@ -181,7 +181,7 @@ export function InsumoModal({
         precioUnitario: 0,
         stock: 0,
         stockMinimo: 5,
-        fechaVencimiento: "",
+        stockMaximo: 100,
         descripcion: "",
         estado: "Activo",
         esAdicion: esSalsaDefault,
@@ -208,20 +208,35 @@ export function InsumoModal({
 
     setTipo(nuevoTipo);
 
+    // Conservar datos comunes ya digitados (#61)
+    const commonFields = {
+      nombre: form.nombre,
+      descripcion: form.descripcion,
+      precioUnitario: form.precioUnitario,
+      stock: form.stock,
+      stockMinimo: form.stockMinimo,
+      stockMaximo: form.stockMaximo,
+      estado: form.estado,
+      esAdicion: form.esAdicion,
+      precioAdicion: form.precioAdicion,
+      imagen: form.imagen,
+      incluyeIva: form.incluyeIva
+    };
+
     // Restaurar borrador del formulario destino si existe (#61)
     if (nuevoTipo === "Base" && draftBaseRef.current) {
-      setForm(draftBaseRef.current);
+      setForm({ ...draftBaseRef.current, ...commonFields });
     } else if (nuevoTipo === "Preparado" && draftPreparadoRef.current) {
       const { fichaTecnica: ftDraft, ...formDraft } = draftPreparadoRef.current;
-      setForm(formDraft);
+      setForm({ ...formDraft, ...commonFields });
       if (ftDraft) setFichaTecnica(ftDraft);
     } else {
       // Ajustar unidad de medida por defecto según el tipo si está vacío
-      if (nuevoTipo === "Preparado" && form.unidadMedida === "Kg") {
-        setForm(prev => ({ ...prev, unidadMedida: "und — unidad" }));
-      } else if (nuevoTipo === "Base" && form.unidadMedida === "und — unidad") {
-        setForm(prev => ({ ...prev, unidadMedida: "Kg" }));
-      }
+      setForm(prev => ({
+        ...prev,
+        ...commonFields,
+        unidadMedida: nuevoTipo === "Preparado" ? "und — unidad" : "Kg"
+      }));
     }
   };
 
@@ -253,7 +268,18 @@ export function InsumoModal({
       if (!res.isValid) err = res.error;
     } else if (field === "stockMinimo" && tipo === "Base") {
       const res = validateNumeroPositivo(val, "stock mínimo", { min: 0, allowZero: true });
-      if (!res.isValid) err = res.error;
+      if (!res.isValid) {
+        err = res.error;
+      } else if (currentForm.stockMaximo !== "" && Number(val) > Number(currentForm.stockMaximo)) {
+        err = "El stock mínimo no puede ser superior al stock máximo.";
+      }
+    } else if (field === "stockMaximo" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock máximo", { min: 0, allowZero: true });
+      if (!res.isValid) {
+        err = res.error;
+      } else if (Number(val) < Number(currentForm.stockMinimo)) {
+        err = "El stock máximo debe ser mayor o igual al stock mínimo.";
+      }
     } else if (field === "precioAdicion" && (currentForm.esAdicion || isSalsaItem(currentForm.nombre, currentForm.categoria))) {
       const esSalsa = isSalsaItem(currentForm.nombre, currentForm.categoria);
       if (!esSalsa) {
@@ -354,7 +380,7 @@ export function InsumoModal({
 
     const fieldsToValidate = ["nombre"];
     if (tipo === "Base") {
-      fieldsToValidate.push("idCategoriaInsumo", "stock", "stockMinimo", "precioUnitario");
+      fieldsToValidate.push("idCategoriaInsumo", "stock", "stockMinimo", "stockMaximo", "precioUnitario");
     } else {
       fieldsToValidate.push("precioUnitario");
     }
@@ -487,8 +513,9 @@ export function InsumoModal({
         precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
         stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
         stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
+        stockMaximo: Math.max(0, form.stockMaximo === "" ? 0 : Number(form.stockMaximo)),
         fechaExpedicion: null, // #62: Eliminada fecha de expedición
-        fechaVencimiento: form.fechaVencimiento && String(form.fechaVencimiento).trim() !== "" ? form.fechaVencimiento : null,
+        fechaVencimiento: null, // #62: Retirada de Insumo maestro, gestionada por Lote en Compras
         incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
@@ -754,14 +781,34 @@ export function InsumoModal({
                     )}
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label className={labelCls}>Fecha de Vencimiento (Opcional)</label>
-                    <input
-                      type="date"
-                      value={form.fechaVencimiento}
-                      onChange={(e) => setForm({ ...form, fechaVencimiento: e.target.value })}
-                      className={inputCls}
-                    />
+                  <div>
+                    <label className={labelCls}>
+                      Stock Máximo Capacidad ({getUnitShort(form.unidadMedida)})
+                    </label>
+                    <div className="relative">
+                      <NumberInput
+                        min="0"
+                        step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
+                        value={form.stockMaximo}
+                        onChange={(e) => handleNumberInput("stockMaximo", e.target.value)}
+                        onBlur={() => handleBlur("stockMaximo")}
+                        className={`${baseInputCls} pr-20 ${
+                          touched.stockMaximo && errors.stockMaximo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
+                        placeholder="100"
+                      />
+                      <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 pointer-events-none">
+                        {getUnitShort(form.unidadMedida)}
+                      </span>
+                    </div>
+                    {touched.stockMaximo && errors.stockMaximo && (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stockMaximo}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2">

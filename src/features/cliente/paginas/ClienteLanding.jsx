@@ -22,6 +22,7 @@ import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
 import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
+import { validateNombre } from "@/shared/utils/validationUtils";
 
 const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
 const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
@@ -1458,13 +1459,17 @@ export function ClienteLanding() {
     observacion,
     sabor
   }) => {
-    let basePrice = Number(producto.precio || 0);
-    const evtPrecio = producto.eventos?.find(e => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
-    const evtDesc = producto.eventos?.find(e => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
-    if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
-      basePrice = Number(evtPrecio.nuevoPrecio);
-    } else if (evtDesc && Number(evtDesc.descuento) > 0) {
-      basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
+    // Ítem #16: Evitar doble descuento si el modal ya calculó el precio final
+    let basePrice = Number(producto.precioFinal !== undefined ? producto.precioFinal : (producto.precioCalculado !== undefined ? producto.precioCalculado : producto.precio || 0));
+    if (producto.precioFinal === undefined && producto.precioCalculado === undefined) {
+      const evtPrecio = producto.eventos?.find(e => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
+      const evtDesc = producto.eventos?.find(e => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
+      if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
+        basePrice = Number(evtPrecio.nuevoPrecio);
+      } else if (evtDesc && Number(evtDesc.descuento) > 0) {
+        const pOriginal = Number(producto.precioOriginal || producto.precio || 0);
+        basePrice = pOriginal * (1 - Number(evtDesc.descuento) / 100);
+      }
     }
 
     const isDrink = isDrinkProduct(producto);
@@ -1682,9 +1687,11 @@ export function ClienteLanding() {
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
   const handleConfirmarPedido = async () => {
-    if (checkoutNombre && checkoutNombre.includes("@")) {
-      setCheckoutErrors((prev) => ({ ...prev, nombre: "El nombre no puede contener el carácter '@'." }));
-      error("Nombre inválido", "El nombre del destinatario no puede contener el carácter '@'.");
+    // Ítem #20: Validación estricta de nombres para personas
+    const valNom = validateNombre(checkoutNombre, "nombre del destinatario");
+    if (!valNom.isValid) {
+      setCheckoutErrors((prev) => ({ ...prev, nombre: valNom.error }));
+      error("Nombre inválido", valNom.error);
       return;
     }
     if (!checkoutDireccion.trim()) {
@@ -2292,7 +2299,7 @@ export function ClienteLanding() {
                     <Flame className="w-5 h-5 text-amber-500 inline shrink-0" />
                     Edición Especial & Eventos Gastronómicos
                   </span>
-                  <span className="text-xs font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="text-xs font-black bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-full uppercase tracking-wider border border-red-200 dark:border-red-900/50">
                     Tiempo Limitado
                   </span>
                 </>
@@ -2814,10 +2821,23 @@ export function ClienteLanding() {
             )}
 
             {cart.length > 0 && (
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3 shrink-0">
-                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2 shrink-0">
+                <div className="flex justify-between items-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  <span>Subtotal:</span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString("es-CO")}</span>
+                </div>
+                {discountPercent > 0 && (
+                  <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Descuento Fidelidad ({discountPercent}%):
+                    </span>
+                    <span>-${clientDiscountMonto.toLocaleString("es-CO")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-100 dark:border-gray-800">
                   <span>Total Pedido:</span>
-                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${clientSubtotal.toLocaleString("es-CO")}</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${totalCheckout.toLocaleString("es-CO")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -2861,33 +2881,52 @@ export function ClienteLanding() {
               </button>
             </div>
 
-            {/* ═══ CUERPO SCROLLEABLE ═══ */}
+            {/* ═══ CUERPO SCROLLEABLE — Flujo Lógico Reordenado (Ítem #11, #20, #26, #28, #122) ═══ */}
             <div className="overflow-y-auto flex-1 p-6 space-y-6 scrollbar-thin">
 
-              {/* ── 1. Resumen de compra (Tarjeta Superior) ── */}
-              <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
-                <div className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-semibold">
-                    <ShoppingCart className="w-4 h-4 text-[#E03E3E]" /> Subtotal ({getTotalItems()} prod.)
-                  </span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString('es-CO')}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400">
-                  <span>IVA (0%)</span>
-                  <span>$0</span>
-                </div>
-                <div className="border-t border-gray-100 dark:border-gray-700/80 pt-2 flex justify-between items-center">
-                  <span className="text-base font-black text-gray-900 dark:text-gray-100">Total</span>
-                  <span className="text-xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
-                </div>
+              {/* ── 1. Especificaciones del Pedido & Empaque Térmico (Ítem #11) ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#B91C1C]" />
+                  <span>1. Especificaciones de Cocina &amp; Empaque</span>
+                  <span className="font-normal text-gray-400 text-[11px] lowercase">(opcional)</span>
+                </h4>
+
+                {/* Checkbox Empaque térmico para llevar */}
+                <label className="flex items-start gap-3 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 rounded-2xl cursor-pointer hover:bg-amber-100/50 transition select-none">
+                  <input
+                    type="checkbox"
+                    checked={checkoutEmpaqueParaLlevar}
+                    onChange={(e) => setCheckoutEmpaqueParaLlevar(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 accent-[#f05454] cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      Empaque especial térmico para llevar / regalo
+                    </span>
+                    <span className="text-[11px] text-gray-600 dark:text-gray-400 block mt-0.5 leading-snug">
+                      Envase sellado hermético que conserva la temperatura y frescura ideal durante el trayecto.
+                    </span>
+                  </div>
+                </label>
+
+                <textarea
+                  rows={2}
+                  value={checkoutEspecificaciones}
+                  onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
+                  placeholder="Ej: Sin cebolla, salsas aparte, dejar en portería, timbre 201..."
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition resize-none"
+                />
               </div>
 
-              {/* ── 2. Modalidad de Entrega (100% Domicilio en Web) ── */}
-              <div className="space-y-2.5">
+              {/* ── 2. Modalidad y Datos de Entrega ── */}
+              <div className="space-y-3.5">
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
                   <Truck className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Modalidad de Entrega</span>
+                  <span>2. Modalidad &amp; Datos de Entrega</span>
                 </h4>
+
                 <div className="bg-[#FFF5F5] dark:bg-red-950/20 border border-[#E03E3E]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 text-[#E03E3E] flex items-center justify-center">
@@ -2907,14 +2946,7 @@ export function ClienteLanding() {
                     <span>35 - 45 min</span>
                   </span>
                 </div>
-              </div>
 
-              {/* ── 3. Datos de Entrega ── */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Datos de Entrega</span>
-                </h4>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                     Nombre del destinatario <span className="text-red-500">*</span>
@@ -2925,8 +2957,9 @@ export function ClienteLanding() {
                     onChange={(e) => {
                       const val = e.target.value;
                       setCheckoutNombre(val);
-                      if (val.includes("@")) {
-                        setCheckoutErrors((prev) => ({ ...prev, nombre: "El nombre no puede contener el carácter '@'." }));
+                      const valRes = validateNombre(val, "nombre del destinatario");
+                      if (!valRes.isValid) {
+                        setCheckoutErrors((prev) => ({ ...prev, nombre: valRes.error }));
                       } else {
                         setCheckoutErrors((prev) => {
                           const n = { ...prev };
@@ -2986,53 +3019,42 @@ export function ClienteLanding() {
                 </div>
               </div>
 
-              {/* ── 4. Especificaciones del Pedido & Empaque (Antes del Pago) ── */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Especificaciones &amp; Empaque</span>
-                  <span className="font-normal text-gray-400 text-[11px] lowercase">(opcional)</span>
-                </h4>
-
-                {/* Checkbox Empaque térmico para llevar */}
-                <label className="flex items-start gap-3 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 rounded-2xl cursor-pointer hover:bg-amber-100/50 transition select-none">
-                  <input
-                    type="checkbox"
-                    checked={checkoutEmpaqueParaLlevar}
-                    onChange={(e) => setCheckoutEmpaqueParaLlevar(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 accent-[#f05454] cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <span className="font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                      <Package className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      Empaque especial térmico para llevar / regalo
-                    </span>
-                    <span className="text-[11px] text-gray-600 dark:text-gray-400 block mt-0.5 leading-snug">
-                      Envase sellado hermético que conserva la temperatura y frescura ideal durante el trayecto.
-                    </span>
-                  </div>
-                </label>
-
-                <textarea
-                  rows={2}
-                  value={checkoutEspecificaciones}
-                  onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
-                  placeholder="Ej: Sin cebolla, salsas aparte, dejar en portería, timbre 201..."
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition resize-none"
-                />
-              </div>
-
-              {/* ── 5. Método de Pago (Último paso antes de pagar) ── */}
+              {/* ── 3. Resumen de Compra & Método de Pago Wompi (Ítem #122) ── */}
               <div className="space-y-3">
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-[#B91C1C]" />
-                    <span>Método de Pago en Línea</span>
+                    <span>3. Resumen &amp; Pago Seguro</span>
                   </span>
                   <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" /> Pago 100% Seguro
                   </span>
                 </h4>
+
+                <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-semibold">
+                      <ShoppingCart className="w-4 h-4 text-[#E03E3E]" /> Subtotal ({getTotalItems()} prod.)
+                    </span>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString('es-CO')}</span>
+                  </div>
+                  {discountPercent > 0 && (
+                    <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Descuento Fidelidad ({discountPercent}%):
+                      </span>
+                      <span>-${clientDiscountMonto.toLocaleString('es-CO')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <span>IVA (0%)</span>
+                    <span>$0</span>
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-gray-700/80 pt-2 flex justify-between items-center">
+                    <span className="text-base font-black text-gray-900 dark:text-gray-100">Total a Pagar</span>
+                    <span className="text-xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
+                  </div>
+                </div>
 
                 {/* Tarjeta Destacada de Pasarela Oficial Wompi */}
                 <div className="bg-gradient-to-br from-amber-50/70 via-red-50/40 to-orange-50/50 dark:from-red-950/30 dark:to-orange-950/20 border-2 border-[#E03E3E]/30 dark:border-red-800/50 rounded-2xl p-4 space-y-3 shadow-xs">
@@ -3061,8 +3083,8 @@ export function ClienteLanding() {
                       Medios de pago disponibles en la pasarela:
                     </p>
                     <div className="grid grid-cols-4 gap-1.5">
-                      <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-purple-700 dark:text-purple-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
-                        <FoodIcon name="mobile" size={14} className="text-purple-600 dark:text-purple-400" />
+                      <div className="bg-white dark:bg-gray-800 border border-pink-200 dark:border-pink-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-pink-700 dark:text-pink-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="mobile" size={14} className="text-pink-600 dark:text-pink-400" />
                         <span>Nequi</span>
                       </div>
                       <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-blue-700 dark:text-blue-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
@@ -3221,16 +3243,39 @@ export function ClienteLanding() {
                   {getTotalItems()}
                 </span>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
                     Resumen de tu Pedido
                   </span>
                   <span className="text-[10px] text-slate-400">• {getTotalItems()} {getTotalItems() === 1 ? "ítem" : "ítems"}</span>
                 </div>
-                <p className="text-sm font-black text-white truncate">
-                  Total: <span className="text-red-400 font-extrabold">${clientSubtotal.toLocaleString("es-CO")}</span>
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm font-black text-white truncate">
+                    Total: <span className="text-red-400 font-extrabold">${clientSubtotal.toLocaleString("es-CO")}</span>
+                  </p>
+                  {/* Vista previa de miniaturas en barra flotante (Ítem #6) */}
+                  <div className="hidden sm:flex items-center -space-x-1.5 overflow-hidden ml-1">
+                    {cart.slice(0, 3).map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 overflow-hidden shrink-0 shadow-2xs"
+                        title={`${it.cantidad}x ${it.nombre}`}
+                      >
+                        {it.imagen ? (
+                          <img src={it.imagen} alt={it.nombre} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-amber-400 bg-red-950">
+                            {it.nombre?.[0] || 'P'}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {cart.length > 3 && (
+                      <span className="text-[10px] text-slate-400 font-bold pl-2">+{cart.length - 3}</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 

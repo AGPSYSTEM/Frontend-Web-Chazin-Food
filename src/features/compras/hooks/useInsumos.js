@@ -4,6 +4,7 @@ import { proveedoresService } from "../servicios/proveedoresService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useInsumos() {
   const notify = useNotifications();
@@ -123,27 +124,23 @@ export function useInsumos() {
     fetchPapelera();
   }, [fetchInsumos, fetchPapelera]);
 
-  const normalize = (str) =>
-    String(str || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
   const filteredInsumos = insumos.filter((item) => {
-    const term = normalize(searchTerm);
-    const matchSearch =
-      !term ||
-      (item.nombre && normalize(item.nombre).includes(term)) ||
-      (item.categoria && normalize(item.categoria).includes(term)) ||
-      (item.categoriaNombre && normalize(item.categoriaNombre).includes(term)) ||
-      (item.proveedor && normalize(item.proveedor).includes(term)) ||
-      (item.proveedorNombre && normalize(item.proveedorNombre).includes(term)) ||
-      (item.estado && normalize(item.estado).includes(term)) ||
-      (item.tipo && normalize(item.tipo).includes(term)) ||
-      (item.descripcion && normalize(item.descripcion).includes(term)) ||
-      (item.unidadMedida && normalize(item.unidadMedida).includes(term)) ||
-      String(item.id || item.idInsumo || "").includes(term);
+    const matchSearch = matchesSmartSearch(
+      [
+        item.nombre,
+        item.categoria,
+        item.categoriaNombre,
+        item.proveedor,
+        item.proveedorNombre,
+        item.estado,
+        item.tipo,
+        item.descripcion,
+        item.unidadMedida,
+        item.id,
+        item.idInsumo
+      ],
+      searchTerm
+    );
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;

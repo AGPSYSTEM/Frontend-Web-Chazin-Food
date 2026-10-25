@@ -1,7 +1,7 @@
 import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2, Check, X, FileText } from "lucide-react";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
-export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails }) {
+export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails, canEdit = true, canDelete = true }) {
   const getNextStatusConfig = (currentStatus) => {
     switch (currentStatus) {
       case "En Cola":
@@ -214,7 +214,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
 
                     {/* Avanza a */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      {nextConfig ? (
+                      {nextConfig && canEdit ? (
                         <button
                           type="button"
                           onClick={() => onUpdateEstado && onUpdateEstado(o.id, nextConfig.next)}
@@ -224,11 +224,13 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                           <span>{nextConfig.label}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
-                      ) : (
+                      ) : !nextConfig ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Completado</span>
                         </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
 
@@ -246,14 +248,16 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                         </button>
 
                         {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => onDelete && onDelete(o.id)}
-                          title="Eliminar orden"
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete && onDelete(o.id)}
+                            title="Eliminar orden"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
+export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -64,20 +64,24 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                   </td>
                   <td className="px-6 py-4 text-left">
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => onEdit(c)}
-                        title="Editar categoría"
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4 stroke-[2]" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(c.id, c.nombre)}
-                        title="Eliminar categoría"
-                        className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4 stroke-[2]" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => onEdit(c)}
+                          title="Editar categoría"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 stroke-[2]" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => onDelete(c.id, c.nombre)}
+                          title="Eliminar categoría"
+                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

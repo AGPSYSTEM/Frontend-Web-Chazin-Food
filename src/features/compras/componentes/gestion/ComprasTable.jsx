@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Eye, FileText, Calendar, XCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ShoppingCart } from "lucide-react";
 
 const estadoConfig = {
-  RECIBIDA:   { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
-  Recibida:   { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
-  Completada: { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
-  CANCELADA:  { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Cancelada" },
-  Anulada:    { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Anulada" },
+  RECIBIDA:         { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
+  Recibida:         { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
+  Completada:       { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
+  COMPLETADA:       { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300", label: "Confirmada" },
+  DEVUELTA_PARCIAL: { cls: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300", label: "Devuelta Parcial" },
+  CANCELADA:        { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Cancelada" },
+  Anulada:          { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300", label: "Anulada" },
 };
 
 function esEstadoRecibida(estado) {
@@ -38,7 +40,7 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Factura / Orden</th>
+              <th className="px-6 py-4">Factura / Compra</th>
               <th className="px-6 py-4">Proveedor</th>
               <th className="px-6 py-4">Fecha</th>
               <th className="px-6 py-4">Ítems</th>
@@ -51,7 +53,7 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
             {totalRecords === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                  No se encontraron órdenes de compra
+                  No se encontraron compras registradas
                 </td>
               </tr>
             ) : (
@@ -121,9 +123,16 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
                       ${Number(c.total || 0).toLocaleString("es-CO")}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${estadoInfo.cls}`}>
-                        {estadoInfo.label}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${estadoInfo.cls}`}>
+                          {estadoInfo.label}
+                        </span>
+                        {c.fechaCancelacion && (
+                          <span className="text-[10px] text-gray-400 font-mono" title="Fecha y hora de devolución / cancelación">
+                            {new Date(c.fechaCancelacion).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" })} {new Date(c.fechaCancelacion).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-1">

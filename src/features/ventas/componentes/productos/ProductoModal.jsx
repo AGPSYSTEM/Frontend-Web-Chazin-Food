@@ -96,15 +96,20 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const validateField = (name, value) => {
     switch (name) {
-      case "nombre":
-        return validateTexto(value, "El nombre del producto", 2, 100);
-      case "precio":
-        return validateNumeroPositivo(value, "El precio de venta", true);
-      case "descripcion":
+      case "nombre": {
+        const res = validateTexto(value, "El nombre del producto", 2, 100);
+        return res.isValid ? null : res.error;
+      }
+      case "precio": {
+        const res = validateNumeroPositivo(value, "El precio de venta", true);
+        return res.isValid ? null : res.error;
+      }
+      case "descripcion": {
         if (value && value.length > 500) {
           return "La descripción no puede exceder los 500 caracteres.";
         }
         return null;
+      }
       default:
         return null;
     }

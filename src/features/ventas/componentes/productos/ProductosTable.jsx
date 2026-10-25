@@ -41,7 +41,9 @@ export function ProductosTable({
   onEdit,
   onDelete,
   onView,
-  onCreateEvento
+  onCreateEvento,
+  canEdit = true,
+  canDelete = true
 }) {
   const { warning: notifyWarning } = useNotifications();
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,7 +134,7 @@ export function ProductosTable({
                   key={p.id}
                   className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <div className="flex items-center gap-3">
                       {p.imagen ? (
                         <img
@@ -173,13 +175,13 @@ export function ProductosTable({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                       <Tag className="w-3 h-3" />
                       {p.categoria || "Sin categoría"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
+                  <td className="px-5 py-2.5 font-bold text-gray-900 dark:text-gray-100">
                     {p.eventos && p.eventos.length > 0 && (() => {
                       const evtDesc = p.eventos.find(e => e.tipoEvento === "Descuento");
                       const evtPrecio = p.eventos.find(e => e.tipoEvento === "Promoción Precio");
@@ -213,7 +215,7 @@ export function ProductosTable({
                       return `$${Number(p.precio || 0).toLocaleString("es-CO")}`;
                     })() || `$${Number(p.precio || 0).toLocaleString("es-CO")}`}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -236,7 +238,7 @@ export function ProductosTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <span
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                         p.estado === "Activo"
@@ -247,10 +249,10 @@ export function ProductosTable({
                       {p.estado || "Activo"}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <div className="flex items-center justify-center gap-1.5">
                       {/* Evento: Editar si está activo y vigente, o Crear si no tiene */}
-                      {(() => {
+                      {canEdit && (() => {
                         const activeEvt = getActiveProductEvent(p);
                         if (activeEvt) {
                           return (
@@ -283,7 +285,7 @@ export function ProductosTable({
                         <Eye className="w-4 h-4" />
                       </button>
                       {/* Editar (Ítem 104: Restricción si tiene ventas asociadas) */}
-                      {(() => {
+                      {canEdit && (() => {
                         const tieneVentas = Number(p.ventas || 0) > 0;
                         return (
                           <button
@@ -309,13 +311,15 @@ export function ProductosTable({
                         );
                       })()}
                       {/* Eliminar */}
-                      <button
-                        onClick={() => onDelete(p.id, p.nombre)}
-                        title="Eliminar producto"
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => onDelete(p.id, p.nombre)}
+                          title="Eliminar producto"
+                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

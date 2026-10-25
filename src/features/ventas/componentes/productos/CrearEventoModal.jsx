@@ -13,6 +13,7 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { validateTexto, validateNumeroPositivo, validateRequerido, validatePorcentaje } from "@/shared/utils/validationUtils";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   FoodIcon,
   AVAILABLE_FOOD_SLUGS,
@@ -165,19 +166,26 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [submitted, setSubmitted] = useState(false);
 
   const validateEventoField = (field, val, extra = {}) => {
+    let res = null;
     switch (field) {
       case "nombreEvento":
-        return validateTexto(val, "El título del evento", 2, 100);
+        res = validateTexto(val, "El título del evento", 2, 100);
+        break;
       case "prodNombre":
-        return validateTexto(val, "El nombre del producto en menú", 2, 80);
+        res = validateTexto(val, "El nombre del producto en menú", 2, 80);
+        break;
       case "prodPrecioRegular":
-        return validateNumeroPositivo(val, "El precio normal", false);
+        res = validateNumeroPositivo(val, "El precio normal", false);
+        break;
       case "prodPrecioEvento":
-        return validateNumeroPositivo(val, "El precio especial de evento", false);
+        res = validateNumeroPositivo(val, "El precio especial de evento", false);
+        break;
       case "nuevoPrecio":
-        return validateNumeroPositivo(val, "El precio promocional", false);
+        res = validateNumeroPositivo(val, "El precio promocional", false);
+        break;
       case "descuento":
-        return validatePorcentaje(val, "El descuento");
+        res = validatePorcentaje(val, "El descuento");
+        break;
       case "descripcion":
         if (val && val.length > 500) return "La descripción no puede superar los 500 caracteres.";
         return null;
@@ -191,6 +199,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       default:
         return null;
     }
+    if (res && typeof res === "object") {
+      return res.isValid ? null : res.error;
+    }
+    return res;
   };
 
   const handleFieldBlur = (field) => {
@@ -580,10 +592,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         setFilteredProductos([]);
         setShowProductoDropdown(false);
       } else {
-        const term = productoSearch.toLowerCase();
         const results = productosBD.filter(
           (p) => {
-            const isMatch = p.nombre?.toLowerCase().includes(term);
+            const isMatch = matchesSmartSearch(p, productoSearch, ["nombre", "codigo", "codigoProducto", "id"]);
             const isNotAdded = !productosSeleccionados.some(sel => String(sel.id) === String(p.id || p.idProducto));
             return isMatch && isNotAdded;
           }
@@ -1238,6 +1249,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500"
                       }`}
                     />
+                    {prodPrecioRegular && !isNaN(prodPrecioRegular) && !formErrors.prodPrecioRegular && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-mono">
+                        ${Number(prodPrecioRegular).toLocaleString("es-CO")} COP
+                      </p>
+                    )}
                     {(touched.prodPrecioRegular || submitted) && formErrors.prodPrecioRegular && (
                       <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -1262,6 +1278,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           : "border-orange-400 dark:border-orange-600 focus:ring-2 focus:ring-orange-500"
                       }`}
                     />
+                    {prodPrecioEvento && !isNaN(prodPrecioEvento) && !formErrors.prodPrecioEvento && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 font-bold mt-1 font-mono">
+                        ${Number(prodPrecioEvento).toLocaleString("es-CO")} COP
+                      </p>
+                    )}
                     {(touched.prodPrecioEvento || submitted) && formErrors.prodPrecioEvento && (
                       <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -2348,7 +2369,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 className="w-full px-4 py-2.5 text-left text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
                               >
                                 <span className="font-medium">{prod.nombre}</span>
-                                <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">${prod.precio}</span>
+                                <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md font-mono">${Number(prod.precio || 0).toLocaleString("es-CO")}</span>
                               </button>
                             ))}
                           </div>
@@ -2361,17 +2382,22 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <div key={idx} className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.nombre}</p>
-                                <p className="text-xs text-gray-400">Precio base: ${item.precioBase}</p>
+                                <p className="text-xs text-gray-400">Precio base: ${Number(item.precioBase || 0).toLocaleString("es-CO")} COP</p>
                               </div>
-                              <div className="w-32">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder={tipoEvento === "Descuento" ? "Desc" : "Precio"}
-                                  value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
-                                  onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
-                                  className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-500"
-                                />
+                              <div className="w-36">
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={tipoEvento === "Descuento" ? "% Descuento" : "$ Valor COP"}
+                                    value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
+                                    onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-500 font-mono text-right pr-7"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
+                                    {tipoEvento === "Descuento" ? "%" : "$"}
+                                  </span>
+                                </div>
                               </div>
                               <button
                                 type="button"

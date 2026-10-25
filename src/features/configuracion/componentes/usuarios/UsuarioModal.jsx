@@ -293,6 +293,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
                 <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
                 <option value="C.E.">Cédula de Extranjería (C.E.)</option>
+                <option value="PPT">Permiso por Protección Temporal (PPT)</option>
                 <option value="Pasaporte">Pasaporte</option>
                 <option value="NIT">NIT</option>
               </select>

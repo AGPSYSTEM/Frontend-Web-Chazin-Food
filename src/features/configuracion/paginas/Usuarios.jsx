@@ -1,7 +1,9 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, Users, UserCheck, UserX, Download, Activity, ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Search, Users, UserCheck, UserX, Download, Shield, X, Filter } from "lucide-react";
 import { useUsuarios } from "../hooks/useUsuarios";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { UsuariosTable } from "../componentes/usuarios/UsuariosTable";
 import { UsuarioModal } from "../componentes/usuarios/UsuarioModal";
 import { UsuarioPasswordModal } from "../componentes/usuarios/UsuarioPasswordModal";
@@ -9,6 +11,11 @@ import { UsuarioDetalleModal } from "../componentes/usuarios/UsuarioDetalleModal
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Usuarios() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Usuarios", "crear");
+  const canEdit = hasPrivilege(user, "Usuarios", "editar");
+  const canDelete = hasPrivilege(user, "Usuarios", "eliminar");
+
   const {
     usuarios,
     filteredUsuarios,
@@ -37,9 +44,13 @@ export function Usuarios() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
-  const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo").length;
-  const totalConectadosHoy = usuarios.filter((u) => u.conectadoHoy || (u.estado === "Activo" && u.id % 5 !== 0)).length;
+  const totalActivos = usuarios.filter((u) => u.estado === "Activo" || u.estado === 1 || u.estado === "1").length;
+  const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo" || u.estado === 0 || u.estado === "0").length;
+  const totalRolesEnUso = new Set(
+    usuarios
+      .map((u) => u.rolNombre || u.rol?.nombre || u.rol || u.idRol)
+      .filter(Boolean)
+  ).size;
 
   const ROLES_FILTRO = ["Todos", ...(rolesList.length > 0 ? rolesList.map(r => r.nombre) : ["Administrador", "Cocinero", "Cliente"])];
   const ESTADOS_FILTRO = ["Todos", "Activo", "Inactivo"];
@@ -251,12 +262,12 @@ export function Usuarios() {
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
-              <Activity className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-blue-500 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Conectados Hoy</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalConectadosHoy}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Roles en Uso</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalRolesEnUso}</p>
             </div>
           </div>
         </div>
@@ -281,16 +292,18 @@ export function Usuarios() {
               <Download className="w-4 h-4" />
               <span>Exportar Excel</span>
             </button>
-            <button onClick={handleOpenCreate} className="flex items-center gap-2 px-4 py-2 bg-[#F05454] text-white rounded-xl hover:bg-[#c0392b] transition-colors text-sm font-medium shadow-sm whitespace-nowrap">
-              <Plus className="w-4 h-4" />
-              <span>Nuevo Usuario</span>
-            </button>
+            {canCreate && (
+              <button onClick={handleOpenCreate} className="flex items-center gap-2 px-4 py-2 bg-[#F05454] text-white rounded-xl hover:bg-[#c0392b] transition-colors text-sm font-medium shadow-sm whitespace-nowrap">
+                <Plus className="w-4 h-4" />
+                <span>Nuevo Usuario</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Filter pills */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-3 mb-6 flex flex-wrap gap-2 items-center">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-3 mb-4 flex flex-wrap gap-2 items-center">
         <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Rol:</span>
         {ROLES_FILTRO.map((r) => (
           <button key={r} onClick={() => { setFilterRol(r); setCurrentPage(1); }} className={pillBtn(filterRol === r)}>{r}</button>
@@ -302,6 +315,67 @@ export function Usuarios() {
         ))}
       </div>
 
+      {/* Active Filter Indicators (#55, #56) */}
+      {(filterRol !== "Todos" || filterEstado !== "Todos" || searchTerm.trim() !== "") && (
+        <div className="flex flex-wrap items-center gap-2 mb-6 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-medium">
+            <Filter className="w-3.5 h-3.5" />
+            Filtros activos:
+          </span>
+          {filterRol !== "Todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 font-semibold">
+              Rol: {filterRol}
+              <button
+                type="button"
+                onClick={() => { setFilterRol("Todos"); setCurrentPage(1); }}
+                className="hover:text-red-800 ml-0.5"
+                title="Quitar filtro de rol"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {filterEstado !== "Todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 font-semibold">
+              Estado: {filterEstado}
+              <button
+                type="button"
+                onClick={() => { setFilterEstado("Todos"); setCurrentPage(1); }}
+                className="hover:text-red-800 ml-0.5"
+                title="Quitar filtro de estado"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {searchTerm.trim() !== "" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 border border-slate-200 dark:border-gray-700 font-medium">
+              Búsqueda: &ldquo;{searchTerm}&rdquo;
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(""); setCurrentPage(1); }}
+                className="hover:text-slate-900 ml-0.5"
+                title="Limpiar búsqueda"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setFilterRol("Todos");
+              setFilterEstado("Todos");
+              setSearchTerm("");
+              setCurrentPage(1);
+            }}
+            className="text-xs text-red-500 hover:text-red-600 underline font-medium ml-2 cursor-pointer"
+          >
+            Restablecer todo
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <UsuariosTable
         usuarios={filteredUsuarios}
@@ -312,6 +386,8 @@ export function Usuarios() {
         currentPage={currentPage}
         pageSize={PAGE_SIZE}
         onPageChange={setCurrentPage}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
 
       {/* Modals */}

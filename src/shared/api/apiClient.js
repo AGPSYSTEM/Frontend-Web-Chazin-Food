@@ -49,22 +49,34 @@ export async function apiFetch(endpoint, options = {}) {
   const response = await fetch(url, config);
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== 'undefined') {
+    const isLoginEndpoint = endpoint.includes('/login') || endpoint.includes('/activar-cuenta');
+    if (response.status === 401 && !isLoginEndpoint && typeof window !== 'undefined') {
       try {
         localStorage.removeItem('chazin_user');
       } catch (_) {}
     }
     let errorMessage = `HTTP error ${response.status}`;
+    let parsedErrorData = null;
     try {
       const errorData = await response.json();
-      if (errorData && errorData.message) {
-        errorMessage = errorData.message;
+      parsedErrorData = errorData;
+      if (errorData) {
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.mensaje) {
+          errorMessage = errorData.mensaje;
+        } else if (typeof errorData.error === 'string' && errorData.error.trim()) {
+          errorMessage = errorData.error;
+        } else if (Array.isArray(errorData.errores) && errorData.errores.length > 0) {
+          errorMessage = errorData.errores.join(' ');
+        }
       }
     } catch {
       // JSON parse error, use default message
     }
     const error = new Error(errorMessage);
     error.status = response.status;
+    if (parsedErrorData) error.data = parsedErrorData;
     throw error;
   }
 

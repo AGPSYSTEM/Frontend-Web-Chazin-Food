@@ -114,7 +114,7 @@ export function validateTiempoEstimado(text = "") {
   };
 }
 
-export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntrega }) {
+export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntrega, onAprobarPago, canEdit = true }) {
   let obsMeta = {};
   if (venta?.observaciones) {
     try {
@@ -316,7 +316,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
             <h1>CHAZIN FOOD</h1>
             <h2>NIT: 901.458.789-2</h2>
             <div style="font-size: 9px;">Cl. 21 #80-21, Belén, Medellín</div>
-            <div style="font-size: 9px;">Tel: (+57) 314 620 6358</div>
+            <div style="font-size: 9px;">Tel: +57 319 202 8562</div>
             <div class="divider"></div>
             <div class="bold" style="font-size: 12px;">FACTURA / COMPROBANTE POS</div>
             <div class="bold" style="font-size: 13px;">${codigo}</div>
@@ -456,7 +456,12 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                 <span>Método de pago</span>
               </div>
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                {metodoPago.toLowerCase().includes("tarjeta") ? (
+                {metodoPago.toLowerCase().includes("wompi") || metodoPago.toLowerCase().includes("pasarela") || metodoPago.toLowerCase().includes("pse") ? (
+                  <>
+                    <FoodIcon name="card" size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>Wompi (Pasarela Online)</span>
+                  </>
+                ) : metodoPago.toLowerCase().includes("tarjeta") ? (
                   <>
                     <FoodIcon name="card" size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
                     <span>Tarjeta</span>
@@ -798,14 +803,30 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
         {/* Modal Footer */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handlePrintComprobante}
-            className="px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Imprimir Comprobante</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrintComprobante}
+              className="px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir Comprobante</span>
+            </button>
+
+            {(venta.estado === "Pendiente" || venta.estado === "PENDIENTE" || venta.estadoPago === "PENDIENTE") && onAprobarPago && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await onAprobarPago(venta.id || venta.idVenta);
+                  if (ok) onClose();
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Aprobar Pago</span>
+              </button>
+            )}
+          </div>
 
           <button
             type="button"

@@ -247,14 +247,14 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                   </p>
                 </div>
 
-                {/* Fechas */}
+                {/* Stock Máximo */}
                 <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Fecha Vencimiento</span>
+                    <Layers className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Stock Máximo Capacidad</span>
                   </div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300">
-                    {insumo.fechaVencimiento || "No especificada"}
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
+                    {Number(insumo.stockMaximo !== undefined && insumo.stockMaximo !== null ? insumo.stockMaximo : 100).toLocaleString("es-CO")} <span className="text-xs font-medium text-gray-500">{insumo.unidadMedida || "und"}</span>
                   </p>
                 </div>
               </div>

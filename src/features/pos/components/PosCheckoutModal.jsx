@@ -28,6 +28,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import NumberInput from "@/shared/components/ui/NumberInput";
 
 export function PosCheckoutModal({
   isOpen,
@@ -181,9 +182,12 @@ export function PosCheckoutModal({
       clienteNombre: clienteNombre.trim(),
       responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
+      descuento: calculatedDescuento,
       descuentoAplicado: calculatedDescuento,
       descuentoPorcentaje: discountPercent,
       total: finalTotal,
+      origen: "PUNTO_FISICO",
+      tiempoEstimadoEntrega: "15-20 min",
       metodoPago: metodoPago === "tarjeta" ? "Tarjeta" : "Efectivo",
       datosPago: {
         efectivoConCuanto: efectivoPaga ? Number(efectivoPaga) : null,
@@ -739,14 +743,13 @@ export function PosCheckoutModal({
                     : "border-[#86EFAC] dark:border-emerald-700"
                 }`}>
                   <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
-                  <input
-                    type="number"
-                    min={finalTotal}
-                    required
+                  <NumberInput
+                    formatThousands={true}
+                    min={0}
                     value={efectivoPaga}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       setPagoTouched(true);
-                      setEfectivoPaga(e.target.value);
+                      setEfectivoPaga(val);
                     }}
                     onBlur={() => setPagoTouched(true)}
                     placeholder={`Mínimo: $${finalTotal.toLocaleString("es-CO")}`}

@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useProveedores() {
   const notify = useNotifications();
   const [proveedores, setProveedores] = useState([]);
+  const [papeleraProveedores, setPapeleraProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
@@ -31,8 +33,12 @@ export function useProveedores() {
   const fetchProveedores = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await proveedoresService.getProveedores();
+      const [data, trashData] = await Promise.all([
+        proveedoresService.getProveedores(),
+        proveedoresService.getPapeleraProveedores().catch(() => [])
+      ]);
       setProveedores(data || []);
+      setPapeleraProveedores(trashData || []);
       await fetchTrazabilidad();
     } catch (err) {
       console.error(err);
@@ -49,32 +55,24 @@ export function useProveedores() {
   // Active suppliers (estado === "Activo" or estado === 1)
   const activosProveedores = proveedores.filter((p) => p.estado === "Activo" || p.estado === 1);
 
-  // Inactive / Trash suppliers (estado === "Inactivo" or estado === 0)
-  const papeleraProveedores = proveedores.filter((p) => p.estado === "Inactivo" || p.estado === 0);
-
-  const normalize = (str) =>
-    String(str || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
   const filteredProveedores = proveedores.filter((p) => {
-    const term = normalize(searchTerm);
-    const matchSearch =
-      !term ||
-      normalize(p.nombre).includes(term) ||
-      normalize(p.nit).includes(term) ||
-      normalize(p.numeroDocumento).includes(term) ||
-      normalize(p.contacto).includes(term) ||
-      normalize(p.nombreContacto).includes(term) ||
-      normalize(p.email).includes(term) ||
-      normalize(p.correo).includes(term) ||
-      normalize(p.telefono).includes(term) ||
-      normalize(p.direccion).includes(term) ||
-      normalize(p.tipoProveedor).includes(term) ||
-      normalize(p.tipoPersona).includes(term) ||
-      (p.estado === "Activo" || p.estado === 1 ? "activo" : "inactivo").includes(term);
+    const matchSearch = matchesSmartSearch(
+      [
+        p.nombre,
+        p.nit,
+        p.numeroDocumento,
+        p.contacto,
+        p.nombreContacto,
+        p.email,
+        p.correo,
+        p.telefono,
+        p.direccion,
+        p.tipoProveedor,
+        p.tipoPersona,
+        p.estado
+      ],
+      searchTerm
+    );
 
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
     const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo;
@@ -105,13 +103,13 @@ export function useProveedores() {
     }
   };
 
-  // #68 – Inactivar / Activar proveedor desde la tabla
+  // #68 – Inactivar / Activar proveedor desde la tabla llamando a PUT /proveedores/:id/estado
   const toggleEstadoProveedor = async (item) => {
     const id = item.id || item.idProveedor;
     const isActivo = item.estado === "Activo" || item.estado === 1;
     const nuevoEstado = isActivo ? "Inactivo" : "Activo";
     try {
-      await proveedoresService.updateProveedor(id, { ...item, estado: nuevoEstado });
+      await proveedoresService.toggleEstadoProveedor(id, nuevoEstado);
       await fetchProveedores();
       notify.success(
         nuevoEstado === "Activo" ? "Proveedor activado" : "Proveedor inactivado",

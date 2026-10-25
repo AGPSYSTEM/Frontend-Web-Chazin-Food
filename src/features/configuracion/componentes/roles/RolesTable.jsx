@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Shield, Users, Edit, Trash2, Key, ToggleLeft, ToggleRight, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete }) {
+export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -93,17 +93,19 @@ export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado,
                       </td>
                       <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => onEdit(r)}
-                            title="Editar rol"
-                            className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
-                          >
-                            <Edit className="w-4 h-4 stroke-[2]" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => onEdit(r)}
+                              title="Editar rol"
+                              className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
+                            >
+                              <Edit className="w-4 h-4 stroke-[2]" />
+                            </button>
+                          )}
                           <button
                             onClick={() => onToggleEstado(r.id)}
                             title={isActivo ? "Desactivar rol" : "Activar rol"}
-                            disabled={isAdministrador}
+                            disabled={isAdministrador || !canEdit}
                             className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-30 transition-colors p-1 cursor-pointer"
                           >
                             {isActivo ? (
@@ -112,14 +114,16 @@ export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado,
                               <ToggleLeft className="w-5 h-5 text-gray-400" />
                             )}
                           </button>
-                          <button
-                            onClick={() => onDelete(r.id, r.nombre)}
-                            title="Eliminar rol"
-                            disabled={isAdministrador}
-                            className="text-red-500 dark:text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors p-1 cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4 stroke-[2]" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => onDelete(r.id, r.nombre)}
+                              title="Eliminar rol"
+                              disabled={isAdministrador}
+                              className="text-red-500 dark:text-red-400 hover:text-red-600 disabled:opacity-30 transition-colors p-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4 stroke-[2]" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

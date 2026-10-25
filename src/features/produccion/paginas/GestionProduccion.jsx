@@ -1,11 +1,17 @@
 import { useState, useMemo } from "react";
 import { Search, UtensilsCrossed, Clock, Flame, CheckCircle2, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useGestionProduccion } from "../hooks/useGestionProduccion";
 import { ProduccionTable } from "../componentes/ProduccionTable";
 import { VerOrdenModal } from "../componentes/VerOrdenModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function GestionProduccion() {
+  const { user } = useAuth();
+  const canEdit = hasPrivilege(user, "Producción", "editar");
+  const canDelete = hasPrivilege(user, "Producción", "eliminar");
+
   const {
     ordenes,
     filteredOrdenes,
@@ -158,9 +164,11 @@ export function GestionProduccion() {
       ) : (
         <ProduccionTable
           ordenes={filteredOrdenes}
-          onUpdateEstado={updateEstado}
-          onDelete={deleteOrden}
+          onUpdateEstado={canEdit ? updateEstado : null}
+          onDelete={canDelete ? deleteOrden : null}
           onViewDetails={(orden) => setSelectedOrden(orden)}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

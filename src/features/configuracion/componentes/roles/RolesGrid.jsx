@@ -17,7 +17,7 @@ const MODULOS_PERMISOS_VALIDOS = [
   "Gestión de Ventas"
 ];
 
-export function RolesGrid({ roles = [], onEdit, onToggleEstado, onDelete }) {
+export function RolesGrid({ roles = [], onEdit, onToggleEstado, onDelete, canEdit = true, canDelete = true }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {roles.map((rol) => {
@@ -129,18 +129,20 @@ export function RolesGrid({ roles = [], onEdit, onToggleEstado, onDelete }) {
 
             {/* Acciones de la tarjeta */}
             <div className="border-t border-gray-100 dark:border-gray-800 pt-3.5 mt-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => onEdit(rol)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors font-bold text-xs cursor-pointer"
-                title="Editar Rol, Permisos y Privilegios"
-              >
-                <Edit className="w-3.5 h-3.5 text-[#F05454] stroke-[2.2]" />
-                <span>Editar</span>
-              </button>
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => onEdit(rol)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors font-bold text-xs cursor-pointer"
+                  title="Editar Rol, Permisos y Privilegios"
+                >
+                  <Edit className="w-3.5 h-3.5 text-[#F05454] stroke-[2.2]" />
+                  <span>Editar</span>
+                </button>
+              ) : <div />}
 
               <div className="flex items-center gap-1.5">
-                {!isAdministrador && (
+                {!isAdministrador && canEdit && (
                   <button
                     type="button"
                     onClick={() => onToggleEstado(rol.id)}
@@ -160,7 +162,7 @@ export function RolesGrid({ roles = [], onEdit, onToggleEstado, onDelete }) {
                   </button>
                 )}
 
-                {onDelete && !isAdministrador && (
+                {onDelete && !isAdministrador && canDelete && (
                   <button
                     type="button"
                     onClick={() => onDelete(rol.id, rol.nombre)}

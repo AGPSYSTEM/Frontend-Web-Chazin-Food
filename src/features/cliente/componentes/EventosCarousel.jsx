@@ -522,29 +522,6 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
             </p>
           </div>
         </div>
-
-        {/* TEMPORIZADOR DIGITAL FLOTANTE */}
-        <div className="flex items-center gap-2 bg-gray-100/90 dark:bg-gray-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs self-start sm:self-auto">
-          <Clock className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Termina en:</span>
-          <div className="flex items-center gap-1 font-mono text-xs font-black text-gray-900 dark:text-amber-300">
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.dias).padStart(2, "0")}d
-            </span>
-            <span>:</span>
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.horas).padStart(2, "0")}h
-            </span>
-            <span>:</span>
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.minutos).padStart(2, "0")}m
-            </span>
-            <span>:</span>
-            <span className="bg-red-800 text-white px-1.5 py-0.5 rounded-md shadow-2xs font-bold">
-              {String(timeLeft.segundos).padStart(2, "0")}s
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* BARRA DE HISTORIAS SEGMENTADAS (ESTILO APPLE / INSTAGRAM) */}
@@ -664,14 +641,30 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         <span>Preparación artesanal: {evt.tiempoPrep || "12 - 15 min"}</span>
                       </span>
 
-                      {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta de Promoción */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-black/60 backdrop-blur-md text-amber-300 border border-amber-400/40 shadow-md shrink-0">
-                        <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                        <span className="text-[10.5px] font-bold text-gray-200">Termina en:</span>
-                        <span className="font-mono font-black text-amber-300">
-                          {String(timeLeft.dias).padStart(2, "0")}d : {String(timeLeft.horas).padStart(2, "0")}h : {String(timeLeft.minutos).padStart(2, "0")}m : {String(timeLeft.segundos).padStart(2, "0")}s
-                        </span>
-                      </div>
+                      {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta de Promoción (Ítem #2) */}
+                      {(() => {
+                        const evtTimeLeft = (() => {
+                          if (!evt.fechaFin) return timeLeft;
+                          const diff = new Date(evt.fechaFin).getTime() - Date.now();
+                          if (diff <= 0) return { dias: 0, horas: 0, minutos: 0, segundos: 0 };
+                          return {
+                            dias: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                            horas: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                            minutos: Math.floor((diff / 1000 / 60) % 60),
+                            segundos: Math.floor((diff / 1000) % 60)
+                          };
+                        })();
+
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-black/60 backdrop-blur-md text-amber-300 border border-amber-400/40 shadow-md shrink-0">
+                            <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                            <span className="text-[10.5px] font-bold text-gray-200">Termina en:</span>
+                            <span className="font-mono font-black text-amber-300">
+                              {String(evtTimeLeft.dias).padStart(2, "0")}d : {String(evtTimeLeft.horas).padStart(2, "0")}h : {String(evtTimeLeft.minutos).padStart(2, "0")}m : {String(evtTimeLeft.segundos).padStart(2, "0")}s
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {savePct > 0 && (

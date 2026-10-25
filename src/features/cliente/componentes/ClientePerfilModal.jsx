@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   X, User, Package, TrendingUp, Award, Flame, Crown, Clock,
   AlertTriangle, ChevronDown, ChevronUp, Sparkles, Check,
-  Mail, Phone, MapPin, CreditCard, Save, AlertCircle, Edit2
+  Mail, Phone, MapPin, CreditCard, Save, AlertCircle, Edit2, ShoppingBag
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
@@ -22,6 +23,7 @@ function FieldError({ msg }) {
 }
 
 export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
+  const navigate = useNavigate();
   const { updateProfile } = useAuth();
   const notify = useNotifications();
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
@@ -640,17 +642,27 @@ export function ClientePerfilModal({ isOpen, onClose, user, pedidos = [] }) {
           )}
         </div>
 
-        {/* Footer - solo visible en tab fidelidad */}
-        {tab === "fidelidad" && (
-          <div className="p-4 bg-gray-50/80 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0">
-            <button
-              onClick={onClose}
-              className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-sm cursor-pointer"
-            >
-              Cerrar
-            </button>
-          </div>
-        )}
+        {/* Footer (Ítem #27: Acceso directo a Ver mis pedidos) */}
+        <div className="p-4 bg-gray-50/80 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              navigate("/perfil#pedidos");
+            }}
+            className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-[#f05454] dark:text-red-400 font-bold rounded-2xl text-xs sm:text-sm border border-red-200 dark:border-red-900/50 transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Ver mis pedidos ({totalPedidosCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-2.5 px-6 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-2xl transition-colors text-xs sm:text-sm cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );

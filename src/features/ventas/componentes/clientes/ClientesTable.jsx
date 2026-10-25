@@ -3,7 +3,7 @@ import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRig
 import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
-export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
+export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -63,7 +63,8 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
               paginatedClientes.map((c, index) => {
                 const tipoCliente = c.tipo || (c.esVip ? "VIP" : "Nuevo");
                 const tieneCuenta = c.tieneCuenta !== false && !!c.idUsuario;
-                const isActivo = tieneCuenta && (c.estado === "Activo" || c.estado === 1);
+                const isPendiente = c.estado === "PENDIENTE" || c.estado === "Pendiente" || c.estadoUsuario === "PENDIENTE";
+                const isActivo = tieneCuenta && !isPendiente && (c.estado === "Activo" || c.estado === 1);
 
                 return (
                   <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
@@ -145,13 +146,19 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        isActivo
-                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
-                          : "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50"
-                      }`}>
-                        {isActivo ? "Activo" : "Inactivo / Pendiente"}
-                      </span>
+                      {isPendiente ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800">
+                          Pendiente de activación
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          isActivo
+                            ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                            : "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
+                        }`}>
+                          {isActivo ? "Activo" : "Inactivo"}
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-5 py-4 text-center">
@@ -164,21 +171,25 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                           <Eye className="w-4 h-4" />
                         </button>
 
-                        <button
-                          onClick={() => onEdit(c)}
-                          title="Editar cliente"
-                          className="p-1 text-gray-400 hover:text-emerald-500 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(c)}
+                            title="Editar cliente"
+                            className="p-1 text-gray-400 hover:text-emerald-500 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`.trim(), c.compras || 0)}
-                          title={c.compras > 0 ? "No se puede eliminar: cuenta con ventas asociadas (solo inactivar)" : "Eliminar cliente"}
-                          className={`p-1 transition-colors ${c.compras > 0 ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-red-500"}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`.trim(), c.compras || 0)}
+                            title={c.compras > 0 ? "No se puede eliminar: cuenta con ventas asociadas (solo inactivar)" : "Eliminar cliente"}
+                            className={`p-1 transition-colors ${c.compras > 0 ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-red-500"}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

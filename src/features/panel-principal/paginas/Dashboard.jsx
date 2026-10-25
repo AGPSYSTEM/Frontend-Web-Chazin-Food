@@ -201,9 +201,9 @@ export function Dashboard() {
               aria-label="Filtrar por año"
               className="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-300 py-1 px-1 rounded-lg border-0 outline-none cursor-pointer focus:ring-1 focus:ring-red-500/50"
             >
-              <option value={2026}>2026</option>
-              <option value={2025}>2025</option>
-              <option value={2024}>2024</option>
+              {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2, new Date().getFullYear() - 3].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -234,8 +234,8 @@ export function Dashboard() {
       </div>
 
       {/* ── KPI Cards Rediseñadas (Ítems 29, 30 y 31) ── */}
-      {/* 5 Tarjetas simétricas con divisa COP explícita y distribución equilibrada */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5">
+      {/* 5 Tarjetas simétricas con divisa COP explícita y distribución equilibrada (Ítem #29) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5">
 
         {/* 1. Total de Ventas (COP) - Ítem 31 y 30 */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-800 p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-shadow">

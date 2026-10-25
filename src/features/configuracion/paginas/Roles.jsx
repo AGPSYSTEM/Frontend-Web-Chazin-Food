@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Plus, Search, Shield, ShieldCheck, ShieldAlert, Users, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, Shield, ShieldCheck, ShieldAlert, Users, LayoutGrid, List, X, Filter } from "lucide-react";
 import { useRoles } from "../hooks/useRoles";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { RolesTable } from "../componentes/roles/RolesTable";
 import { RolesGrid } from "../componentes/roles/RolesGrid";
 import { RolModal } from "../componentes/roles/RolModal";
@@ -8,6 +10,11 @@ import { PermisosModal } from "../componentes/roles/PermisosModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Roles() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Roles", "crear");
+  const canEdit = hasPrivilege(user, "Roles", "editar");
+  const canDelete = hasPrivilege(user, "Roles", "eliminar");
+
   const {
     roles,
     filteredRoles,
@@ -208,15 +215,63 @@ export function Roles() {
             </button>
           </div>
 
-          <button
-            onClick={handleOpenCreate}
-            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Nuevo Rol</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={handleOpenCreate}
+              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Nuevo Rol</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Active Filter Indicators (#55, #56) */}
+      {(filterEstado !== "Todos" || searchTerm.trim() !== "") && (
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-medium">
+            <Filter className="w-3.5 h-3.5" />
+            Filtros activos:
+          </span>
+          {filterEstado !== "Todos" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 font-semibold">
+              Estado: {filterEstado}
+              <button
+                type="button"
+                onClick={() => setFilterEstado("Todos")}
+                className="hover:text-red-800 ml-0.5"
+                title="Quitar filtro de estado"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {searchTerm.trim() !== "" && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 border border-slate-200 dark:border-gray-700 font-medium">
+              Búsqueda: &ldquo;{searchTerm}&rdquo;
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="hover:text-slate-900 ml-0.5"
+                title="Limpiar búsqueda"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setFilterEstado("Todos");
+              setSearchTerm("");
+            }}
+            className="text-xs text-red-500 hover:text-red-600 underline font-medium ml-2 cursor-pointer"
+          >
+            Restablecer todo
+          </button>
+        </div>
+      )}
 
       {/* Main Content: Table by default or Grid */}
       {loading ? (
@@ -228,6 +283,8 @@ export function Roles() {
           onEdit={handleOpenEdit}
           onToggleEstado={toggleEstadoRol}
           onDelete={deleteRol}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       ) : (
         <RolesTable
@@ -236,6 +293,8 @@ export function Roles() {
           onEdit={handleOpenEdit}
           onToggleEstado={toggleEstadoRol}
           onDelete={deleteRol}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

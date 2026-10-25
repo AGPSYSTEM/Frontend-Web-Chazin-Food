@@ -23,7 +23,9 @@ function desglosarProcedimiento(texto) {
   for (let l of lineas) {
     const match = l.match(/^(?:(?:\d+[\.\)-]|Paso\s*\d+:?))\s*(?:([^:]+):)?\s*(.*)$/i);
     if (match) {
-      const faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
+      let faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
+      // #102: Evitar numeración redundante "1. 1."
+      faseNombre = faseNombre.replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${parsed.length + 1}`;
       const desc = match[2] ? match[2].trim() : "";
       parsed.push({
         id: `p-${Date.now()}-${parsed.length}-${Math.random().toString(36).slice(2, 6)}`,
@@ -50,7 +52,11 @@ function serializarPasos(pasos) {
   if (!Array.isArray(pasos) || pasos.length === 0) return "";
   return pasos
     .filter(p => p && p.descripcion && String(p.descripcion).trim())
-    .map((p, idx) => `${idx + 1}. ${p.fase || 'Paso ' + (idx + 1)}: ${String(p.descripcion).trim()}`)
+    .map((p, idx) => {
+      // #102: Limpiar prefijo numérico existente para evitar duplicados "1. 1."
+      const cleanFase = (p.fase || `Paso ${idx + 1}`).replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${idx + 1}`;
+      return `${idx + 1}. ${cleanFase}: ${String(p.descripcion).trim()}`;
+    })
     .join("\n\n");
 }
 

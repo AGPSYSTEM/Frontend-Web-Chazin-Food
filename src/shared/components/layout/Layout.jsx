@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { MiPerfilModal } from "@/shared/components/profile/MiPerfilModal";
@@ -53,13 +54,9 @@ export function Layout() {
   };
 
   // ── Permission helper ──
-  // Administrador always has all permissions; for other roles, check the permisos array
-  const isAdmin = user?.rol?.toLowerCase() === "administrador" || user?.rol?.toLowerCase() === "admin";
-  const userPermisos = user?.permisos || [];
+  // Administrador always has all permissions; for other roles, check granular Ver privilege
   const hasPerm = (permName) => {
-    if (isAdmin) return true;
-    if (permName === "Punto de Venta" && (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))) return true;
-    return userPermisos.includes(permName);
+    return hasPrivilege(user, permName, "ver");
   };
 
   const handleLogout = async () => {
@@ -117,7 +114,6 @@ export function Layout() {
   const allProduccionItems = [
     { to: "/ventas/categoria-productos", label: "Categoría Productos", perm: "Categoría Productos" },
     { to: "/ventas/productos", label: "Productos", perm: "Productos" },
-    { to: "/ventas/fichas-tecnicas", label: "Fichas Técnicas", perm: "Fichas Técnicas" },
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
   const produccionItems = allProduccionItems.filter(i => hasPerm(i.perm));
@@ -161,12 +157,12 @@ export function Layout() {
       <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-white dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800 h-screen transition-all duration-300 overflow-x-hidden">
         {/* Brand */}
         <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
-          <div className="flex items-center gap-2.5 mb-4">
+          <Link to="/" className="inline-flex items-center gap-2.5 mb-4 hover:opacity-90 transition-opacity" title="Ir al inicio">
             <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 shrink-0">
               <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
             </div>
             <span className="font-bold text-white text-sm">Chazin Food</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0 ring-2 ring-white/30">
               {user?.nombre?.charAt(0).toUpperCase() ?? "A"}
@@ -314,12 +310,12 @@ export function Layout() {
       >
         <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
+            <Link to="/" onClick={handleNavClick} className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Ir al inicio">
               <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 shrink-0">
                 <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
               </div>
               <span className="font-bold text-white text-sm">Chazin Food</span>
-            </div>
+            </Link>
             <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
               <X className="w-4 h-4 text-white" />
             </button>
@@ -537,12 +533,12 @@ export function Layout() {
             <Menu className="w-6 h-6" />
           </button>
 
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" title="Ir al inicio">
             <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-white ring-2 ring-gray-100 dark:ring-gray-700">
               <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
             </div>
             <span className="font-bold text-gray-800 dark:text-gray-100 tracking-tight">Chazin Food</span>
-          </div>
+          </Link>
 
           <button
             onClick={() => toggleDarkMode()}

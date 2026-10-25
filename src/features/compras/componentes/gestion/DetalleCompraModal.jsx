@@ -1,11 +1,13 @@
 import { X, FileText, Calendar, User, Package, DollarSign, CheckCircle2, Clock, XCircle, AlertTriangle, Layers, Info, CornerDownRight, ArrowRightLeft, Truck, Wallet, RotateCcw, Edit3, Sparkles, Tag } from "lucide-react";
 
 const estadoBadges = {
-  RECIBIDA: { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
-  Recibida:  { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
-  Completada:{ cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
-  CANCELADA: { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Cancelada" },
-  Anulada:   { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Anulada" }
+  RECIBIDA:         { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  Recibida:         { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  Completada:       { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  COMPLETADA:       { cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800", icon: CheckCircle2, label: "Confirmada" },
+  DEVUELTA_PARCIAL: { cls: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800", icon: RotateCcw, label: "Devolución Parcial" },
+  CANCELADA:        { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Cancelada" },
+  Anulada:          { cls: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800", icon: XCircle, label: "Anulada" }
 };
 
 function esEstadoRecibida(estado) {

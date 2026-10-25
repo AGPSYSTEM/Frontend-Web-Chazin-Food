@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Plus, Search, Bell } from "lucide-react";
 import { useInsumos } from "../hooks/useInsumos";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { InsumosStatsCards } from "../componentes/insumos/InsumosStatsCards";
 import { InsumosTable } from "../componentes/insumos/InsumosTable";
 import { InsumoModal } from "../componentes/insumos/InsumoModal";
@@ -10,6 +12,11 @@ import { VerInsumoModal } from "../componentes/insumos/VerInsumoModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Insumos() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Insumos", "crear");
+  const canEdit = hasPrivilege(user, "Insumos", "editar");
+  const canDelete = hasPrivilege(user, "Insumos", "eliminar");
+
   const {
     insumos,
     filteredInsumos,
@@ -192,13 +199,15 @@ export function Insumos() {
                 )}
               </div>
 
-              <button
-                onClick={handleOpenCreate}
-                className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Nuevo Insumo</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={handleOpenCreate}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Nuevo Insumo</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -271,6 +280,8 @@ export function Insumos() {
               onDelete={handleDeleteItem}
               onView={(item) => setViewingInsumo(item)}
               onToggleEstado={toggleEstadoInsumo}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           )}
         </div>

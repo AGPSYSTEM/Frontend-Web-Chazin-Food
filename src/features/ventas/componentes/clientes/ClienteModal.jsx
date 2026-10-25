@@ -88,15 +88,21 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
         }
         return null;
       }
-      case "nombre":
-        return validateTexto(value, "El nombre del cliente", 2, 60);
-      case "apellidos":
+      case "nombre": {
+        const res = validateTexto(value, "El nombre del cliente", 2, 60);
+        return res.isValid ? null : res.error;
+      }
+      case "apellidos": {
         if (value && value.trim()) {
-          return validateTexto(value, "Los apellidos", 2, 60);
+          const res = validateTexto(value, "Los apellidos", 2, 60);
+          return res.isValid ? null : res.error;
         }
         return null;
-      case "email":
-        return validateEmail(value);
+      }
+      case "email": {
+        const res = validateEmail(value);
+        return res.isValid ? null : res.error;
+      }
       case "telefono": {
         if (!value || !value.trim()) return "El número de teléfono es obligatorio.";
         const telVal = validateTelefono(value);
@@ -218,6 +224,19 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
           </div>
         )}
 
+        {/* ÍTEM 121: Aviso de activación por correo para cuentas nuevas */}
+        {!isEditing && (
+          <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl flex items-start gap-3 text-xs text-blue-700 dark:text-blue-300">
+            <Mail className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Activación de Cuenta por Correo</p>
+              <p className="mt-0.5 leading-relaxed">
+                Se enviará un correo de activación al cliente con un enlace seguro para que confirme su correo y cree su contraseña de acceso.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
 
           {/* ── ÍTEM 120: Número y Tipo de Documento en Primer Lugar ── */}
@@ -253,6 +272,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                   <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
                   <option value="C.E.">Cédula de Extranjería (C.E.)</option>
                   <option value="Pasaporte">Pasaporte</option>
+                  <option value="PPT">Permiso por Protección Temporal (PPT)</option>
                   <option value="NIT">NIT</option>
                 </select>
               </div>

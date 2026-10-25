@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Power } from "lucide-react";
 
-export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleEstado }) {
+export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleEstado, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -128,7 +128,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2.5">
-                        {onToggleEstado && (
+                        {onToggleEstado && canEdit && (
                           <button
                             onClick={() => onToggleEstado(i)}
                             title={i.estado === "Activo" ? "Inactivar insumo" : "Activar insumo"}
@@ -150,20 +150,24 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEdit(i)}
-                          title="Editar insumo"
-                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
-                          title="Eliminar insumo"
-                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4 stroke-[2]" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(i)}
+                            title="Editar insumo"
+                            className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
+                            title="Eliminar insumo"
+                            className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 
 // ── ClienteLanding: lazy-loaded para reducir el bundle inicial (≈177KB menos) ──
 const ClienteLanding = lazy(() => import("@/features/cliente/paginas/ClienteLanding").then(m => ({ default: m.ClienteLanding })));
@@ -22,6 +23,7 @@ const Usuarios = lazy(() => import("@/features/configuracion/paginas/Usuarios").
 const Login = lazy(() => import("@/features/autenticacion/paginas/Login").then(m => ({ default: m.Login })));
 const ForgotPassword = lazy(() => import("@/features/autenticacion/paginas/ForgotPassword").then(m => ({ default: m.ForgotPassword })));
 const ResetPassword = lazy(() => import("@/features/autenticacion/paginas/ResetPassword").then(m => ({ default: m.ResetPassword })));
+const ActivarCuenta = lazy(() => import("@/features/autenticacion/paginas/ActivarCuenta").then(m => ({ default: m.ActivarCuenta })));
 const ClientePerfil = lazy(() => import("@/features/cliente/paginas/ClientePerfil").then(m => ({ default: m.ClientePerfil })));
 const CocineroDashboard = lazy(() => import("@/features/cocinero/paginas/CocineroDashboard").then(m => ({ default: m.CocineroDashboard })));
 const FichasTecnicas = lazy(() => import("@/features/fichas-tecnicas/paginas/FichasTecnicas").then(m => ({ default: m.FichasTecnicas })));
@@ -30,24 +32,24 @@ const PosVendedor = lazy(() => import("@/features/pos/paginas/PosVendedor"));
 
 /**
  * Maps permission names (as stored in the DB) to route paths.
- * A user with a given permission will have access to the corresponding route(s).
+ * A user with a given permission + Ver privilege will have access to the corresponding route(s).
  */
 const PERMISSION_ROUTE_MAP = {
-  "Dashboard":             { path: "",                          element: <Dashboard /> },
-  "Categoría Insumos":     { path: "compras/categoria-insumos", element: <CategoriaInsumos /> },
-  "Insumos":               { path: "compras/insumos",           element: <Insumos /> },
-  "Proveedores":           { path: "compras/proveedores",       element: <Proveedores /> },
-  "Gestión de Compras":    { path: "compras/gestion",           element: <GestionCompras /> },
-  "Categoría Productos":   { path: "ventas/categoria-productos",element: <CategoriaProductos /> },
-  "Productos":             { path: "ventas/productos",          element: <Productos /> },
-  "Fichas Técnicas":       { path: "ventas/fichas-tecnicas",    element: <FichasTecnicas /> },
-  "Gestión de Producción": { path: "produccion/gestion",        element: <GestionProduccion /> },
-  "Clientes":              { path: "ventas/clientes",           element: <Clientes /> },
-  "Gestión de Ventas":     { path: "ventas/gestion-ventas",     element: <GestionVentas /> },
-  "Punto de Venta":        { path: "ventas/pos",                element: <PosVendedor /> },
-  "Vendedor":              { path: "ventas/pos",                element: <PosVendedor /> },
-  "Roles":                 { path: "configuracion/roles",       element: <Roles /> },
-  "Usuarios":              { path: "configuracion/usuarios",    element: <Usuarios /> },
+  "Dashboard":             { path: "",                           element: <Dashboard /> },
+  "Categoría Insumos":     { path: "compras/categoria-insumos",  element: <CategoriaInsumos /> },
+  "Insumos":               { path: "compras/insumos",            element: <Insumos /> },
+  "Proveedores":           { path: "compras/proveedores",        element: <Proveedores /> },
+  "Gestión de Compras":    { path: "compras/gestion",            element: <GestionCompras /> },
+  "Categoría Productos":   { path: "ventas/categoria-productos", element: <CategoriaProductos /> },
+  "Productos":             { path: "ventas/productos",           element: <Productos /> },
+  "Fichas Técnicas":       { path: "ventas/fichas-tecnicas",     element: <FichasTecnicas /> },
+  "Gestión de Producción": { path: "produccion/gestion",         element: <GestionProduccion /> },
+  "Clientes":              { path: "ventas/clientes",            element: <Clientes /> },
+  "Gestión de Ventas":     { path: "ventas/gestion-ventas",      element: <GestionVentas /> },
+  "Punto de Venta":        { path: "ventas/pos",                 element: <PosVendedor /> },
+  "Vendedor":              { path: "ventas/pos",                 element: <PosVendedor /> },
+  "Roles":                 { path: "configuracion/roles",        element: <Roles /> },
+  "Usuarios":              { path: "configuracion/usuarios",     element: <Usuarios /> },
 };
 
 export function AppRoutes() {
@@ -81,12 +83,20 @@ export function AppRoutes() {
             </Suspense>
           }
         />
+        <Route
+          path="/activar-cuenta"
+          element={
+            <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>
+              <ActivarCuenta />
+            </Suspense>
+          }
+        />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
-  const rawRol = typeof user?.rol === 'object' ? user?.rol?.nombre : user?.rol;
+  const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
   const userRol = String(rawRol || "").toLowerCase().trim();
   const isCliente = userRol === "cliente" || user?.idRol === 4;
 
@@ -103,6 +113,14 @@ export function AppRoutes() {
             </Suspense>
           }
         />
+        <Route
+          path="/activar-cuenta"
+          element={
+            <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>
+              <ActivarCuenta />
+            </Suspense>
+          }
+        />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -116,6 +134,7 @@ export function AppRoutes() {
         <Routes>
           <Route path="/" element={<CocineroDashboard />} />
           <Route path="/fichas-tecnicas" element={<FichasTecnicas readOnly />} />
+          <Route path="/activar-cuenta" element={<ActivarCuenta />} />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -129,6 +148,7 @@ export function AppRoutes() {
       <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/activar-cuenta" element={<ActivarCuenta />} />
           <Route path="/tienda" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
           <Route path="/cliente" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
           <Route path="/" element={<Layout />}>
@@ -152,32 +172,36 @@ export function AppRoutes() {
     );
   }
 
-  // ── Any other role (e.g. Vendedor): permission-based access ──
-  const userPermisos = user?.permisos || [];
+  // ── Any other role (e.g. Vendedor): privilege-based access ──
   const allowedRoutesMap = new Map();
-  for (const perm of userPermisos) {
-    const routeConfig = PERMISSION_ROUTE_MAP[perm];
-    if (routeConfig && !allowedRoutesMap.has(routeConfig.path)) {
+  for (const [perm, routeConfig] of Object.entries(PERMISSION_ROUTE_MAP)) {
+    if (hasPrivilege(user, perm, "ver") && !allowedRoutesMap.has(routeConfig.path)) {
       allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
-  // If user has "Gestión de Ventas", grant route access to POS for the "Crear venta" button
-  if (userPermisos.includes("Gestión de Ventas") && !allowedRoutesMap.has("ventas/pos")) {
+  // If user can create or view in "Gestión de Ventas", grant route access to POS for the "Crear venta" button
+  if (
+    (hasPrivilege(user, "Gestión de Ventas", "crear") || hasPrivilege(user, "Gestión de Ventas", "ver")) &&
+    !allowedRoutesMap.has("ventas/pos")
+  ) {
     allowedRoutesMap.set("ventas/pos", PERMISSION_ROUTE_MAP["Punto de Venta"]);
   }
   const allowedRoutes = Array.from(allowedRoutesMap.values());
 
-  const hasDashboard = userPermisos.includes("Dashboard");
-  const defaultPath = userPermisos.includes("Gestión de Ventas")
+  const hasDashboard = hasPrivilege(user, "Dashboard", "ver");
+  const defaultPath = hasPrivilege(user, "Gestión de Ventas", "ver")
     ? "ventas/gestion-ventas"
-    : (userPermisos.includes("Punto de Venta") || userPermisos.includes("Vendedor"))
+    : hasPrivilege(user, "Punto de Venta", "ver")
     ? "ventas/pos"
-    : (allowedRoutes.length > 0 ? allowedRoutes[0].path : "");
+    : allowedRoutes.length > 0
+    ? allowedRoutes[0].path
+    : "";
 
   return (
     <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/activar-cuenta" element={<ActivarCuenta />} />
         <Route path="/" element={<Layout />}>
           {hasDashboard ? (
             <Route index element={<Dashboard />} />

@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, Building2, Bell, Trash2, ClipboardList, CheckCircle2, XCircle, Briefcase } from "lucide-react";
+import { Plus, Search, Building2, Bell, Trash2, ClipboardList, CheckCircle2, XCircle, Briefcase, Filter, X } from "lucide-react";
 import { useProveedores } from "../hooks/useProveedores";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { ProveedoresTable } from "../componentes/proveedores/ProveedoresTable";
 import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
@@ -8,6 +10,11 @@ import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProv
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Proveedores() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Proveedores", "crear");
+  const canEdit = hasPrivilege(user, "Proveedores", "editar");
+  const canDelete = hasPrivilege(user, "Proveedores", "eliminar");
+
   const {
     proveedores,
     activosProveedores,
@@ -265,20 +272,23 @@ export function Proveedores() {
                 )}
               </div>
 
-              <button
-                onClick={handleOpenCreate}
-                className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Nuevo Proveedor</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={handleOpenCreate}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Nuevo Proveedor</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* Active Filter Badges */}
           {(filterEstado !== "Todos" || filterTipo !== "Todos" || searchTerm.trim() !== "") && (
             <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
-              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" />
                 Filtros activos:
               </span>
               {filterEstado !== "Todos" && (
@@ -318,6 +328,8 @@ export function Proveedores() {
               onEdit={handleOpenEdit}
               onDelete={deleteProveedor}
               onToggleEstado={toggleEstadoProveedor}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { categoriaInsumosService } from "../servicios/categoriaInsumosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useCategoriaInsumos() {
   const notify = useNotifications();
@@ -25,23 +26,12 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const normalize = (str) =>
-    String(str || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
-  const filteredCategorias = categorias.filter((c) => {
-    const term = normalize(searchTerm);
-    if (!term) return true;
-    return (
-      (c.nombre && normalize(c.nombre).includes(term)) ||
-      (c.descripcion && normalize(c.descripcion).includes(term)) ||
-      (c.estado && normalize(c.estado).includes(term)) ||
-      String(c.id || c.idCategoriaInsumo || "").includes(term)
-    );
-  });
+  const filteredCategorias = categorias.filter((c) =>
+    matchesSmartSearch(
+      [c.nombre, c.descripcion, c.estado, c.id, c.idCategoriaInsumo],
+      searchTerm
+    )
+  );
 
   const createCategoria = async (form) => {
     try {

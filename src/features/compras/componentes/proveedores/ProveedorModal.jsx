@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Building, User, AlertCircle } from "lucide-react";
+import { validateEmail } from "@/shared/utils/validationUtils";
 
 const TIPOS_PROVEEDOR = [
   { id: 1, nombre: "Mayorista" },
@@ -138,9 +139,12 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
       errs.telefono = "El teléfono debe tener entre 7 y 10 dígitos numéricos.";
     }
 
-    // Email: validación real-time (#73) - formato válido
-    if (fields.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(fields.email.trim())) {
-      errs.email = "El correo electrónico no tiene un formato válido (ej: contacto@empresa.com).";
+    // Email: validación real-time (#73) con validador estricto
+    if (fields.email && fields.email.trim()) {
+      const emailRes = validateEmail(fields.email.trim());
+      if (!emailRes.isValid) {
+        errs.email = emailRes.error;
+      }
     }
 
     return errs;

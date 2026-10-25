@@ -604,7 +604,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
       errs.fechaFactura = "La fecha de la factura es obligatoria.";
     }
     if (ordenItems.length === 0) {
-      errs.ordenItems = "Debes agregar al menos un insumo a la orden de compra.";
+      errs.ordenItems = "Debes agregar al menos un insumo a la compra.";
     }
     return errs;
   };

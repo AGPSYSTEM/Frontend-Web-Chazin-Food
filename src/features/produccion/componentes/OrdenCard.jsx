@@ -36,14 +36,34 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
               {Array.isArray(orden.productos) && orden.productos.length > 2 ? (
                 <span>
                   {orden.productos.slice(0, 2).map((p) => `${p.nombre} (x${p.cantidad})`).join(", ")}{" "}
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails && onViewDetails(orden);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-bold underline cursor-pointer inline-flex items-center ml-1"
+                  >
                     +{orden.productos.length - 2} más
-                  </span>
+                  </button>
                 </span>
               ) : (
                 orden.platilloNombre
               )}
             </h4>
+            {Array.isArray(orden.productos) && orden.productos.some(p => (p.adiciones && p.adiciones.length > 0) || p.observaciones) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewDetails && onViewDetails(orden);
+                }}
+                className="mt-1 text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-semibold text-left cursor-pointer"
+              >
+                <span>★ Con adiciones / notas personalizadas</span>
+                <span className="text-[10px] text-gray-400 font-normal">(ver detalle)</span>
+              </button>
+            )}
             <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
               {orden.codigo || `OP-00${orden.id}`} · x{orden.cantidad || 1}
             </p>

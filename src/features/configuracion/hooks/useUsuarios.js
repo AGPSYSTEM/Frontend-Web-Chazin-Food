@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usuariosService } from "../servicios/usuariosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 function getIniciales(nombre = "") {
   return nombre.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2);
@@ -59,18 +60,22 @@ export function useUsuarios() {
     const isNotAdmin = (u.rolNombre || u.rol || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1";
     if (!isNotAdmin) return false;
 
-    const term = searchTerm.toLowerCase();
-    const matchSearch =
-      searchTerm === "" ||
-      u.nombre?.toLowerCase().includes(term) ||
-      u.apellidos?.toLowerCase().includes(term) ||
-      u.email?.toLowerCase().includes(term) ||
-      u.documento?.includes(searchTerm) ||
-      u.telefono?.includes(searchTerm) ||
-      u.rolNombre?.toLowerCase().includes(term);
+    const matchSearch = matchesSmartSearch(
+      [
+        u.nombre,
+        u.apellidos,
+        u.email,
+        u.documento,
+        u.numeroDocumento,
+        u.telefono,
+        u.rolNombre,
+        u.rol
+      ],
+      searchTerm
+    );
 
-    const matchRol = filterRol === "Todos" || u.rolNombre.toLowerCase() === filterRol.toLowerCase();
-    const matchEstado = filterEstado === "Todos" || u.estado.toLowerCase() === filterEstado.toLowerCase();
+    const matchRol = filterRol === "Todos" || u.rolNombre?.toLowerCase() === filterRol?.toLowerCase();
+    const matchEstado = filterEstado === "Todos" || u.estado?.toLowerCase() === filterEstado?.toLowerCase();
 
     return matchSearch && matchRol && matchEstado;
   });

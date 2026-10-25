@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Plus, Search, FileText, CheckCircle2, XCircle, DollarSign } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle2, XCircle, DollarSign, Filter, X } from "lucide-react";
 import { useGestionCompras } from "../hooks/useGestionCompras";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { ComprasTable } from "../componentes/gestion/ComprasTable";
 import { NuevaCompraModal } from "../componentes/gestion/NuevaCompraModal";
 import { DetalleCompraModal } from "../componentes/gestion/DetalleCompraModal";
@@ -9,12 +11,11 @@ import { CancelarCompraModal } from "../componentes/gestion/CancelarCompraModal"
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
-function esEstadoPendiente(estado) {
-  const e = String(estado || "").toUpperCase();
-  return e === "PENDIENTE";
-}
-
 export function GestionCompras() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Gestión de Compras", "crear");
+  const canCancel = hasPrivilege(user, "Gestión de Compras", "eliminar");
+
   const notify = useNotifications();
   const {
     compras,
@@ -167,7 +168,7 @@ export function GestionCompras() {
           Gestión de Compras
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          Administra las órdenes de compra de insumos, recepciones de inventario y trazabilidad de lotes
+          Administra las compras de insumos, recepciones de inventario y trazabilidad de lotes
         </p>
       </div>
 
@@ -225,16 +226,19 @@ export function GestionCompras() {
           >
             <option value="Todos">Todos los estados</option>
             <option value="RECIBIDA">Confirmadas</option>
+            <option value="DEVUELTA_PARCIAL">Devolución Parcial</option>
             <option value="CANCELADA">Canceladas</option>
           </select>
 
-          <button
-            onClick={() => setModalOpen(true)}
-            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Nueva Compra</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Nueva Compra</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -281,7 +285,7 @@ export function GestionCompras() {
         <ComprasTable
           compras={filteredCompras}
           onViewDetail={handleViewDetail}
-          onCancelar={handleCancelar}
+          onCancelar={canCancel ? handleCancelar : null}
           procesandoId={procesandoId}
         />
       )}

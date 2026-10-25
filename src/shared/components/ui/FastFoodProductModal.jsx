@@ -1421,8 +1421,9 @@ export function FastFoodProductModal({
       } else {
         rawPrice = isPostobonDrink ? selectedSizeObj.defaultPostobonPrice : selectedSizeObj.defaultPremiumPrice;
       }
-    } else if (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0) {
-      rawPrice = Number(selectedVariant.precio);
+    } else {
+      // Ítem #100: Las variantes de un producto mantienen el precio del producto base
+      rawPrice = Number(producto.precio || 0);
     }
     let original = rawPrice;
     let final = original;
@@ -2096,7 +2097,7 @@ export function FastFoodProductModal({
 
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 shadow-2xs" title="Rendimiento y porción">
                 <Utensils className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>{isDrink ? selectedSizeObj.porciones : (ficha?.rendimiento || "1 porción")}</span>
+                <span>{isDrink ? selectedSizeObj.porciones : (ficha?.rendimiento || "1 unidad")}</span>
               </span>
 
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60 shadow-2xs" title="Disponibilidad actual en cocina">

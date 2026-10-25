@@ -106,11 +106,31 @@ export function validateEmail(val = "") {
   if (!str) return { isValid: false, error: "El correo electrónico es obligatorio." };
   if (!str.includes("@")) return { isValid: false, error: "El correo debe incluir el símbolo '@'." };
   const parts = str.split("@");
-  if (!parts[0]) return { isValid: false, error: "Falta el nombre de usuario antes del '@'." };
-  if (!parts[1]) return { isValid: false, error: "Falta el dominio después del '@' (ejemplo: gmail.com)." };
-  if (!parts[1].includes(".") || parts[1].endsWith(".")) return { isValid: false, error: "El dominio debe incluir una extensión válida (ejemplo: .com)." };
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  if (!emailRegex.test(str)) return { isValid: false, error: "Formato de correo inválido (ej: usuario@gmail.com)." };
+  if (parts.length !== 2) return { isValid: false, error: "El correo solo puede contener un símbolo '@'." };
+  const [local, domain] = parts;
+  if (!local) return { isValid: false, error: "Falta el nombre de usuario antes del '@'." };
+  if (!domain) return { isValid: false, error: "Falta el dominio después del '@' (ejemplo: gmail.com)." };
+  if (
+    local.startsWith(".") ||
+    local.endsWith(".") ||
+    local.startsWith("-") ||
+    local.endsWith("-") ||
+    local.includes("..") ||
+    !/^[a-zA-Z0-9._%+-]+$/.test(local)
+  ) {
+    return { isValid: false, error: "El usuario antes del '@' contiene caracteres o guiones en posición inválida." };
+  }
+  if (!domain.includes(".") || domain.startsWith(".") || domain.endsWith(".")) {
+    return { isValid: false, error: "El dominio debe incluir una extensión válida (ejemplo: .com)." };
+  }
+  const labels = domain.split(".");
+  if (labels.length < 2 || labels.some((l) => !l || !/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(l))) {
+    return { isValid: false, error: "El dominio contiene etiquetas o guiones inválidos (ejemplo válido: gmail.com)." };
+  }
+  const tld = labels[labels.length - 1];
+  if (!/^[a-zA-Z]{2,}$/.test(tld)) {
+    return { isValid: false, error: "La extensión del dominio debe tener al menos 2 letras válidas (ej: .com, .co)." };
+  }
   return { isValid: true, error: "" };
 }
 
@@ -293,5 +313,70 @@ export function validateMoneda(val, campo = "precio", options = {}) {
 export function validatePorcentaje(val, campo = "porcentaje") {
   return validateNumeroPositivo(val, campo, { min: 0, max: 100, allowZero: true });
 }
+
+/**
+ * Formatea un valor numérico canónico con separadores de miles colombianos (ej: 15000 -> "15.000")
+ */
+export function formatMilesCOP(val, allowDecimals = false) {
+  if (val === null || val === undefined || val === "") return "";
+  let str = String(val).trim();
+  if (!str) return "";
+
+  if (typeof val === "number") {
+    if (!Number.isFinite(val)) return "";
+    const intPart = String(Math.trunc(Math.abs(val))).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    if (!allowDecimals) return intPart;
+    const decMatch = String(Math.abs(val)).split(".")[1];
+    return decMatch ? `${intPart},${decMatch.slice(0, 2)}` : intPart;
+  }
+
+  // Si es string canónico con punto decimal (ej: "18000.00" o "1500.5" desde BD/estado)
+  if (/^-?\d+(\.\d+)?$/.test(str)) {
+    const num = Number(str);
+    if (!Number.isFinite(num)) return "";
+    const absStr = String(Math.abs(num));
+    const [intRaw, decRaw] = absStr.split(".");
+    const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    if (allowDecimals && decRaw) {
+      return `${intFormatted},${decRaw.slice(0, 2)}`;
+    }
+    return intFormatted;
+  }
+
+  // Fallback para cadenas ya formateadas con puntos de miles y coma decimal
+  const [rawInt, rawDec] = str.split(",");
+  const digitsOnly = (rawInt || "").replace(/\D/g, "");
+  if (!digitsOnly) return "";
+  const intFormatted = digitsOnly.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (allowDecimals && rawDec !== undefined) {
+    return `${intFormatted},${rawDec.replace(/\D/g, "").slice(0, 2)}`;
+  }
+  return intFormatted;
+}
+
+/**
+ * Convierte texto de un input formateado con puntos de miles (ej: "15.000") a cadena numérica canónica ("15000")
+ */
+export function parseMilesCOP(displayVal = "", allowDecimals = false) {
+  if (displayVal === null || displayVal === undefined) return "";
+  const str = String(displayVal).trim();
+  if (!str) return "";
+
+  if (allowDecimals) {
+    const withoutThousandDots = str.replace(/\./g, "");
+    const parts = withoutThousandDots.split(",");
+    const intDigits = (parts[0] || "").replace(/\D/g, "");
+    if (parts.length > 1) {
+      const decDigits = parts.slice(1).join("").replace(/\D/g, "").slice(0, 2);
+      return `${intDigits || "0"}.${decDigits}`;
+    }
+    return intDigits ? intDigits.replace(/^0+(?=\d)/, "") : "";
+  }
+
+  const digits = str.replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.replace(/^0+(?=\d)/, "");
+}
+
 
 

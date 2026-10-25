@@ -198,6 +198,18 @@ export function useGestionVentas() {
     }
   };
 
+  const aprobarPago = async (id) => {
+    try {
+      await ventasService.aprobarPago(id);
+      notify.success("Pago Aprobado", "El pago ha sido aprobado y la comanda avanzó automáticamente a cocina.");
+      await fetchVentas();
+      return true;
+    } catch (err) {
+      notify.error("Error", err.message || "Error al aprobar el pago");
+      return false;
+    }
+  };
+
   return {
     ventas,
     filteredVentas,
@@ -234,6 +246,7 @@ export function useGestionVentas() {
     createVenta,
     updateEstado,
     updateTiempoEntrega,
-    cancelarVenta
+    cancelarVenta,
+    aprobarPago
   };
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { productosService } from "../servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useProductos() {
   const notify = useNotifications();
@@ -36,45 +37,10 @@ export function useProductos() {
   const filteredProductos = productos.filter((p) => {
     if (!p) return false;
 
-    let matchSearch = true;
-    if (searchTerm && searchTerm.trim() !== "") {
-      const termNorm = searchTerm
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim();
-
-      const nomNorm = String(p.nombre || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const codNorm = String(p.codigo || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const catNorm = String(p.categoria || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const descNorm = String(p.descripcion || "")
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const precioStr = String(p.precio || "");
-      const precioFormatted = Number(p.precio || 0).toLocaleString("es-CO");
-
-      matchSearch =
-        nomNorm.includes(termNorm) ||
-        codNorm.includes(termNorm) ||
-        catNorm.includes(termNorm) ||
-        descNorm.includes(termNorm) ||
-        precioStr.includes(termNorm) ||
-        precioFormatted.includes(termNorm);
-    }
+    const matchSearch = matchesSmartSearch(
+      [p.nombre, p.codigo, p.categoria, p.descripcion, p.precio],
+      searchTerm
+    );
 
     const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;

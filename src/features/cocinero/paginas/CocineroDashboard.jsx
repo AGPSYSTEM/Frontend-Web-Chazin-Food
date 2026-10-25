@@ -766,7 +766,11 @@ export function CocineroDashboard() {
           {/* Brand & Live Digital Clock */}
           <div className="flex items-center justify-between md:justify-start gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-red-50 dark:bg-red-950/40 shrink-0 border border-red-100 dark:border-red-900/50 shadow-xs flex items-center justify-center p-1.5">
+              <Link
+                to="/"
+                title="Volver al inicio"
+                className="w-11 h-11 rounded-2xl overflow-hidden bg-red-50 dark:bg-red-950/40 shrink-0 border border-red-100 dark:border-red-900/50 shadow-xs flex items-center justify-center p-1.5 hover:scale-105 transition-transform"
+              >
                 <img
                   src={logoImg}
                   alt="Chazin Food"
@@ -775,7 +779,7 @@ export function CocineroDashboard() {
                   style={{ aspectRatio: "1 / 1" }}
                   className="w-full h-full object-contain"
                 />
-              </div>
+              </Link>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="font-black text-gray-900 dark:text-gray-100 text-base sm:text-lg tracking-tight flex items-center gap-1.5">
@@ -1503,7 +1507,7 @@ export function CocineroDashboard() {
                   <div>
                     <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Ingredientes & Porciones Requeridas:</span>
+                      <span>Ingredientes y Cantidades Requeridas:</span>
                     </h4>
                     {modalRecetaData?.ingredientes && modalRecetaData.ingredientes.length > 0 ? (
                       <div className="space-y-1.5">
@@ -1532,11 +1536,14 @@ export function CocineroDashboard() {
                     </h4>
                     {modalRecetaData?.pasos && modalRecetaData.pasos.length > 0 ? (
                       <ol className="space-y-2 list-decimal list-inside text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                        {modalRecetaData.pasos.map((paso, i) => (
-                          <li key={i} className="leading-relaxed pl-1 py-0.5">
-                            <span className="font-medium">{paso}</span>
-                          </li>
-                        ))}
+                        {modalRecetaData.pasos.map((paso, i) => {
+                          const pasoLimpio = String(paso).replace(/^\d+[\.\-\)]\s*/, '').trim();
+                          return (
+                            <li key={i} className="leading-relaxed pl-1 py-0.5">
+                              <span className="font-medium">{pasoLimpio}</span>
+                            </li>
+                          );
+                        })}
                       </ol>
                     ) : (
                       <p className="text-xs text-gray-400 italic">Preparar según estándar de cocina de la casa.</p>

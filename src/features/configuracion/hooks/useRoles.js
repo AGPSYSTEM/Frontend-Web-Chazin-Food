@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { rolesService } from "../servicios/rolesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useConfirm } from "@/shared/context/ConfirmContext";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import { AlertTriangle, AlertCircle } from "lucide-react";
 
 export function useRoles() {
@@ -28,11 +29,8 @@ export function useRoles() {
     fetchRoles();
   }, [fetchRoles]);
 
-  const filteredRoles = roles.filter(
-    (r) =>
-      searchTerm.trim() === "" ||
-      r.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRoles = roles.filter((r) =>
+    matchesSmartSearch([r.nombre, r.descripcion, r.estado], searchTerm)
   );
 
   const createRol = async (nombre, descripcion, permisos = []) => {

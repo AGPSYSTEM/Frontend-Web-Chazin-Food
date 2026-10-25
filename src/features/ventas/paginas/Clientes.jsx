@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Plus, Search, UserX } from "lucide-react";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useClientes } from "../hooks/useClientes";
 import { ClientesStatsCards } from "../componentes/clientes/ClientesStatsCards";
 import { ClientesTable } from "../componentes/clientes/ClientesTable";
@@ -10,6 +12,11 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Clientes() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Clientes", "crear");
+  const canEdit = hasPrivilege(user, "Clientes", "editar");
+  const canDelete = hasPrivilege(user, "Clientes", "eliminar");
+
   const { success } = useNotifications();
   const {
     clientes,
@@ -92,13 +99,15 @@ export function Clientes() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Nuevo Cliente</span>
-        </button>
+        {canCreate && (
+          <button
+            onClick={handleOpenCreate}
+            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Nuevo Cliente</span>
+          </button>
+        )}
       </div>
 
       {/* 4 Stat Cards Grid */}
@@ -157,6 +166,8 @@ export function Clientes() {
           onViewDetail={handleViewDetail}
           onEdit={handleOpenEdit}
           onDelete={deleteCliente}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

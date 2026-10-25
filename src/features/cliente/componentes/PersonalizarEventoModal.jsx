@@ -883,52 +883,37 @@ export function PersonalizarEventoModal({
                   </div>
                 )}
 
-                {/* ── SECCIÓN 2: INGREDIENTES PERSONALIZABLES (EXCLUSIONES A PETICIÓN) ── */}
+                {/* ── SECCIÓN 2: INGREDIENTES DE LA OFERTA CERRADA (Ítems #8 y #17) ── */}
                 {customizableIngredients.length > 0 ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
-                        ¿Deseas retirar algún ingrediente de tu pedido?
+                        Ingredientes y complementos incluidos en la oferta:
                       </p>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                        Toca para alternar (Con / Sin)
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/50">
+                        Fórmula cerrada de promoción
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-                      {customizableIngredients.map((ing) => {
-                        const isRemoved = removedIngredients.includes(ing.nombre);
-                        return (
-                          <button
-                            key={ing.id}
-                            type="button"
-                            onClick={() => toggleRemoveIngredient(ing.nombre)}
-                            className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
-                              isRemoved
-                                ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
-                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
-                            }`}
-                          >
-                            <span className="flex items-center gap-2.5 truncate">
-                              <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
-                                <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
-                              </span>
-                              <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
-                                {ing.nombre}
-                              </span>
+                      {customizableIngredients.map((ing) => (
+                        <div
+                          key={ing.id}
+                          className="p-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 flex items-center justify-between gap-2 shadow-2xs select-none"
+                        >
+                          <span className="flex items-center gap-2.5 truncate">
+                            <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
+                              <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
                             </span>
-                            <span
-                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
-                                isRemoved
-                                  ? "bg-red-500 text-white"
-                                  : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
-                              }`}
-                            >
-                              {isRemoved ? "Sin" : "Con"}
+                            <span className="truncate text-xs font-bold text-gray-800 dark:text-gray-200">
+                              {ing.nombre}
                             </span>
-                          </button>
-                        );
-                      })}
+                          </span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                            <Check className="w-3 h-3 stroke-[3]" /> Incluido
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (

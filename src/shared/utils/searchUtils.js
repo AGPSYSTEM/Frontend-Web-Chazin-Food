@@ -30,6 +30,61 @@ export function tokenizeSearchQuery(query = "") {
 }
 
 /**
+ * Evalúa un token individual contra un corpus normalizado evitando falsos positivos
+ * por prefijos negativos (ej: buscar "activo" NO coincide con "inactivo", "regular" NO con "irregular")
+ * y soportando coincidencias numéricas con puntos (ej: "13.15" coincide con "1315").
+ */
+export function matchTokenInCorpus(corpus = "", token = "") {
+  if (!token) return true;
+  if (!corpus) return false;
+
+  // Evitar colisiones "activo" vs "inactivo", "activa" vs "inactiva", "regular" vs "irregular", "habilitado" vs "inhabilitado"
+  if (/^(activ[oa]?s?|regular(es)?|habilitad[oa]?s?)$/.test(token)) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const wordStartRegex = new RegExp(`(^|[^a-z0-9])${escaped}`);
+    return wordStartRegex.test(corpus);
+  }
+
+  if (corpus.includes(token)) return true;
+
+  // Coincidencia numérica parcial cuando el usuario escribe puntos separadores (ej: "13.15" -> "1315")
+  if (/^\d[\d.]*\d$/.test(token) && token.includes(".")) {
+    const cleanDigits = token.replace(/\./g, "");
+    const corpusWithoutDots = corpus.replace(/(?<=\d)\.(?=\d)/g, "");
+    if (cleanDigits && corpusWithoutDots.includes(cleanDigits)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Buscador inteligente reutilizable para cualquier módulo (Usuarios, Roles, Insumos, Categorías, Proveedores, Productos, etc.)
+ * @param {Array<string|number|boolean|null|undefined>} fields Lista de valores indexables del registro
+ * @param {string} query Texto de búsqueda ingresado por el usuario
+ */
+export function matchesSmartSearch(fields = [], query = "") {
+  const tokens = tokenizeSearchQuery(query);
+  if (tokens.length === 0) return true;
+
+  const expandedParts = [];
+  for (const field of fields) {
+    if (field === null || field === undefined || field === "") continue;
+    const str = String(field);
+    expandedParts.push(str);
+    // Indexar también dígitos limpios cuando hay separadores (documentos, teléfonos, precios)
+    if (/\d/.test(str) && /[.\-\s$]/.test(str)) {
+      const digits = str.replace(/\D/g, "");
+      if (digits.length >= 2) expandedParts.push(digits);
+    }
+  }
+
+  const corpus = normalizeSearchText(expandedParts.join(" "));
+  return tokens.every((token) => matchTokenInCorpus(corpus, token));
+}
+
+/**
  * Meses en español para búsqueda por nombre de mes
  */
 const MESES_ES = [
@@ -90,9 +145,6 @@ export function buildVentaSearchCorpus(v = {}) {
   const fidelidadTipo = v.clienteFidelidad?.tipo || v.cliente?.tipo || (v.esVip ? "VIP" : "");
   if (fidelidadTipo) {
     parts.push(fidelidadTipo);
-    if (fidelidadTipo.toLowerCase().includes("regular")) {
-      parts.push("irregular");
-    }
   }
 
   // Dirección y ubicación
@@ -306,9 +358,6 @@ export function buildClienteSearchCorpus(c = {}) {
   const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
   if (clientTipo) {
     parts.push(clientTipo);
-    if (clientTipo.toLowerCase().includes("regular")) {
-      parts.push("irregular");
-    }
   }
 
   // Estado
@@ -362,8 +411,8 @@ export function matchVentaMultiCriteria(venta, criteria = {}) {
   const tokens = tokenizeSearchQuery(searchTerm);
   if (tokens.length > 0) {
     const corpus = buildVentaSearchCorpus(venta);
-    // Cada token debe coincidir en algún lugar del corpus del registro
-    const allTokensMatch = tokens.every((token) => corpus.includes(token));
+    // Cada token debe coincidir respetando límites semánticos
+    const allTokensMatch = tokens.every((token) => matchTokenInCorpus(corpus, token));
     if (!allTokensMatch) return false;
   }
 
@@ -485,7 +534,7 @@ export function matchClienteMultiCriteria(cliente, criteria = {}) {
   const tokens = tokenizeSearchQuery(searchTerm);
   if (tokens.length > 0) {
     const corpus = buildClienteSearchCorpus(cliente);
-    const allTokensMatch = tokens.every((token) => corpus.includes(token));
+    const allTokensMatch = tokens.every((token) => matchTokenInCorpus(corpus, token));
     if (!allTokensMatch) return false;
   }
 

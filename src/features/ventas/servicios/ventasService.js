@@ -33,5 +33,9 @@ export const ventasService = {
 
   cancelarVenta: async (id) => {
     return await apiClient.put(`/ventas/${id}/cancelar`);
+  },
+
+  aprobarPago: async (id) => {
+    return await apiClient.put(`/ventas/${id}/aprobar-pago`);
   }
 };

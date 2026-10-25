@@ -7,7 +7,7 @@ import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 function FieldError({ msg }) {
   if (!msg) return null;

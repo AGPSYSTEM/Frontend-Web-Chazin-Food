@@ -273,19 +273,23 @@ export function FichaTecnicaDetalleModal({
 
               {pasos.length > 0 ? (
                 <div className="space-y-2.5">
-                  {pasos.map((paso, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200/70 dark:border-gray-700/70 shadow-2xs text-xs sm:text-sm"
-                    >
-                      <span className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950/60 text-[#F05454] font-black flex items-center justify-center text-xs shrink-0 mt-0.5">
-                        {i + 1}
-                      </span>
-                      <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed flex-1">
-                        {paso}
-                      </p>
-                    </div>
-                  ))}
+                  {pasos.map((paso, i) => {
+                    // #102: Evitar numeración duplicada "1. 1." al renderizar junto a la viñeta numérica
+                    const cleanPaso = paso.replace(/^\d+[\.\-\)]\s*/, "");
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200/70 dark:border-gray-700/70 shadow-2xs text-xs sm:text-sm"
+                      >
+                        <span className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950/60 text-[#F05454] font-black flex items-center justify-center text-xs shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <p className="text-gray-800 dark:text-gray-200 font-medium leading-relaxed flex-1">
+                          {cleanPaso}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 italic py-2">

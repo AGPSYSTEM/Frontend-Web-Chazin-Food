@@ -133,7 +133,9 @@ export function UsuariosTable({
   onView,
   currentPage = 1,
   pageSize = 10,
-  onPageChange
+  onPageChange,
+  canEdit = true,
+  canDelete = true
 }) {
   const totalItems = usuarios.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -391,21 +393,25 @@ export function UsuariosTable({
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEdit(usuario)}
-                          className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Editar usuario"
-                        >
-                          <Edit className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        <button
-                          onClick={() => onChangePassword(usuario)}
-                          className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Cambiar contraseña"
-                        >
-                          <Lock className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        {usuario.rolNombre !== "Administrador" && (
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(usuario)}
+                            className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Editar usuario"
+                          >
+                            <Edit className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => onChangePassword(usuario)}
+                            className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Cambiar contraseña"
+                          >
+                            <Lock className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canDelete && usuario.rolNombre !== "Administrador" && (
                           <button
                             onClick={() => onDelete(usuario.id || usuario.idUsuario, usuario.nombre)}
                             className="p-1.5 text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"

@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useProductos } from "../hooks/useProductos";
 import { ProductosTable } from "../componentes/productos/ProductosTable";
 import { ProductoModal } from "../componentes/productos/ProductoModal";
@@ -10,6 +12,11 @@ import { eventosService } from "../servicios/eventosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Productos() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Productos", "crear");
+  const canEdit = hasPrivilege(user, "Productos", "editar");
+  const canDelete = hasPrivilege(user, "Productos", "eliminar");
+
   const {
     productos,
     filteredProductos,
@@ -214,13 +221,15 @@ export function Productos() {
           </button>
 
           {/* Nuevo Producto Button */}
-          <button
-            onClick={handleOpenCreate}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nuevo Producto</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={handleOpenCreate}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nuevo Producto</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -234,6 +243,8 @@ export function Productos() {
           onDelete={deleteProducto}
           onView={handleOpenView}
           onCreateEvento={handleCreateEvento}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 
