@@ -10,7 +10,8 @@ import {
   RotateCcw,
   CheckCircle2,
   ShoppingCart,
-  User
+  User,
+  Search
 } from "lucide-react";
 
 export function TrazabilidadModal({
@@ -20,47 +21,112 @@ export function TrazabilidadModal({
   onClearAll,
   onOpenPapelera
 }) {
+  const [searchTrazabilidad, setSearchTrazabilidad] = useState("");
   const [filterType, setFilterType] = useState("Todos");
 
   if (!isOpen) return null;
 
+  const isEventEliminado = (e) =>
+    e.tipo === "Eliminado" ||
+    e.tipo === "Eliminado permanente" ||
+    (e.tipoRaw && e.tipoRaw.toLowerCase().includes("elimin")) ||
+    (e.descripcion && (e.descripcion.toLowerCase().includes("papelera") || e.descripcion.toLowerCase().includes("elimin"))) ||
+    (e.motivo && e.motivo.toLowerCase().includes("papelera"));
+
+  const isEventEditado = (e) =>
+    !isEventEliminado(e) &&
+    (e.tipo === "Editado" ||
+      (e.tipoRaw && (e.tipoRaw.toLowerCase().includes("edit") || e.tipoRaw.toLowerCase().includes("actualiz"))) ||
+      (e.descripcion && e.descripcion.toLowerCase().includes("actualizaron")) ||
+      (e.motivo && e.motivo.toLowerCase().includes("actualización")));
+
+  const isEventCreado = (e) =>
+    !isEventEliminado(e) &&
+    !isEventEditado(e) &&
+    (e.tipo === "Creado" ||
+      (e.tipoRaw && (e.tipoRaw.toLowerCase().includes("crea") || e.tipoRaw.toLowerCase() === "nuevo")) ||
+      (e.descripcion && (e.descripcion.toLowerCase().includes("creó") || e.descripcion.toLowerCase().includes("registro inicial"))));
+
+  const isEventRestaurado = (e) =>
+    !isEventEliminado(e) &&
+    (e.tipo === "Restaurado" || (e.tipoRaw && e.tipoRaw.toLowerCase().includes("restaur")));
+
   const isEventCancelacion = (e) =>
-    e.esCancelacion === true ||
-    e.tipo === "Cancelación de Compra" ||
-    e.tipo === "Anulación de Compra" ||
-    e.tipo === "cancelacion_compra" ||
-    e.tipoMovimiento === "Salida" ||
-    (e.descripcion && (
-      e.descripcion.toLowerCase().includes("cancelaci") ||
-      e.descripcion.toLowerCase().includes("anulaci") ||
-      e.descripcion.toLowerCase().includes("reversa")
-    )) ||
-    (e.motivo && (
-      e.motivo.toLowerCase().includes("cancelaci") ||
-      e.motivo.toLowerCase().includes("anulaci") ||
-      e.motivo.toLowerCase().includes("reversa")
-    ));
+    !isEventEliminado(e) &&
+    !isEventEditado(e) &&
+    !isEventCreado(e) &&
+    !isEventRestaurado(e) &&
+    (e.esCancelacion === true ||
+      e.tipo === "Cancelación de Compra" ||
+      e.tipo === "Anulación de Compra" ||
+      e.tipo === "cancelacion_compra" ||
+      (e.descripcion && (
+        e.descripcion.toLowerCase().includes("cancelaci") ||
+        e.descripcion.toLowerCase().includes("anulaci") ||
+        e.descripcion.toLowerCase().includes("reversa")
+      )) ||
+      (e.motivo && (
+        e.motivo.toLowerCase().includes("cancelaci") ||
+        e.motivo.toLowerCase().includes("anulaci") ||
+        e.motivo.toLowerCase().includes("reversa")
+      )));
 
   const isEventReabastecimiento = (e) =>
+    !isEventEliminado(e) &&
+    !isEventEditado(e) &&
+    !isEventCreado(e) &&
+    !isEventRestaurado(e) &&
     !isEventCancelacion(e) &&
-    (e.tipo === "Reabastecimiento" || e.tipo === "compra" || e.tipoMovimiento === "Entrada");
+    (e.tipo === "Reabastecimiento" ||
+      e.tipo === "compra" ||
+      e.tipo === "Reabastecimiento por Compra" ||
+      (e.tipoMovimiento === "Entrada" &&
+        (String(e.tipoRaw).toLowerCase().includes("compra") ||
+         String(e.descripcion).toLowerCase().includes("compra") ||
+         String(e.motivo).toLowerCase().includes("compra") ||
+         String(e.tipo).toLowerCase().includes("reabastec"))));
 
   const reabastecimientosCount = eventos.filter(isEventReabastecimiento).length;
   const cancelacionesCount = eventos.filter(isEventCancelacion).length;
-  const creadosCount = eventos.filter((e) => e.tipo === "Creado").length;
-  const editadosCount = eventos.filter((e) => e.tipo === "Editado").length;
-  const eliminadosCount = eventos.filter((e) => e.tipo === "Eliminado").length;
-  const restauradosCount = eventos.filter((e) => e.tipo === "Restaurado").length;
+  const creadosCount = eventos.filter(isEventCreado).length;
+  const editadosCount = eventos.filter(isEventEditado).length;
+  const eliminadosCount = eventos.filter(isEventEliminado).length;
+  const restauradosCount = eventos.filter(isEventRestaurado).length;
 
   const filteredEventos = eventos.filter((e) => {
-    if (filterType === "Todos") return true;
-    if (filterType === "Reabastecimientos") return isEventReabastecimiento(e);
-    if (filterType === "Cancelaciones") return isEventCancelacion(e);
-    if (filterType === "Creados") return e.tipo === "Creado";
-    if (filterType === "Editados") return e.tipo === "Editado";
-    if (filterType === "Eliminados") return e.tipo === "Eliminado";
-    if (filterType === "Restaurados") return e.tipo === "Restaurado";
-    return true;
+    // Type filter
+    let matchType = true;
+    if (filterType === "Reabastecimientos") matchType = isEventReabastecimiento(e);
+    else if (filterType === "Cancelaciones") matchType = isEventCancelacion(e);
+    else if (filterType === "Creados") matchType = isEventCreado(e);
+    else if (filterType === "Editados") matchType = isEventEditado(e);
+    else if (filterType === "Eliminados") matchType = isEventEliminado(e);
+    else if (filterType === "Restaurados") matchType = isEventRestaurado(e);
+
+    if (!matchType) return false;
+
+    // Search query filter
+    if (!searchTrazabilidad.trim()) return true;
+    const q = searchTrazabilidad.toLowerCase().trim();
+
+    const matchesIntent =
+      (isEventEliminado(e) && (q.includes("elimin") || q.includes("papelera") || q.includes("borra"))) ||
+      (isEventEditado(e) && (q.includes("edit") || q.includes("modif") || q.includes("actualiz"))) ||
+      (isEventCreado(e) && (q.includes("crea") || q.includes("nuev") || q.includes("regist"))) ||
+      (isEventRestaurado(e) && (q.includes("restaur") || q.includes("recuper"))) ||
+      (isEventReabastecimiento(e) && (q.includes("reabastec") || q.includes("compra") || q.includes("entrad"))) ||
+      (isEventCancelacion(e) && (q.includes("cancel") || q.includes("anul") || q.includes("revers")));
+
+    return (
+      matchesIntent ||
+      (e.nombre && e.nombre.toLowerCase().includes(q)) ||
+      (e.descripcion && e.descripcion.toLowerCase().includes(q)) ||
+      (e.tipo && e.tipo.toLowerCase().includes(q)) ||
+      (e.tipoRaw && e.tipoRaw.toLowerCase().includes(q)) ||
+      (e.motivo && e.motivo.toLowerCase().includes(q)) ||
+      (e.usuarioNombre && e.usuarioNombre.toLowerCase().includes(q)) ||
+      (e.fecha && e.fecha.toLowerCase().includes(q))
+    );
   });
 
   return (
@@ -109,9 +175,26 @@ export function TrazabilidadModal({
           </div>
         </div>
 
-        {/* Filter Pills row */}
-        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+        {/* Search Bar - Arriba */}
+        <div className="px-6 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTrazabilidad}
+              onChange={(e) => setSearchTrazabilidad(e.target.value)}
+              placeholder="Buscar en trazabilidad por insumo, acción o responsable..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Filter Pills row - Abajo con flex-wrap para que se vean bien y no queden cortados */}
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-start flex-wrap gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-1.5 text-gray-400 mr-1 shrink-0 font-medium">
+            <Filter className="w-3.5 h-3.5" />
+            <span className="text-[11px] uppercase tracking-wider">Filtros:</span>
+          </div>
 
           <button
             onClick={() => setFilterType("Todos")}
@@ -209,25 +292,58 @@ export function TrazabilidadModal({
             </div>
           ) : (
             filteredEventos.map((ev) => {
+              const isEliminado = isEventEliminado(ev);
+              const isEditado = isEventEditado(ev);
+              const isCreado = isEventCreado(ev);
+              const isRestaurado = isEventRestaurado(ev);
               const isCancelacion = isEventCancelacion(ev);
               const isReabastecimiento = isEventReabastecimiento(ev);
-              const isCreado = ev.tipo === "Creado";
-              const isEditado = ev.tipo === "Editado";
-              const isEliminado = ev.tipo === "Eliminado";
 
-              const badgeBg = isCancelacion
+              const badgeBg = isEliminado
+                ? "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200/80"
+                : isEditado
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/80"
+                : isCreado
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/80"
+                : isRestaurado
+                ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/80"
+                : isCancelacion
                 ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200/80"
                 : isReabastecimiento
                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200/80"
-                : isCreado
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                : isEditado
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                : isEliminado
-                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300";
+                : "bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200/80";
 
-              const iconCircle = isCancelacion ? (
+              const badgeLabel = isEliminado
+                ? "Insumo Eliminado"
+                : isEditado
+                ? "Insumo Editado"
+                : isCreado
+                ? "Insumo Creado"
+                : isRestaurado
+                ? "Insumo Restaurado"
+                : isCancelacion
+                ? (ev.tipo && (ev.tipo.includes("Cancel") || ev.tipo.includes("Anul")) ? ev.tipo : "Cancelación de Compra")
+                : isReabastecimiento
+                ? "Reabastecimiento por Compra"
+                : ev.tipo;
+
+              const iconCircle = isEliminado ? (
+                <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/40 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                </div>
+              ) : isEditado ? (
+                <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <Edit className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                </div>
+              ) : isCreado ? (
+                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <PlusCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              ) : isRestaurado ? (
+                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                </div>
+              ) : isCancelacion ? (
                 <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 flex items-center justify-center shrink-0">
                   <RotateCcw className="w-4 h-4 text-red-600 dark:text-red-400" />
                 </div>
@@ -235,23 +351,13 @@ export function TrazabilidadModal({
                 <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
                   <ShoppingCart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-              ) : isCreado ? (
-                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                  <PlusCircle className="w-5 h-5 text-blue-600" />
-                </div>
-              ) : isEditado ? (
-                <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-                  <Edit className="w-4 h-4 text-amber-600" />
-                </div>
-              ) : isEliminado ? (
-                <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 flex items-center justify-center shrink-0">
-                  <Trash2 className="w-4 h-4 text-red-600" />
-                </div>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-                  <RotateCcw className="w-4 h-4 text-purple-600" />
+                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 dark:bg-gray-800 flex items-center justify-center shrink-0">
+                  <RotateCcw className="w-4 h-4 text-slate-600 dark:text-gray-400" />
                 </div>
               );
+
+              const hasCantidad = ev.cantidad !== null && ev.cantidad !== undefined && !isNaN(parseFloat(ev.cantidad)) && (isReabastecimiento || isCancelacion || isCreado);
 
               return (
                 <div
@@ -263,16 +369,12 @@ export function TrazabilidadModal({
                     <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeBg}`}>
-                          • {isCancelacion
-                              ? (ev.tipo && (ev.tipo.includes("Cancel") || ev.tipo.includes("Anul")) ? ev.tipo : "Cancelación de Compra")
-                              : isReabastecimiento
-                              ? "Reabastecimiento por Compra"
-                              : ev.tipo}
+                          • {badgeLabel}
                         </span>
                         <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
                           {ev.nombre}
                         </span>
-                        {ev.cantidad && (
+                        {hasCantidad && (
                           <span
                             className={`px-2 py-0.5 rounded-md font-bold text-xs border ${
                               isCancelacion

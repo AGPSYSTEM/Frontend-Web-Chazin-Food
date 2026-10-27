@@ -7,8 +7,24 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
   const showToast = useCallback((type, title, message, duration = 4000) => {
+    let finalTitle = title;
+    let finalMessage = message;
+    let finalDuration = duration;
+
+    if (typeof title === "object" && title !== null) {
+      finalTitle = title.title || title.message || "Notificación";
+      finalMessage = title.title && title.message ? title.message : null;
+      if (title.duration) finalDuration = Number(title.duration);
+    } else if (typeof message === "object" && message !== null) {
+      if (message.duration) finalDuration = Number(message.duration);
+      finalMessage = typeof message.message === "string" ? message.message : null;
+    }
+
+    const safeTitle = typeof finalTitle === "string" ? finalTitle : (finalTitle ? String(finalTitle) : "");
+    const safeMessage = typeof finalMessage === "string" ? finalMessage : (finalMessage ? String(finalMessage) : null);
+
     const id = `toast-${Date.now()}-${Math.random()}`;
-    const newToast = { id, type, title, message, duration };
+    const newToast = { id, type, title: safeTitle, message: safeMessage, duration: finalDuration };
     setToasts((prev) => [...prev, newToast]);
   }, []);
 
@@ -31,6 +47,10 @@ export function ToastProvider({ children }) {
   const info = useCallback((title, message, duration) => {
     showToast("info", title, message, duration);
   }, [showToast]);
+
+  if (typeof window !== "undefined") {
+    window.__toast = { showToast, success, error, warning, info };
+  }
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>

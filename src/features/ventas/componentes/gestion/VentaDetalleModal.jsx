@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   CheckCircle2,
@@ -14,16 +14,110 @@ import {
   ShoppingBag,
   UserCheck,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Globe,
+  Timer,
+  Check,
+  AlertCircle,
+  AlertTriangle,
+  Printer
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { formatTime12h } from "@/shared/utils/dateUtils";
+import { ventasService } from "../../servicios/ventasService";
 
-export function VentaDetalleModal({ isOpen, onClose, venta }) {
-  if (!isOpen || !venta) return null;
+/**
+ * Validador en tiempo real de tiempo estimado (Control Exacto)
+ * Valida estrictamente formatos como: '15-20 min', '45 min', '1 hora', '1 h 15 min', 'Aprox. 30 min', 'Listo para entrega'.
+ * Rechaza emojis, símbolos no válidos y caracteres arbitrarios.
+ */
+export function validateTiempoEstimado(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) {
+    return {
+      isValid: false,
+      error: "Ingresa el tiempo estimado (ej: 45 min, 1 hora, aprox. 30 min).",
+      tags: []
+    };
+  }
 
+  // Rechazar terminantemente emojis o caracteres especiales no permitidos
+  if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(raw) || /[^a-zA-Z0-9\s.,\-áéíóúñÁÉÍÓÚÑ]/i.test(raw)) {
+    return {
+      isValid: false,
+      error: "No se permiten caracteres especiales ni emojis. Ej: 30 min, 1 hora.",
+      tags: []
+    };
+  }
+
+  // Rechazar repetición anómala de signos de puntuación (ej: "...", "--")
+  if (/\.{2,}|-{2,}/.test(raw)) {
+    return {
+      isValid: false,
+      error: 'Formato no válido (evita caracteres repetidos como "..." o "--").',
+      tags: []
+    };
+  }
+
+  const clean = raw.toLowerCase().replace(/\s+/g, " ");
+
+  // Frases de estado y despacho directo
+  const statusPhrases = [
+    "listo",
+    "listo para entrega",
+    "listo para despacho",
+    "listo para recoger",
+    "en camino",
+    "despachado",
+    "entregado",
+    "inmediato"
+  ];
+  if (statusPhrases.includes(clean)) {
+    return {
+      isValid: true,
+      error: null,
+      tags: [clean.startsWith("listo") ? "Listo para entrega" : "Despacho directo"]
+    };
+  }
+
+  // Expresión regular estricta de tiempo estimado (minutos, horas o compuestos)
+  const unitMin = "(?:min\\.?|mins\\.?|minuto|minutos|m\\b)";
+  const unitHour = "(?:h\\b|hr\\.?|hrs\\.?|hora|horas)";
+
+  const pattern = new RegExp(
+    "^(?:(?:aprox\\.?|aproximadamente)\\s+)?(?:" +
+      `(?:(\\d{1,3})\\s*(?:-|a|al)\\s*(\\d{1,3})\\s*${unitMin})|` +
+      `(?:(\\d{1,3})\\s*${unitMin})|` +
+      `(?:(\\d{1,2})\\s*(?:-|a|al)\\s*(\\d{1,2})\\s*${unitHour})|` +
+      `(?:(\\d{1,2})\\s*${unitHour}(?:\\s+(?:y\\s+media|y\\s+cuarto|(\\d{1,2})\\s*${unitMin}?))?)` +
+    ")$",
+    "i"
+  );
+
+  if (!pattern.test(clean)) {
+    return {
+      isValid: false,
+      error: "Formato no válido. Usa ejemplos como: 15-20 min, 45 min, 1 hora, 1 h 15 min.",
+      tags: []
+    };
+  }
+
+  const tags = [];
+  if (/(aprox|aproximad)/.test(clean)) tags.push("Aproximado");
+  if (new RegExp(unitHour, "i").test(clean)) tags.push("Horas");
+  if (new RegExp(unitMin, "i").test(clean)) tags.push("Minutos");
+
+  return {
+    isValid: true,
+    error: null,
+    tags: tags.length ? tags : ["Válido"]
+  };
+}
+
+export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntrega, onAprobarPago, canEdit = true }) {
   let obsMeta = {};
-  if (venta.observaciones) {
+  if (venta?.observaciones) {
     try {
       obsMeta =
         typeof venta.observaciones === "string" && venta.observaciones.startsWith("{")
@@ -33,6 +127,69 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
       obsMeta = { nota: venta.observaciones };
     }
   }
+
+  const initialTiempo =
+    venta?.tiempoEstimadoEntrega ||
+    obsMeta.tiempoEstimadoEntrega ||
+    (String(venta?.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min");
+
+  const [tiempoEstimado, setTiempoEstimado] = useState(initialTiempo);
+  const [isUpdatingTiempo, setIsUpdatingTiempo] = useState(false);
+  const [tiempoActualizadoMsg, setTiempoActualizadoMsg] = useState(false);
+  const [tiempoValidationTouched, setTiempoValidationTouched] = useState(false);
+
+  const tiempoValidation = useMemo(() => validateTiempoEstimado(tiempoEstimado), [tiempoEstimado]);
+
+  useEffect(() => {
+    if (venta) {
+      setTiempoEstimado(
+        venta.tiempoEstimadoEntrega ||
+        obsMeta.tiempoEstimadoEntrega ||
+        (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min")
+      );
+    }
+  }, [venta]);
+
+  if (!isOpen || !venta) return null;
+
+  const handleSaveTiempo = async (nuevoTiempo) => {
+    const valor = nuevoTiempo || tiempoEstimado;
+    const validation = validateTiempoEstimado(valor);
+    if (!validation.isValid) {
+      setTiempoValidationTouched(true);
+      return;
+    }
+    const ventaId = venta.id || venta.idVenta;
+    if (!valor || !ventaId) return;
+    setIsUpdatingTiempo(true);
+    try {
+      if (onUpdateTiempoEntrega) {
+        await onUpdateTiempoEntrega(ventaId, valor);
+      } else {
+        await ventasService.updateTiempoEntrega(ventaId, valor);
+      }
+      setTiempoEstimado(valor);
+      setTiempoActualizadoMsg(true);
+      setTimeout(() => setTiempoActualizadoMsg(false), 2500);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdatingTiempo(false);
+    }
+  };
+
+  const handleToggleAprox = () => {
+    setTiempoValidationTouched(true);
+    const current = (tiempoEstimado || "").trim();
+    if (/^aprox\.?\s*/i.test(current)) {
+      setTiempoEstimado(current.replace(/^aprox\.?\s*/i, "").trim());
+    } else {
+      setTiempoEstimado(`Aprox. ${current}`.trim());
+    }
+  };
+
+  const origen = (venta.origen || obsMeta.origen || (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "ONLINE" : "PUNTO_FISICO")).toUpperCase();
+  const esOnline = origen.includes("ONLINE");
 
   const direccionEntrega = obsMeta.direccion || venta.direccion || "";
   const codigo =
@@ -59,8 +216,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
       fecha = String(venta.fecha || venta.fechaVenta).slice(0, 10);
     }
   }
-  if (venta.horario && !venta.horario.includes("–")) {
-    horario = venta.horario;
+  if (venta.horario) {
+    horario = formatTime12h(venta.horario, horario);
+  } else {
+    horario = formatTime12h(horario);
   }
 
   const metodoPago = obsMeta.metodoPago || venta.metodoPago || "Efectivo";
@@ -102,6 +261,113 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
     descuentoPorcentaje: descuentoPorcentaje
   };
 
+  const handlePrintComprobante = () => {
+    const printWin = window.open("", "_blank", "width=420,height=650");
+    if (!printWin) return;
+
+    const productosHtml = productos.map((p) => {
+      const pNombre = p.nombre || p.observaciones || "Platillo";
+      const pCant = p.cantidad || 1;
+      const pPrecioUnit = Number(p.precioUnitario || p.precio || 0);
+      const pTotal = pPrecioUnit * pCant;
+      const itemAdiciones = Array.isArray(p.adiciones) ? p.adiciones : [];
+      const adicionesHtml = itemAdiciones.map(adc => {
+        const aName = typeof adc === "object" ? adc.nombre : String(adc);
+        const aPrice = typeof adc === "object" && Number(adc.precio) > 0 ? ` (+${Number(adc.precio).toLocaleString("es-CO")})` : "";
+        return `<div style="font-size: 10px; color: #444; padding-left: 8px;">+ ${aName}${aPrice}</div>`;
+      }).join("");
+
+      return `
+        <div style="margin-bottom: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>${pCant}x ${pNombre}</span>
+            <span style="font-weight: bold;">$${pTotal.toLocaleString("es-CO")}</span>
+          </div>
+          ${adicionesHtml}
+        </div>
+      `;
+    }).join("");
+
+    const ticketHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Comprobante ${codigo} - Chazin Food</title>
+          <style>
+            @page { size: 80mm auto; margin: 4mm; }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              width: 72mm;
+              margin: 0 auto;
+              padding: 6px;
+              color: #000;
+              font-size: 11px;
+              line-height: 1.3;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #000; margin: 6px 0; }
+            .double-divider { border-top: 2px solid #000; margin: 8px 0; }
+            .row { display: flex; justify-content: space-between; margin: 2px 0; }
+            h1 { font-size: 15px; margin: 0; text-transform: uppercase; }
+            h2 { font-size: 11px; margin: 2px 0; font-weight: normal; }
+          </style>
+        </head>
+        <body>
+          <div class="text-center">
+            <h1>CHAZIN FOOD</h1>
+            <h2>NIT: 901.458.789-2</h2>
+            <div style="font-size: 9px;">Cl. 21 #80-21, Belén, Medellín</div>
+            <div style="font-size: 9px;">Tel: +57 319 202 8562</div>
+            <div class="divider"></div>
+            <div class="bold" style="font-size: 12px;">FACTURA / COMPROBANTE POS</div>
+            <div class="bold" style="font-size: 13px;">${codigo}</div>
+            <div style="font-size: 10px;">${fecha} - ${horario}</div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="row"><span>Cliente:</span><span class="bold">${cliente}</span></div>
+          <div class="row"><span>Tipo:</span><span>${tipoEntrega}</span></div>
+          <div class="row"><span>Pago:</span><span>${metodoPago}</span></div>
+          <div class="row"><span>Origen:</span><span>${origen}</span></div>
+
+          <div class="divider"></div>
+          <div class="bold" style="font-size: 10px; margin-bottom: 4px;">DESCRIPCIÓN / CANT / TOTAL</div>
+          ${productosHtml}
+
+          <div class="divider"></div>
+          <div class="row"><span>Subtotal:</span><span>$${subtotal.toLocaleString("es-CO")}</span></div>
+          ${descuentoMonto > 0 ? `<div class="row"><span>Descuento (${descuentoPorcentaje}%):</span><span>-$${descuentoMonto.toLocaleString("es-CO")}</span></div>` : ""}
+          <div class="row"><span>IVA (19% inc.):</span><span>$${iva.toLocaleString("es-CO")}</span></div>
+          
+          <div class="double-divider"></div>
+          <div class="row" style="font-size: 13px;">
+            <span class="bold">TOTAL:</span>
+            <span class="bold">$${total.toLocaleString("es-CO")} COP</span>
+          </div>
+          <div class="double-divider"></div>
+
+          <div class="text-center" style="font-size: 9px; margin-top: 8px;">
+            <div>¡Gracias por preferir Chazin Food!</div>
+            <div>Conserva este ticket para cualquier reclamo.</div>
+            <div>www.chazinfood.com</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWin.document.write(ticketHtml);
+    printWin.document.close();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative bg-white dark:bg-gray-900 rounded-[28px] max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[92vh] border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
@@ -114,9 +380,19 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Detalle del Pedido
+            </span>
+            <span
+              className={`text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
+                esOnline
+                  ? "bg-sky-500/30 text-white border border-sky-300/40"
+                  : "bg-amber-500/30 text-white border border-amber-300/40"
+              }`}
+            >
+              {esOnline ? <Globe className="w-3 h-3" /> : <Store className="w-3 h-3" />}
+              <span>{esOnline ? "Online (Web)" : "Punto Físico"}</span>
             </span>
           </div>
           <div className="text-xl sm:text-2xl font-black tracking-tight mt-1">{codigo}</div>
@@ -157,6 +433,8 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 </div>
               </div>
             </div>
+
+            {/* Fecha */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -165,6 +443,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{fecha}</div>
             </div>
 
+            {/* Horario */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5 text-gray-400" />
@@ -173,13 +452,19 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{horario}</div>
             </div>
 
+            {/* Método de pago */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <CreditCard className="w-3.5 h-3.5 text-gray-400" />
                 <span>Método de pago</span>
               </div>
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                {metodoPago.toLowerCase().includes("tarjeta") ? (
+                {metodoPago.toLowerCase().includes("wompi") || metodoPago.toLowerCase().includes("pasarela") || metodoPago.toLowerCase().includes("pse") ? (
+                  <>
+                    <FoodIcon name="card" size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>Wompi (Pasarela Online)</span>
+                  </>
+                ) : metodoPago.toLowerCase().includes("tarjeta") ? (
                   <>
                     <FoodIcon name="card" size={15} className="text-blue-600 dark:text-blue-400 shrink-0" />
                     <span>Tarjeta</span>
@@ -194,12 +479,13 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
                 ) : (
                   <>
                     <FoodIcon name="cash" size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Efectivo</span>
+                    <span>Efectivo (Punto Físico)</span>
                   </>
                 )}
               </div>
             </div>
 
+            {/* Tipo de Entrega */}
             <div className="bg-[#f8fafc] dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/60 rounded-2xl p-3 space-y-0.5 shadow-2xs">
               <div className="text-[11px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <Store className="w-3.5 h-3.5 text-gray-400" />
@@ -208,6 +494,125 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
               <div className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                 <FoodIcon name={entregaInfo.slug} size={15} className="text-gray-600 dark:text-gray-300 shrink-0" />
                 <span>{entregaInfo.label}</span>
+              </div>
+            </div>
+
+            {/* Control y Seguimiento del Tiempo Estimado (Item 124 con Validación en Vivo) */}
+            <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl p-4 col-span-2 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                  <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors ${
+                  tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-red-600 text-white"
+                }`}>
+                  ⏱ {tiempoEstimado || "Sin definir"}
+                </span>
+              </div>
+
+              {/* Botones de ajuste rápido y constructor */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mr-1">
+                  Ajustar:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleAprox}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                    tiempoValidation.tags.includes("Aproximado")
+                      ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
+                      : "bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  }`}
+                  title="Alternar prefijo 'Aprox.'"
+                >
+                  ⚡ + Aprox.
+                </button>
+                {["15-20 min", "25-35 min", "45 min", "1 hora", "1 h 15 min", "Listo para entrega"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => {
+                      setTiempoValidationTouched(true);
+                      handleSaveTiempo(preset);
+                    }}
+                    disabled={isUpdatingTiempo}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      tiempoEstimado === preset
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input manual con validación reactiva */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={tiempoEstimado}
+                      onChange={(e) => {
+                        setTiempoValidationTouched(true);
+                        setTiempoEstimado(e.target.value);
+                      }}
+                      onBlur={() => setTiempoValidationTouched(true)}
+                      placeholder="Ej: Aprox. 35 min, 1 hora, 1 h 20 min..."
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none transition-colors ${
+                        !tiempoValidation.isValid
+                          ? "border-red-500 bg-red-50/40 text-red-900 dark:bg-red-950/20 dark:text-red-100 focus:ring-2 focus:ring-red-400/50"
+                          : "bg-white dark:bg-gray-800 border-emerald-500 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/50"
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveTiempo(tiempoEstimado)}
+                    disabled={isUpdatingTiempo || !tiempoValidation.isValid}
+                    className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                      !tiempoValidation.isValid || isUpdatingTiempo
+                        ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                    }`}
+                  >
+                    {isUpdatingTiempo ? (
+                      <span>Guardando...</span>
+                    ) : tiempoActualizadoMsg ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>¡Guardado!</span>
+                      </>
+                    ) : (
+                      <span>Guardar</span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Feedback en vivo: Indicadores de formato válido o alerta de error */}
+                {tiempoValidation.isValid ? (
+                  <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Formato válido:</span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {tiempoValidation.tags.map((t) => (
+                        <span
+                          key={t}
+                          className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 text-[11px] text-red-700 dark:text-red-300 bg-red-50/90 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-800/60 animate-in fade-in duration-150">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <span>{tiempoValidation.error}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -400,7 +805,32 @@ export function VentaDetalleModal({ isOpen, onClose, venta }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex justify-end">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrintComprobante}
+              className="px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimir Comprobante</span>
+            </button>
+
+            {(venta.estado === "Pendiente" || venta.estado === "PENDIENTE" || venta.estadoPago === "PENDIENTE") && onAprobarPago && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await onAprobarPago(venta.id || venta.idVenta);
+                  if (ok) onClose();
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Aprobar Pago</span>
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={onClose}

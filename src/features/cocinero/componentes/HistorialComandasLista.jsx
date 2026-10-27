@@ -297,18 +297,25 @@ export function HistorialComandasLista({
                   return (
                     <tr
                       key={orderId}
-                      className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
+                      onClick={() => toggleExpand(orderId)}
+                      className={`hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors group cursor-pointer ${
+                        isExpanded ? "bg-gray-50/50 dark:bg-gray-800/30" : ""
+                      }`}
+                      title="Clic para ver u ocultar el detalle de la comanda"
                     >
                       {/* Code & Channel */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => toggleExpand(orderId)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpand(orderId);
+                            }}
                             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 hover:text-gray-600 transition cursor-pointer"
                             title="Desplegar platillos de la comanda"
                           >
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {isExpanded ? <ChevronUp className="w-4 h-4 text-[#F05454]" /> : <ChevronDown className="w-4 h-4" />}
                           </button>
                           <div>
                             <span className="font-black text-sm text-gray-900 dark:text-gray-100 block font-mono">
@@ -374,7 +381,10 @@ export function HistorialComandasLista({
 
                         {/* Collapsible expanded detail */}
                         {isExpanded && (
-                          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2">
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2 cursor-default"
+                          >
                             <p className="font-bold text-[11px] text-gray-500 uppercase tracking-wide">
                               Detalle de platillos despachados:
                             </p>
@@ -396,7 +406,10 @@ export function HistorialComandasLista({
                                     {onVerReceta && (
                                       <button
                                         type="button"
-                                        onClick={() => onVerReceta(ped, it)}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onVerReceta(ped, it);
+                                        }}
                                         className="text-[10px] text-[#F05454] font-bold hover:underline cursor-pointer flex items-center gap-1"
                                       >
                                         <BookOpen className="w-3 h-3" />
@@ -465,7 +478,10 @@ export function HistorialComandasLista({
                       <td className="py-3 px-4 text-right">
                         <button
                           type="button"
-                          onClick={() => onReabrir(orderId)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReabrir(orderId);
+                          }}
                           className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 ml-auto shadow-2xs"
                           title="Devolver comanda a cocina si el cliente solicitó cambios"
                         >

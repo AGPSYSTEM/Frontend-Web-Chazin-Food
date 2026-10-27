@@ -1,4 +1,4 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, Calendar, User, Eye } from "lucide-react";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
@@ -10,19 +10,6 @@ const parseDireccion = (raw) => {
     } catch { return raw; }
   }
   return raw;
-};
-
-const getRolColor = (rol) => {
-  switch (rol) {
-    case "Administrador":
-      return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300";
-    case "Cocinero":
-      return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300";
-    case "Cliente":
-      return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300";
-    default:
-      return "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300";
-  }
 };
 
 const getRolStyle = (rol = "") => {
@@ -71,31 +58,97 @@ const formatTelefonoLines = (tel) => {
   return [String(tel), "", ""];
 };
 
-const formatUltimoAcceso = (usuario) => {
-  const fecha = usuario.ultimoAcceso || usuario.updatedAt || usuario.createdAt;
-  if (!fecha) {
-    const defaultTime = (usuario.id || usuario.idUsuario || 1) % 2 === 0 ? "13:15" : "14:30";
-    return ["2026-", "05-27", defaultTime];
-  }
-  const d = new Date(fecha);
-  if (isNaN(d.getTime())) {
-    return ["2026-", "05-27", "14:30"];
-  }
-  const year = d.getFullYear() + "-";
-  const monthDay = String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  const time = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
-  return [year, monthDay, time];
-};
+// ── Paginator ──────────────────────────────────────────────────────────
+function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize }) {
+  if (totalPages <= 1) return null;
 
-export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePassword, onView }) {
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, totalItems);
+
+  // Build page numbers with ellipsis
+  const pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push("...");
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      pages.push(i);
+    }
+    if (currentPage < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+  }
+
+  const btnBase = "w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all";
+  const btnActive = `${btnBase} bg-[#F05454] text-white shadow-sm`;
+  const btnInactive = `${btnBase} text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`;
+  const btnDisabled = `${btnBase} text-gray-300 dark:text-gray-600 cursor-not-allowed`;
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        Mostrando <span className="font-semibold text-gray-700 dark:text-gray-300">{start}–{end}</span> de{" "}
+        <span className="font-semibold text-gray-700 dark:text-gray-300">{totalItems}</span> usuarios
+      </p>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={currentPage === 1 ? btnDisabled : btnInactive}
+          aria-label="Página anterior"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        {pages.map((p, idx) =>
+          p === "..." ? (
+            <span key={`ellipsis-${idx}`} className="w-8 text-center text-xs text-gray-400">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              className={currentPage === p ? btnActive : btnInactive}
+            >
+              {p}
+            </button>
+          )
+        )}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={currentPage === totalPages ? btnDisabled : btnInactive}
+          aria-label="Página siguiente"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function UsuariosTable({
+  usuarios = [],
+  onEdit,
+  onDelete,
+  onChangePassword,
+  onView,
+  currentPage = 1,
+  pageSize = 10,
+  onPageChange,
+  canEdit = true,
+  canDelete = true
+}) {
+  const totalItems = usuarios.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = usuarios.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   return (
     <>
       {/* Mobile Cards View (< lg) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden mb-6">
-        {usuarios.map((usuario) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden mb-2">
+        {paginated.map((usuario) => {
           const iniciales = usuario.iniciales || getIniciales(usuario.nombre, usuario.apellidos);
           const [t1, t2, t3] = formatTelefonoLines(usuario.telefono);
-          const [uYear, uMonthDay, uTime] = formatUltimoAcceso(usuario);
 
           return (
             <div
@@ -116,7 +169,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                       {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                      ID #{usuario.id || usuario.idUsuario}
+                      {usuario.documento ? `Doc: ${usuario.documento}` : `ID #${usuario.id || usuario.idUsuario}`}
                     </p>
                   </div>
                 </div>
@@ -158,10 +211,6 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                     {usuario.rolNombre}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-gray-400 pt-1">
-                  <Calendar className="w-3 h-3" />
-                  Último acceso: {uYear}{uMonthDay} {uTime}
-                </div>
               </div>
 
               <div className="border-t border-gray-100 dark:border-gray-700/60 px-4 py-2 flex items-center justify-end gap-2">
@@ -169,7 +218,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                   <button
                     onClick={() => onView(usuario)}
                     className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
-                    title="Inspeccionar usuario y reseñas"
+                    title="Inspeccionar usuario"
                   >
                     <Eye className="w-4 h-4 stroke-[2]" />
                   </button>
@@ -201,12 +250,25 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
             </div>
           );
         })}
-        {usuarios.length === 0 && (
+        {paginated.length === 0 && (
           <div className="sm:col-span-2 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 p-12 text-center">
             <User className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-gray-500 dark:text-gray-400 text-sm">No se encontraron usuarios</p>
           </div>
         )}
+      </div>
+
+      {/* Mobile Pagination */}
+      <div className="lg:hidden mb-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/60 overflow-hidden">
+          <Paginator
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            totalItems={totalItems}
+            pageSize={pageSize}
+          />
+        </div>
       </div>
 
       {/* Desktop Table View (lg+) */}
@@ -219,6 +281,9 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                   USUARIO
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
+                  DOCUMENTO
+                </th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                   EMAIL
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
@@ -226,9 +291,6 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                   ROL
-                </th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
-                  ÚLTIMO ACCESO
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">
                   ESTADO
@@ -239,10 +301,8 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
-              {usuarios.map((usuario) => {
+              {paginated.map((usuario) => {
                 const iniciales = usuario.iniciales || getIniciales(usuario.nombre, usuario.apellidos);
-                const [t1, t2, t3] = formatTelefonoLines(usuario.telefono);
-                const [uYear, uMonthDay, uTime] = formatUltimoAcceso(usuario);
 
                 return (
                   <tr
@@ -267,6 +327,16 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                             ID #{usuario.id || usuario.idUsuario}
                           </p>
                         </div>
+                      </div>
+                    </td>
+
+                    {/* DOCUMENTO */}
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-600 dark:text-gray-300 whitespace-nowrap">
+                        {usuario.tipoDocumento && (
+                          <span className="text-xs text-gray-400 font-medium mr-1">{usuario.tipoDocumento}</span>
+                        )}
+                        <span className="font-medium">{usuario.documento || "-"}</span>
                       </div>
                     </td>
 
@@ -298,13 +368,6 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                       </span>
                     </td>
 
-                    {/* ÚLTIMO ACCESO */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-slate-600 dark:text-gray-300 font-medium">
-                        {uYear}{uMonthDay} {uTime}
-                      </span>
-                    </td>
-
                     {/* ESTADO */}
                     <td className="px-6 py-4">
                       <span
@@ -325,26 +388,30 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                           <button
                             onClick={() => onView(usuario)}
                             className="p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
-                            title="Inspeccionar usuario y reseñas"
+                            title="Inspeccionar usuario"
                           >
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEdit(usuario)}
-                          className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Editar usuario"
-                        >
-                          <Edit className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        <button
-                          onClick={() => onChangePassword(usuario)}
-                          className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Cambiar contraseña"
-                        >
-                          <Lock className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        {usuario.rolNombre !== "Administrador" && (
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(usuario)}
+                            className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Editar usuario"
+                          >
+                            <Edit className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => onChangePassword(usuario)}
+                            className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Cambiar contraseña"
+                          >
+                            <Lock className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canDelete && usuario.rolNombre !== "Administrador" && (
                           <button
                             onClick={() => onDelete(usuario.id || usuario.idUsuario, usuario.nombre)}
                             className="p-1.5 text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"
@@ -358,7 +425,7 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
                   </tr>
                 );
               })}
-              {usuarios.length === 0 && (
+              {paginated.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500 text-sm">
                     No se encontraron usuarios con los filtros aplicados
@@ -368,6 +435,13 @@ export function UsuariosTable({ usuarios = [], onEdit, onDelete, onChangePasswor
             </tbody>
           </table>
         </div>
+        <Paginator
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          totalItems={totalItems}
+          pageSize={pageSize}
+        />
       </div>
     </>
   );

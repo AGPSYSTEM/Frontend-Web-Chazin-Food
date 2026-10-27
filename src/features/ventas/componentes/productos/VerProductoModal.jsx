@@ -5,6 +5,7 @@ import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 
 export function VerProductoModal({ isOpen, onClose, producto }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -109,7 +110,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden relative max-h-[92vh] border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl flex flex-col overflow-hidden relative max-h-[94vh] border border-gray-100 dark:border-gray-800">
         
         {/* Top Showcase Header */}
         <div className="relative w-full bg-gradient-to-b from-gray-50/90 via-gray-100/40 to-white dark:from-gray-800/60 dark:via-gray-850 dark:to-gray-900 p-6 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-800 shrink-0">
@@ -186,9 +187,9 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               </p>
             </div>
 
-            {/* Margen de Ganancia */}
+            {/* Rentabilidad Estimada (Ítem 108: Reemplazar Margen de Ganancia) */}
             <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-900/30">
-              <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Margen Ganancia</p>
+              <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Rentabilidad</p>
               <p className="text-lg font-black text-blue-600 dark:text-blue-400">
                 {costoProduccion > 0 ? `${margenPorcentaje}%` : "—"}
               </p>
@@ -322,13 +323,13 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                   </div>
                 )}
 
-                {/* 2. Sabores / Fórmulas de Bebida */}
+                {/* 2. Sabores / Variantes de Bebida */}
                 {flavorVariantes.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-purple-500" />
                       <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                        Sabores y Fórmulas de Bebida ({flavorVariantes.length})
+                        Variantes y Sabores de Bebida ({flavorVariantes.length})
                       </h3>
                     </div>
                     <div className="bg-purple-50/40 dark:bg-purple-950/20 rounded-2xl p-3 sm:p-4 border border-purple-200/70 dark:border-purple-900/40">
@@ -355,7 +356,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                                   {v.nombre}
                                 </span>
                                 <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                                  Fórmula / Sabor
+                                  Variante / Sabor
                                 </span>
                               </div>
                             </div>
@@ -416,15 +417,15 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           {eventosActivos.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <FoodIcon name="party" size={16} className="text-purple-600 dark:text-purple-400 shrink-0" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                <FoodIcon name="party" size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-300">
                   Eventos y Promociones Activas ({eventosActivos.length})
                 </h3>
               </div>
-              <div className="bg-purple-50/60 dark:bg-purple-950/20 rounded-2xl p-4 border border-purple-100 dark:border-purple-900/30">
+              <div className="bg-orange-50/60 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-200/80 dark:border-orange-900/40">
                 <ul className="space-y-2.5">
                   {eventosActivos.map((evt, i) => (
-                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-purple-100 dark:border-purple-900/20">
+                    <li key={i} className="flex justify-between items-start text-xs bg-white dark:bg-gray-800 p-3.5 rounded-xl shadow-xs border border-orange-200/70 dark:border-orange-900/30">
                       <div className="flex items-start gap-2.5">
                         <div className="shrink-0">
                           <FoodIconBadge name={evt.icono || "party"} size="sm" />
@@ -433,8 +434,8 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                           <span className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
                             {evt.nombreEvento || evt.nombre}
                             {evt.tipoEvento && (
-                              <span className="text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md font-semibold">
-                                {evt.tipoEvento}
+                              <span className="text-[10px] bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 px-2 py-0.5 rounded-md font-semibold border border-orange-200 dark:border-orange-800">
+                                {formatTipoEvento(evt.tipoEvento)}
                               </span>
                             )}
                             {evt.isTemporal && (
@@ -453,7 +454,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
                           </span>
                         )}
                         {(evt.tipoEvento === "Promoción Precio" || evt.nuevoPrecio) && (
-                          <span className="text-purple-700 dark:text-purple-300 font-extrabold bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg">
+                          <span className="text-orange-700 dark:text-orange-300 font-extrabold bg-orange-100 dark:bg-orange-950/60 px-2.5 py-1 rounded-lg border border-orange-200/80 dark:border-orange-800/40">
                             ${Number(evt.nuevoPrecio).toLocaleString("es-CO")}
                           </span>
                         )}

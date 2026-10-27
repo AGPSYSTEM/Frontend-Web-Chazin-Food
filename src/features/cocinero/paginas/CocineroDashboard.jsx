@@ -766,9 +766,20 @@ export function CocineroDashboard() {
           {/* Brand & Live Digital Clock */}
           <div className="flex items-center justify-between md:justify-start gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl overflow-hidden bg-red-50 dark:bg-red-950/40 shrink-0 border border-red-100 dark:border-red-900/50 shadow-xs flex items-center justify-center p-1.5">
-                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
-              </div>
+              <Link
+                to="/"
+                title="Volver al inicio"
+                className="w-11 h-11 rounded-2xl overflow-hidden bg-red-50 dark:bg-red-950/40 shrink-0 border border-red-100 dark:border-red-900/50 shadow-xs flex items-center justify-center p-1.5 hover:scale-105 transition-transform"
+              >
+                <img
+                  src={logoImg}
+                  alt="Chazin Food"
+                  width="44"
+                  height="44"
+                  style={{ aspectRatio: "1 / 1" }}
+                  className="w-full h-full object-contain"
+                />
+              </Link>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="font-black text-gray-900 dark:text-gray-100 text-base sm:text-lg tracking-tight flex items-center gap-1.5">
@@ -802,6 +813,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setVistaPrincipal("tablero")}
+                aria-label="Ver tablero de comandas"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
                   vistaPrincipal === "tablero"
                     ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
@@ -814,6 +826,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setVistaPrincipal("historial")}
+                aria-label="Ver historial de comandas"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer select-none ${
                   vistaPrincipal === "historial"
                     ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-xs"
@@ -831,6 +844,7 @@ export function CocineroDashboard() {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
+                  aria-label="Buscar comanda"
                   placeholder="Buscar comanda..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -839,6 +853,7 @@ export function CocineroDashboard() {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm("")}
+                    aria-label="Limpiar búsqueda"
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -852,6 +867,7 @@ export function CocineroDashboard() {
               <button
                 type="button"
                 onClick={() => setShowConfigFade(!showConfigFade)}
+                aria-label="Configurar tiempo de desvanecimiento de comandas listas"
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750 transition cursor-pointer"
                 title="Configurar tiempo de desvanecimiento de comandas listas"
               >
@@ -895,6 +911,7 @@ export function CocineroDashboard() {
             <button
               type="button"
               onClick={handleSoundToggle}
+              aria-label={soundEnabled ? "Silenciar sonido de cocina" : "Activar sonido de cocina"}
               className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 transition cursor-pointer ${
                 soundEnabled
                   ? "bg-red-50 dark:bg-red-950/40 text-[#F05454] border-red-200 dark:border-red-900/50"
@@ -909,6 +926,7 @@ export function CocineroDashboard() {
             <button
               type="button"
               onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Salir de pantalla completa" : "Ver en pantalla completa KDS"}
               className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer hidden sm:flex"
               title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa KDS"}
             >
@@ -919,6 +937,7 @@ export function CocineroDashboard() {
             <button
               onClick={() => fetchPedidos(false)}
               disabled={loading || refreshing}
+              aria-label="Actualizar comandas"
               className={`p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer ${
                 refreshing ? "animate-spin text-[#F05454]" : ""
               }`}
@@ -930,6 +949,7 @@ export function CocineroDashboard() {
             {/* Recetas / Fichas Técnicas link */}
             <Link
               to="/fichas-tecnicas"
+              aria-label="Ir al recetario de fichas técnicas"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-[#F05454] rounded-xl text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/60 transition cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -939,6 +959,7 @@ export function CocineroDashboard() {
             {/* Dark Mode Toggle */}
             <button
               onClick={() => toggleDarkMode()}
+              aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-600 dark:text-gray-400 transition cursor-pointer"
               title={darkMode ? "Modo Claro" : "Modo Oscuro"}
             >
@@ -948,6 +969,7 @@ export function CocineroDashboard() {
             {/* Logout */}
             <button
               onClick={handleLogout}
+              aria-label="Cerrar sesión"
               className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 rounded-xl transition cursor-pointer"
               title="Cerrar sesión"
             >
@@ -1166,6 +1188,20 @@ export function CocineroDashboard() {
                         <h3 className="font-black text-gray-900 dark:text-gray-100 text-base tracking-tight truncate">
                           {ped.codigo || `VEN-${String(orderId).padStart(4, "0")}`}
                         </h3>
+
+                        {/* Sequential Priority Turn (Ítem 117) */}
+                        {ped.prioridad ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 shadow-2xs ${
+                              ped.prioridad === 1
+                                ? "bg-red-500 text-white ring-1 ring-red-300 dark:ring-red-900"
+                                : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                            }`}
+                            title={`Orden secuencial de preparación: #${ped.prioridad}`}
+                          >
+                            Turno #{ped.prioridad}
+                          </span>
+                        ) : null}
 
                         {/* Delivery Type Badge (Properly resolved Domicilio / Para Llevar / Mesa) */}
                         <span
@@ -1471,7 +1507,7 @@ export function CocineroDashboard() {
                   <div>
                     <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Ingredientes & Porciones Requeridas:</span>
+                      <span>Ingredientes y Cantidades Requeridas:</span>
                     </h4>
                     {modalRecetaData?.ingredientes && modalRecetaData.ingredientes.length > 0 ? (
                       <div className="space-y-1.5">
@@ -1500,11 +1536,14 @@ export function CocineroDashboard() {
                     </h4>
                     {modalRecetaData?.pasos && modalRecetaData.pasos.length > 0 ? (
                       <ol className="space-y-2 list-decimal list-inside text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                        {modalRecetaData.pasos.map((paso, i) => (
-                          <li key={i} className="leading-relaxed pl-1 py-0.5">
-                            <span className="font-medium">{paso}</span>
-                          </li>
-                        ))}
+                        {modalRecetaData.pasos.map((paso, i) => {
+                          const pasoLimpio = String(paso).replace(/^\d+[\.\-\)]\s*/, '').trim();
+                          return (
+                            <li key={i} className="leading-relaxed pl-1 py-0.5">
+                              <span className="font-medium">{pasoLimpio}</span>
+                            </li>
+                          );
+                        })}
                       </ol>
                     ) : (
                       <p className="text-xs text-gray-400 italic">Preparar según estándar de cocina de la casa.</p>

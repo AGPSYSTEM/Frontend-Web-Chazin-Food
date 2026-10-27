@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, Building2, Bell, Trash2, ClipboardList, CheckCircle2, XCircle, Briefcase } from "lucide-react";
+import { Plus, Search, Building2, Bell, Trash2, ClipboardList, CheckCircle2, XCircle, Briefcase, Filter, X } from "lucide-react";
 import { useProveedores } from "../hooks/useProveedores";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { ProveedoresTable } from "../componentes/proveedores/ProveedoresTable";
 import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
@@ -8,6 +10,11 @@ import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProv
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Proveedores() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Proveedores", "crear");
+  const canEdit = hasPrivilege(user, "Proveedores", "editar");
+  const canDelete = hasPrivilege(user, "Proveedores", "eliminar");
+
   const {
     proveedores,
     activosProveedores,
@@ -24,6 +31,7 @@ export function Proveedores() {
     unreadCount,
     createProveedor,
     updateProveedor,
+    toggleEstadoProveedor,
     deleteProveedor,
     restoreProveedor,
     deleteDefinitivoProveedor,
@@ -73,7 +81,7 @@ export function Proveedores() {
     }
   };
 
-  // Filtered suppliers based on view mode
+  // Show filtered results - include inactive when searching or filter is Todos
   const displayProveedores = viewMode === "papelera"
     ? papeleraProveedores.filter((p) => {
         return (
@@ -83,7 +91,7 @@ export function Proveedores() {
           p.contacto?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       })
-    : filteredProveedores.filter((p) => filterEstado !== "Inactivo" ? (p.estado === "Activo" || p.estado === 1) : true);
+    : filteredProveedores;
 
   const statCards = [
     {
@@ -264,15 +272,52 @@ export function Proveedores() {
                 )}
               </div>
 
-              <button
-                onClick={handleOpenCreate}
-                className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Nuevo Proveedor</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={handleOpenCreate}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Nuevo Proveedor</span>
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Active Filter Badges */}
+          {(filterEstado !== "Todos" || filterTipo !== "Todos" || searchTerm.trim() !== "") && (
+            <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" />
+                Filtros activos:
+              </span>
+              {filterEstado !== "Todos" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-[#F05454] border border-red-200 dark:border-red-900/60 font-medium">
+                  <span>Estado: {filterEstado}</span>
+                  <button type="button" onClick={() => setFilterEstado("Todos")} className="hover:text-red-700 cursor-pointer font-bold ml-0.5">×</button>
+                </span>
+              )}
+              {filterTipo !== "Todos" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/60 font-medium">
+                  <span>Tipo: P. {filterTipo}</span>
+                  <button type="button" onClick={() => setFilterTipo("Todos")} className="hover:text-purple-800 cursor-pointer font-bold ml-0.5">×</button>
+                </span>
+              )}
+              {searchTerm.trim() !== "" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium">
+                  <span>Búsqueda: &quot;{searchTerm}&quot;</span>
+                  <button type="button" onClick={() => setSearchTerm("")} className="hover:text-gray-900 cursor-pointer font-bold ml-0.5">×</button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => { setFilterEstado("Todos"); setFilterTipo("Todos"); setSearchTerm(""); }}
+                className="text-xs text-gray-500 hover:text-red-500 underline ml-2 cursor-pointer font-medium"
+              >
+                Limpiar todos
+              </button>
+            </div>
+          )}
 
           {/* Table */}
           {loading ? (
@@ -282,10 +327,14 @@ export function Proveedores() {
               proveedores={displayProveedores}
               onEdit={handleOpenEdit}
               onDelete={deleteProveedor}
+              onToggleEstado={toggleEstadoProveedor}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           )}
         </div>
       )}
+
 
       {/* Modal Crear/Editar Proveedor */}
       <ProveedorModal
@@ -296,6 +345,7 @@ export function Proveedores() {
         }}
         onSave={handleSave}
         proveedor={editingProveedor}
+        proveedores={proveedores}
       />
 
       {/* Modal Trazabilidad Proveedores */}

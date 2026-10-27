@@ -1,14 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { clientesService } from "../servicios/clientesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchClienteMultiCriteria } from "@/shared/utils/searchUtils";
 
 export function useClientes() {
   const notify = useNotifications();
   const [clientes, setClientes] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Criterios de búsqueda y filtrado multicriterio
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterTipo, setFilterTipo] = useState("Todos");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [comprasMin, setComprasMin] = useState("");
+  const [montoMin, setMontoMin] = useState("");
+  const [montoMax, setMontoMax] = useState("");
 
   const fetchClientes = useCallback(async () => {
     try {
@@ -31,24 +38,49 @@ export function useClientes() {
     fetchClientes();
   }, [fetchClientes]);
 
-  const filteredClientes = clientes.filter((c) => {
-    const matchSearch =
-      searchTerm === "" ||
-      c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.telefono?.includes(searchTerm) ||
-      c.documento?.includes(searchTerm);
+  // Filtrado multicriterio exhaustivo
+  const filteredClientes = useMemo(() => {
+    const criteria = {
+      searchTerm,
+      filterTipo,
+      filterEstado,
+      comprasMin,
+      montoMin,
+      montoMax
+    };
 
-    const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
+    return clientes.filter((c) => matchClienteMultiCriteria(c, criteria));
+  }, [clientes, searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
 
-    const matchEstado =
-      filterEstado === "Todos" ||
-      clientTipo.toLowerCase() === filterEstado.toLowerCase() ||
-      c.estado === filterEstado;
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm("");
+    setFilterTipo("Todos");
+    setFilterEstado("Todos");
+    setComprasMin("");
+    setMontoMin("");
+    setMontoMax("");
+  }, []);
 
-    return matchSearch && matchEstado;
-  });
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== "" ||
+      filterTipo !== "Todos" ||
+      filterEstado !== "Todos" ||
+      comprasMin !== "" ||
+      montoMin !== "" ||
+      montoMax !== ""
+    );
+  }, [searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm.trim() !== "") count++;
+    if (filterTipo !== "Todos") count++;
+    if (filterEstado !== "Todos") count++;
+    if (comprasMin !== "") count++;
+    if (montoMin !== "" || montoMax !== "") count++;
+    return count;
+  }, [searchTerm, filterTipo, filterEstado, comprasMin, montoMin, montoMax]);
 
   const createCliente = async (data) => {
     try {
@@ -107,8 +139,19 @@ export function useClientes() {
     loading,
     searchTerm,
     setSearchTerm,
+    filterTipo,
+    setFilterTipo,
     filterEstado,
     setFilterEstado,
+    comprasMin,
+    setComprasMin,
+    montoMin,
+    setMontoMin,
+    montoMax,
+    setMontoMax,
+    clearAllFilters,
+    hasActiveFilters,
+    activeFiltersCount,
     refetch: fetchClientes,
     createCliente,
     updateCliente,

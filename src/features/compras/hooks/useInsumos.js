@@ -4,6 +4,7 @@ import { proveedoresService } from "../servicios/proveedoresService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useInsumos() {
   const notify = useNotifications();
@@ -124,9 +125,22 @@ export function useInsumos() {
   }, [fetchInsumos, fetchPapelera]);
 
   const filteredInsumos = insumos.filter((item) => {
-    const matchSearch =
-      searchTerm === "" ||
-      item.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = matchesSmartSearch(
+      [
+        item.nombre,
+        item.categoria,
+        item.categoriaNombre,
+        item.proveedor,
+        item.proveedorNombre,
+        item.estado,
+        item.tipo,
+        item.descripcion,
+        item.unidadMedida,
+        item.id,
+        item.idInsumo
+      ],
+      searchTerm
+    );
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
@@ -144,6 +158,7 @@ export function useInsumos() {
           unidadMedida: data.unidadMedida || "und",
           precioVenta: Number(data.precio) || 0,
           estado: data.estado || "Activo",
+          incluyeIva: data.incluyeIva ? 1 : 0,
           insumos: (data.ingredientes || []).map(i => ({
             idInsumo: i.id || i.idInsumo,
             cantidad: i.cantidad,
@@ -168,14 +183,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo) || 0,
           unidadMedida: data.unidadMedida || "und",
           precioUnitario: Number(data.precioUnitario) || 0,
-          idProveedor: data.idProveedor || null,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion || "",
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
+          incluyeIva: data.incluyeIva ? 1 : 0,
           estado: data.estado || "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.createInsumo(payload);
       }
@@ -226,14 +242,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo),
           unidadMedida: data.unidadMedida,
           precioUnitario: Number(data.precioUnitario),
-          idProveedor: data.idProveedor,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion,
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
+          incluyeIva: data.incluyeIva !== undefined ? (data.incluyeIva ? 1 : 0) : undefined,
           estado: data.estado !== undefined ? data.estado : "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.updateInsumo(id, payload);
       }
@@ -244,6 +261,33 @@ export function useInsumos() {
       return true;
     } catch (err) {
       notify.error("Error", err.message || "Error al actualizar");
+      return false;
+    }
+  };
+
+  const toggleEstadoInsumo = async (item) => {
+    const id = item.id || item.idInsumo;
+    const nuevoEstado = item.estado === "Activo" ? "Inactivo" : "Activo";
+    try {
+      if (item.tipo === "Preparado") {
+        await insumosService.updatePreparado(id, {
+          ...item,
+          estado: nuevoEstado
+        });
+      } else {
+        await insumosService.updateInsumo(id, {
+          ...item,
+          estado: nuevoEstado
+        });
+      }
+      await fetchInsumos();
+      notify.success(
+        nuevoEstado === "Activo" ? "Insumo activado" : "Insumo inactivado",
+        `"${item.nombre}" ahora está ${nuevoEstado}.`
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del insumo");
       return false;
     }
   };
@@ -374,6 +418,7 @@ export function useInsumos() {
     refetchPapelera: fetchPapelera,
     createInsumo,
     updateInsumo,
+    toggleEstadoInsumo,
     deleteInsumo,
     deletePreparado,
     restoreInsumo,

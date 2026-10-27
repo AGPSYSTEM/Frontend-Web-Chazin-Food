@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useProductos } from "../hooks/useProductos";
 import { ProductosTable } from "../componentes/productos/ProductosTable";
 import { ProductoModal } from "../componentes/productos/ProductoModal";
@@ -10,6 +12,11 @@ import { eventosService } from "../servicios/eventosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Productos() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Productos", "crear");
+  const canEdit = hasPrivilege(user, "Productos", "editar");
+  const canDelete = hasPrivilege(user, "Productos", "eliminar");
+
   const {
     productos,
     filteredProductos,
@@ -124,8 +131,8 @@ export function Productos() {
       {/* Separator */}
       <hr className="border-gray-200 dark:border-gray-700" />
 
-      {/* Stat Cards - 2x2 Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Stat Cards - Grid Balanceado de 4 Columnas (Ítem 113) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Productos */}
         <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
@@ -163,14 +170,14 @@ export function Productos() {
         </div>
 
         {/* Card 4: Eventos Activos */}
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6 text-purple-400" />
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-orange-200/80 dark:border-orange-900/40 shadow-sm shadow-orange-500/5">
+          <div className="w-12 h-12 rounded-full bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 h-6 text-orange-500 dark:text-orange-400" />
           </div>
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Productos con Evento</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.eventosActivos}</p>
-            <p className="text-xs text-purple-400 font-medium">promociones</p>
+            <p className="text-xs text-orange-600 dark:text-orange-400 font-bold">promociones activas</p>
           </div>
         </div>
       </div>
@@ -204,23 +211,25 @@ export function Productos() {
             ))}
           </select>
 
-          {/* Eventos Button */}
+          {/* Eventos Button (Coordinado con el contorno de productos con evento) */}
           <button
             onClick={() => setEventosModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:via-amber-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-md shadow-orange-500/25 ring-2 ring-orange-400/30 transition-all active:scale-95 cursor-pointer shrink-0"
           >
-            <Sparkles className="w-5 h-5" />
+            <Sparkles className="w-5 h-5 text-amber-100" />
             <span>Eventos</span>
           </button>
 
           {/* Nuevo Producto Button */}
-          <button
-            onClick={handleOpenCreate}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nuevo Producto</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={handleOpenCreate}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nuevo Producto</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -234,6 +243,8 @@ export function Productos() {
           onDelete={deleteProducto}
           onView={handleOpenView}
           onCreateEvento={handleCreateEvento}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

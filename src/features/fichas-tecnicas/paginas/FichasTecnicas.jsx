@@ -28,8 +28,16 @@ export function FichasTecnicas({ readOnly = false }) {
       ]);
 
       if (prodRes.status === "fulfilled") {
-        const list = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
-        setProductos(list);
+        const rawList = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
+        // #103: Los combos no llevan ficha técnica ni deben aparecer en este catálogo
+        const nonCombos = rawList.filter(
+          (p) =>
+            !p.esCombo &&
+            !p.configuracionCombo?.esCombo &&
+            (p.categoria || "").toLowerCase() !== "combos" &&
+            (p.categoriaNombre || "").toLowerCase() !== "combos"
+        );
+        setProductos(nonCombos);
       }
 
       if (prepRes.status === "fulfilled") {

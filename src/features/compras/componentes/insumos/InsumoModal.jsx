@@ -7,7 +7,10 @@ import {
   UploadCloud,
   Loader2,
   Check,
-  Info
+  CheckCircle2,
+  Info,
+  Percent,
+  AlertCircle
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/FichaTecnicaInsumo";
@@ -15,7 +18,9 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { FoodIcon, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { validateTexto, validateNumeroPositivo, validateMoneda, validateRequerido } from "@/shared/utils/validationUtils";
 
+const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
 const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1";
 
@@ -73,6 +78,10 @@ export function InsumoModal({
   // Switch de tipo: "Base" (Normal) | "Preparado"
   const [tipo, setTipo] = useState("Base");
 
+  // Borradores para persistencia de datos al alternar (#61)
+  const draftBaseRef = useRef(null);
+  const draftPreparadoRef = useRef(null);
+
   // Estado del formulario
   const [form, setForm] = useState({
     nombre: "",
@@ -82,8 +91,7 @@ export function InsumoModal({
     precioUnitario: 0,
     stock: 0,
     stockMinimo: 5,
-    fechaExpedicion: "",
-    fechaVencimiento: "",
+    stockMaximo: 100,
     descripcion: "",
     estado: "Activo",
     // Adición integrada
@@ -91,6 +99,8 @@ export function InsumoModal({
     precioAdicion: 0,
     imagen: ""
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Estado para Ficha Técnica (Insumo Preparado)
   const [initialFichaTecnica, setInitialFichaTecnica] = useState(null);
@@ -133,13 +143,13 @@ export function InsumoModal({
         proveedor: insumo.proveedor || insumo.proveedorNombre || "",
         stock: Math.max(0, Number(insumo.stock || 0)),
         stockMinimo: Math.max(0, Number(insumo.stockMinimo !== undefined && insumo.stockMinimo !== null ? insumo.stockMinimo : 5)),
-        fechaExpedicion: insumo.fechaExpedicion || "",
-        fechaVencimiento: insumo.fechaVencimiento || "",
+        stockMaximo: Math.max(0, Number(insumo.stockMaximo !== undefined && insumo.stockMaximo !== null ? insumo.stockMaximo : 100)),
         descripcion: insumo.descripcion || "",
         estado: insumo.estado === 1 || insumo.estado === "Activo" || insumo.estado === "1" ? "Activo" : "Inactivo",
         esAdicion: esAdicionVal,
         precioAdicion: precioAdicionVal,
-        imagen: imagenVal
+        imagen: imagenVal,
+        incluyeIva: !!(insumo.incluyeIva === 1 || insumo.incluyeIva === true || insumo.incluyeIva === "1")
       });
 
       if (isPrep) {
@@ -172,13 +182,13 @@ export function InsumoModal({
         precioUnitario: 0,
         stock: 0,
         stockMinimo: 5,
-        fechaExpedicion: "",
-        fechaVencimiento: "",
+        stockMaximo: 100,
         descripcion: "",
         estado: "Activo",
         esAdicion: esSalsaDefault,
         precioAdicion: esSalsaDefault ? 1500 : 0,
-        imagen: esSalsaDefault ? "sauce" : "bacon"
+        imagen: esSalsaDefault ? "sauce" : "bacon",
+        incluyeIva: false
       });
       setInitialFichaTecnica(null);
       setFichaTecnica(null);
@@ -188,12 +198,46 @@ export function InsumoModal({
   if (!isOpen) return null;
 
   const handleTipoChange = (nuevoTipo) => {
+    if (nuevoTipo === tipo) return;
+
+    // Guardar borrador del formulario actual (#61)
+    if (tipo === "Base") {
+      draftBaseRef.current = { ...form };
+    } else {
+      draftPreparadoRef.current = { ...form, fichaTecnica };
+    }
+
     setTipo(nuevoTipo);
-    // Ajustar unidad de medida por defecto según el tipo si está vacío
-    if (nuevoTipo === "Preparado" && form.unidadMedida === "Kg") {
-      setForm(prev => ({ ...prev, unidadMedida: "und — unidad" }));
-    } else if (nuevoTipo === "Base" && form.unidadMedida === "und — unidad") {
-      setForm(prev => ({ ...prev, unidadMedida: "Kg" }));
+
+    // Conservar datos comunes ya digitados (#61)
+    const commonFields = {
+      nombre: form.nombre,
+      descripcion: form.descripcion,
+      precioUnitario: form.precioUnitario,
+      stock: form.stock,
+      stockMinimo: form.stockMinimo,
+      stockMaximo: form.stockMaximo,
+      estado: form.estado,
+      esAdicion: form.esAdicion,
+      precioAdicion: form.precioAdicion,
+      imagen: form.imagen,
+      incluyeIva: form.incluyeIva
+    };
+
+    // Restaurar borrador del formulario destino si existe (#61)
+    if (nuevoTipo === "Base" && draftBaseRef.current) {
+      setForm({ ...draftBaseRef.current, ...commonFields });
+    } else if (nuevoTipo === "Preparado" && draftPreparadoRef.current) {
+      const { fichaTecnica: ftDraft, ...formDraft } = draftPreparadoRef.current;
+      setForm({ ...formDraft, ...commonFields });
+      if (ftDraft) setFichaTecnica(ftDraft);
+    } else {
+      // Ajustar unidad de medida por defecto según el tipo si está vacío
+      setForm(prev => ({
+        ...prev,
+        ...commonFields,
+        unidadMedida: nuevoTipo === "Preparado" ? "und — unidad" : "Kg"
+      }));
     }
   };
 
@@ -209,43 +253,108 @@ export function InsumoModal({
     return "Ud";
   };
 
+  const validateField = (field, val, currentForm = form) => {
+    let err = "";
+    if (field === "nombre") {
+      const res = validateTexto(val, "nombre del insumo", { min: 2, max: 100 });
+      if (!res.isValid) err = res.error;
+    } else if (field === "idCategoriaInsumo" && tipo === "Base") {
+      const res = validateRequerido(val, "categoría");
+      if (!res.isValid) err = res.error;
+    } else if (field === "precioUnitario") {
+      const res = validateMoneda(val, "precio o costo", { allowZero: true });
+      if (!res.isValid) err = res.error;
+    } else if (field === "stock" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock actual", { min: 0, allowZero: true });
+      if (!res.isValid) err = res.error;
+    } else if (field === "stockMinimo" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock mínimo", { min: 0, allowZero: true });
+      if (!res.isValid) {
+        err = res.error;
+      } else if (currentForm.stockMaximo !== "" && Number(val) > Number(currentForm.stockMaximo)) {
+        err = "El stock mínimo no puede ser superior al stock máximo.";
+      }
+    } else if (field === "stockMaximo" && tipo === "Base") {
+      const res = validateNumeroPositivo(val, "stock máximo", { min: 0, allowZero: true });
+      if (!res.isValid) {
+        err = res.error;
+      } else if (Number(val) < Number(currentForm.stockMinimo)) {
+        err = "El stock máximo debe ser mayor o igual al stock mínimo.";
+      }
+    } else if (field === "precioAdicion" && (currentForm.esAdicion || isSalsaItem(currentForm.nombre, currentForm.categoria))) {
+      const esSalsa = isSalsaItem(currentForm.nombre, currentForm.categoria);
+      if (!esSalsa) {
+        const res = validateMoneda(val, "precio de adición", { allowZero: false });
+        if (!res.isValid) err = res.error;
+      }
+    }
+    return err;
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, form[field], form);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
   const handleNumberInput = (field, val) => {
+    let sanitized = val;
     if (val === "") {
-      setForm((prev) => ({ ...prev, [field]: "" }));
-      return;
+      sanitized = "";
+    } else {
+      if (String(val).includes("-")) {
+        sanitized = String(val).replace(/-/g, "");
+      }
+      if (sanitized.length > 1 && sanitized.startsWith("0") && !sanitized.startsWith("0.")) {
+        sanitized = sanitized.replace(/^0+/, "");
+      }
     }
-    if (String(val).includes("-")) {
-      val = String(val).replace(/-/g, "");
+
+    const updated = { ...form, [field]: sanitized };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, sanitized, updated);
+    const nextErrors = { ...errors, [field]: err };
+
+    // Validación cruzada coherente de stock mínimo vs stock máximo en tiempo real
+    if (field === "stockMinimo" && (touched.stockMaximo || updated.stockMaximo !== "")) {
+      nextErrors.stockMaximo = validateField("stockMaximo", updated.stockMaximo, updated);
+    } else if (field === "stockMaximo" && (touched.stockMinimo || updated.stockMinimo !== "")) {
+      nextErrors.stockMinimo = validateField("stockMinimo", updated.stockMinimo, updated);
     }
-    const sanitized = val.length > 1 && val.startsWith("0") && !val.startsWith("0.") ? val.replace(/^0+/, "") : val;
-    setForm((prev) => ({ ...prev, [field]: sanitized }));
+
+    setErrors(nextErrors);
   };
 
   const handleNombreChange = (nuevoNombre) => {
-    setForm((prev) => {
-      const esSalsa = isSalsaItem(nuevoNombre, prev.categoria);
-      return {
-        ...prev,
-        nombre: nuevoNombre,
-        esAdicion: esSalsa ? true : prev.esAdicion,
-        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
-        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
-      };
-    });
+    const esSalsa = isSalsaItem(nuevoNombre, form.categoria);
+    const updated = {
+      ...form,
+      nombre: nuevoNombre,
+      esAdicion: esSalsa ? true : form.esAdicion,
+      precioAdicion: esSalsa && (!form.precioAdicion || Number(form.precioAdicion) <= 0) ? 1500 : form.precioAdicion,
+      imagen: esSalsa && (!form.imagen || form.imagen === "bacon") ? "sauce" : form.imagen
+    };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    const err = validateField("nombre", nuevoNombre, updated);
+    setErrors((prev) => ({ ...prev, nombre: err }));
   };
 
   const handleCategoriaChange = (catId, catNombre) => {
-    setForm((prev) => {
-      const esSalsa = isSalsaItem(prev.nombre, catNombre);
-      return {
-        ...prev,
-        idCategoriaInsumo: catId,
-        categoria: catNombre,
-        esAdicion: esSalsa ? true : prev.esAdicion,
-        precioAdicion: esSalsa && (!prev.precioAdicion || Number(prev.precioAdicion) <= 0) ? 1500 : prev.precioAdicion,
-        imagen: esSalsa && (!prev.imagen || prev.imagen === "bacon") ? "sauce" : prev.imagen
-      };
-    });
+    const esSalsa = isSalsaItem(form.nombre, catNombre);
+    const updated = {
+      ...form,
+      idCategoriaInsumo: catId,
+      categoria: catNombre,
+      esAdicion: esSalsa ? true : form.esAdicion,
+      precioAdicion: esSalsa && (!form.precioAdicion || Number(form.precioAdicion) <= 0) ? 1500 : form.precioAdicion,
+      imagen: esSalsa && (!form.imagen || form.imagen === "bacon") ? "sauce" : form.imagen
+    };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, idCategoriaInsumo: true }));
+    const err = validateField("idCategoriaInsumo", catId, updated);
+    setErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
   };
 
   // Subida de imagen a Cloudinary
@@ -279,8 +388,26 @@ export function InsumoModal({
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (!form.nombre.trim()) {
-      notify.warning("Campo Requerido", "Por favor escribe el nombre del insumo.");
+    const fieldsToValidate = ["nombre"];
+    if (tipo === "Base") {
+      fieldsToValidate.push("idCategoriaInsumo", "stock", "stockMinimo", "stockMaximo", "precioUnitario");
+    } else {
+      fieldsToValidate.push("precioUnitario");
+    }
+    if (form.esAdicion) {
+      fieldsToValidate.push("precioAdicion");
+    }
+
+    const newErrors = {};
+    fieldsToValidate.forEach((f) => {
+      const err = validateField(f, form[f], form);
+      if (err) newErrors[f] = err;
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setTouched(fieldsToValidate.reduce((acc, f) => ({ ...acc, [f]: true }), {}));
+      notify.warning("Datos requeridos", Object.values(newErrors)[0]);
       return;
     }
 
@@ -363,6 +490,7 @@ export function InsumoModal({
         unidadMedida: form.unidadMedida,
         tipo: "Preparado",
         estado: form.estado,
+        incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal,
@@ -382,9 +510,9 @@ export function InsumoModal({
         ingredientes
       });
     } else {
-      // Guardado como Insumo Base / Directo
-      const defaultCatId = form.idCategoriaInsumo || (categorias[0]?.id || categorias[0]?.idCategoriaInsumo || 1);
-      const defaultProvId = form.idProveedor || (proveedores[0]?.id || proveedores[0]?.idProveedor || null);
+      // Guardado como Insumo Base / Directo (#62, #63)
+      const defaultCatId = form.idCategoriaInsumo ? Number(form.idCategoriaInsumo) : (categorias[0]?.id || categorias[0]?.idCategoriaInsumo || 1);
+      const defaultProvId = form.idProveedor && String(form.idProveedor).trim() !== "" ? Number(form.idProveedor) : null;
 
       onSave({
         ...form,
@@ -395,6 +523,10 @@ export function InsumoModal({
         precioUnitario: Math.max(0, form.precioUnitario === "" ? 0 : Number(form.precioUnitario)),
         stock: Math.max(0, form.stock === "" ? 0 : Number(form.stock)),
         stockMinimo: Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo)),
+        stockMaximo: Math.max(0, form.stockMaximo === "" ? 0 : Number(form.stockMaximo)),
+        fechaExpedicion: null, // #62: Eliminada fecha de expedición
+        fechaVencimiento: null, // #62: Retirada de Insumo maestro, gestionada por Lote en Compras
+        incluyeIva: form.incluyeIva ? 1 : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal
@@ -497,13 +629,31 @@ export function InsumoModal({
                       required
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
-                      className={inputCls}
+                      onBlur={() => handleBlur("nombre")}
+                      className={`${baseInputCls} ${
+                        touched.nombre && errors.nombre
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.nombre && form.nombre && !errors.nombre
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                       placeholder="Ej. Queso Cheddar en Lonchas o Pan Brioche"
                     />
+                    {touched.nombre && errors.nombre ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.nombre}</span>
+                      </p>
+                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Nombre de insumo válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
-                    <label className={labelCls}>Categoría</label>
+                    <label className={labelCls}>Categoría <span className="text-red-500">*</span></label>
                     <select
                       value={String(form.idCategoriaInsumo || "")}
                       onChange={(e) => {
@@ -513,7 +663,14 @@ export function InsumoModal({
                         const catNom = selectedCat ? selectedCat.nombre : val;
                         handleCategoriaChange(catId, catNom);
                       }}
-                      className={`${inputCls} cursor-pointer`}
+                      onBlur={() => handleBlur("idCategoriaInsumo")}
+                      className={`${baseInputCls} cursor-pointer ${
+                        touched.idCategoriaInsumo && errors.idCategoriaInsumo
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                     >
                       <option value="">Seleccionar categoría</option>
                       {categorias.map((c) => {
@@ -525,6 +682,17 @@ export function InsumoModal({
                         );
                       })}
                     </select>
+                    {touched.idCategoriaInsumo && errors.idCategoriaInsumo ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.idCategoriaInsumo}</span>
+                      </p>
+                    ) : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Categoría seleccionada</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
@@ -534,7 +702,7 @@ export function InsumoModal({
                     <select
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${inputCls} cursor-pointer`}
+                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                     >
                       <option value="Kg">Kilogramos (Kg) — Peso / Masa</option>
                       <option value="Gr">Gramos (Gr) — Peso / Masa</option>
@@ -557,13 +725,31 @@ export function InsumoModal({
                         step="0.01"
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                        className={`${inputCls} pl-8 pr-20`}
+                        onBlur={() => handleBlur("precioUnitario")}
+                        className={`${baseInputCls} pl-8 pr-20 ${
+                          touched.precioUnitario && errors.precioUnitario
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0.00"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase pointer-events-none">
                         / {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.precioUnitario && errors.precioUnitario ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.precioUnitario}</span>
+                      </p>
+                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Precio de compra válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -576,13 +762,31 @@ export function InsumoModal({
                         step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                         value={form.stock}
                         onChange={(e) => handleNumberInput("stock", e.target.value)}
-                        className={`${inputCls} pr-20 font-semibold`}
+                        onBlur={() => handleBlur("stock")}
+                        className={`${baseInputCls} pr-20 font-semibold ${
+                          touched.stock && errors.stock
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stock && form.stock !== "" && !errors.stock
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800 pointer-events-none">
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.stock && errors.stock ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stock}</span>
+                      </p>
+                    ) : touched.stock && form.stock !== "" && !errors.stock ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Stock inicial válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -595,33 +799,68 @@ export function InsumoModal({
                         step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
                         value={form.stockMinimo}
                         onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
-                        className={`${inputCls} pr-20`}
+                        onBlur={() => handleBlur("stockMinimo")}
+                        className={`${baseInputCls} pr-20 ${
+                          touched.stockMinimo && errors.stockMinimo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stockMinimo && form.stockMinimo !== "" && !errors.stockMinimo
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="5"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 pointer-events-none">
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
+                    {touched.stockMinimo && errors.stockMinimo ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stockMinimo}</span>
+                      </p>
+                    ) : touched.stockMinimo && form.stockMinimo !== "" && !errors.stockMinimo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Mínimo coherente</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
-                    <label className={labelCls}>Fecha de Expedición</label>
-                    <input
-                      type="date"
-                      value={form.fechaExpedicion}
-                      onChange={(e) => setForm({ ...form, fechaExpedicion: e.target.value })}
-                      className={inputCls}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Fecha de Vencimiento</label>
-                    <input
-                      type="date"
-                      value={form.fechaVencimiento}
-                      onChange={(e) => setForm({ ...form, fechaVencimiento: e.target.value })}
-                      className={inputCls}
-                    />
+                    <label className={labelCls}>
+                      Stock Máximo Capacidad ({getUnitShort(form.unidadMedida)})
+                    </label>
+                    <div className="relative">
+                      <NumberInput
+                        min="0"
+                        step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
+                        value={form.stockMaximo}
+                        onChange={(e) => handleNumberInput("stockMaximo", e.target.value)}
+                        onBlur={() => handleBlur("stockMaximo")}
+                        className={`${baseInputCls} pr-20 ${
+                          touched.stockMaximo && errors.stockMaximo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.stockMaximo && form.stockMaximo !== "" && !errors.stockMaximo
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
+                        placeholder="100"
+                      />
+                      <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 pointer-events-none">
+                        {getUnitShort(form.unidadMedida)}
+                      </span>
+                    </div>
+                    {touched.stockMaximo && errors.stockMaximo ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.stockMaximo}</span>
+                      </p>
+                    ) : touched.stockMaximo && form.stockMaximo !== "" && !errors.stockMaximo ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Capacidad máxima coherente</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -651,9 +890,27 @@ export function InsumoModal({
                       required
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
-                      className={inputCls}
+                      onBlur={() => handleBlur("nombre")}
+                      className={`${baseInputCls} ${
+                        touched.nombre && errors.nombre
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : touched.nombre && form.nombre && !errors.nombre
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                      }`}
                       placeholder="Ej. Salsa Chazin de la Casa, Carne Molida Sazonada, Cebolla Caramelizada..."
                     />
+                    {touched.nombre && errors.nombre ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.nombre}</span>
+                      </p>
+                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Nombre de preparado válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -662,7 +919,7 @@ export function InsumoModal({
                       rows={2}
                       value={form.descripcion}
                       onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                      className={`${inputCls} resize-none`}
+                      className={`${baseInputCls} resize-none border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]`}
                       placeholder="Descripción, características sensoriales o modo de uso del preparado..."
                     />
                   </div>
@@ -678,10 +935,28 @@ export function InsumoModal({
                         required
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
-                        className={`${inputCls} pl-8`}
+                        onBlur={() => handleBlur("precioUnitario")}
+                        className={`${baseInputCls} pl-8 ${
+                          touched.precioUnitario && errors.precioUnitario
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
+                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                        }`}
                         placeholder="0"
                       />
                     </div>
+                    {touched.precioUnitario && errors.precioUnitario ? (
+                      <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{errors.precioUnitario}</span>
+                      </p>
+                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Costo estimado válido</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -689,7 +964,7 @@ export function InsumoModal({
                     <select
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${inputCls} cursor-pointer`}
+                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                     >
                       <option value="und — unidad">und — unidad</option>
                       <option value="porción">porción</option>
@@ -800,10 +1075,28 @@ export function InsumoModal({
                           required={form.esAdicion}
                           value={form.precioAdicion}
                           onChange={(e) => handleNumberInput("precioAdicion", e.target.value)}
-                          className={`${inputCls} pl-8 font-bold text-purple-700 dark:text-purple-300`}
+                          onBlur={() => handleBlur("precioAdicion")}
+                          className={`${baseInputCls} pl-8 font-bold text-purple-700 dark:text-purple-300 ${
+                            touched.precioAdicion && errors.precioAdicion
+                              ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                              : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion
+                              ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                              : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
                           placeholder="Ej. 3500"
                         />
                       </div>
+                      {touched.precioAdicion && errors.precioAdicion ? (
+                        <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{errors.precioAdicion}</span>
+                        </p>
+                      ) : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion ? (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Precio de adición válido</span>
+                        </p>
+                      ) : null}
                       <p className="text-[11px] text-gray-400 mt-1">Valor extra que se cobrará al agregar esta adición.</p>
                     </div>
 
@@ -883,6 +1176,48 @@ export function InsumoModal({
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* ════ SECCIÓN IVA (19%) (#83) ════ */}
+            <div className="p-4 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${
+                  form.incluyeIva
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                }`}>
+                  <Percent className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <span>¿Aplica IVA (19%)?</span>
+                    {form.incluyeIva && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                        IVA 19% Activo
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Indica si este insumo grava impuesto al valor agregado (IVA) al comprarse o procesarse
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.incluyeIva}
+                onClick={() => setForm(prev => ({ ...prev, incluyeIva: !prev.incluyeIva }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                    form.incluyeIva ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           </div>
 

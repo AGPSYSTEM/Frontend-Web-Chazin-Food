@@ -19,13 +19,16 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  Coins
+  Coins,
+  AlertTriangle,
+  AlertCircle
 } from "lucide-react";
 import { clientesService } from "@/features/ventas/servicios/clientesService";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import NumberInput from "@/shared/components/ui/NumberInput";
 
 export function PosCheckoutModal({
   isOpen,
@@ -59,6 +62,10 @@ export function PosCheckoutModal({
   // Pago con Tarjeta
   const [tarjetaNumero, setTarjetaNumero] = useState("");
 
+  // Touch tracking para validación en tiempo real
+  const [clienteTouched, setClienteTouched] = useState(false);
+  const [pagoTouched, setPagoTouched] = useState(false);
+
   // Load clients on modal open
   useEffect(() => {
     if (isOpen) {
@@ -86,6 +93,14 @@ export function PosCheckoutModal({
 
   const montoPagaNum = Number(efectivoPaga) || 0;
   const vueltoEfectivo = montoPagaNum >= finalTotal ? montoPagaNum - finalTotal : 0;
+
+  // Cálculos de validación en vivo
+  const cleanCardDigits = tarjetaNumero.replace(/\s+/g, "");
+  const isCardComplete = cleanCardDigits.length === 16;
+  const isEfectivoValid = montoPagaNum >= finalTotal && vueltoEfectivo <= 100000;
+  const isPaymentValid = metodoPago === "efectivo" ? isEfectivoValid : isCardComplete;
+  const isClientValid = Boolean(clienteNombre && clienteNombre.trim().length >= 2);
+  const isFormValid = isClientValid && isPaymentValid;
 
   // Direct search matching (cedula, telefono, nombre, email)
   const filteredClientes = clientSearchTerm.trim()
@@ -167,9 +182,12 @@ export function PosCheckoutModal({
       clienteNombre: clienteNombre.trim(),
       responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
+      descuento: calculatedDescuento,
       descuentoAplicado: calculatedDescuento,
       descuentoPorcentaje: discountPercent,
       total: finalTotal,
+      origen: "PUNTO_FISICO",
+      tiempoEstimadoEntrega: "15-20 min",
       metodoPago: metodoPago === "tarjeta" ? "Tarjeta" : "Efectivo",
       datosPago: {
         efectivoConCuanto: efectivoPaga ? Number(efectivoPaga) : null,
@@ -561,10 +579,24 @@ export function PosCheckoutModal({
                     type="text"
                     required
                     value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
+                    onChange={(e) => {
+                      setClienteTouched(true);
+                      setClienteNombre(e.target.value);
+                    }}
+                    onBlur={() => setClienteTouched(true)}
                     placeholder="Ingresa el nombre del cliente (Obligatorio)"
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                    className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none transition ${
+                      clienteTouched && !clienteNombre.trim()
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
+                    }`}
                   />
+                  {clienteTouched && !clienteNombre.trim() && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>El nombre del cliente es obligatorio.</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -601,13 +633,35 @@ export function PosCheckoutModal({
                       type="text"
                       required
                       value={clienteNombre}
-                      onChange={(e) => setClienteNombre(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                      onChange={(e) => {
+                        setClienteTouched(true);
+                        setClienteNombre(e.target.value);
+                      }}
+                      onBlur={() => setClienteTouched(true)}
+                      className={`w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none transition ${
+                        clienteTouched && !clienteNombre.trim()
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                          : clienteNombre.trim()
+                          ? "border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
+                      }`}
                       placeholder="Ingresa el nombre del cliente (Obligatorio)"
                     />
-                    <p className="text-[10.5px] text-gray-400 mt-1">
-                      Nombre que saldrá en la comanda de preparación y recibo.
-                    </p>
+                    {clienteTouched && !clienteNombre.trim() ? (
+                      <p className="text-[10.5px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span>El nombre del cliente es obligatorio para registrar la venta.</span>
+                      </p>
+                    ) : clienteNombre.trim() ? (
+                      <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Nombre registrado correctamente para recibo y cocina.</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10.5px] text-gray-400 mt-1">
+                        Nombre que saldrá en la comanda de preparación y recibo.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -681,18 +735,64 @@ export function PosCheckoutModal({
                   </span>
                 </div>
 
-                <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#86EFAC] dark:border-emerald-700 rounded-xl px-3.5 py-2 shadow-2xs">
+                <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
+                  pagoTouched && (!efectivoPaga || montoPagaNum < finalTotal || vueltoEfectivo > 100000)
+                    ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
+                    : montoPagaNum >= finalTotal
+                    ? "border-emerald-500"
+                    : "border-[#86EFAC] dark:border-emerald-700"
+                }`}>
                   <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
-                  <input
-                    type="number"
-                    min={finalTotal}
-                    required
+                  <NumberInput
+                    formatThousands={true}
+                    showStepper={false}
+                    min={0}
                     value={efectivoPaga}
-                    onChange={(e) => setEfectivoPaga(e.target.value)}
+                    onChange={(e) => {
+                      setPagoTouched(true);
+                      const raw = e?.target ? e.target.value : e;
+                      setEfectivoPaga(raw);
+                    }}
+                    onBlur={() => setPagoTouched(true)}
                     placeholder={`Mínimo: $${finalTotal.toLocaleString("es-CO")}`}
                     className="w-full bg-transparent text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
                   />
                 </div>
+
+                {/* Live validation feedback for Cash */}
+                {!efectivoPaga ? (
+                  pagoTouched ? (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  )
+                ) : montoPagaNum < finalTotal ? (
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <span>Monto insuficiente: Faltan ${(finalTotal - montoPagaNum).toLocaleString("es-CO")} para cubrir el total.</span>
+                  </div>
+                ) : vueltoEfectivo > 100000 ? (
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span>El cambio (${vueltoEfectivo.toLocaleString("es-CO")}) excede el límite de caja ($100.000 COP). Cobrar por tarjeta.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 p-2 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                    <span className="flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Cambio a devolver al cliente:</span>
+                    </span>
+                    <span className="text-sm font-black text-emerald-800 dark:text-emerald-200">
+                      ${vueltoEfectivo.toLocaleString("es-CO")}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -703,20 +803,53 @@ export function PosCheckoutModal({
                   <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1">
                     Número de tarjeta <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-xl px-3.5 py-2 shadow-2xs">
+                  <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
+                    pagoTouched && !isCardComplete
+                      ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
+                      : isCardComplete
+                      ? "border-emerald-500"
+                      : "border-[#C7D2FE] dark:border-blue-700"
+                  }`}>
                     <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
                     <input
                       type="text"
                       required
                       value={tarjetaNumero}
                       onChange={(e) => {
+                        setPagoTouched(true);
                         const v = e.target.value.replace(/[^\d]/g, "").slice(0, 16);
                         setTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, "$1 "));
                       }}
+                      onBlur={() => setPagoTouched(true)}
                       placeholder="0000 0000 0000 0000"
                       className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
                     />
                   </div>
+
+                  {/* Live Card Feedback */}
+                  {!cleanCardDigits ? (
+                    pagoTouched ? (
+                      <p className="text-[10.5px] text-red-600 font-medium mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10.5px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Info className="w-3 h-3 text-gray-400" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    )
+                  ) : !isCardComplete ? (
+                    <p className="text-[10.5px] text-red-600 dark:text-red-400 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Faltan {16 - cleanCardDigits.length} dígitos para completar la tarjeta (16 dígitos requeridos).</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>Tarjeta lista para cobro de ${finalTotal.toLocaleString("es-CO")}.</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -824,11 +957,15 @@ export function PosCheckoutModal({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#e04545] hover:bg-[#d03535] text-white text-xs sm:text-sm font-black shadow-[0_8px_20px_rgba(224,69,69,0.35)] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]"
+              disabled={loading || !isFormValid}
+              className={`flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white text-xs sm:text-sm font-black transition cursor-pointer active:scale-[0.98] ${
+                !isFormValid || loading
+                  ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed shadow-none"
+                  : "bg-[#e04545] hover:bg-[#d03535] shadow-[0_8px_20px_rgba(224,69,69,0.35)]"
+              }`}
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{loading ? "Procesando..." : "Confirmar Pedido"}</span>
+              <span>{loading ? "Procesando..." : !isClientValid ? "Ingresa Cliente para Confirmar" : !isPaymentValid ? "Completa Pago para Confirmar" : "Confirmar Pedido"}</span>
             </button>
           </div>
         </div>

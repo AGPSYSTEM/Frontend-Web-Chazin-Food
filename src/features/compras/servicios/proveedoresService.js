@@ -27,5 +27,9 @@ export const proveedoresService = {
 
   toggleEstadoProveedor: async (id, estado) => {
     return await apiClient.put(`/proveedores/${id}/estado`, { estado });
+  },
+
+  getPapeleraProveedores: async () => {
+    return await apiClient.get("/proveedores/papelera");
   }
 };

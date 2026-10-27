@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
@@ -11,6 +12,7 @@ import { useToast } from "@/shared/context/ToastContext";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export default function PosVendedor() {
+  const navigate = useNavigate();
   const toast = useToast();
   const {
     categorias,
@@ -117,8 +119,12 @@ export default function PosVendedor() {
       cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1))
     });
 
-    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
-    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let comboCfg = producto.configuracionCombo;
+    if (typeof comboCfg === "string") {
+      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
+    }
+    const isComboProd = Boolean(comboCfg?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
     let includedQuotaRemaining = requiredDrinks;
 
     if (Array.isArray(bebidas) && bebidas.length > 0) {
@@ -179,7 +185,7 @@ export default function PosVendedor() {
   }, [productos]);
 
   const visibleProducts = useMemo(() => {
-    return (productos || []).filter((p) => {
+    const list = (productos || []).filter((p) => {
       const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
       if (!matchSearch) return false;
       if (categoriaActiva === null) return true;
@@ -209,6 +215,18 @@ export default function PosVendedor() {
       );
 
       return matchCatId || matchCatName || matchSubcategory;
+    });
+
+    const now = new Date();
+    // Priorizar productos con eventos de primero en POS
+    return [...list].sort((a, b) => {
+      const aEvts = Array.isArray(a.eventos) ? a.eventos : [];
+      const bEvts = Array.isArray(b.eventos) ? b.eventos : [];
+      const aHasEvent = aEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
+      const bHasEvent = bEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
+      if (aHasEvent && !bHasEvent) return -1;
+      if (!aHasEvent && bHasEvent) return 1;
+      return 0;
     });
   }, [productos, categoriaActiva, searchTerm, categorias]);
 
@@ -244,7 +262,18 @@ export default function PosVendedor() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
+          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
+            <button
+              type="button"
+              onClick={() => navigate("/ventas/gestion-ventas")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Volver a Gestión de Ventas"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#F05454]" />
+              <span className="hidden sm:inline">Gestión de Ventas</span>
+            </button>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
             <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
             <input
               aria-label="Buscar producto"
@@ -257,11 +286,13 @@ export default function PosVendedor() {
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
+                aria-label="Limpiar búsqueda"
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
+            </div>
           </div>
         </header>
 
@@ -271,6 +302,7 @@ export default function PosVendedor() {
             <button
               type="button"
               onClick={() => setCategoriaActiva(null)}
+              aria-label="Mostrar todos los productos"
               className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
                 categoriaActiva === null
                   ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
@@ -285,6 +317,7 @@ export default function PosVendedor() {
               <button
                 type="button"
                 onClick={() => setCategoriaActiva("eventos")}
+                aria-label="Filtrar por eventos"
                 className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
                   categoriaActiva === "eventos"
                     ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
@@ -303,6 +336,7 @@ export default function PosVendedor() {
                   key={c.id}
                   type="button"
                   onClick={() => setCategoriaActiva(c.id)}
+                  aria-label={`Filtrar por categoría ${c.nombre}`}
                   className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
                     active
                       ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"

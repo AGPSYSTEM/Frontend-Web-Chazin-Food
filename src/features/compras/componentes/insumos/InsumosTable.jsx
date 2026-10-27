@@ -1,9 +1,14 @@
-import { useState } from "react";
-import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, Edit, Trash2, Package, Sparkles, ChefHat, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Power } from "lucide-react";
 
-export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
+export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleEstado, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when insumos length changes (#51)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [insumos.length]);
 
   const totalRecords = insumos.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
@@ -20,16 +25,18 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
               <th className="px-6 py-4">NOMBRE</th>
               <th className="px-6 py-4">CATEGORÍA</th>
               <th className="px-6 py-4">CANTIDAD</th>
+              <th className="px-6 py-4">CANTIDAD MÍNIMA</th>
+              <th className="px-6 py-4">CANTIDAD MÁXIMA</th>
               <th className="px-6 py-4">PRECIO / COSTO</th>
-              <th className="px-6 py-4">PROVEEDOR / ORIGEN</th>
               <th className="px-6 py-4">STOCK</th>
+              <th className="px-6 py-4 text-center">ESTADO</th>
               <th className="px-6 py-4 text-center">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
             {totalRecords === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={10} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron insumos registrados
                 </td>
               </tr>
@@ -96,13 +103,14 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
                       {i.stock ?? 0} {i.unidadMedida || "und"}
                     </td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300 font-medium">
+                      {i.stockMinimo !== undefined && i.stockMinimo !== null ? i.stockMinimo : 0} {i.unidadMedida || "und"}
+                    </td>
+                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300 font-medium">
+                      {i.stockMaximo !== undefined && i.stockMaximo !== null ? i.stockMaximo : 100} {i.unidadMedida || "und"}
+                    </td>
                     <td className="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
                       ${Number(i.precioUnitario || i.costo || 0).toLocaleString("es-CO")}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                      {isPreparado
-                        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 dark:text-purple-400">Cocina / Interno</span>
-                        : (typeof i.proveedor === "string" ? i.proveedor : (i.proveedorNombre || i.proveedor?.nombre || "Sin Proveedor"))}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${stockBadgeClass}`}>
@@ -110,30 +118,56 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        i.estado === "Activo"
+                          ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                      }`}>
+                        {i.estado || "Activo"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2.5">
+                        {onToggleEstado && canEdit && (
+                          <button
+                            onClick={() => onToggleEstado(i)}
+                            title={i.estado === "Activo" ? "Inactivar insumo" : "Activar insumo"}
+                            className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                              i.estado === "Activo"
+                                ? "text-emerald-600 dark:text-emerald-400 hover:text-amber-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                : "text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            }`}
+                          >
+                            <Power className="w-4 h-4 stroke-[2.2]" />
+                          </button>
+                        )}
                         {onView && (
                           <button
                             onClick={() => onView(i)}
                             title="Ver detalles del insumo"
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1"
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
                           >
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEdit(i)}
-                          title="Editar insumo"
-                          className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1"
-                        >
-                          <Edit className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
-                          title="Eliminar insumo"
-                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1"
-                        >
-                          <Trash2 className="w-4 h-4 stroke-[2]" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(i)}
+                            title="Editar insumo"
+                            className="text-[#F05454] dark:text-[#F05454] hover:text-[#d84343] transition-colors p-1 cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(i.id || i.idInsumo, i.nombre, i.tipo)}
+                            title="Eliminar insumo"
+                            className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

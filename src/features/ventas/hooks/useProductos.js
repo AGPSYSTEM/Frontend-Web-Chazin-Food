@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { productosService } from "../servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useProductos() {
   const notify = useNotifications();
@@ -34,10 +35,12 @@ export function useProductos() {
   }, [fetchProductos]);
 
   const filteredProductos = productos.filter((p) => {
-    const matchSearch =
-      searchTerm === "" ||
-      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!p) return false;
+
+    const matchSearch = matchesSmartSearch(
+      [p.nombre, p.codigo, p.categoria, p.descripcion, p.precio],
+      searchTerm
+    );
 
     const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
     const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
@@ -49,7 +52,9 @@ export function useProductos() {
     try {
       const created = await productosService.createProducto(data);
       const createdId = created?.idProducto || created?.id || created?._id;
-      if (data.fichaTecnica && createdId) {
+      // Los combos no llevan ficha técnica
+      const esCombo = data.configuracionCombo?.esCombo;
+      if (data.fichaTecnica && createdId && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(createdId, data.fichaTecnica);
         } catch (e) {
@@ -68,7 +73,9 @@ export function useProductos() {
   const updateProducto = async (id, data) => {
     try {
       await productosService.updateProducto(id, data);
-      if (data.fichaTecnica && id) {
+      // Los combos no llevan ficha técnica
+      const esCombo = data.configuracionCombo?.esCombo;
+      if (data.fichaTecnica && id && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(id, data.fichaTecnica);
         } catch (e) {

@@ -3,7 +3,7 @@ import {
   X, Zap, PackagePlus, Tag, ArrowDownUp, Search, Trash2,
   CalendarClock, Sparkles, PlusCircle, UploadCloud, Loader2,
   Layers, Utensils, Plus, Minus, Check, Flame, Crown, Coffee, ChevronDown, ChevronUp, Image as ImageIcon,
-  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Link, Infinity as InfinityIcon
+  Clock, Gift, Star, ShieldCheck, CheckCircle2, Award, Percent, Rocket, Link, Infinity as InfinityIcon, AlertCircle
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
@@ -12,6 +12,8 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { validateTexto, validateNumeroPositivo, validateRequerido, validatePorcentaje } from "@/shared/utils/validationUtils";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   FoodIcon,
   AVAILABLE_FOOD_SLUGS,
@@ -31,12 +33,12 @@ import {
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 const TIPO_EVENTO_OPTIONS = [
-  { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Añadir Insumos", desc: "Modifica receta base" },
+  { value: "Añadir Insumos", icon: IconBaconStrip, defaultIcon: "bacon", label: "Topping Extra", desc: "Toppings o insumos extras" },
   { value: "Promoción Precio", icon: StreamlineTag, defaultIcon: "tag", label: "Promoción Precio", desc: "Rebaja temporal" },
   { value: "Descuento", icon: StreamlineDiscountTicket, defaultIcon: "discount", label: "Descuento %", desc: "Descuento directo" },
   { value: "2x1 / Combo Especial", icon: StreamlineDoubleBurger, defaultIcon: "2x1", label: "2x1 / Combo", desc: "Oferta por volumen" },
   { value: "Lanzamiento / Novedad", icon: StreamlineRocket, defaultIcon: "rocket", label: "Lanzamiento", desc: "Nuevo en carta" },
-  { value: "Happy Hour / Flash Sale", icon: IconLightningBolt, defaultIcon: "flash", label: "Flash Sale", desc: "Tiempo limitado" },
+  { value: "Hora Feliz / Oferta Relámpago", icon: IconLightningBolt, defaultIcon: "flash", label: "Oferta Relámpago", desc: "Tiempo limitado" },
   { value: "Edición Especial", icon: StreamlineCrown, defaultIcon: "crown", label: "Edición Especial", desc: "Temporada gourmet" },
   { value: "Cortesía / Degustación", icon: StreamlineGiftBox, defaultIcon: "gift", label: "Cortesía", desc: "Degustación / Regalo" }
 ];
@@ -45,7 +47,7 @@ const ICONO_OPTIONS = AVAILABLE_FOOD_SLUGS;
 
 const PROD_EVENT_TYPES = [
   { value: "EDICION_LIMITADA", label: "Edición Limitada", icon: StreamlineFlame, defaultIcon: "fire", desc: "Plato festivo único y conmemorativo", activeCls: "border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/40" },
-  { value: "COMBO_ESPECIAL", label: "Combo Festivo", icon: StreamlineGiftBox, defaultIcon: "gift", desc: "Platillo + acompañamiento + bebida", activeCls: "border-purple-500 bg-purple-50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-200 ring-2 ring-purple-400/40" },
+  { value: "COMBO_ESPECIAL", label: "Combo Festivo", icon: StreamlineGiftBox, defaultIcon: "gift", desc: "Platillo + acompañamiento + bebida", activeCls: "border-orange-500 bg-orange-50 dark:bg-orange-950/30 text-orange-900 dark:text-orange-200 ring-2 ring-orange-400/40" },
   { value: "PROMOCION_2X1", label: "Promoción 2x1", icon: StreamlineDoubleBurger, defaultIcon: "2x1", desc: "Lleva 2 por el precio de 1", activeCls: "border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-900 dark:text-rose-200 ring-2 ring-rose-400/40" },
   { value: "DESCUENTO", label: "Precio Rebajado", icon: StreamlineDiscountTicket, defaultIcon: "discount", desc: "Descuento directo sobre precio regular", activeCls: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-400/40" }
 ];
@@ -159,9 +161,86 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
   
   const [saving, setSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const validateEventoField = (field, val, extra = {}) => {
+    let res = null;
+    switch (field) {
+      case "nombreEvento":
+        res = validateTexto(val, "El título del evento", 2, 100);
+        break;
+      case "prodNombre":
+        res = validateTexto(val, "El nombre del producto en menú", 2, 80);
+        break;
+      case "prodPrecioRegular":
+        res = validateNumeroPositivo(val, "El precio normal", false);
+        break;
+      case "prodPrecioEvento":
+        res = validateNumeroPositivo(val, "El precio especial de evento", false);
+        break;
+      case "nuevoPrecio":
+        res = validateNumeroPositivo(val, "El precio promocional", false);
+        break;
+      case "descuento":
+        res = validatePorcentaje(val, "El descuento");
+        break;
+      case "descripcion":
+        if (val && val.length > 500) return "La descripción no puede superar los 500 caracteres.";
+        return null;
+      case "fechaFin": {
+        const start = extra.fechaInicio || fechaInicio;
+        if (start && val && new Date(val) < new Date(start)) {
+          return "La fecha fin no puede ser anterior a la fecha de inicio.";
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+    if (res && typeof res === "object") {
+      return res.isValid ? null : res.error;
+    }
+    return res;
+  };
+
+  const handleFieldBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    let val = "";
+    if (field === "nombreEvento") val = nombreEvento;
+    else if (field === "prodNombre") val = prodNombre;
+    else if (field === "prodPrecioRegular") val = prodPrecioRegular;
+    else if (field === "prodPrecioEvento") val = prodPrecioEvento;
+    else if (field === "nuevoPrecio") val = nuevoPrecio;
+    else if (field === "descuento") val = descuento;
+    else if (field === "descripcion") val = descripcion;
+    else if (field === "fechaFin") val = fechaFin;
+    const err = validateEventoField(field, val);
+    setFormErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  const handleFieldChange = (field, val) => {
+    if (field === "nombreEvento") setNombreEvento(val);
+    else if (field === "prodNombre") setProdNombre(val);
+    else if (field === "prodPrecioRegular") setProdPrecioRegular(val);
+    else if (field === "prodPrecioEvento") setProdPrecioEvento(val);
+    else if (field === "nuevoPrecio") setNuevoPrecio(val);
+    else if (field === "descuento") setDescuento(val);
+    else if (field === "descripcion") setDescripcion(val);
+    else if (field === "fechaFin") setFechaFin(val);
+
+    if (touched[field] || submitted) {
+      const err = validateEventoField(field, val);
+      setFormErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
+      setFormErrors({});
+      setTouched({});
+      setSubmitted(false);
       if (eventoToEdit) {
         // ── MODO EDICIÓN DE EVENTO EXISTENTE ──
         setModoCrearProducto(false);
@@ -513,10 +592,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         setFilteredProductos([]);
         setShowProductoDropdown(false);
       } else {
-        const term = productoSearch.toLowerCase();
         const results = productosBD.filter(
           (p) => {
-            const isMatch = p.nombre?.toLowerCase().includes(term);
+            const isMatch = matchesSmartSearch(p, productoSearch, ["nombre", "codigo", "codigoProducto", "id"]);
             const isNotAdded = !productosSeleccionados.some(sel => String(sel.id) === String(p.id || p.idProducto));
             return isMatch && isNotAdded;
           }
@@ -573,8 +651,35 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   };
 
   const handleSubmit = async () => {
+    setSubmitted(true);
+    setTouched({
+      nombreEvento: true,
+      prodNombre: true,
+      prodPrecioRegular: true,
+      prodPrecioEvento: true,
+      nuevoPrecio: true,
+      descuento: true,
+      descripcion: true,
+      fechaFin: true
+    });
+
     // ── MODO CREAR PRODUCTO DE EVENTO DESDE CERO ──
     if (modoCrearProducto) {
+      const errNom = validateEventoField("nombreEvento", nombreEvento);
+      const errProdNom = validateEventoField("prodNombre", prodNombre);
+      const errReg = validateEventoField("prodPrecioRegular", prodPrecioRegular);
+      const errEve = validateEventoField("prodPrecioEvento", prodPrecioEvento);
+      if (errNom || errProdNom || errReg || errEve) {
+        setFormErrors(prev => ({
+          ...prev,
+          nombreEvento: errNom,
+          prodNombre: errProdNom,
+          prodPrecioRegular: errReg,
+          prodPrecioEvento: errEve
+        }));
+        notifyError("Validación Fallida", "Por favor completa correctamente los campos obligatorios del producto y evento.");
+        return;
+      }
       if (!nombreEvento.trim()) {
         notifyError("Validación Fallida", "El Título del Evento / Campaña es obligatorio.");
         return;
@@ -843,8 +948,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
-        {/* Purple Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-500 p-6 flex items-start justify-between">
+        {/* Warm Event Header */}
+        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 p-6 flex items-start justify-between shadow-md">
           <div className="flex items-center gap-4">
             <div className="bg-white/15 w-14 h-14 rounded-2xl flex items-center justify-center backdrop-blur-xs border border-white/25 shadow-inner">
               <StreamlineCalendarCheck size={32} stroke={2} className="text-white drop-shadow-md" />
@@ -853,7 +958,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               <h2 className="text-xl font-bold text-white">
                 {isEditing ? "Editar Evento / Promoción" : currentProducto ? "Crear Evento" : "Crear Evento Global"}
               </h2>
-              <p className="text-purple-200 text-sm">
+              <p className="text-amber-100 text-sm">
                 {isEditing
                   ? `Editando campaña activa para: ${currentProducto?.nombre || eventoToEdit?.nombreEvento || eventoToEdit?.nombre || "Producto"}`
                   : currentProducto?.nombre || "Múltiples productos"}
@@ -878,7 +983,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 onClick={() => setModoCrearProducto(false)}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   !modoCrearProducto
-                    ? "bg-white dark:bg-gray-900 text-purple-700 dark:text-purple-300 shadow-sm"
+                    ? "bg-white dark:bg-gray-900 text-orange-700 dark:text-orange-300 shadow-sm"
                     : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
                 }`}
               >
@@ -890,7 +995,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 onClick={() => setModoCrearProducto(true)}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   modoCrearProducto
-                    ? "bg-gradient-to-r from-purple-600 to-rose-600 text-white shadow-sm"
+                    ? "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-sm"
                     : "text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
                 }`}
               >
@@ -904,7 +1009,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
             <div className="space-y-6 animate-in fade-in duration-200">
               {/* Sección 1: Datos Básicos del Evento y Producto */}
               <div className="bg-gray-50/70 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
-                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400 font-bold text-xs uppercase tracking-wider">
                   <Flame className="w-4 h-4" />
                   <span>Información Principal y Formato de Campaña</span>
                 </div>
@@ -937,7 +1042,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                               <Icon className="w-3.5 h-3.5 shrink-0" />
                               <span>{t.label}</span>
                             </span>
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />}
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />}
                           </div>
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2">
                             {t.desc}
@@ -948,16 +1053,15 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   </div>
                 </div>
 
-                
                 {/* Selector de Iconografía */}
-                <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                <div className="p-4 bg-orange-50/60 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
                       Iconografía del Evento
                     </label>
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-xs">
+                    <span className="text-xs text-orange-600 dark:text-orange-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-orange-200 dark:border-orange-800 flex items-center gap-1.5 shadow-xs">
                       <span>Insignia:</span>
-                      <FoodIcon name={icono || "fire"} size={16} stroke={2} className="text-purple-600 dark:text-purple-400" />
+                      <FoodIcon name={icono || "fire"} size={16} stroke={2} className="text-orange-600 dark:text-orange-400" />
                       <span className="font-semibold text-[11px] text-gray-700 dark:text-gray-200">
                         {AVAILABLE_FOOD_SLUGS.find((i) => i.slug === icono)?.label || icono}
                       </span>
@@ -978,8 +1082,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           title={item.label}
                           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer select-none ${
                             isSelected
-                              ? "border-purple-500 bg-purple-600 text-white shadow-md ring-2 ring-purple-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
-                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-950/30"
+                              ? "border-orange-500 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md ring-2 ring-orange-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-orange-300 dark:hover:border-orange-600 hover:bg-orange-50/50 dark:hover:bg-orange-950/30"
                           }`}
                         >
                           <FoodIcon name={item.slug} size={18} stroke={1.75} />
@@ -992,37 +1096,59 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 {/* Título del Evento / Campaña */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    Nombre del Evento / Campaña *
+                    Nombre del Evento / Campaña <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     placeholder="ej. Chazin Burger Fest 2026 - Edición Limitada"
                     value={nombreEvento}
-                    onChange={(e) => setNombreEvento(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium"
+                    onBlur={() => handleFieldBlur("nombreEvento")}
+                    onChange={(e) => handleFieldChange("nombreEvento", e.target.value)}
+                    className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-medium transition-colors ${
+                      (touched.nombreEvento || submitted) && formErrors.nombreEvento
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500"
+                    }`}
                   />
+                  {(touched.nombreEvento || submitted) && formErrors.nombreEvento && (
+                    <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.nombreEvento}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Nombre del Producto a Vender */}
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Nombre del Producto en Menú *
+                      Nombre del Producto en Menú <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       placeholder="ej. Hamburguesa Burger Fest Trufada"
                       value={prodNombre}
+                      onBlur={() => handleFieldBlur("prodNombre")}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setProdNombre(val);
+                        handleFieldChange("prodNombre", val);
                         const vLow = val.toLowerCase();
                         if (vLow.includes("combo") || vLow.includes("+ bebida") || vLow.includes("+ gaseosa")) {
                           if (!configCombo.esCombo) setConfigCombo(prev => ({ ...prev, esCombo: true }));
                         }
                       }}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium"
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-medium transition-colors ${
+                        (touched.prodNombre || submitted) && formErrors.prodNombre
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500"
+                      }`}
                     />
+                    {(touched.prodNombre || submitted) && formErrors.prodNombre && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodNombre}
+                      </p>
+                    )}
                   </div>
 
                   {/* Categoría */}
@@ -1033,7 +1159,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <select
                       value={prodCategoria}
                       onChange={(e) => handleCategoriaChange(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer"
                     >
                       {categoriasBD.filter(c => c.idCategoriaProducto !== 0).map((cat) => (
                         <option key={cat.idCategoriaProducto || cat.id} value={cat.idCategoriaProducto || cat.id}>
@@ -1053,7 +1179,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <select
                       value={prodRendimiento}
                       onChange={(e) => setProdRendimiento(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer"
                     >
                       <option value="1 porción">1 Persona (Personal)</option>
                       <option value="2 personas">2 Personas (Pareja / Dúo)</option>
@@ -1070,7 +1196,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <select
                       value={prodEstadoInicial}
                       onChange={(e) => setProdEstadoInicial(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-medium cursor-pointer"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 font-medium cursor-pointer"
                     >
                       <option value="Activo">✓ Activo (Publicado de inmediato en Menú)</option>
                       <option value="Inactivo">Inactivo / Borrador (Oculto)</option>
@@ -1093,7 +1219,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           onClick={() => toggleEtiqueta(tag)}
                           className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
                             hasTag
-                              ? "bg-purple-600 text-white shadow-xs"
+                              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs"
                               : "bg-gray-150 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
                           }`}
                         >
@@ -1108,29 +1234,61 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 <div className="grid grid-cols-2 gap-4 pt-1">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                      Precio Normal de Carta ($) *
+                      Precio Normal de Carta ($) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
                       placeholder="ej. 28000"
                       value={prodPrecioRegular}
-                      onChange={(e) => setProdPrecioRegular(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-bold"
+                      onBlur={() => handleFieldBlur("prodPrecioRegular")}
+                      onChange={(e) => handleFieldChange("prodPrecioRegular", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm font-bold transition-colors ${
+                        (touched.prodPrecioRegular || submitted) && formErrors.prodPrecioRegular
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500"
+                      }`}
                     />
+                    {prodPrecioRegular && !isNaN(prodPrecioRegular) && !formErrors.prodPrecioRegular && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-mono">
+                        ${Number(prodPrecioRegular).toLocaleString("es-CO")} COP
+                      </p>
+                    )}
+                    {(touched.prodPrecioRegular || submitted) && formErrors.prodPrecioRegular && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodPrecioRegular}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider mb-1.5">
-                      Precio Especial de Evento ($) *
+                    <label className="block text-xs font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider mb-1.5">
+                      Precio Especial de Evento ($) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
                       placeholder="ej. 24000"
                       value={prodPrecioEvento}
-                      onChange={(e) => setProdPrecioEvento(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border-2 border-purple-400 dark:border-purple-600 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 font-black text-purple-700 dark:text-purple-300"
+                      onBlur={() => handleFieldBlur("prodPrecioEvento")}
+                      onChange={(e) => handleFieldChange("prodPrecioEvento", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-orange-50/60 dark:bg-orange-950/30 border-2 rounded-xl text-sm font-black text-orange-700 dark:text-orange-300 transition-colors ${
+                        (touched.prodPrecioEvento || submitted) && formErrors.prodPrecioEvento
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-orange-400 dark:border-orange-600 focus:ring-2 focus:ring-orange-500"
+                      }`}
                     />
+                    {prodPrecioEvento && !isNaN(prodPrecioEvento) && !formErrors.prodPrecioEvento && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 font-bold mt-1 font-mono">
+                        ${Number(prodPrecioEvento).toLocaleString("es-CO")} COP
+                      </p>
+                    )}
+                    {(touched.prodPrecioEvento || submitted) && formErrors.prodPrecioEvento && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.prodPrecioEvento}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1149,15 +1307,15 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               </div>
 
               {/* Sección 2: Subida de Imagen a Cloudinary desde el PC */}
-              <div className="border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 rounded-2xl p-4 sm:p-5 space-y-3.5">
-                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs uppercase tracking-wider">
+              <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/20 rounded-2xl p-4 sm:p-5 space-y-3.5">
+                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-bold text-xs uppercase tracking-wider">
                   <UploadCloud className="w-4 h-4" />
                   <span>Imagen del Producto (Subir a Cloudinary o URL)</span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start gap-4">
                   {/* Preview Box */}
-                  <div className="w-28 h-28 shrink-0 rounded-2xl border-2 border-dashed border-purple-300 dark:border-purple-700 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 shadow-2xs relative group">
+                  <div className="w-28 h-28 shrink-0 rounded-2xl border-2 border-dashed border-orange-300 dark:border-orange-700 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 shadow-2xs relative group">
                     {imagePreviewUrl || prodImagen ? (
                       <>
                         <img
@@ -1175,7 +1333,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         </button>
                       </>
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-purple-300 dark:text-purple-600 p-2 text-center">
+                      <div className="flex flex-col items-center justify-center text-orange-300 dark:text-orange-600 p-2 text-center">
                         <Utensils className="w-8 h-8 mb-1 opacity-50" />
                         <span className="text-[10px] font-bold">Sin imagen</span>
                       </div>
@@ -1189,7 +1347,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadingImage}
-                        className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
+                        className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
                       >
                         {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
                         <span>{uploadingImage ? "Subiendo a Cloudinary..." : imagePreviewUrl || prodImagen ? "Cambiar Imagen desde PC" : "Subir Imagen desde PC"}</span>
@@ -1208,7 +1366,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                       <button
                         type="button"
                         onClick={() => setShowManualUrl(prev => !prev)}
-                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold ml-auto cursor-pointer"
+                        className="text-xs text-orange-600 dark:text-orange-400 hover:underline font-semibold ml-auto cursor-pointer"
                       >
                         {showManualUrl ? "Ocultar URL manual" : "O ingresar URL web..."}
                       </button>
@@ -1232,7 +1390,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             setProdImagen(e.target.value);
                             setImagePreviewUrl(e.target.value);
                           }}
-                          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     )}
@@ -1427,7 +1585,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               <div className="border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl p-4 sm:p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <Tag className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-gray-200">
                         Variantes o Presentaciones (Opcional)
@@ -1440,7 +1598,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   <button
                     type="button"
                     onClick={handleAddVariante}
-                    className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 text-xs font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
+                    className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-200 text-xs font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Agregar Variante</span>
@@ -1568,20 +1726,20 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               </div>
 
               {/* Sección 9: Vigencia del Evento y Visibilidad Web */}
-              <div className="border border-purple-100 dark:border-purple-900/40 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10 p-4 sm:p-5 space-y-4">
-                <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-xs uppercase tracking-wider">
+              <div className="border border-orange-200/70 dark:border-orange-900/40 rounded-2xl bg-orange-50/40 dark:bg-orange-900/10 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center gap-2 text-orange-700 dark:text-orange-400 font-bold text-xs uppercase tracking-wider">
                   <CalendarClock className="w-4 h-4" />
                   <span>Vigencia de la Campaña y Publicación Web</span>
                 </div>
 
                 {/* Selector de Vigencia: Temporal vs Permanente */}
-                <div className="flex items-center gap-2 p-1 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60">
+                <div className="flex items-center gap-2 p-1 bg-white dark:bg-gray-900 rounded-xl border border-orange-200 dark:border-orange-800/60">
                   <button
                     type="button"
                     onClick={() => setProdVigenciaTipo("temporal")}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       prodVigenciaTipo === "temporal"
-                        ? "bg-purple-600 text-white shadow-xs"
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
@@ -1593,7 +1751,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     onClick={() => setProdVigenciaTipo("permanente")}
                     className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       prodVigenciaTipo === "permanente"
-                        ? "bg-purple-600 text-white shadow-xs"
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xs"
                         : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                     }`}
                   >
@@ -1613,7 +1771,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           type="date"
                           value={fechaInicio}
                           onChange={(e) => setFechaInicio(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                       <div>
@@ -1624,25 +1782,25 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           type="date"
                           value={fechaFin}
                           onChange={(e) => setFechaFin(e.target.value)}
-                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     </div>
                     {diasVigenciaCampaña !== null && (
-                      <p className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5" />
                         <span>Duración de la campaña: {diasVigenciaCampaña} {diasVigenciaCampaña === 1 ? "día" : "días"} (del {fechaInicio} al {fechaFin}).</span>
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-purple-200 dark:border-purple-800/60 text-xs text-purple-800 dark:text-purple-300 font-medium">
+                  <div className="p-3 bg-white dark:bg-gray-900 rounded-xl border border-orange-200 dark:border-orange-800/60 text-xs text-orange-800 dark:text-orange-300 font-medium">
                     ✓ Este platillo de evento permanecerá activo permanentemente en el catálogo online y POS hasta que el administrador decida pausarlo.
                   </div>
                 )}
 
                 {/* Destacar en portada web */}
-                <div className="pt-2 border-t border-purple-200/60 dark:border-purple-800/40 flex items-center justify-between">
+                <div className="pt-2 border-t border-orange-200/60 dark:border-orange-800/40 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
                     <div>
@@ -1658,7 +1816,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     type="checkbox"
                     checked={prodDestacadoWeb}
                     onChange={(e) => setProdDestacadoWeb(e.target.checked)}
-                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 cursor-pointer"
                   />
                 </div>
               </div>
@@ -1687,11 +1845,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         }}
                         className={`flex flex-col items-center justify-center text-center p-3 rounded-2xl border-2 transition-all cursor-pointer ${
                           isActive
-                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 shadow-sm"
+                            ? "border-orange-500 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 shadow-sm ring-2 ring-orange-400/30"
                             : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
                         }`}
                       >
-                        <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-purple-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
+                        <div className={`p-2 rounded-xl mb-1.5 ${isActive ? "bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-xs" : "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
                           <Icon className="w-4 h-4" />
                         </div>
                         <span className="font-bold text-xs leading-tight">{opt.label}</span>
@@ -1703,14 +1861,14 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               </div>
 
               {/* Selector de Iconografía */}
-              <div className="p-4 bg-purple-50/50 dark:bg-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+              <div className="p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/30">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
                     Iconografía del Evento
                   </label>
-                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 shadow-xs">
+                  <span className="text-xs text-orange-600 dark:text-orange-400 font-bold bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-orange-200 dark:border-orange-800 flex items-center gap-1.5 shadow-xs">
                     <span>Insignia:</span>
-                    <FoodIcon name={icono || "party"} size={16} stroke={2} className="text-purple-600 dark:text-purple-400" />
+                    <FoodIcon name={icono || "party"} size={16} stroke={2} className="text-orange-600 dark:text-orange-400" />
                     <span className="font-semibold text-[11px] text-gray-700 dark:text-gray-200">
                       {AVAILABLE_FOOD_SLUGS.find((i) => i.slug === icono)?.label || icono}
                     </span>
@@ -1731,8 +1889,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         title={item.label}
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer select-none ${
                           isSelected
-                            ? "border-purple-500 bg-purple-600 text-white shadow-md ring-2 ring-purple-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
-                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-950/30"
+                            ? "border-orange-500 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md ring-2 ring-orange-400/50 ring-offset-2 dark:ring-offset-gray-900 scale-105"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-orange-300 dark:hover:border-orange-600 hover:bg-orange-50/50 dark:hover:bg-orange-950/30"
                         }`}
                       >
                         <FoodIcon name={item.slug} size={18} stroke={1.75} />
@@ -1745,7 +1903,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               {/* Temporalidad Toggle */}
               <label className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-750 select-none">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isTemporal ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30' : 'bg-gray-200 text-gray-500 dark:bg-gray-700'}`}>
+                  <div className={`p-2 rounded-lg ${isTemporal ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30' : 'bg-gray-200 text-gray-500 dark:bg-gray-700'}`}>
                     <CalendarClock className="w-5 h-5" />
                   </div>
                   <div>
@@ -1753,7 +1911,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <p className="text-xs text-gray-500 mt-0.5">Activo solo en un rango de fechas</p>
                   </div>
                 </div>
-                <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isTemporal ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isTemporal ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isTemporal ? 'translate-x-6' : 'translate-x-1'}`} />
                 </div>
                 {/* Hidden checkbox to trigger onChange */}
@@ -1762,7 +1920,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
               {/* Fechas (Condicionales) */}
               {isTemporal && (
-                <div className="grid grid-cols-2 gap-4 p-4 border border-purple-100 dark:border-purple-900/30 rounded-2xl bg-purple-50/50 dark:bg-purple-900/10">
+                <div className="grid grid-cols-2 gap-4 p-4 border border-orange-200/80 dark:border-orange-900/30 rounded-2xl bg-orange-50/50 dark:bg-orange-900/10">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                       Fecha Inicio
@@ -1770,8 +1928,15 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <input
                       type="date"
                       value={fechaInicio}
-                      onChange={(e) => setFechaInicio(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFechaInicio(val);
+                        if (fechaFin) {
+                          const err = validateEventoField("fechaFin", fechaFin, { fechaInicio: val });
+                          setFormErrors((prev) => ({ ...prev, fechaFin: err }));
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
                     />
                   </div>
                   <div>
@@ -1781,9 +1946,20 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <input
                       type="date"
                       value={fechaFin}
-                      onChange={(e) => setFechaFin(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                      onBlur={() => handleFieldBlur("fechaFin")}
+                      onChange={(e) => handleFieldChange("fechaFin", e.target.value)}
+                      className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors ${
+                        (touched.fechaFin || submitted) && formErrors.fechaFin
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      }`}
                     />
+                    {(touched.fechaFin || submitted) && formErrors.fechaFin && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {formErrors.fechaFin}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1797,10 +1973,21 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   <input
                     type="text"
                     value={nombreEvento}
-                    onChange={(e) => setNombreEvento(e.target.value)}
+                    onBlur={() => handleFieldBlur("nombreEvento")}
+                    onChange={(e) => handleFieldChange("nombreEvento", e.target.value)}
                     placeholder="Ej: Temporada de verano — carne extra incluida"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm transition-colors ${
+                      (touched.nombreEvento || submitted) && formErrors.nombreEvento
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    }`}
                   />
+                  {(touched.nombreEvento || submitted) && formErrors.nombreEvento && (
+                    <p className="flex items-center gap-1 text-xs text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.nombreEvento}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1809,18 +1996,29 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   </label>
                   <textarea
                     value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
+                    onBlur={() => handleFieldBlur("descripcion")}
+                    onChange={(e) => handleFieldChange("descripcion", e.target.value)}
                     placeholder="Describe brevemente este evento..."
                     rows={2}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors resize-none"
+                    className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border rounded-xl text-sm transition-colors resize-none ${
+                      (touched.descripcion || submitted) && formErrors.descripcion
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    }`}
                   />
+                  {(touched.descripcion || submitted) && formErrors.descripcion && (
+                    <p className="flex items-center gap-1 text-xs text-red-500 mt-1 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {formErrors.descripcion}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Sección: Imagen del Evento (Carrusel & Portada) */}
-              <div className="border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/30 dark:bg-purple-950/20 rounded-2xl p-4 sm:p-5 space-y-3.5">
+              <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/20 rounded-2xl p-4 sm:p-5 space-y-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs uppercase tracking-wider">
+                  <div className="flex items-center gap-2 text-orange-700 dark:text-orange-300 font-bold text-xs uppercase tracking-wider">
                     <UploadCloud className="w-4 h-4" />
                     <span>Imagen del Evento (Carrusel & Portada)</span>
                   </div>
@@ -1833,7 +2031,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
                 <div className="flex flex-col sm:flex-row items-start gap-4">
                   {/* Preview Box */}
-                  <div className="w-28 h-28 shrink-0 rounded-2xl border-2 border-dashed border-purple-300 dark:border-purple-700 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 shadow-2xs relative group">
+                  <div className="w-28 h-28 shrink-0 rounded-2xl border-2 border-dashed border-orange-300 dark:border-orange-700 flex items-center justify-center overflow-hidden bg-white dark:bg-gray-900 shadow-2xs relative group">
                     {imagePreviewUrl || eventoImagen ? (
                       <>
                         <img
@@ -1851,8 +2049,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         </button>
                       </>
                     ) : (
-                      <div className="flex flex-col items-center justify-center text-purple-300 dark:text-purple-600 p-2 text-center">
-                        <FoodIcon name={icono || "fire"} size={28} className="mb-1 opacity-50 text-purple-400" />
+                      <div className="flex flex-col items-center justify-center text-orange-300 dark:text-orange-600 p-2 text-center">
+                        <FoodIcon name={icono || "fire"} size={28} className="mb-1 opacity-50 text-orange-400" />
                         <span className="text-[10px] font-bold">Sin imagen</span>
                       </div>
                     )}
@@ -1865,7 +2063,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadingImage}
-                        className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
+                        className="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50 active:scale-95"
                       >
                         {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
                         <span>{uploadingImage ? "Subiendo a Cloudinary..." : imagePreviewUrl || eventoImagen ? "Cambiar Imagen desde PC" : "Subir Imagen desde PC"}</span>
@@ -1884,7 +2082,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                       <button
                         type="button"
                         onClick={() => setShowManualUrl(prev => !prev)}
-                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold ml-auto cursor-pointer"
+                        className="text-xs text-orange-600 dark:text-orange-400 hover:underline font-semibold ml-auto cursor-pointer"
                       >
                         {showManualUrl ? "Ocultar URL manual" : "O ingresar URL web..."}
                       </button>
@@ -1909,7 +2107,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             setProdImagen(e.target.value);
                             setImagePreviewUrl(e.target.value);
                           }}
-                          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-purple-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-mono text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-orange-500"
                         />
                       </div>
                     )}
@@ -1934,7 +2132,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           value="Agregar"
                           checked={accion === "Agregar"}
                           onChange={() => setAccion("Agregar")}
-                          className="accent-purple-600"
+                          className="accent-orange-600"
                         />
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Sumar al plato</span>
                       </label>
@@ -1964,7 +2162,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           if (filteredInsumos.length > 0) setShowInsumoDropdown(true);
                         }}
                         placeholder="Buscar insumos para agregar..."
-                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
                     </div>
                     {showInsumoDropdown && (
@@ -1974,7 +2172,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             key={ins.id || ins.idInsumo}
                             type="button"
                             onClick={() => handleSelectInsumo(ins)}
-                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
+                            className="w-full px-4 py-2.5 text-left text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
                           >
                             <span className="font-medium">{ins.nombre}</span>
                             <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">{ins.unidadMedida || 'und'}</span>
@@ -2000,14 +2198,14 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                               step="0.1"
                               value={item.cantidad}
                               onChange={(e) => updateInsumo(idx, "cantidad", e.target.value)}
-                              className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center focus:ring-2 focus:ring-purple-500"
+                              className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
                           <div className="w-20">
                             <select
                               value={item.unidad}
                               onChange={(e) => updateInsumo(idx, "unidad", e.target.value)}
-                              className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500"
+                              className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-500"
                             >
                               <option value="und">und</option>
                               <option value="gr">gr</option>
@@ -2041,44 +2239,106 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
               {(tipoEvento === "Descuento" || tipoEvento === "Promoción Precio" || tipoEvento === "Añadir Insumos") && (
                 <div className="p-5 bg-gray-50 dark:bg-gray-800 rounded-2xl space-y-4 border border-gray-200 dark:border-gray-700">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                    {tipoEvento === "Descuento" ? "Detalles del Descuento" : tipoEvento === "Añadir Insumos" ? "Precio de Venta" : "Detalles de la Promoción"}
+                    {tipoEvento === "Descuento"
+                      ? "Asignación de Producto y Configuración del Descuento"
+                      : tipoEvento === "Añadir Insumos"
+                      ? "Asignación de Producto y Precio con Topping Extra"
+                      : "Asignación de Productos y Configuración de Precios del Evento"}
                   </h3>
                   
                   {currentProducto ? (
                     // Single product event
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Precio Actual del Producto en Catálogo</label>
                         <div className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center h-[42px] opacity-70">
-                          ${currentProducto?.precio ? currentProducto.precio.toLocaleString() : "0"}
+                          ${currentProducto?.precio ? Number(currentProducto.precio).toLocaleString("es-CO") : "0"} COP
                         </div>
                       </div>
                       
                       {tipoEvento === "Descuento" ? (
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Descuento ($ o %)</label>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Monto o % de Descuento (Valor a restar del precio original)
+                          </label>
                           <input
                             type="number"
                             min="0"
                             value={descuento}
-                            onChange={(e) => setDescuento(e.target.value)}
-                            placeholder="Ej: 10 (%) o 5000 ($)"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                            onBlur={() => handleFieldBlur("descuento")}
+                            onChange={(e) => handleFieldChange("descuento", e.target.value)}
+                            placeholder="Ej: 15 (%) o 5000 (COP)"
+                            className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
+                              (touched.descuento || submitted) && formErrors.descuento
+                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            }`}
                           />
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                            {descuento && Number(descuento) > 0 ? (
+                              <span>
+                                Precio con descuento:{" "}
+                                <strong className="text-emerald-600 dark:text-emerald-400">
+                                  ${Math.max(
+                                    0,
+                                    Number(descuento) <= 100
+                                      ? Math.round((currentProducto?.precio || 0) * (1 - Number(descuento) / 100))
+                                      : (currentProducto?.precio || 0) - Number(descuento)
+                                  ).toLocaleString("es-CO")} COP
+                                </strong>{" "}
+                                ({Number(descuento) <= 100 ? `${descuento}% OFF` : `-$${Number(descuento).toLocaleString("es-CO")} COP`})
+                              </span>
+                            ) : (
+                              "Indica el porcentaje (%) o valor exacto en pesos que se descontará."
+                            )}
+                          </p>
+                          {(touched.descuento || submitted) && formErrors.descuento && (
+                            <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {formErrors.descuento}
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">
-                            {tipoEvento === "Añadir Insumos" ? "Precio Final con Adiciones" : "Nuevo Precio Promocional"}
+                            {tipoEvento === "Añadir Insumos"
+                              ? "Precio Final de Venta con Topping Extra (Valor a pagar)"
+                              : "Precio Final Rebajado de Promoción (Valor a pagar por el comensal)"}
                           </label>
                           <input
                             type="number"
                             min="0"
                             value={nuevoPrecio}
-                            onChange={(e) => setNuevoPrecio(e.target.value)}
-                            placeholder="Ej: 15000"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent h-[42px]"
+                            onBlur={() => handleFieldBlur("nuevoPrecio")}
+                            onChange={(e) => handleFieldChange("nuevoPrecio", e.target.value)}
+                            placeholder="Ej: 18000 (precio final de venta)"
+                            className={`w-full px-4 py-2.5 bg-white dark:bg-gray-900 border rounded-xl text-sm transition-colors h-[42px] ${
+                              (touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio
+                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            }`}
                           />
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                            {nuevoPrecio && Number(nuevoPrecio) > 0 ? (
+                              <span className="text-orange-600 dark:text-orange-400 font-bold">
+                                El cliente pagará exactamente ${Number(nuevoPrecio).toLocaleString("es-CO")} COP
+                                {(currentProducto?.precio && Number(nuevoPrecio) < currentProducto.precio) && (
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">
+                                    (Ahorro: ${(currentProducto.precio - Number(nuevoPrecio)).toLocaleString("es-CO")} COP)
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              "El valor ingresado aquí es el precio final completo que pagará el cliente."
+                            )}
+                          </p>
+                          {(touched.nuevoPrecio || submitted) && formErrors.nuevoPrecio && (
+                            <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                              {formErrors.nuevoPrecio}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2096,7 +2356,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                               if (filteredProductos.length > 0) setShowProductoDropdown(true);
                             }}
                             placeholder="Buscar productos para agregar al evento..."
-                            className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           />
                         </div>
                         {showProductoDropdown && (
@@ -2106,10 +2366,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 key={prod.id || prod.idProducto}
                                 type="button"
                                 onClick={() => handleSelectProducto(prod)}
-                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 text-gray-700 dark:text-gray-300 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
                               >
                                 <span className="font-medium">{prod.nombre}</span>
-                                <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">${prod.precio}</span>
+                                <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md font-mono">${Number(prod.precio || 0).toLocaleString("es-CO")}</span>
                               </button>
                             ))}
                           </div>
@@ -2122,17 +2382,22 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <div key={idx} className="flex items-center gap-3 bg-white dark:bg-gray-900 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.nombre}</p>
-                                <p className="text-xs text-gray-400">Precio base: ${item.precioBase}</p>
+                                <p className="text-xs text-gray-400">Precio base: ${Number(item.precioBase || 0).toLocaleString("es-CO")} COP</p>
                               </div>
-                              <div className="w-32">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder={tipoEvento === "Descuento" ? "Desc" : "Precio"}
-                                  value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
-                                  onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
-                                  className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500"
-                                />
+                              <div className="w-36">
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder={tipoEvento === "Descuento" ? "% Descuento" : "$ Valor COP"}
+                                    value={tipoEvento === "Descuento" ? item.descuento : item.nuevoPrecio}
+                                    onChange={(e) => updateProducto(idx, tipoEvento === "Descuento" ? "descuento" : "nuevoPrecio", e.target.value)}
+                                    className="w-full px-2.5 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-orange-500 font-mono text-right pr-7"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
+                                    {tipoEvento === "Descuento" ? "%" : "$"}
+                                  </span>
+                                </div>
                               </div>
                               <button
                                 type="button"
@@ -2164,7 +2429,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
           <button
             onClick={handleSubmit}
             disabled={saving || !nombreEvento.trim()}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-medium rounded-2xl text-sm transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 text-white font-bold rounded-2xl text-sm transition-all shadow-md shadow-orange-500/25 ring-2 ring-orange-400/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Zap className="w-4 h-4" />
             <span>{saving ? (isEditing ? "Guardando..." : "Creando...") : isEditing ? "Guardar Cambios" : "Crear Evento"}</span>

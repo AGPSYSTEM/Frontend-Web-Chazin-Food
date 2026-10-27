@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban, ArrowRight } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useCart } from "@/shared/context/CartContext";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
-import { ProductoResenasModal } from "../componentes/ProductoResenasModal";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
@@ -18,11 +17,17 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel, THEMES } from "../componentes/EventosCarousel";
-import { PersonalizarEventoModal } from "../componentes/PersonalizarEventoModal";
-import FastFoodProductModal, { isEssentialIngredient } from "@/shared/components/ui/FastFoodProductModal";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
-import { IconFlame as TablerFlame } from "@tabler/icons-react";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
+import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
+import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
+import { validateNombre } from "@/shared/utils/validationUtils";
+import { formatTime12h, formatDateSafe } from "@/shared/utils/dateUtils";
+
+const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
+const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
+const PersonalizarEventoModal = lazy(() => import("../componentes/PersonalizarEventoModal").then(m => ({ default: m.PersonalizarEventoModal })));
 
 const defaultCategoryIcons = {
   "hamburguesas": { icon: "burger", color: "from-yellow-400 to-orange-500" },
@@ -90,6 +95,75 @@ const productosDefault = [
   { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
 ];
 
+const eventosDefault = [
+  {
+    id: 2,
+    idEvento: 2,
+    nombreEvento: "Jueves 2x1 de Burger Artesanal",
+    nombre: "Jueves 2x1 de Burger Artesanal",
+    descripcion: "Paga 1 y lleva 2 Hamburguesas Clásicas todos los jueves del mes con salsas de la casa y papas.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 10,
+    tipoEvento: "2x1",
+    icono: "🍔",
+    descuento: "50.00",
+    nuevoPrecio: "18000.00",
+    producto: {
+      id: 10,
+      idProducto: 10,
+      nombre: "Hamburguesa Clásica Chazin",
+      precio: "18000.00",
+      imagen: "/hero-burger.webp"
+    }
+  },
+  {
+    id: 5,
+    idEvento: 5,
+    nombreEvento: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
+    nombre: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
+    descripcion: "Participante oficial en el festival gastronómico del año. Receta conmemorativa de tiempo limitado con $4.000 de ahorro directo, pan brioche artesanal y salsa trufada secreta.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 26,
+    tipoEvento: "EDICION_LIMITADA",
+    icono: "🎉",
+    descuento: "14.28",
+    nuevoPrecio: "24000.00",
+    producto: {
+      id: 26,
+      idProducto: 26,
+      nombre: "Hamburguesa Burger Fest Trufada Chazin (Edición Especial)",
+      precio: "28000.00",
+      imagen: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789011032/xpk8envk39i0hgpu3d5r.jpg"
+    }
+  },
+  {
+    id: 4,
+    idEvento: 4,
+    nombreEvento: "Combo Pareja Festivo",
+    nombre: "Combo Pareja Festivo",
+    descripcion: "Combo Pareja Chazin a precio especial de $34.000 (Ahorro de $4.000) por temporada.",
+    fechaInicio: "2026-09-01",
+    fechaFin: "2026-10-31",
+    estado: "Activo",
+    idProducto: 16,
+    tipoEvento: "COMBO_ESPECIAL",
+    icono: "🎉",
+    descuento: "10.52",
+    nuevoPrecio: "34000.00",
+    producto: {
+      id: 16,
+      idProducto: 16,
+      nombre: "Combo Pareja Chazin",
+      precio: "38000.00",
+      imagen: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&auto=format&fit=crop&q=80"
+    }
+  }
+];
+
 const adicionesDisponibles = [
   { idAdicion: 3, idInsumo: 18, nombre: "Extra Tocineta Ahumada (2 tiras)", precio: 3500, stockActual: 30, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1528607929212-2636ec44253e?w=500&auto=format&fit=crop&q=80" },
   { idAdicion: 4, idInsumo: 19, nombre: "Extra Queso Cheddar (2 lonchas)", precio: 2500, stockActual: 35, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=500&auto=format&fit=crop&q=80" },
@@ -155,14 +229,72 @@ const fichasTecnicasDefault = {
   26: { ingredientes: ["Pan Brioche Artesanal Sellado", "Carne Angus Premium 200g", "Queso Brie Fundido", "Reducción de Champiñones al Tartufo", "Cebolla Caramelizada"], peso: "430g", tamano: "Gourmet Especial", calorias: "~790 kcal", tiempoPreparacion: 12, rendimiento: "1 hamburguesa gourmet (430g)" }
 };
 
+export const OFFICIAL_DRINK_IMAGES = {
+  coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
+  coca_cola_light: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png",
+  manzana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135903/lhmojjdrn1bzp3dsz47f.png",
+  pepsi: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135953/upv7fsv9osr2f7ap6cbn.png",
+  colombiana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png",
+  sprite: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136141/cpxa3npdfd0lyxjizicy.png",
+  quatro: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342730/tqchagzkgl2z1jckvyrb.png",
+  agua: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342838/pj5qlfpmxeddkkmjauyw.png",
+  uva: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790137310/fxidthj8xu1nuvp0khfo.png",
+  naranja: "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png"
+};
+
+export const resolveDrinkImage = (item) => {
+  if (!item) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/images/"))) {
+    return item.imagen;
+  }
+  const name = String(item.nombre || item || "").toLowerCase();
+  if (name.includes("coca") && (name.includes("sin az") || name.includes("light") || name.includes("zero"))) {
+    return OFFICIAL_DRINK_IMAGES.coca_cola_light;
+  }
+  if (name.includes("coca")) return OFFICIAL_DRINK_IMAGES.coca_cola;
+  if (name.includes("manzana")) return OFFICIAL_DRINK_IMAGES.manzana;
+  if (name.includes("pepsi")) return OFFICIAL_DRINK_IMAGES.pepsi;
+  if (name.includes("colombiana")) return OFFICIAL_DRINK_IMAGES.colombiana;
+  if (name.includes("sprite")) return OFFICIAL_DRINK_IMAGES.sprite;
+  if (name.includes("quatro") || name.includes("cuatro")) return OFFICIAL_DRINK_IMAGES.quatro;
+  if (name.includes("agua") || name.includes("cristal")) return OFFICIAL_DRINK_IMAGES.agua;
+  if (name.includes("uva")) return OFFICIAL_DRINK_IMAGES.uva;
+  if (name.includes("naranja")) return OFFICIAL_DRINK_IMAGES.naranja;
+  return OFFICIAL_DRINK_IMAGES.coca_cola;
+};
+
 export const isDrinkProduct = (item) => {
   if (!item) return false;
-  const catId = item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria;
-  if (catId === 4 || catId === "4") return true;
-  const name = String(item.nombre || "").toLowerCase();
+  const catId = Number(item.idCategoriaProducto !== undefined ? item.idCategoriaProducto : item.categoria);
   const catName = String(item.categoriaNombre || item.categoria?.nombre || (typeof item.categoria === "string" ? item.categoria : "") || "").toLowerCase();
+  const name = String(item.nombre || "").toLowerCase();
   const tipo = String(item.tipo || "").toLowerCase();
+
+  // EXCLUSIÓN ESTRICTA: Platos fuertes, combos, hamburguesas, perros y papas NUNCA son bebidas simples
+  if (
+    catId === 1 || // Hamburguesas
+    catId === 2 || // Perros Calientes
+    catId === 3 || // Salchipapas Gourmet
+    catId === 5 || // Combos
+    catName.includes("hamburguesa") ||
+    catName.includes("combo") ||
+    catName.includes("perro") ||
+    catName.includes("salchipapa") ||
+    catName.includes("acompañamiento") ||
+    name.includes("hamburguesa") ||
+    name.includes("burger") ||
+    name.includes("combo") ||
+    name.includes("perro") ||
+    name.includes("salchipapa") ||
+    name.includes("papas con") ||
+    tipo === "combo" ||
+    tipo === "plato fuerte"
+  ) {
+    return false;
+  }
+
   return (
+    catId === 4 ||
     tipo === "bebida" ||
     catName.includes("bebida") ||
     catName.includes("gaseosa") ||
@@ -330,13 +462,11 @@ export function ClienteLanding() {
 
   const [checkoutNombre, setCheckoutNombre] = useState("");
   const [checkoutDireccion, setCheckoutDireccion] = useState("");
-  const [checkoutMetodoPago, setCheckoutMetodoPago] = useState("wompi");
+  const [checkoutMetodoPago] = useState("wompi");
   const [checkoutEspecificaciones, setCheckoutEspecificaciones] = useState("");
   const [checkoutTipoEntrega, setCheckoutTipoEntrega] = useState("domicilio");
-  const [checkoutEfectivoPaga, setCheckoutEfectivoPaga] = useState("");
-  const [checkoutTransferReferencia, setCheckoutTransferReferencia] = useState("");
-  const [checkoutTransferBanco, setCheckoutTransferBanco] = useState("Bancolombia");
-  const [checkoutTarjetaNumero, setCheckoutTarjetaNumero] = useState("");
+  const [checkoutEmpaqueParaLlevar, setCheckoutEmpaqueParaLlevar] = useState(false);
+  const [checkoutErrors, setCheckoutErrors] = useState({});
   const [isProcessingWompi, setIsProcessingWompi] = useState(false);
 
   const [showProductModal, setShowProductModal] = useState(false);
@@ -344,10 +474,12 @@ export function ClienteLanding() {
   const [modalInitialTab, setModalInitialTab] = useState("personalizar");
   const [showResenasModal, setShowResenasModal] = useState(false);
 
-  // Real-time ticker for live countdowns (1-second precision)
+  // Real-time ticker for live countdowns (descuenta segundo a segundo de forma fluida)
   const [liveTick, setLiveTick] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setLiveTick(Date.now()), 1000);
+    const t = setInterval(() => {
+      if (!document.hidden) setLiveTick(Date.now());
+    }, 1000);
     return () => clearInterval(t);
   }, []);
   const [productoParaResenas, setProductoParaResenas] = useState(null);
@@ -359,7 +491,7 @@ export function ClienteLanding() {
   const [categoriasList, setCategoriasList] = useState([]);
   const [productosList, setProductosList] = useState([]);
   const [fichasMap, setFichasMap] = useState(fichasTecnicasDefault);
-  const [eventosList, setEventosList] = useState([]);
+  const [eventosList, setEventosList] = useState(eventosDefault);
   const [currentCarouselTheme, setCurrentCarouselTheme] = useState(null);
   const [showPersonalizarEventoModal, setShowPersonalizarEventoModal] = useState(false);
   const [eventoParaPersonalizar, setEventoParaPersonalizar] = useState(null);
@@ -439,11 +571,11 @@ export function ClienteLanding() {
           if (verificacion && verificacion.aprobado) {
             success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
             clearCart();
-            navigate("/perfil");
+            navigate("/perfil?tab=pedidos", { state: { tab: "pedidos" } });
           } else if (verificacion && verificacion.estado === 'PENDING') {
             success("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en Mi Perfil.");
             clearCart();
-            navigate("/perfil");
+            navigate("/perfil?tab=pedidos", { state: { tab: "pedidos" } });
           } else {
             error("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}. Puedes intentar de nuevo.`);
           }
@@ -564,7 +696,13 @@ export function ClienteLanding() {
       }
     };
 
-    fetchCatalog();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(() => fetchCatalog(), { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    } else {
+      const timerId = setTimeout(fetchCatalog, 200);
+      return () => clearTimeout(timerId);
+    }
   }, []);
 
   // Fetch client orders from backend + local history synchronization
@@ -733,9 +871,9 @@ export function ClienteLanding() {
 
   // Las 3 bebidas oficiales listas para acompañar
   const fallbackBebidas = [
-    { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: "drink", stock: 60 },
-    { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, imagen: "drink", stock: 45 },
-    { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: "drink", stock: 50 }
+    { id: 8, idProducto: 8, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.coca_cola, stock: 60 },
+    { id: 9, idProducto: 9, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.manzana, stock: 45 },
+    { id: 10, idProducto: 10, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: OFFICIAL_DRINK_IMAGES.agua, stock: 50 }
   ];
   const bebidasDisponibles = (() => {
     const list = activeProductos.filter(p => isDrinkProduct(p));
@@ -900,20 +1038,13 @@ export function ClienteLanding() {
     return ordenados;
   }, [activeProductos, cart]);
 
-  // Live ticker for real-time countdown
-  const [currentLiveTime, setCurrentLiveTime] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentLiveTime(Date.now()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Helper ultra-preciso de Evento Activo (Burger Fest / Drops / Promos con Vigencia en Tiempo Real)
   const getActiveEvent = (producto) => {
     if (!producto) return null;
     const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
     if (eventos.length === 0) return null;
 
-    const now = new Date(currentLiveTime);
+    const now = new Date(liveTick);
 
     // Filter events that are active and not expired
     const validEvents = eventos.filter((e) => {
@@ -948,6 +1079,8 @@ export function ClienteLanding() {
     let formattedDate = "";
     let diasRestantes = null;
     let horasRestantes = null;
+    let minutosRestantes = null;
+    let segundosRestantes = null;
     let urgente = false;
     let countdownLabel = "";
 
@@ -963,12 +1096,19 @@ export function ClienteLanding() {
         const ms = finDate.getTime() - now.getTime();
         diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
         horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
-        urgente = diasRestantes <= 3;
-        countdownLabel = diasRestantes === 1
-          ? `¡Último día! (${horasRestantes}h)`
-          : diasRestantes === 0
-          ? `¡Termina hoy!`
-          : `Quedan ${diasRestantes} días`;
+        minutosRestantes = Math.max(0, Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60)));
+        segundosRestantes = Math.max(0, Math.floor((ms % (1000 * 60)) / 1000));
+        urgente = diasRestantes <= 3 && diasRestantes >= 0;
+
+        countdownLabel = diasRestantes > 1
+          ? `Quedan ${diasRestantes} días`
+          : horasRestantes > 0
+          ? `¡Último día! (${horasRestantes}h ${minutosRestantes}m)`
+          : minutosRestantes > 0
+          ? `¡Termina hoy! (${minutosRestantes}m ${segundosRestantes}s)`
+          : ms > 0
+          ? `¡Últimos segundos! (${segundosRestantes}s)`
+          : `Edición Especial`;
       } catch (e) {}
     }
 
@@ -985,7 +1125,7 @@ export function ClienteLanding() {
         diasRestantes,
         horasRestantes,
         urgente,
-        label: countdownLabel || (formattedDate ? `Hasta ${formattedDate}` : "Tiempo Limitado")
+        label: (diasRestantes >= 0 ? countdownLabel : null) || (formattedDate && diasRestantes >= 0 ? `Hasta ${formattedDate}` : "Edición Especial")
       }
     };
   };
@@ -994,32 +1134,67 @@ export function ClienteLanding() {
     return activeProductos.filter(p => Boolean(getActiveEvent(p))).length;
   }, [activeProductos]);
 
-  const productosFiltrados = activeProductos.filter((p) => {
-    const prodName = (p.nombre || "").toLowerCase();
-    const prodDesc = (p.descripcion || "").toLowerCase();
-    const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
-    if (!matchSearch) return false;
+  const productosFiltrados = useMemo(() => {
+    const list = activeProductos.filter((p) => {
+      const prodName = (p.nombre || "").toLowerCase();
+      const prodDesc = (p.descripcion || "").toLowerCase();
+      const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
+      if (!matchSearch) return false;
 
-    if (!selectedCategoria) return true;
+      if (!selectedCategoria) return true;
 
-    if (selectedCategoria === "eventos") {
-      return Boolean(getActiveEvent(p));
-    }
+      if (selectedCategoria === "eventos") {
+        return Boolean(getActiveEvent(p));
+      }
 
-    const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
-    const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
-    const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
+      const selectedCatObj = activeCategorias.find(c => (c.id === selectedCategoria) || (c.idCategoriaProducto === selectedCategoria));
+      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+      const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
 
-    const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
-    const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+      const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
+      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
 
-    const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
-    const matchSubcategory = singularCatName.length >= 3 && (
-      prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+      const matchSubcategory = singularCatName.length >= 3 && (
+        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      );
+
+      return matchCatId || matchCatName || matchSubcategory;
+    });
+
+    // Ordenar de primero los productos que forman parte de eventos activos
+    return [...list].sort((a, b) => {
+      const aHasEvent = Boolean(getActiveEvent(a) || (a.eventos && a.eventos.length > 0));
+      const bHasEvent = Boolean(getActiveEvent(b) || (b.eventos && b.eventos.length > 0));
+      if (aHasEvent && !bHasEvent) return -1;
+      if (!aHasEvent && bHasEvent) return 1;
+      return 0;
+    });
+  }, [activeProductos, searchTerm, selectedCategoria, activeCategorias]);
+
+  const [maxVisibleProducts, setMaxVisibleProducts] = useState(8);
+  const loadMoreRef = useRef(null);
+
+  useEffect(() => {
+    setMaxVisibleProducts(8);
+  }, [searchTerm, selectedCategoria]);
+
+  useEffect(() => {
+    if (maxVisibleProducts >= productosFiltrados.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0] && entries[0].isIntersecting) {
+          setMaxVisibleProducts((prev) => Math.min(prev + 12, productosFiltrados.length));
+        }
+      },
+      { rootMargin: "250px" }
     );
-
-    return matchCatId || matchCatName || matchSubcategory;
-  });
+    const target = loadMoreRef.current;
+    if (target) observer.observe(target);
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [maxVisibleProducts, productosFiltrados.length]);
 
   const handleSelectEventoFromCarousel = (evento, targetProd) => {
     setEventoParaPersonalizar(evento);
@@ -1221,29 +1396,28 @@ export function ClienteLanding() {
       }))
     };
 
-    const res = addToCart(itemToAdd);
-    if (res && res.success === false) {
-      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-      return;
-    }
-
-    // Agregar al carrito cualquier bebida seleccionada como producto independiente
+    const itemsToBatch = [itemToAdd];
     const bebidasToAdd = productoSeleccionado.bebidasSeleccionadas || [];
     let bebidasCount = 0;
     for (const b of bebidasToAdd) {
-      const bRes = addToCart({
+      itemsToBatch.push({
         id: b.id || b.idProducto,
         idProducto: b.idProducto || b.id,
+        idVariante: b.idVariante || b.id || b.idProducto,
         nombre: b.nombre,
         precio: Number(b.precio),
         cantidad: Number(b.cantidad) || 1,
         stock: Number(b.stock !== undefined ? b.stock : 30),
-        imagen: b.imagen || "drink",
+        imagen: resolveDrinkImage(b),
         adiciones: []
       });
-      if (!bRes || bRes.success !== false) {
-        bebidasCount += (Number(b.cantidad) || 1);
-      }
+      bebidasCount += (Number(b.cantidad) || 1);
+    }
+
+    const res = addToCart(itemsToBatch);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
     }
 
     setShowProductModal(false);
@@ -1263,13 +1437,17 @@ export function ClienteLanding() {
     observacion,
     sabor
   }) => {
-    let basePrice = Number(producto.precio || 0);
-    const evtPrecio = producto.eventos?.find(e => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
-    const evtDesc = producto.eventos?.find(e => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
-    if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
-      basePrice = Number(evtPrecio.nuevoPrecio);
-    } else if (evtDesc && Number(evtDesc.descuento) > 0) {
-      basePrice = basePrice * (1 - Number(evtDesc.descuento) / 100);
+    // Ítem #16: Evitar doble descuento si el modal ya calculó el precio final
+    let basePrice = Number(producto.precioFinal !== undefined ? producto.precioFinal : (producto.precioCalculado !== undefined ? producto.precioCalculado : producto.precio || 0));
+    if (producto.precioFinal === undefined && producto.precioCalculado === undefined) {
+      const evtPrecio = producto.eventos?.find(e => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
+      const evtDesc = producto.eventos?.find(e => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
+      if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
+        basePrice = Number(evtPrecio.nuevoPrecio);
+      } else if (evtDesc && Number(evtDesc.descuento) > 0) {
+        const pOriginal = Number(producto.precioOriginal || producto.precio || 0);
+        basePrice = pOriginal * (1 - Number(evtDesc.descuento) / 100);
+      }
     }
 
     const isDrink = isDrinkProduct(producto);
@@ -1299,15 +1477,14 @@ export function ClienteLanding() {
       }))
     };
 
-    const res = addToCart(itemToAdd);
-    if (res && res.success === false) {
-      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-      return;
-    }
-
+    const itemsToBatch = [itemToAdd];
     let bebidasCount = 0;
-    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
-    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
+    let comboCfg = producto.configuracionCombo;
+    if (typeof comboCfg === "string") {
+      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
+    }
+    const isComboProd = Boolean(comboCfg?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
     let includedQuotaRemaining = requiredDrinks;
 
     if (!isDrink && Array.isArray(bebidas)) {
@@ -1319,21 +1496,26 @@ export function ClienteLanding() {
 
         // Solo cobrar en carrito si es producto estándar o bebidas extra por encima del combo
         if (!isComboProd || extraQty > 0) {
-          const bRes = addToCart({
+          itemsToBatch.push({
             id: b.id || b.idProducto,
             idProducto: b.idProducto || b.id,
+            idVariante: b.idVariante || b.id || b.idProducto,
             nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
             precio: Number(b.precio),
             cantidad: isComboProd ? extraQty : qty,
             stock: Number(b.stock !== undefined ? b.stock : 30),
-            imagen: b.imagen || "drink",
+            imagen: resolveDrinkImage(b),
             adiciones: []
           });
-          if (!bRes || bRes.success !== false) {
-            bebidasCount += (isComboProd ? extraQty : qty);
-          }
+          bebidasCount += (isComboProd ? extraQty : qty);
         }
       }
+    }
+
+    const res = addToCart(itemsToBatch);
+    if (res && res.success === false) {
+      error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+      return;
     }
 
     setShowProductModal(false);
@@ -1358,14 +1540,32 @@ export function ClienteLanding() {
     }
     setCheckoutDireccion(cleanDir);
     setCheckoutEspecificaciones("");
-    setCheckoutMetodoPago("wompi");
+    setCheckoutEmpaqueParaLlevar(false);
+    setCheckoutErrors({});
     setCheckoutTipoEntrega("domicilio");
-    setCheckoutEfectivoPaga("");
-    setCheckoutTransferReferencia("");
-    setCheckoutTransferBanco("Bancolombia");
-    setCheckoutTarjetaNumero("");
     window.history.pushState({ modal: "checkout" }, "");
     setShowCheckout(true);
+  };
+
+  const handleAuthModalSuccess = (authenticatedUser) => {
+    setShowEmptyCartLoginModal(false);
+    const target = authenticatedUser || user;
+    if (cart.length > 0) {
+      const fullName = target?.nombre ? `${target.nombre} ${target.apellidos || ''}`.trim() : "";
+      setCheckoutNombre(fullName);
+      const rawDir = target?.direccion || "";
+      let cleanDir = rawDir;
+      if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
+        try { const p = JSON.parse(rawDir); cleanDir = p.direccion || rawDir; } catch (e) { /* keep raw */ }
+      }
+      setCheckoutDireccion(cleanDir);
+      setCheckoutEspecificaciones("");
+      setCheckoutEmpaqueParaLlevar(false);
+      setCheckoutErrors({});
+      setCheckoutTipoEntrega("domicilio");
+      window.history.pushState({ modal: "checkout" }, "");
+      setShowCheckout(true);
+    }
   };
 
   const clientSubtotal = getSubtotal();
@@ -1464,303 +1664,185 @@ export function ClienteLanding() {
 
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
-  const vueltoEfectivo = Math.max(0, Number(checkoutEfectivoPaga || 0) - totalCheckout);
-
   const handleConfirmarPedido = async () => {
-    if (checkoutTipoEntrega === "domicilio" && !checkoutDireccion.trim()) {
+    // Ítem #20: Validación estricta de nombres para personas
+    const valNom = validateNombre(checkoutNombre, "nombre del destinatario");
+    if (!valNom.isValid) {
+      setCheckoutErrors((prev) => ({ ...prev, nombre: valNom.error }));
+      error("Nombre inválido", valNom.error);
+      return;
+    }
+    if (!checkoutDireccion.trim()) {
+      setCheckoutErrors((prev) => ({ ...prev, direccion: "Por favor ingresa la dirección de entrega." }));
       error("Dirección requerida", "Por favor ingresa la dirección de entrega.");
       return;
     }
 
-    // Validación de comprobante y tarjeta según método de pago
-    if (checkoutMetodoPago === "transferencia") {
-      if (!checkoutTransferReferencia.trim()) {
-        error("Comprobante requerido", "Debes ingresar el número de referencia del comprobante de transferencia para verificar el pago.");
-        return;
-      }
-    } else if (checkoutMetodoPago === "tarjeta") {
-      const cleanCard = checkoutTarjetaNumero.replace(/\s+/g, '');
-      if (!cleanCard || cleanCard.length < 15) {
-        error("Tarjeta requerida", "Ingresa los 16 dígitos de tu tarjeta para procesar el pago.");
-        return;
-      }
-    }
+    const tiempoEstimadoCalculado = "35-45 min";
+    const combinedSpecs = [
+      checkoutEmpaqueParaLlevar ? "EMPAQUE ESPECIAL PARA LLEVAR SOLICITADO" : "",
+      checkoutEspecificaciones.trim()
+    ].filter(Boolean).join(" | ");
 
-    // ── FLUJO WOMPI (PAGOS EN LÍNEA: PSE, NEQUI, TARJETAS, BANCOLOMBIA) ──
-    if (checkoutMetodoPago === "wompi") {
-      setIsProcessingWompi(true);
-      try {
-        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
-        const ventaPayload = {
-          idCliente: user?.idCliente || null,
-          idUsuario: user?.idUsuario || user?.id || user?._id,
-          subtotal: clientSubtotal,
-          descuentoAplicado: clientDiscountMonto,
-          total: totalCheckout,
-          tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
-          tipoEntrega: tipoEntregaNormalizado,
+    // ── FLUJO EXCLUSIVO WOMPI EN WEB (PAGOS EN LÍNEA: PSE, NEQUI, TARJETAS, BANCOLOMBIA) ──
+    setIsProcessingWompi(true);
+    try {
+      const ventaPayload = {
+        idCliente: user?.idCliente || null,
+        idUsuario: user?.idUsuario || user?.id || user?._id,
+        subtotal: clientSubtotal,
+        descuentoAplicado: clientDiscountMonto,
+        total: totalCheckout,
+        tipoVenta: "DOMICILIO",
+        tipoEntrega: "Domicilio",
+        metodoPago: "Wompi",
+        origen: "ONLINE",
+        origenNombre: "Venta Online (Web)",
+        tiempoEstimadoEntrega: tiempoEstimadoCalculado,
+        direccion: checkoutDireccion,
+        estadoEntrega: "PENDIENTE",
+        observaciones: JSON.stringify({
+          tipoEntrega: "Domicilio",
           metodoPago: "Wompi",
+          origen: "ONLINE",
+          tiempoEstimadoEntrega: tiempoEstimadoCalculado,
+          horaEstado: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true }),
           direccion: checkoutDireccion,
-          estadoEntrega: "PENDIENTE",
-          observaciones: JSON.stringify({
-            tipoEntrega: tipoEntregaNormalizado,
-            metodoPago: "Wompi",
-            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
-            especificaciones: checkoutEspecificaciones || "",
-            clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "Cliente"),
-            productos: cart.map(item => {
-              const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-              const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-              return {
-                id: item.id,
-                idVariante: item.id,
-                nombre: item.nombre,
-                cantidad: item.cantidad,
-                precioUnitario: Number(item.precio) || 0,
-                total: lineTotal,
-                observaciones: item.observacion || item.observaciones || item.especificaciones || "",
-                adiciones: (item.adiciones || []).map(a => ({
-                  idAdicion: a.idAdicion || a.id,
-                  nombre: a.nombre,
-                  precio: Number(a.precio) || 0,
-                  cantidad: Number(a.cantidad || 1)
-                }))
-              };
-            })
-          }),
-          detalles: cart.map(item => {
+          especificaciones: combinedSpecs || "",
+          clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "Cliente"),
+          productos: cart.map(item => {
             const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
             return {
-              idVariante: item.id || 1,
+              id: item.id,
+              idVariante: item.id,
+              nombre: item.nombre,
               cantidad: item.cantidad,
               precioUnitario: Number(item.precio) || 0,
-              subtotal: lineTotal,
-              idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
-              adiciones: item.adiciones || [],
-              observacion: item.observacion || item.observaciones || "",
-              observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+              total: lineTotal,
+              observaciones: item.observacion || item.observaciones || item.especificaciones || "",
+              adiciones: (item.adiciones || []).map(a => ({
+                idAdicion: a.idAdicion || a.id,
+                nombre: a.nombre,
+                precio: Number(a.precio) || 0,
+                cantidad: Number(a.cantidad || 1)
+              }))
             };
           })
-        };
+        }),
+        detalles: cart.map(item => {
+          const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
+          const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+          return {
+            idVariante: item.id || 1,
+            cantidad: item.cantidad,
+            precioUnitario: Number(item.precio) || 0,
+            subtotal: lineTotal,
+            idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
+            adiciones: item.adiciones || [],
+            observacion: item.observacion || item.observaciones || "",
+            observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+          };
+        })
+      };
 
-        // 1. Crear intención y obtener firma SHA-256 en el backend
-        const intencion = await wompiService.crearIntencion(ventaPayload);
+      // 1. Crear intención y obtener firma SHA-256 en el backend
+      const intencion = await wompiService.crearIntencion(ventaPayload);
 
-        // Ocultar modal propio para que el modal oficial de Wompi sea 100% visible sin conflicto de z-index
-        setShowCheckout(false);
+      // Ocultar modal propio para que el modal oficial de Wompi sea 100% visible sin conflicto de z-index
+      setShowCheckout(false);
 
-        // 2. Abrir el Widget oficial de Wompi (con fallback a Checkout Web si el widget es bloqueado)
-        let transaction = null;
-        try {
-          transaction = await wompiService.abrirWidget({
-            referencia: intencion.referencia,
-            montoEnCentavos: intencion.montoEnCentavos,
-            moneda: intencion.moneda,
-            firma: intencion.firma,
-            publicKey: intencion.publicKey,
-            customerData: {
-              email: user?.email || "",
-              nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
-              telefono: user?.telefono || ""
-            }
-          });
-        } catch (widgetErr) {
-          console.warn("Widget embebido no disponible o bloqueado por navegador, activando Checkout Web:", widgetErr);
-          const directUrl = wompiService.generarUrlDirecta({
-            referencia: intencion.referencia,
-            montoEnCentavos: intencion.montoEnCentavos,
-            moneda: intencion.moneda,
-            firma: intencion.firma,
-            publicKey: intencion.publicKey
-          });
-          const win = window.open(directUrl, "_blank");
-          if (win) {
-            success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
-            clearCart();
-            setShowCart(false);
-            return;
-          }
-          throw widgetErr;
-        }
-
-        // 3. Evaluar resultado retornado por Wompi
-        if (transaction && transaction.id) {
-          const verificacion = await wompiService.verificarTransaccion(transaction.id);
-
-          if (verificacion.aprobado) {
-            const orderId = verificacion.ventaId || intencion.ventaId || Date.now();
-            const orderCode = verificacion.numeroVenta || intencion.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
-
-            try {
-              const userId = user?.idUsuario || user?.id || user?._id;
-              const storageKey = `mis_pedidos_${userId || 'guest'}`;
-              const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
-              localHistory.unshift({
-                id: orderId,
-                numeroVenta: orderCode,
-                fecha: new Date().toLocaleString('es-CO'),
-                items: cart.map(it => ({
-                  nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
-                  cantidad: it.cantidad,
-                  precio: it.precio
-                })),
-                total: totalCheckout,
-                estado: 'En Preparación'
-              });
-              localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
-            } catch (storageErr) {
-              console.warn("No se pudo guardar pedido en historial local:", storageErr);
-            }
-
-            success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina. Puedes ver su estado en Mi Perfil.`);
-            clearCart();
-            setShowCart(false);
-            if (refreshUser) await refreshUser();
-            navigate("/perfil");
-          } else if (verificacion.estado === 'PENDING') {
-            success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Puedes seguir su estado en Mi Perfil.");
-            clearCart();
-            setShowCart(false);
-            if (refreshUser) await refreshUser();
-            navigate("/perfil");
-          } else {
-            setShowCheckout(true);
-            error("Pago Rechazado", `La transacción fue ${verificacion.estado || 'rechazada'}. Puedes intentar con otro medio de pago.`);
-          }
-        } else if (transaction && transaction.status === 'REDIRECTED') {
-          return;
-        } else if (!transaction || transaction.status === 'CLOSED_WITHOUT_RESULT') {
-          setShowCheckout(true);
-          error("Pago cancelado", "Cerraste la pasarela antes de completar el pago.");
-        }
-      } catch (wompiErr) {
-        setShowCheckout(true);
-        console.error("Error en flujo de Wompi:", wompiErr);
-        const detail = wompiErr?.message || "No se pudo conectar con Wompi o el servidor";
-        error("Error en Wompi", detail);
-      } finally {
-        setIsProcessingWompi(false);
-      }
-      return;
-    }
-
-    const confirmed = await confirmAction(
-      "Confirmar Pedido",
-      `Total a pagar: $${totalCheckout.toLocaleString('es-CO')}. ¿Deseas confirmar tu pedido?`,
-      "Sí, confirmar"
-    );
-
-    if (confirmed) {
+      // 2. Abrir el Widget oficial de Wompi (con fallback a Checkout Web si el widget es bloqueado)
+      let transaction = null;
       try {
-        const tipoEntregaNormalizado = checkoutTipoEntrega === "llevar" ? "Recoger" : "Domicilio";
-        const metodoPagoNormalizado = checkoutMetodoPago === "transferencia" ? "Transferencia" : "Tarjeta";
-
-        const ventaPayload = {
-          idCliente: user?.idCliente || null,
-          idUsuario: user?.idUsuario || user?.id || user?._id,
-          subtotal: clientSubtotal,
-          descuentoAplicado: clientDiscountMonto,
-          total: totalCheckout,
-          tipoVenta: checkoutTipoEntrega === "domicilio" ? "DOMICILIO" : "PUNTO_DE_VENTA",
-          tipoEntrega: tipoEntregaNormalizado,
-          metodoPago: metodoPagoNormalizado,
-          direccion: checkoutDireccion,
-          estadoEntrega: "PENDIENTE",
-          observaciones: JSON.stringify({
-            tipoEntrega: tipoEntregaNormalizado,
-            metodoPago: metodoPagoNormalizado,
-            direccion: checkoutTipoEntrega === "domicilio" ? checkoutDireccion : "Recoger en Local",
-            especificaciones: checkoutEspecificaciones || "",
-            efectivoConCuanto: checkoutEfectivoPaga || "",
-            vueltoEfectivo: vueltoEfectivo || 0,
-            transferenciaReferencia: checkoutTransferReferencia || "",
-            transferenciaBanco: checkoutTransferBanco || "",
-            tarjetaNumero: checkoutTarjetaNumero ? `****${checkoutTarjetaNumero.replace(/\s/g, '').slice(-4)}` : "",
-            codigoPedido: `VEN-${String(Date.now()).slice(-4)}`,
-            productos: cart.map(item => {
-              const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-              const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-              const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
-              const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
-              return {
-                id: item.id,
-                idVariante: item.id,
-                nombre: item.nombre,
-                cantidad: item.cantidad,
-                cantidadCocina: kQty,
-                is2x1Promo: is2x1,
-                precioUnitario: Number(item.precio) || 0,
-                total: lineTotal,
-                observaciones: item.observacion || item.observaciones || item.especificaciones || "",
-                adiciones: (item.adiciones || []).map(a => ({
-                  idAdicion: a.idAdicion || a.id,
-                  nombre: a.nombre,
-                  precio: Number(a.precio) || 0,
-                  cantidad: Number(a.cantidad || 1)
-                }))
-              };
-            })
-          }),
-          detalles: cart.map(item => {
-            const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
-            const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
-            const is2x1 = Boolean(item.is2x1Promo || item.nombre?.toLowerCase().includes("2x1") || item.observacion?.toLowerCase().includes("2x1"));
-            const kQty = item.cantidadCocina || (is2x1 ? (item.cantidad || 1) * 2 : (item.cantidad || 1));
-            return {
-              idProducto: item.idProducto || item.id,
-              idVariante: item.idVariante || item.id || 1,
-              sabor: item.sabor || null,
-              cantidad: item.cantidad,
-              cantidadCocina: kQty,
-              is2x1Promo: is2x1,
-              precioUnitario: Number(item.precio) || 0,
-              subtotal: lineTotal,
-              idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
-              adiciones: item.adiciones || [],
-              observacion: item.observacion || item.observaciones || "",
-              observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
-            };
-          })
-        };
-
-        const nuevaVentaRes = await ventasService.createVenta(ventaPayload);
-        
-        // Save to client's local orders history so it is preserved even if deleted from DB
-        try {
-          const userId = user?.idUsuario || user?.id || user?._id;
-          const storageKey = `mis_pedidos_${userId || 'guest'}`;
-          const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          const orderId = nuevaVentaRes?.idVenta || nuevaVentaRes?.id || Date.now();
-          const orderCode = nuevaVentaRes?.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
-          
-          localHistory.unshift({
-            id: orderId,
-            numeroVenta: orderCode,
-            fecha: new Date().toLocaleString('es-CO'),
-            items: cart.map(it => ({
-              nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
-              cantidad: it.cantidad,
-              precio: it.precio
-            })),
-            total: totalCheckout,
-            estado: 'Por Aprobar'
-          });
-          localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
-        } catch (storageErr) {
-          console.warn("No se pudo guardar pedido en historial local:", storageErr);
+        transaction = await wompiService.abrirWidget({
+          referencia: intencion.referencia,
+          montoEnCentavos: intencion.montoEnCentavos,
+          moneda: intencion.moneda,
+          firma: intencion.firma,
+          publicKey: intencion.publicKey,
+          customerData: {
+            email: user?.email || "",
+            nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
+            telefono: user?.telefono || ""
+          }
+        });
+      } catch (widgetErr) {
+        console.warn("Widget embebido no disponible o bloqueado por navegador, activando Checkout Web:", widgetErr);
+        const directUrl = wompiService.generarUrlDirecta({
+          referencia: intencion.referencia,
+          montoEnCentavos: intencion.montoEnCentavos,
+          moneda: intencion.moneda,
+          firma: intencion.firma,
+          publicKey: intencion.publicKey
+        });
+        const win = window.open(directUrl, "_blank");
+        if (win) {
+          success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
+          clearCart();
+          setShowCart(false);
+          return;
         }
-
-        success("¡Pedido realizado exitosamente!", "Tu pedido fue registrado. Puedes consultar el detalle en tiempo real en Mi Perfil.");
-        clearCart();
-        setShowCheckout(false);
-        setShowCart(false);
-        if (refreshUser) await refreshUser();
-        navigate("/perfil");
-      } catch (err) {
-        console.error("Error confirmando pedido:", err);
-        error("Error al procesar pedido", err.message || "No se pudo conectar con el servidor");
+        throw widgetErr;
       }
+
+      // 3. Evaluar resultado retornado por Wompi
+      if (transaction && transaction.id) {
+        const verificacion = await wompiService.verificarTransaccion(transaction.id);
+
+        if (verificacion.aprobado) {
+          const orderId = verificacion.ventaId || intencion.ventaId || Date.now();
+          const orderCode = verificacion.numeroVenta || intencion.numeroVenta || `VEN-${String(orderId).padStart(4, '0')}`;
+
+          try {
+            const userId = user?.idUsuario || user?.id || user?._id;
+            const storageKey = `mis_pedidos_${userId || 'guest'}`;
+            const localHistory = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            localHistory.unshift({
+              id: orderId,
+              numeroVenta: orderCode,
+              fecha: new Date().toLocaleString('es-CO'),
+              items: cart.map(it => ({
+                nombre: it.nombre + (it.adiciones && it.adiciones.length > 0 ? ` (+${it.adiciones.map(a => a.nombre).join(', ')})` : ''),
+                cantidad: it.cantidad,
+                precio: it.precio
+              })),
+              total: totalCheckout,
+              estado: 'En Preparación'
+            });
+            localStorage.setItem(storageKey, JSON.stringify(localHistory.slice(0, 50)));
+          } catch (storageErr) {
+            console.warn("No se pudo guardar pedido en historial local:", storageErr);
+          }
+
+          success("¡Pago Aprobado con Wompi!", `Tu pedido ${orderCode} fue aprobado y enviado a cocina. Puedes ver su estado en Mi Perfil.`);
+          clearCart();
+          setShowCart(false);
+          if (refreshUser) await refreshUser();
+          navigate("/perfil?tab=pedidos", { state: { tab: "pedidos" } });
+        } else if (verificacion.estado === 'PENDING') {
+          success("Pago en Proceso", "Tu pago está siendo verificado por tu banco. Puedes seguir su estado en Mi Perfil.");
+          clearCart();
+          setShowCart(false);
+          if (refreshUser) await refreshUser();
+          navigate("/perfil?tab=pedidos", { state: { tab: "pedidos" } });
+        } else {
+          setShowCheckout(true);
+          error("Pago Rechazado", `La transacción fue ${verificacion.estado || 'rechazada'}. Puedes intentar con otro medio de pago.`);
+        }
+      } else if (transaction && transaction.status === 'REDIRECTED') {
+        return;
+      } else if (!transaction || transaction.status === 'CLOSED_WITHOUT_RESULT') {
+        setShowCheckout(true);
+        error("Pago cancelado", "Cerraste la pasarela antes de completar el pago.");
+      }
+    } catch (wompiErr) {
+      setShowCheckout(true);
+      console.error("Error en flujo de Wompi:", wompiErr);
+      const detail = wompiErr?.message || "No se pudo conectar con Wompi o el servidor";
+      error("Error en Wompi", detail);
+    } finally {
+      setIsProcessingWompi(false);
     }
   };
 
@@ -1807,18 +1889,29 @@ export function ClienteLanding() {
       <header className="bg-white dark:bg-gray-900 dark:border-b dark:border-gray-800 shadow-md sticky top-0 z-40">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
+            <div
+              className="flex items-center gap-4 cursor-pointer select-none group"
+              onClick={() => {
+                navigate("/");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              title="Ir al inicio - Chazin Food"
+            >
+              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
                 <img
                   src={logoImg}
                   alt="Chazin Food"
+                  width="48"
+                  height="48"
+                  fetchpriority="high"
+                  loading="eager"
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: "50% 56%" }}
+                  style={{ objectPosition: "50% 56%", aspectRatio: "1 / 1" }}
                 />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors">Chazin Food</h1>
                   {isAuthenticated && (
                     <FidelidadBadge
                       tipo={tipoFidelidad}
@@ -1837,6 +1930,7 @@ export function ClienteLanding() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
+                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
                 className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
                 title="Cambiar Modo"
               >
@@ -1846,6 +1940,7 @@ export function ClienteLanding() {
               {isAuthenticated ? (
                 <button
                   onClick={() => navigate("/perfil")}
+                  aria-label="Ir a mi perfil"
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
                 >
                   <User className="w-5 h-5 text-[#f05454]" />
@@ -1854,6 +1949,7 @@ export function ClienteLanding() {
               ) : (
                 <button
                   onClick={() => navigate("/login")}
+                  aria-label="Iniciar sesión"
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors font-medium text-sm cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
@@ -1863,7 +1959,8 @@ export function ClienteLanding() {
 
               <button
                 onClick={() => setShowCart(true)}
-                className="relative flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-md font-semibold text-sm cursor-pointer"
+                aria-label="Abrir carrito de compras"
+                className="relative flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-xl transition-colors shadow-md font-bold text-sm cursor-pointer"
               >
                 <ShoppingCart className="w-5 h-5" />
                 {getTotalItems() > 0 && (
@@ -1877,6 +1974,7 @@ export function ClienteLanding() {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
+                  aria-label="Cerrar sesión"
                   className="p-2.5 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
                   title="Cerrar Sesión"
                 >
@@ -1888,14 +1986,18 @@ export function ClienteLanding() {
         </div>
       </header>
 
-      {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones) */}
-      <EventosCarousel
-        eventos={eventosList}
-        productos={activeProductos}
-        ratingsMap={ratingsMap}
-        onSelectEvento={handleSelectEventoFromCarousel}
-        onThemeChange={setCurrentCarouselTheme}
-      />
+      {/* Punto de referencia semántico principal para Accesibilidad */}
+      <main id="main-content">
+        {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones con altura fija para 0 CLS) */}
+        <div className="w-full min-h-[460px]">
+          <EventosCarousel
+            eventos={eventosList}
+            productos={activeProductos}
+            ratingsMap={ratingsMap}
+            onSelectEvento={handleSelectEventoFromCarousel}
+            onThemeChange={setCurrentCarouselTheme}
+          />
+        </div>
 
       {/* Hero Section con integración cromática dinámica */}
       <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
@@ -1923,7 +2025,7 @@ export function ClienteLanding() {
         {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
         {hasActiveEvents && (
           <div
-            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-colors duration-700"
+            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-opacity duration-700"
             style={{
               backgroundColor: currentCarouselTheme?.theme?.glow || "rgba(239, 68, 68, 0.4)",
               opacity: 0.35
@@ -1952,7 +2054,9 @@ export function ClienteLanding() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
+              id="search-menu-input"
               type="text"
+              aria-label="Buscar producto por nombre"
               placeholder="Buscar por nombre de producto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -2044,7 +2148,7 @@ export function ClienteLanding() {
             type="button"
             onClick={() => scrollCategories("left")}
             aria-label="Anterior categoría"
-            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
+            className="shrink-0 w-12 h-12 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -2052,9 +2156,8 @@ export function ClienteLanding() {
           {/* Horizontal Carousel Container */}
           <div
             ref={categoryCarouselRef}
-            className="flex-1 flex items-stretch gap-3 overflow-x-auto no-scrollbar scroll-smooth py-2 px-1"
+            className="flex-1 flex items-stretch gap-3 overflow-x-auto no-scrollbar py-2 px-1"
             style={{
-              scrollSnapType: "x mandatory",
               scrollbarWidth: "none",
               msOverflowStyle: "none"
             }}
@@ -2062,11 +2165,12 @@ export function ClienteLanding() {
             <button
               type="button"
               onClick={() => setSelectedCategoria(null)}
+              aria-label="Todos: mostrar todas las categorías y productos"
               style={{ scrollSnapAlign: "start" }}
               className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                 selectedCategoria === null
-                  ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
-                  : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+                  ? "bg-red-700 text-white shadow-lg shadow-red-700/25 scale-105 font-bold"
+                  : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
               }`}
             >
               <FoodIconBadge
@@ -2075,7 +2179,7 @@ export function ClienteLanding() {
                 size="lg"
                 isSelected={selectedCategoria === null}
               />
-              <p className="text-xs font-semibold truncate w-full">Todos</p>
+              <p className={`text-xs font-semibold truncate w-full ${selectedCategoria === null ? "text-white font-bold" : "text-gray-800 dark:text-gray-200"}`}>Todos</p>
             </button>
 
             {/* Quick Filter Pill: Edición Especial / Eventos */}
@@ -2083,24 +2187,25 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setSelectedCategoria("eventos")}
+                aria-label={`${eventProductsCount} DROP - Edición Evento`}
                 style={{ scrollSnapAlign: "start" }}
                 className={`shrink-0 w-32 sm:w-36 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer relative overflow-hidden ${
                   selectedCategoria === "eventos"
-                    ? "bg-gradient-to-r from-purple-600 via-rose-600 to-amber-500 text-white shadow-lg shadow-purple-500/30 scale-105 font-bold"
-                    : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-purple-300/60 dark:border-purple-600/40 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 shadow-xs"
+                    ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-400/40 scale-105 font-bold"
+                    : "bg-white dark:bg-gray-900 dark:text-gray-200 border-2 border-orange-400/70 dark:border-orange-500/60 hover:bg-orange-50/50 dark:hover:bg-orange-950/20 shadow-xs"
                 }`}
               >
-                <div className="absolute top-1 right-1 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter">
+                <div aria-hidden="true" className="absolute top-1 right-1 bg-gradient-to-r from-orange-600 to-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-xs">
                   {eventProductsCount} DROP
                 </div>
                 <div className={`flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl shadow-xs transition-all ${
                   selectedCategoria === "eventos"
-                    ? "bg-white text-purple-600"
-                    : "bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/40"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/80 dark:border-orange-800/40"
                 }`}>
-                  <TablerFlame size={26} stroke={2} />
+                  <Flame size={26} strokeWidth={2} />
                 </div>
-                <p className="text-xs font-black truncate w-full" style={selectedCategoria === "eventos" ? { color: '#fff' } : { color: '#a855f7' }}>
+                <p className={`text-xs font-black truncate w-full ${selectedCategoria === "eventos" ? "text-white" : "text-orange-700 dark:text-orange-300"}`}>
                   Edición Evento
                 </p>
               </button>
@@ -2113,16 +2218,25 @@ export function ClienteLanding() {
                   key={cat.id || cat.idCategoriaProducto || cat.nombre}
                   type="button"
                   onClick={() => setSelectedCategoria(cat.id || cat.idCategoriaProducto)}
+                  aria-label={`Filtrar menú por categoría ${cat.nombre}`}
                   style={{ scrollSnapAlign: "start" }}
                   className={`shrink-0 w-28 sm:w-32 p-3.5 rounded-2xl transition-all flex flex-col items-center justify-center text-center gap-2 cursor-pointer ${
                     isSelected
-                      ? "bg-red-500 text-white shadow-lg shadow-red-500/25 scale-105 font-bold"
-                      : "bg-white dark:bg-gray-900 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
+                      ? "bg-red-700 text-white shadow-lg shadow-red-700/25 scale-105 font-bold"
+                      : "bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 shadow-xs"
                   }`}
                 >
                   {cat.icon && (cat.icon.includes("/") || cat.icon.includes(".")) ? (
                     <div className="flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-2xl overflow-hidden bg-white/30 dark:bg-gray-800/60 shadow-xs border border-gray-100 dark:border-gray-700">
-                      <img src={cat.icon} alt={cat.nombre} className="w-full h-full object-cover" />
+                      <img
+                        src={getOptimizedImageUrl(cat.icon, 120)}
+                        alt=""
+                        aria-hidden="true"
+                        width="56"
+                        height="56"
+                        style={{ aspectRatio: "1 / 1" }}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   ) : (
                     <FoodIconBadge
@@ -2132,7 +2246,7 @@ export function ClienteLanding() {
                       isSelected={isSelected}
                     />
                   )}
-                  <p className="text-xs font-semibold leading-tight line-clamp-2 text-center w-full" title={cat.nombre}>
+                  <p className={`text-xs font-semibold leading-tight line-clamp-2 text-center w-full ${isSelected ? "text-white font-bold" : "text-gray-800 dark:text-gray-200"}`} title={cat.nombre}>
                     {cat.nombre}
                   </p>
                 </button>
@@ -2145,7 +2259,7 @@ export function ClienteLanding() {
             type="button"
             onClick={() => scrollCategories("right")}
             aria-label="Siguiente categoría"
-            className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
+            className="shrink-0 w-12 h-12 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer z-10"
           >
             <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -2160,10 +2274,10 @@ export function ClienteLanding() {
               {selectedCategoria === "eventos" ? (
                 <>
                   <span className="flex items-center gap-1.5">
-                    <TablerFlame className="w-5 h-5 text-amber-500 inline shrink-0" />
+                    <Flame className="w-5 h-5 text-amber-500 inline shrink-0" />
                     Edición Especial & Eventos Gastronómicos
                   </span>
-                  <span className="text-xs font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="text-xs font-black bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-full uppercase tracking-wider border border-red-200 dark:border-red-900/50">
                     Tiempo Limitado
                   </span>
                 </>
@@ -2181,9 +2295,12 @@ export function ClienteLanding() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {productosFiltrados.map((producto) => {
+          {productosFiltrados.slice(0, maxVisibleProducts).map((producto) => {
             const hasRealImage = producto.imagen && (producto.imagen.includes('/') || producto.imagen.includes('.'));
             const activeEvent = getActiveEvent(producto);
+            const hasEvent = Boolean(activeEvent);
+            const eventToDisplay = activeEvent;
+
             return (
               <div
                 key={producto.id || producto.idProducto}
@@ -2191,23 +2308,25 @@ export function ClienteLanding() {
                   setModalInitialTab("personalizar");
                   handleProductClick(producto);
                 }}
-                className={`bg-white dark:bg-gray-900 rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
-                  activeEvent
-                    ? "border-2 border-purple-500/50 dark:border-purple-500/60 shadow-purple-500/15 dark:shadow-purple-900/25 ring-2 ring-amber-400/30"
-                    : "border border-gray-100 dark:border-gray-800"
+                className={`bg-white dark:bg-gray-900 cv-auto rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
+                  hasEvent
+                    ? "border-2 border-orange-500/90 dark:border-orange-500 shadow-lg shadow-orange-500/15 dark:shadow-orange-950/40 ring-2 ring-orange-400/30"
+                    : "border border-gray-200/90 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                 }`}
               >
                 {/* ═══ FAST FOOD EVENT BANNER (BURGER FEST / EDICIÓN LIMITADA) ═══ */}
-                {activeEvent && (
-                  <div className="bg-gradient-to-r from-amber-500 via-rose-600 to-purple-700 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20">
+                {hasEvent && eventToDisplay && (
+                  <div className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white font-black text-[10.5px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-md relative z-20 border-b border-orange-500/30">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse shrink-0" />
-                      <span className="truncate max-w-[170px] sm:max-w-[210px]">{activeEvent.nombre}</span>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                      <span className="truncate max-w-[170px] sm:max-w-[210px] text-white tracking-wide">
+                        {eventToDisplay.nombreEvento || eventToDisplay.nombre || "Edición Especial"}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-amber-200 shrink-0">
-                      <Clock className="w-3 h-3" />
-                      <span className={activeEvent.vigencia?.urgente ? "animate-pulse font-black text-amber-300" : ""}>
-                        {activeEvent.vigencia?.label ? activeEvent.vigencia.label : (activeEvent.formattedDate ? `Hasta ${activeEvent.formattedDate}` : "Limitado")}
+                    <div className="flex items-center gap-1 text-[9.5px] font-bold text-white shrink-0 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-xs border border-white/25">
+                      <Clock className="w-3 h-3 text-amber-200" />
+                      <span className={eventToDisplay.vigencia?.urgente ? "animate-pulse font-black text-white" : "text-amber-100"}>
+                        {eventToDisplay.vigencia?.label ? eventToDisplay.vigencia.label : (eventToDisplay.formattedDate ? `Hasta ${eventToDisplay.formattedDate}` : "Limitado")}
                       </span>
                     </div>
                   </div>
@@ -2218,18 +2337,30 @@ export function ClienteLanding() {
                   {hasRealImage ? (
                     <>
                       <img
-                        src={producto.imagen}
+                        src={getOptimizedImageUrl(producto.imagen, 120)}
                         alt=""
+                        width="384"
+                        height="208"
+                        style={{ aspectRatio: "384 / 208" }}
                         className="absolute inset-0 w-full h-full object-cover scale-125 blur-xl opacity-35 dark:opacity-40 filter saturate-150 pointer-events-none"
+                        loading="lazy"
+                        aria-hidden="true"
                       />
                       {/* Vignette oscura sutil para contraste pro */}
                       <div className="absolute inset-0 bg-radial from-transparent via-black/20 to-black/70 pointer-events-none" />
                       {/* Capa 2: Producto protagonista flotante con iluminación cenital */}
                       <img
-                        src={producto.imagen}
+                        src={getOptimizedImageUrl(producto.imagen, 500)}
                         alt={producto.nombre}
-                        className="relative z-10 max-h-[92%] max-w-[92%] object-contain drop-shadow-[0_12px_16px_rgba(0,0,0,0.55)] group-hover:scale-108 group-hover:-rotate-1 transition-all duration-300 ease-out"
+                        width="384"
+                        height="208"
+                        style={{ aspectRatio: "384 / 208" }}
+                        className="relative z-10 w-full h-full max-h-[92%] max-w-[92%] object-contain drop-shadow-[0_12px_16px_rgba(0,0,0,0.55)] group-hover:scale-108 group-hover:-rotate-1 transition-all duration-300 ease-out"
                         loading="lazy"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80";
+                        }}
                       />
                     </>
                   ) : (
@@ -2245,14 +2376,9 @@ export function ClienteLanding() {
                   )}
 
                 {/* ═══ BADGE STREAMLINE DE ALTO IMPACTO (BURGER FEST / 2X1 / FLASH / DESCUENTO) ═══ */}
-                {producto.eventos && producto.eventos.length > 0 && (
-                  <EventBadge event={producto.eventos[0]} product={producto} variant="card" />
+                {activeEvent && (
+                  <EventBadge event={activeEvent} product={producto} variant="card" />
                 )}
-
-                {/* Badge Ver detalles */}
-                <div className="absolute top-3 right-3 bg-black/40 backdrop-blur-xs text-white text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 opacity-90 group-hover:opacity-100">
-                  <FileText className="w-3 h-3" />
-                </div>
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -2281,9 +2407,9 @@ export function ClienteLanding() {
                               title="Ver opiniones y calificaciones de comensales"
                             >
                               <StarRating value={rInfo.promedio} readonly size="xs" />
-                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
-                              <span className="text-[10.5px] text-gray-400">({rInfo.total})</span>
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold opacity-0 group-hover/rate:opacity-100 transition-opacity">
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-400">{rInfo.promedio.toFixed(1)}</span>
+                              <span className="text-[10.5px] text-gray-600 dark:text-gray-400">({rInfo.total})</span>
+                              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold opacity-0 group-hover/rate:opacity-100 transition-opacity">
                                 • Calificar
                               </span>
                             </div>
@@ -2297,10 +2423,11 @@ export function ClienteLanding() {
                               setModalInitialTab("resenas");
                               handleProductClick(producto);
                             }}
-                            className="text-[11px] text-gray-400 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
+                            aria-label={`Sin reseñas • Calificar ${producto.nombre}`}
+                            className="text-[11px] text-gray-600 dark:text-gray-300 hover:text-amber-500 flex items-center gap-1 transition cursor-pointer font-medium"
                           >
                             <Star className="w-3.5 h-3.5" />
-                            <span>Sin reseñas • Calificar</span>
+                            <span className="text-gray-600 dark:text-gray-300">Sin reseñas • Calificar</span>
                           </button>
                         );
                       })()}
@@ -2308,31 +2435,29 @@ export function ClienteLanding() {
                   </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex flex-col">
-                    {producto.eventos && producto.eventos.length > 0 ? (
+                    {activeEvent ? (
                       <>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <EventBadge event={producto.eventos[0]} product={producto} variant="pill" />
+                          <EventBadge event={activeEvent} product={producto} variant="pill" />
                         </div>
-                        {producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.tipoEvento === "Descuento" || e.nuevoPrecio) ? (
+                        {(activeEvent.tipoEvento === "Promoción Precio" || activeEvent.tipoEvento === "Descuento" || activeEvent.nuevoPrecio) ? (
                           <>
-                            <span className="text-xs text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
-                            <span className="text-2xl font-black text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                              <Sparkles className="w-4 h-4 text-purple-500" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                            <span className="text-2xl font-black text-[#f05454] dark:text-red-400 flex items-center gap-1">
+                              <Sparkles className="w-4 h-4 text-amber-500" />
                               ${(() => {
-                                const evtPrecio = producto.eventos.find(e => e.tipoEvento === "Promoción Precio" || e.nuevoPrecio);
-                                if (evtPrecio && evtPrecio.nuevoPrecio) return Number(evtPrecio.nuevoPrecio).toLocaleString();
-                                const evtDesc = producto.eventos.find(e => e.tipoEvento === "Descuento");
-                                if (evtDesc) return Math.round(producto.precio * (1 - Number(evtDesc.descuento)/100)).toLocaleString();
+                                if (activeEvent.nuevoPrecio) return Number(activeEvent.nuevoPrecio).toLocaleString();
+                                if (activeEvent.descuento) return Math.round(producto.precio * (1 - Number(activeEvent.descuento)/100)).toLocaleString();
                                 return producto.precio.toLocaleString();
                               })()}
                             </span>
                           </>
                         ) : (
-                          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">${producto.precio.toLocaleString()}</p>
+                          <p className="text-2xl font-black text-[#f05454] dark:text-red-400">${producto.precio.toLocaleString()}</p>
                         )}
                       </>
                     ) : (
-                      <p className="text-2xl font-black text-red-600 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                      <p className="text-2xl font-black text-red-700 dark:text-red-400">${producto.precio.toLocaleString()}</p>
                     )}
                   </div>
                   <button
@@ -2341,16 +2466,17 @@ export function ClienteLanding() {
                       e.stopPropagation();
                       handleProductClick(producto);
                     }}
+                    aria-label={`Agregar ${producto.nombre} al pedido`}
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
-                      producto.eventos && producto.eventos.length > 0
-                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/20"
-                        : "bg-red-500 hover:bg-red-600 shadow-red-500/20"
+                      hasEvent
+                        ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-orange-500/30"
+                        : "bg-red-700 hover:bg-red-800 shadow-red-700/20"
                     }`}
                   >
-                    {producto.eventos && producto.eventos.length > 0 ? (
+                    {hasEvent ? (
                       <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Personalizar Evento</span>
+                        <Sparkles className="w-4 h-4 text-amber-200" />
+                        <span>Agregar</span>
                       </>
                     ) : (
                       <>
@@ -2365,45 +2491,67 @@ export function ClienteLanding() {
           );
         })}
         </div>
+
+        {maxVisibleProducts < productosFiltrados.length && (
+          <div ref={loadMoreRef} className="flex justify-center mt-8">
+            <button
+              type="button"
+              onClick={() => setMaxVisibleProducts(productosFiltrados.length)}
+              className="px-6 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-sm transition shadow-sm cursor-pointer"
+            >
+              Ver más productos ({productosFiltrados.length - maxVisibleProducts} restantes)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ═══ MASTER FAST FOOD PRODUCT CUSTOMIZATION MODAL (EL MEJOR MODAL DEL MERCADO) ═══ */}
-      <FastFoodProductModal
-        isOpen={Boolean(showProductModal && productoSeleccionado)}
-        onClose={() => {
-          setShowProductModal(false);
-          setProductoSeleccionado(null);
-        }}
-        producto={productoSeleccionado?.producto}
-        ficha={
-          productoSeleccionado?.ficha ||
-          (productoSeleccionado?.producto &&
-            (fichasMap[productoSeleccionado.producto.id] ||
-              fichasMap[productoSeleccionado.producto.idProducto] ||
-              fichasTecnicasDefault[productoSeleccionado.producto.id]))
-        }
-        allAdiciones={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
-        allBebidas={bebidasDisponibles}
-        ratingsInfo={
-          productoSeleccionado?.producto
-            ? ratingsMap[productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto]
-            : null
-        }
-        onOpenResenas={() => {
-          if (productoSeleccionado?.producto) {
-            setProductoParaResenas(productoSeleccionado.producto);
-            setShowResenasModal(true);
-          }
-        }}
-        onConfirm={handleClientModalConfirm}
-        mode="cliente"
-        initialTab={modalInitialTab}
-      />
+      {showProductModal && productoSeleccionado && (
+        <Suspense fallback={null}>
+          <FastFoodProductModal
+            isOpen={true}
+            onClose={() => {
+              setShowProductModal(false);
+              setProductoSeleccionado(null);
+            }}
+            producto={productoSeleccionado?.producto}
+            ficha={
+              productoSeleccionado?.ficha ||
+              (productoSeleccionado?.producto &&
+                (fichasMap[productoSeleccionado.producto.id] ||
+                  fichasMap[productoSeleccionado.producto.idProducto] ||
+                  fichasTecnicasDefault[productoSeleccionado.producto.id]))
+            }
+            allAdiciones={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+            allBebidas={bebidasDisponibles}
+            ratingsInfo={
+              productoSeleccionado?.producto
+                ? ratingsMap[productoSeleccionado.producto.id || productoSeleccionado.producto.idProducto]
+                : null
+            }
+            onOpenResenas={() => {
+              if (productoSeleccionado?.producto) {
+                setProductoParaResenas(productoSeleccionado.producto);
+                setShowResenasModal(true);
+              }
+            }}
+            onConfirm={handleClientModalConfirm}
+            mode="cliente"
+            initialTab={modalInitialTab}
+          />
+        </Suspense>
+      )}
 
       {/* MODAL CARRITO */}
       {showCart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-md h-full p-5 sm:p-6 shadow-2xl flex flex-col justify-between border-l border-gray-100 dark:border-gray-800 animate-in slide-in-from-right duration-300">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-xs cursor-pointer"
+          onClick={() => setShowCart(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 w-full max-w-md h-full p-5 sm:p-6 shadow-2xl flex flex-col justify-between border-l border-gray-100 dark:border-gray-800 animate-in slide-in-from-right duration-300 cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3 shrink-0">
               <div className="flex items-center gap-2">
@@ -2411,13 +2559,14 @@ export function ClienteLanding() {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Tu Carrito de Compras</h3>
                 {cart.length > 0 && (
                   <span className="text-[11px] bg-red-100 dark:bg-red-950/60 text-[#f05454] dark:text-red-400 font-black px-2 py-0.5 rounded-full">
-                    {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0)} items
+                    {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0)} {cart.reduce((acc, it) => acc + (it.cantidad || 1), 0) === 1 ? "ítem" : "ítems"}
                   </span>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => setShowCart(false)}
+                aria-label="Cerrar carrito de compras"
                 className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
                 title="Cerrar carrito"
               >
@@ -2425,180 +2574,246 @@ export function ClienteLanding() {
               </button>
             </div>
 
-            {/* Scrollable Center Body: Items List + Complementa tu Orden */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1 scrollbar-thin">
-              {cart.length === 0 ? (
-                <div className="text-center py-16 space-y-3">
-                  <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mx-auto text-red-500">
-                    <ShoppingCart className="w-8 h-8" />
-                  </div>
-                  <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Tu carrito está vacío</p>
-                  <p className="text-xs text-gray-400">Agrega deliciosos productos de nuestro menú</p>
+            {/* Center Body: Scrolleable Products List + Fixed Complementa tu Orden */}
+            {cart.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 space-y-3">
+                <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center text-red-500">
+                  <ShoppingCart className="w-8 h-8" />
                 </div>
-              ) : (
-                <>
-                  {/* Cart Items */}
-                  <div className="space-y-2.5">
-                    {cart.map((item, index) => {
-                      const itemKey = item.cartItemId || `${item.id}-${index}`;
-                      const prodStock = Number(item.stock !== undefined ? item.stock : 25);
-                      const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Tu carrito está vacío</p>
+                <p className="text-xs text-gray-400">Agrega deliciosos productos de nuestro menú</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col min-h-0 py-3 gap-3">
+                {/* 1. Listado scrolleable SOLO para los productos */}
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
+                  {cart.map((item, index) => {
+                    const itemKey = item.cartItemId || `${item.id}-${index}`;
+                    const prodStock = Number(item.stock !== undefined ? item.stock : 25);
+                    const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
+                    const isPromoEvent = Boolean(item.isEvento || item.eventoInfo || (item.eventos && item.eventos.length > 0));
+                    const additionsUnit = (item.adiciones || []).reduce((sum, a) => sum + ((Number(a.precio) || 0) * (Number(a.cantidad) || 1)), 0);
+                    const unitPriceWithAdds = (Number(item.precio) || 0) + additionsUnit;
+                    const lineTotalPrice = unitPriceWithAdds * (Number(item.cantidad) || 1);
 
-                      return (
-                        <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
-                          {item.imagen && typeof item.imagen === "string" && (item.imagen.startsWith("http") || item.imagen.startsWith("/") || item.imagen.startsWith("data:")) ? (
-                            <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700" />
+                    return (
+                      <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
+                        {(() => {
+                          let displayImg = item.imagen;
+                          if (!displayImg || typeof displayImg !== "string" || (!displayImg.startsWith("http") && !displayImg.startsWith("/") && !displayImg.startsWith("data:"))) {
+                            if (isDrinkProduct(item) || String(item.nombre || "").toLowerCase().includes("gaseosa") || String(item.nombre || "").toLowerCase().includes("coca")) {
+                              displayImg = resolveDrinkImage(item);
+                            }
+                          }
+                          return displayImg && (displayImg.startsWith("http") || displayImg.startsWith("/") || displayImg.startsWith("data:")) ? (
+                            <img
+                              src={displayImg}
+                              alt={item.nombre}
+                              width="48"
+                              height="48"
+                              style={{ aspectRatio: "1 / 1" }}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                            />
                           ) : (
                             <FoodIconBadge name={item.nombre} size="md" />
+                          );
+                        })()}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
+                          
+                          {/* Resumen de Bebida o Acompañante de Combo */}
+                          {item.observaciones && item.observaciones.toLowerCase().includes("bebida") && (
+                            <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-bold block mt-0.5">
+                              🥤 {item.observaciones.split("•").find(s => s.toLowerCase().includes("bebida"))?.trim() || item.observaciones}
+                            </span>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
-                            {item.adiciones && item.adiciones.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {item.adiciones.map((a, aIdx) => (
-                                  <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                    <img src={getAdicionImage(a)} alt="" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
-                                    +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {item.personalizaciones && item.personalizaciones.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {item.personalizaciones.map((p, pIdx) => (
-                                  <span key={pIdx} className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                    <Ban className="w-3 h-3 text-red-500 shrink-0" />
-                                    <span>{p}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            <p className="text-xs font-black text-red-600 dark:text-red-400 mt-1">${Number(item.precio).toLocaleString("es-CO")}</p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
-                              className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                            >
-                              -
-                            </button>
-                            <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
-                            <button
-                              onClick={() => {
-                                if (totalInCartForProd >= prodStock) {
-                                  error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
-                                } else {
-                                  updateQuantity(item.cartItemId || item.id, 1);
-                                }
-                              }}
-                              className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                            >
-                              +
-                            </button>
-                            <button
-                              onClick={() => removeFromCart(item.cartItemId || item.id)}
-                              className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
-                              title="Eliminar este producto"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                          
+                          {/* Badge de Promoción / Evento cerrado */}
+                          {isPromoEvent && (
+                            <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 inline-flex items-center gap-1 mt-0.5">
+                              <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                              Promoción cerrada (sin adiciones)
+                            </span>
+                          )}
 
-                  {/* ══════ ¿TIENES UN ANTOJO? COMPLEMENTA TU ORDEN (ESTILO EL CORRAL) ══════ */}
-                  <div className="bg-gradient-to-br from-[#3b0c10] via-[#2d080c] to-[#1c0406] rounded-3xl p-3.5 sm:p-4 text-white shadow-xl border border-red-950/80 relative overflow-hidden mt-2">
-                    {/* Encabezado con flechas de navegación */}
-                    <div className="flex items-center justify-between mb-2.5">
-                      <div>
-                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 block">
-                          ¿Tienes un antojo?
-                        </span>
-                        <h4 className="text-sm sm:text-base font-black text-white leading-tight">
-                          Complementa tu orden
-                        </h4>
-                      </div>
+                          {item.adiciones && item.adiciones.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.adiciones.map((a, aIdx) => (
+                                <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                  <img src={getAdicionImage(a)} alt="" aria-hidden="true" width="14" height="14" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
+                                  +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {item.personalizaciones && item.personalizaciones.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.personalizaciones.map((p, pIdx) => (
+                                <span key={pIdx} className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                  <Ban className="w-3 h-3 text-red-500 shrink-0" />
+                                  <span>{p}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => scrollComplementos("left")}
-                          className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
-                          title="Anterior complemento"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => scrollComplementos("right")}
-                          className="w-7 h-7 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
-                          title="Siguiente complemento"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Carrusel horizontal suave */}
-                    <div
-                      ref={complementosRef}
-                      className="flex items-stretch gap-3 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory"
-                    >
-                      {complementosOrden.map((comp) => (
-                        <div
-                          key={comp.id}
-                          className="w-32 sm:w-36 shrink-0 bg-white dark:bg-gray-800 rounded-2xl p-2.5 shadow-md flex flex-col justify-between text-gray-900 dark:text-gray-100 snap-start border border-gray-100 dark:border-gray-700/60 group hover:shadow-xl transition-all"
-                        >
-                          <div className="relative w-full h-20 sm:h-22 rounded-xl bg-gray-50 dark:bg-gray-900/80 overflow-hidden flex items-center justify-center mb-1.5">
-                            <img
-                              src={comp.imagen}
-                              alt={comp.nombre}
-                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 select-none"
-                            />
-                            {comp.badge && (
-                              <span className="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-white text-[8.5px] font-black px-1.5 py-0.2 rounded-md">
-                                {comp.badge}
+                          {/* Precio dinámico del producto con adiciones */}
+                          <div className="flex items-baseline gap-1.5 mt-1">
+                            <span className="text-xs font-black text-red-600 dark:text-red-400">
+                              ${lineTotalPrice.toLocaleString("es-CO")}
+                            </span>
+                            {additionsUnit > 0 && (
+                              <span className="text-[10px] text-gray-400">
+                                (${unitPriceWithAdds.toLocaleString("es-CO")} c/u)
                               </span>
                             )}
                           </div>
-
-                          <div className="flex-1 min-w-0 mb-2">
-                            <p className="font-black text-xs text-gray-800 dark:text-gray-100 line-clamp-1 leading-snug">
-                              {comp.nombre}
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                              {comp.tamano || comp.descripcion}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-750">
-                            <span className="text-xs font-black text-gray-900 dark:text-gray-100">
-                              ${Number(comp.precio).toLocaleString("es-CO")}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleAddComplemento(comp)}
-                              className="w-7 h-7 rounded-full bg-[#f05454] hover:bg-[#d94444] text-white flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
-                              title={`Agregar ${comp.nombre} al pedido`}
-                            >
-                              <Plus className="w-4 h-4 stroke-[3]" />
-                            </button>
-                          </div>
                         </div>
-                      ))}
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
+                            aria-label={`Reducir cantidad de ${item.nombre}`}
+                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
+                          <button
+                            onClick={() => {
+                              if (totalInCartForProd >= prodStock) {
+                                error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
+                              } else {
+                                updateQuantity(item.cartItemId || item.id, 1);
+                              }
+                            }}
+                            aria-label={`Aumentar cantidad de ${item.nombre}`}
+                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                          >
+                            +
+                          </button>
+                          <button
+                            onClick={() => removeFromCart(item.cartItemId || item.id)}
+                            aria-label={`Eliminar ${item.nombre} del carrito`}
+                            className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
+                            title="Eliminar este producto"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 2. Sección Fija (Sin scroll vertical): Complementa tu orden */}
+                <div className="shrink-0 bg-gradient-to-br from-[#3b0c10] via-[#2d080c] to-[#1c0406] rounded-3xl p-3 sm:p-3.5 text-white shadow-lg border border-red-950/80 relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className="text-[9.5px] uppercase font-black tracking-wider text-amber-400 block">
+                        ¿Tienes un antojo?
+                      </span>
+                      <h4 className="text-xs sm:text-sm font-black text-white leading-tight">
+                        Complementa tu orden
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => scrollComplementos("left")}
+                        aria-label="Ver complemento anterior"
+                        className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
+                        title="Anterior complemento"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollComplementos("right")}
+                        aria-label="Ver siguiente complemento"
+                        className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs transition active:scale-90 border border-white/10 cursor-pointer"
+                        title="Siguiente complemento"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                </>
-              )}
-            </div>
+
+                  {/* Carrusel horizontal */}
+                  <div
+                    ref={complementosRef}
+                    className="flex items-stretch gap-2.5 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory"
+                  >
+                    {complementosOrden.map((comp) => (
+                      <div
+                        key={comp.id}
+                        className="w-28 sm:w-32 shrink-0 bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-sm flex flex-col justify-between text-gray-900 dark:text-gray-100 snap-start border border-gray-100 dark:border-gray-700/60 group hover:shadow-md transition-all"
+                      >
+                        <div className="relative w-full h-16 sm:h-18 rounded-xl bg-gray-50 dark:bg-gray-900/80 overflow-hidden flex items-center justify-center mb-1">
+                          <img
+                            src={comp.imagen}
+                            alt={comp.nombre}
+                            width="112"
+                            height="64"
+                            loading="lazy"
+                            style={{ aspectRatio: "16 / 10" }}
+                            className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 select-none"
+                          />
+                          {comp.badge && (
+                            <span className="absolute top-1 left-1 bg-black/75 backdrop-blur-xs text-white text-[8px] font-black px-1 rounded-md">
+                              {comp.badge}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 mb-1">
+                          <p className="font-black text-[11px] text-gray-800 dark:text-gray-100 line-clamp-1 leading-snug">
+                            {comp.nombre}
+                          </p>
+                          <p className="text-[9.5px] text-gray-500 dark:text-gray-400 truncate">
+                            {comp.tamano || comp.descripcion}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-750">
+                          <span className="text-[11px] font-black text-gray-900 dark:text-gray-100">
+                            ${Number(comp.precio).toLocaleString("es-CO")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddComplemento(comp)}
+                            className="w-6 h-6 rounded-full bg-[#f05454] hover:bg-[#d94444] text-white flex items-center justify-center shadow-xs active:scale-90 transition-transform cursor-pointer"
+                            title={`Agregar ${comp.nombre} al pedido`}
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {cart.length > 0 && (
-              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3 shrink-0">
-                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100">
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2 shrink-0">
+                <div className="flex justify-between items-center text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  <span>Subtotal:</span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString("es-CO")}</span>
+                </div>
+                {discountPercent > 0 && (
+                  <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Descuento Fidelidad ({discountPercent}%):
+                    </span>
+                    <span>-${clientDiscountMonto.toLocaleString("es-CO")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-100 dark:border-gray-800">
                   <span>Total Pedido:</span>
-                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${clientSubtotal.toLocaleString()}</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${totalCheckout.toLocaleString("es-CO")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -2634,6 +2849,7 @@ export function ClienteLanding() {
               <button
                 type="button"
                 onClick={() => setShowCheckout(false)}
+                aria-label="Cerrar checkout"
                 className="w-9 h-9 rounded-2xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
                 title="Cerrar"
               >
@@ -2641,335 +2857,239 @@ export function ClienteLanding() {
               </button>
             </div>
 
-            {/* ═══ CUERPO SCROLLEABLE ═══ */}
+            {/* ═══ CUERPO SCROLLEABLE — Flujo Lógico Reordenado (Ítem #11, #20, #26, #28, #122) ═══ */}
             <div className="overflow-y-auto flex-1 p-6 space-y-6 scrollbar-thin">
 
-              {/* ── 1. Resumen de compra (Tarjeta Superior) ── */}
-              <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
-                <div className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-                  <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-semibold">
-                    <ShoppingCart className="w-4 h-4 text-[#E03E3E]" /> Subtotal ({getTotalItems()} prod.)
-                  </span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString('es-CO')}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400">
-                  <span>IVA (0%)</span>
-                  <span>$0</span>
-                </div>
-                <div className="border-t border-gray-100 dark:border-gray-700/80 pt-2 flex justify-between items-center">
-                  <span className="text-base font-black text-gray-900 dark:text-gray-100">Total</span>
-                  <span className="text-xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
-                </div>
+              {/* ── 1. Especificaciones del Pedido & Empaque Térmico (Ítem #11) ── */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#B91C1C]" />
+                  <span>1. Especificaciones de Cocina &amp; Empaque</span>
+                  <span className="font-normal text-gray-400 text-[11px] lowercase">(opcional)</span>
+                </h4>
+
+                {/* Checkbox Empaque térmico para llevar */}
+                <label className="flex items-start gap-3 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 rounded-2xl cursor-pointer hover:bg-amber-100/50 transition select-none">
+                  <input
+                    type="checkbox"
+                    checked={checkoutEmpaqueParaLlevar}
+                    onChange={(e) => setCheckoutEmpaqueParaLlevar(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 accent-[#f05454] cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      Empaque especial térmico para llevar / regalo
+                    </span>
+                    <span className="text-[11px] text-gray-600 dark:text-gray-400 block mt-0.5 leading-snug">
+                      Envase sellado hermético que conserva la temperatura y frescura ideal durante el trayecto.
+                    </span>
+                  </div>
+                </label>
+
+                <textarea
+                  rows={2}
+                  value={checkoutEspecificaciones}
+                  onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
+                  placeholder="Ej: Sin cebolla, salsas aparte, dejar en portería, timbre 201..."
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition resize-none"
+                />
               </div>
 
-              {/* ── 2. Tipo de Entrega ── */}
-              <div className="space-y-3">
+              {/* ── 2. Modalidad y Datos de Entrega ── */}
+              <div className="space-y-3.5">
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
                   <Truck className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Tipo de Entrega</span>
+                  <span>2. Modalidad &amp; Datos de Entrega</span>
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Card Domicilio */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutTipoEntrega("domicilio")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                      checkoutTipoEntrega === "domicilio"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex items-center gap-2">
-                        <Truck className={`w-4 h-4 ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
-                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
-                          Domicilio
-                        </span>
-                      </div>
-                      {checkoutTipoEntrega === "domicilio" && (
-                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "domicilio" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
-                      Llevamos tu pedido
-                    </span>
-                  </button>
 
-                  {/* Card Recoger */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutTipoEntrega("llevar")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                      checkoutTipoEntrega === "llevar"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <div className="flex items-center gap-2">
-                        <Store className={`w-4 h-4 ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-600 dark:text-gray-400"}`} />
-                        <span className={`font-bold text-sm ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]" : "text-gray-800 dark:text-gray-200"}`}>
-                          Recoger en Local
-                        </span>
-                      </div>
-                      {checkoutTipoEntrega === "llevar" && (
-                        <span className="w-4 h-4 rounded-full border border-[#E03E3E] flex items-center justify-center text-[#E03E3E] text-[10px] font-black">
-                          ✓
-                        </span>
-                      )}
+                <div className="bg-[#FFF5F5] dark:bg-red-950/20 border border-[#E03E3E]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 text-[#E03E3E] flex items-center justify-center">
+                      <Truck className="w-4 h-4" />
                     </div>
-                    <span className={`text-xs font-medium ${checkoutTipoEntrega === "llevar" ? "text-[#E03E3E]/80" : "text-gray-500 dark:text-gray-400"}`}>
-                      Pasas a recogerlo
-                    </span>
-                  </button>
+                    <div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-gray-100 block">
+                        Entrega a Domicilio
+                      </span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        Llevamos tu pedido directamente hasta tu puerta
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1 shadow-2xs">
+                    <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <span>35 - 45 min</span>
+                  </span>
                 </div>
-              </div>
 
-              {/* ── 3. Datos de Entrega ── */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Datos de Entrega</span>
-                </h4>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Nombre del destinatario
+                    Nombre del destinatario <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={checkoutNombre}
-                    onChange={(e) => setCheckoutNombre(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCheckoutNombre(val);
+                      const valRes = validateNombre(val, "nombre del destinatario");
+                      if (!valRes.isValid) {
+                        setCheckoutErrors((prev) => ({ ...prev, nombre: valRes.error }));
+                      } else {
+                        setCheckoutErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.nombre;
+                          return n;
+                        });
+                      }
+                    }}
+                    className={`w-full px-4 py-3 bg-white dark:bg-gray-800 border rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none transition ${
+                      checkoutErrors.nombre
+                        ? "border-red-500 focus:border-red-600 focus:ring-1 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700 focus:border-[#E03E3E]"
+                    }`}
                     placeholder="María García"
                   />
+                  {checkoutErrors.nombre && (
+                    <p className="text-[11px] text-red-500 font-bold mt-1.5 flex items-center gap-1 animate-in fade-in">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{checkoutErrors.nombre}</span>
+                    </p>
+                  )}
                 </div>
 
-                {checkoutTipoEntrega === "domicilio" ? (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Dirección de entrega <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={checkoutDireccion}
-                      onChange={(e) => setCheckoutDireccion(e.target.value)}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition"
-                      placeholder="Ej: Calle 45 #12-30, Apto 201"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-3 flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <span className="font-bold">Recoger en:</span> Chazin Food — Cra. 12 #45-67. Te notificaremos cuando esté listo.
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                    Dirección de entrega <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={checkoutDireccion}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCheckoutDireccion(val);
+                      if (!val.trim()) {
+                        setCheckoutErrors((prev) => ({ ...prev, direccion: "Por favor ingresa la dirección exacta de entrega." }));
+                      } else {
+                        setCheckoutErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.direccion;
+                          return n;
+                        });
+                      }
+                    }}
+                    className={`w-full px-4 py-3 bg-white dark:bg-gray-800 border rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none transition ${
+                      checkoutErrors.direccion
+                        ? "border-red-500 focus:border-red-600 focus:ring-1 focus:ring-red-500"
+                        : "border-gray-200 dark:border-gray-700 focus:border-[#E03E3E]"
+                    }`}
+                    placeholder="Ej: Calle 45 #12-30, Apto 201"
+                  />
+                  {checkoutErrors.direccion && (
+                    <p className="text-[11px] text-red-500 font-bold mt-1.5 flex items-center gap-1 animate-in fade-in">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{checkoutErrors.direccion}</span>
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              {/* ── 4. Método de Pago ── */}
+              {/* ── 3. Resumen de Compra & Método de Pago Wompi (Ítem #122) ── */}
               <div className="space-y-3">
                 <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-[#B91C1C]" />
-                    <span>Método de Pago</span>
+                    <span>3. Resumen &amp; Pago Seguro</span>
                   </span>
                   <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Pago Seguro
+                    <ShieldCheck className="w-3.5 h-3.5" /> Pago 100% Seguro
                   </span>
                 </h4>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {/* Wompi (Online) */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("wompi")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer relative ${
-                      checkoutMetodoPago === "wompi"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm ring-2 ring-[#E03E3E]/20"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="absolute -top-2 right-2 bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                      En Línea
+
+                <div className="bg-white dark:bg-gray-800/60 rounded-2xl p-4 space-y-2 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 font-semibold">
+                      <ShoppingCart className="w-4 h-4 text-[#E03E3E]" /> Subtotal ({getTotalItems()} prod.)
                     </span>
-                    <Zap className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-extrabold text-inherit">Wompi</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-tight">PSE, Nequi, Tarj.</span>
-                  </button>
-
-                  {/* Tarjeta en Sitio */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("tarjeta")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      checkoutMetodoPago === "tarjeta"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <CreditCard className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-bold text-inherit">Datáfono</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Al recibir</span>
-                  </button>
-
-                  {/* Transferencia */}
-                  <button
-                    type="button"
-                    onClick={() => setCheckoutMetodoPago("transferencia")}
-                    className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                      checkoutMetodoPago === "transferencia"
-                        ? "border-[#E03E3E] bg-[#FFF5F5] dark:bg-red-950/20 text-[#E03E3E] shadow-sm"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Smartphone className="w-5 h-5 text-inherit" />
-                    <span className="text-xs font-bold text-inherit">Transferencia</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Manual</span>
-                  </button>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString('es-CO')}</span>
+                  </div>
+                  {discountPercent > 0 && (
+                    <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Descuento Fidelidad ({discountPercent}%):
+                      </span>
+                      <span>-${clientDiscountMonto.toLocaleString('es-CO')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <span>IVA (0%)</span>
+                    <span>$0</span>
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-gray-700/80 pt-2 flex justify-between items-center">
+                    <span className="text-base font-black text-gray-900 dark:text-gray-100">Total a Pagar</span>
+                    <span className="text-xl font-black text-[#D9383A]">${totalCheckout.toLocaleString('es-CO')}</span>
+                  </div>
                 </div>
 
-                {/* Sub-formulario Wompi */}
-                {checkoutMetodoPago === "wompi" && (
-                  <div className="bg-gradient-to-br from-amber-50/60 via-red-50/30 to-orange-50/50 dark:from-red-950/20 dark:to-orange-950/10 border border-red-200 dark:border-red-900/40 rounded-2xl p-4 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-xl bg-[#E03E3E] text-white flex items-center justify-center font-black text-xs">
-                          W
-                        </div>
-                        <div>
-                          <p className="text-xs font-extrabold text-gray-900 dark:text-gray-100">Pasarela Oficial Wompi (Bancolombia)</p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400">Paga al instante sin comisiones adicionales</p>
-                        </div>
+                {/* Tarjeta Destacada de Pasarela Oficial Wompi */}
+                <div className="bg-gradient-to-br from-amber-50/70 via-red-50/40 to-orange-50/50 dark:from-red-950/30 dark:to-orange-950/20 border-2 border-[#E03E3E]/30 dark:border-red-800/50 rounded-2xl p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#B91C1C] to-[#E03E3E] text-white flex items-center justify-center font-black text-sm shadow-sm ring-2 ring-red-200 dark:ring-red-900">
+                        W
                       </div>
-                      <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                        <Beaker className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                        <span>Sandbox Activo</span>
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-black text-gray-900 dark:text-gray-100">Pasarela Oficial Wompi</p>
+                          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">(Bancolombia)</span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Canal exclusivo y seguro para compras web</p>
+                      </div>
                     </div>
+                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 shadow-2xs">
+                      <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 fill-current" />
+                      <span>Pago Inmediato</span>
+                    </span>
+                  </div>
 
-                    <div className="grid grid-cols-4 gap-1.5 pt-1">
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-purple-700 dark:text-purple-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="mobile" size={12} className="text-purple-600 dark:text-purple-400" />
+                  {/* Opciones disponibles dentro de Wompi */}
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Medios de pago disponibles en la pasarela:
+                    </p>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div className="bg-white dark:bg-gray-800 border border-pink-200 dark:border-pink-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-pink-700 dark:text-pink-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="mobile" size={14} className="text-pink-600 dark:text-pink-400" />
                         <span>Nequi</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-blue-700 dark:text-blue-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="bank" size={12} className="text-blue-600 dark:text-blue-400" />
-                        <span>PSE</span>
+                      <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-blue-700 dark:text-blue-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="bank" size={14} className="text-blue-600 dark:text-blue-400" />
+                        <span>PSE (Bancos)</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="card" size={12} className="text-emerald-600 dark:text-emerald-400" />
-                        <span>Tarjetas</span>
+                      <div className="bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-emerald-700 dark:text-emerald-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="card" size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Tarjetas C/D</span>
                       </div>
-                      <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 text-center text-[10px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1">
-                        <FoodIcon name="bank" size={12} className="text-amber-600 dark:text-amber-400" />
+                      <div className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-900/50 rounded-xl p-2 text-center text-[10px] font-bold text-amber-700 dark:text-amber-300 flex flex-col items-center justify-center gap-1 shadow-2xs">
+                        <FoodIcon name="bank" size={14} className="text-amber-600 dark:text-amber-400" />
                         <span>Bancolombia</span>
                       </div>
                     </div>
-
-                    <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
-                      Al presionar <strong>Pagar con Wompi</strong> se abrirá la ventana emergente segura donde podrás escoger tu método favorito. Tu pedido pasará a cocina automáticamente al completarse el pago.
-                    </p>
                   </div>
-                )}
 
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
+                    Al confirmar, se abrirá el formulario seguro de Wompi. Una vez completado tu pago, el pedido pasará directamente a preparación en cocina.
+                  </p>
+                </div>
 
-                {/* Sub-formulario Tarjeta */}
-                {checkoutMetodoPago === "tarjeta" && (
-                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Número de tarjeta <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative flex items-center bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl px-4 py-2.5 shadow-2xs">
-                        <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
-                        <input
-                          type="text"
-                          value={checkoutTarjetaNumero}
-                          onChange={(e) => {
-                            const v = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
-                            setCheckoutTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, '$1 '));
-                          }}
-                          placeholder="0000 0000 0000 0000"
-                          className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Monto a cargar
-                      </label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={`$ ${totalCheckout.toLocaleString('es-CO')}`}
-                        className="w-full px-4 py-2.5 bg-white/70 dark:bg-gray-800/80 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-700 dark:text-gray-200 outline-none cursor-not-allowed"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Sub-formulario Transferencia */}
-                {checkoutMetodoPago === "transferencia" && (
-                  <div className="bg-[#F8FAFF] dark:bg-blue-950/20 border border-[#E0E7FF] dark:border-blue-900/40 rounded-2xl p-4 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Entidad / Banco origen
-                      </label>
-                      <select
-                        value={checkoutTransferBanco}
-                        onChange={(e) => setCheckoutTransferBanco(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-bold text-gray-900 dark:text-gray-100 outline-none"
-                      >
-                        <optgroup label="Billeteras digitales">
-                          <option value="Nequi">Nequi</option>
-                          <option value="Daviplata">Daviplata</option>
-                        </optgroup>
-                        <optgroup label="Bancos">
-                          <option value="Bancolombia">Bancolombia</option>
-                          <option value="Davivienda">Davivienda</option>
-                          <option value="BBVA">BBVA</option>
-                          <option value="Banco de Bogotá">Banco de Bogotá</option>
-                          <option value="Banco Caja Social">Banco Caja Social</option>
-                          <option value="Scotiabank Colpatria">Scotiabank Colpatria</option>
-                          <option value="Otro">Otro</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                    <div className="bg-blue-100/70 dark:bg-blue-900/30 p-2.5 rounded-xl text-xs text-[#1E40AF] dark:text-blue-300 font-medium">
-                      Transfiere a <span className="font-bold">Bancolombia Ahorros 123-456789-00</span> a nombre de <span className="font-bold">Chazin Food</span>.
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-[#1E40AF] dark:text-blue-300 mb-1.5">
-                        Número de referencia <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={checkoutTransferReferencia}
-                        onChange={(e) => setCheckoutTransferReferencia(e.target.value)}
-                        placeholder="Ej: 987654321"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-[#C7D2FE] dark:border-blue-700 rounded-2xl text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ── 5. Especificaciones ── */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-[#7F1D1D] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#B91C1C]" />
-                  <span>Especificaciones</span>
-                  <span className="font-normal text-gray-400 text-[11px] lowercase">(opcional)</span>
-                </h4>
-                <textarea
-                  rows={3}
-                  value={checkoutEspecificaciones}
-                  onChange={(e) => setCheckoutEspecificaciones(e.target.value)}
-                  placeholder="Ej: Sin cebolla, dejar en portería, tocar timbre..."
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition resize-none"
-                />
+                {/* Nota informativa: Pagos en físico */}
+                <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl px-3.5 py-2.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300 shadow-2xs">
+                  <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span className="leading-snug">
+                    <strong>Aviso:</strong> En la plataforma web las órdenes se procesan únicamente mediante la pasarela segura en línea Wompi. Medios manuales (efectivo, datáfono presencial o transferencias manuales) aplican de forma exclusiva en el punto de venta físico.
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -3001,28 +3121,17 @@ export function ClienteLanding() {
                 type="button"
                 disabled={isProcessingWompi}
                 onClick={handleConfirmarPedido}
-                className={`w-full py-4 font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
-                  isProcessingWompi
-                    ? "bg-gray-400 text-white cursor-not-allowed"
-                    : checkoutMetodoPago === "wompi"
-                      ? "bg-gradient-to-r from-[#E03E3E] to-[#B91C1C] hover:from-[#C92A2A] hover:to-[#991B1B] text-white active:scale-98"
-                      : "bg-[#E03E3E] hover:bg-[#C92A2A] active:scale-98 text-white"
-                }`}
+                className="w-full py-4 font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-[#E03E3E] to-[#B91C1C] hover:from-[#C92A2A] hover:to-[#991B1B] text-white active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessingWompi ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>Conectando con Wompi...</span>
                   </>
-                ) : checkoutMetodoPago === "wompi" ? (
-                  <>
-                    <Zap className="w-5 h-5" />
-                    <span>Pagar con Wompi en Línea (${totalCheckout.toLocaleString('es-CO')})</span>
-                  </>
                 ) : (
                   <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Confirmar Pedido</span>
+                    <Zap className="w-5 h-5 fill-current" />
+                    <span>Pagar con Wompi en Línea (${totalCheckout.toLocaleString('es-CO')} COP)</span>
                   </>
                 )}
               </button>
@@ -3032,124 +3141,163 @@ export function ClienteLanding() {
       )}
 
 
-      {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR */}
-      {showEmptyCartLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-center space-y-4 border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-3xl flex items-center justify-center mx-auto text-red-500 shadow-inner">
-              <LogIn className="w-8 h-8" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-gray-100">Inicia sesión para pagar</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
-                Tus productos están seguros en el carrito. Para ingresar tu dirección de entrega y confirmar tu pedido, inicia sesión o crea una cuenta.
-              </p>
-            </div>
+      {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR (EN LÍNEA SIN REDIRIGIR) */}
+      <ClienteAuthModal
+        isOpen={showEmptyCartLoginModal}
+        onClose={() => setShowEmptyCartLoginModal(false)}
+        onSuccess={handleAuthModalSuccess}
+        totalItems={getTotalItems()}
+        cartTotal={clientSubtotal}
+        initialView="choice"
+      />
 
-            {/* Carrito preview simple */}
-            {cart.length > 0 && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-gray-300">
-                <span className="flex items-center gap-1.5">
-                  <ShoppingCart className="w-4 h-4 text-red-500" /> {getTotalItems()} productos en tu carrito
+      {/* Modal de Personalización Individual de Eventos */}
+      {showPersonalizarEventoModal && (
+        <Suspense fallback={null}>
+          <PersonalizarEventoModal
+            isOpen={true}
+            onClose={() => setShowPersonalizarEventoModal(false)}
+            evento={eventoParaPersonalizar}
+            producto={productoParaEvento}
+            productosList={activeProductos}
+            adicionesList={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
+            allBebidas={bebidasDisponibles}
+            fichasMap={fichasMap}
+            ratingsMap={ratingsMap}
+            onOpenResenas={(prod) => {
+              setProductoParaResenas(prod);
+              setShowResenasModal(true);
+            }}
+            onAddToCart={(item, selectedDrinks = []) => {
+              const itemsToBatch = [item];
+              if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
+                for (const b of selectedDrinks) {
+                  itemsToBatch.push({
+                    id: b.id || b.idProducto,
+                    idProducto: b.idProducto || b.id,
+                    idVariante: b.idVariante || b.id || b.idProducto,
+                    nombre: b.nombre,
+                    precio: Number(b.precio || 0),
+                    cantidad: Number(b.cantidad || 1),
+                    stock: Number(b.stock !== undefined ? b.stock : 30),
+                    imagen: resolveDrinkImage(b),
+                    esBebida: true,
+                    categoria: "Bebidas",
+                    adiciones: []
+                  });
+                }
+              }
+              const res = addToCart(itemsToBatch);
+              if (res && res.success === false) {
+                error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
+                return;
+              }
+              const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
+              success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
+            }}
+            getProductQuantityInCart={getProductQuantityInCart}
+          />
+        </Suspense>
+      )}
+      </main>
+
+      {/* ═══ 6. BARRA FLOTANTE RESUMEN DEL PEDIDO (PREVIEW) ═══ */}
+      {cart.length > 0 && !showCart && !showCheckout && (
+        <aside
+          aria-label="Resumen de tu Pedido"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-xl animate-in slide-in-from-bottom-6 duration-300 pointer-events-auto"
+        >
+          <div className="bg-slate-900/95 dark:bg-gray-900/95 backdrop-blur-md text-white px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl shadow-2xl border border-red-500/30 flex items-center justify-between gap-3">
+            <div
+              className="flex items-center gap-3 cursor-pointer select-none min-w-0 group"
+              onClick={() => setShowCart(true)}
+              title="Abrir detalle del carrito"
+            >
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                <ShoppingCart className="w-5 h-5 text-white" />
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-white text-red-600 text-[11px] font-black flex items-center justify-center shadow-xs">
+                  {getTotalItems()}
                 </span>
-                <span className="font-black text-red-600 dark:text-red-400">${clientSubtotal.toLocaleString('es-CO')}</span>
               </div>
-            )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
+                    Resumen de tu Pedido
+                  </span>
+                  <span className="text-[10px] text-slate-400">• {getTotalItems()} {getTotalItems() === 1 ? "ítem" : "ítems"}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm font-black text-white truncate">
+                    Total: <span className="text-red-400 font-extrabold">${clientSubtotal.toLocaleString("es-CO")}</span>
+                  </p>
+                  {/* Vista previa de miniaturas en barra flotante (Ítem #6) */}
+                  <div className="hidden sm:flex items-center -space-x-1.5 overflow-hidden ml-1">
+                    {cart.slice(0, 3).map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 overflow-hidden shrink-0 shadow-2xs"
+                        title={`${it.cantidad}x ${it.nombre}`}
+                      >
+                        {it.imagen ? (
+                          <img src={it.imagen} alt={it.nombre} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-amber-400 bg-red-950">
+                            {it.nombre?.[0] || 'P'}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {cart.length > 3 && (
+                      <span className="text-[10px] text-slate-400 font-bold pl-2">+{cart.length - 3}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <div className="flex flex-col gap-2.5 pt-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
-                  setShowEmptyCartLoginModal(false);
-                  navigate("/login");
-                }}
-                className="w-full py-3.5 px-4 bg-red-500 hover:bg-red-600 text-white font-extrabold rounded-2xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                onClick={() => setShowCart(true)}
+                className="hidden sm:inline-flex px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-slate-200 transition cursor-pointer"
               >
-                <LogIn className="w-4 h-4" />
-                <span>Iniciar Sesión</span>
+                Ver Detalle
               </button>
-
               <button
                 type="button"
-                onClick={() => {
-                  setShowEmptyCartLoginModal(false);
-                  navigate("/login?tab=register");
-                }}
-                className="w-full py-3.5 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-sm transition-all cursor-pointer"
+                onClick={handleAbrirCheckout}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-xs sm:text-sm shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
-                Crear Cuenta Nueva
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowEmptyCartLoginModal(false)}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors py-1 cursor-pointer"
-              >
-                Seguir viendo el menú
+                <span>Pagar</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </div>
+        </aside>
       )}
-
-      {/* Modal de Personalización Individual de Eventos */}
-      <PersonalizarEventoModal
-        isOpen={showPersonalizarEventoModal}
-        onClose={() => setShowPersonalizarEventoModal(false)}
-        evento={eventoParaPersonalizar}
-        producto={productoParaEvento}
-        productosList={activeProductos}
-        adicionesList={foodAdiciones.length > 0 ? foodAdiciones : activeAdiciones}
-        allBebidas={bebidasDisponibles}
-        fichasMap={fichasMap}
-        ratingsMap={ratingsMap}
-        onOpenResenas={(prod) => {
-          setProductoParaResenas(prod);
-          setShowResenasModal(true);
-        }}
-        onAddToCart={(item, selectedDrinks = []) => {
-          const res = addToCart(item);
-          if (res && res.success === false) {
-            error("Stock insuficiente", res.message || "No hay suficiente stock disponible para este producto.");
-            return;
-          }
-          if (Array.isArray(selectedDrinks) && selectedDrinks.length > 0) {
-            for (const b of selectedDrinks) {
-              addToCart({
-                id: b.id || b.idProducto,
-                idProducto: b.idProducto || b.id,
-                nombre: b.nombre,
-                precio: Number(b.precio || 0),
-                cantidad: 1,
-                esBebida: true,
-                categoria: "Bebidas"
-              });
-            }
-          }
-          const drinksNotice = selectedDrinks.length > 0 ? ` y ${selectedDrinks.length} bebida(s)` : "";
-          success("¡Agregado al carrito!", `${item.nombre}${drinksNotice} se agregó correctamente.`);
-        }}
-        getProductQuantityInCart={getProductQuantityInCart}
-      />
 
       {/* Pie de Página / Sección de Créditos del Equipo */}
       <ClienteFooter />
 
       {/* Modal Reseñas de Producto (renders over PersonalizarEventoModal) */}
-      <ProductoResenasModal
-        isOpen={showResenasModal}
-        onClose={() => {
-          setShowResenasModal(false);
-          // Refresh ratings
-          if (productosList.length > 0) {
-            const pIds = productosList.map(p => p.id || p.idProducto).join(',');
-            apiClient.get(`/resenas/ratings?ids=${pIds}`)
-              .then(res => { if (res) setRatingsMap(res); })
-              .catch(() => {});
-          }
-        }}
-        producto={productoParaResenas}
-      />
+      {showResenasModal && (
+        <Suspense fallback={null}>
+          <ProductoResenasModal
+            isOpen={true}
+            onClose={() => {
+              setShowResenasModal(false);
+              // Refresh ratings
+              if (productosList.length > 0) {
+                const pIds = productosList.map(p => p.id || p.idProducto).join(',');
+                apiClient.get(`/resenas/ratings?ids=${pIds}`)
+                  .then(res => { if (res) setRatingsMap(res); })
+                  .catch(() => {});
+              }
+            }}
+            producto={productoParaResenas}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

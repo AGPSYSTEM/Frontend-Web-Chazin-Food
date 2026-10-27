@@ -89,3 +89,22 @@ export const getProductEmoji = (name = "") => {
   if (normalized.includes("combo") || normalized.includes("pareja") || normalized.includes("familiar")) return "combo";
   return "plate";
 };
+
+/**
+ * Normaliza y formatea el nombre visual del tipo de evento para clientes y administración.
+ * En particular, convierte "Añadir Insumos" o referencias a insumos de cortesía a "Topping Extra".
+ */
+export const formatTipoEvento = (tipo) => {
+  if (!tipo) return "Evento Activo";
+  const str = String(tipo).trim();
+  const lower = str.toLowerCase();
+  if (lower.includes("insumo") || lower.includes("topping")) {
+    return "Topping Extra";
+  }
+  if (lower === "edicion_limitada") return "Edición Limitada";
+  if (lower === "combo_especial") return "Combo Especial";
+  if (lower === "promocion_2x1") return "Promoción 2x1";
+  if (lower === "descuento_general" || lower === "descuento") return "Descuento";
+  return str;
+};
+

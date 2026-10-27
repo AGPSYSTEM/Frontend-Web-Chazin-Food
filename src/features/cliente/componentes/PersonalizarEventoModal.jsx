@@ -16,21 +16,21 @@ import {
   Check,
   Send,
   UtensilsCrossed,
-  Lock
+  Lock,
+  AlertCircle
 } from "lucide-react";
 import { extractPersonalizables, resolveNutritionalSpecs, isEssentialIngredient } from "@/shared/components/ui/FastFoodProductModal";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 
 const QUICK_KITCHEN_TAGS = [
   "Salsas aparte",
   "Bien cocido/a",
   "Término medio",
   "Sin sal adicional",
-  "Empaque para llevar",
   "Poco picante",
   "Servir caliente"
 ];
@@ -117,6 +117,7 @@ export function PersonalizarEventoModal({
   const [hoverRating, setHoverRating] = useState(0);
   const [newComment, setNewComment] = useState("");
   const [guestName, setGuestName] = useState("");
+  const [reviewTouched, setReviewTouched] = useState({ guestName: false, comment: false });
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewFeedback, setReviewFeedback] = useState(null);
 
@@ -131,6 +132,7 @@ export function PersonalizarEventoModal({
       setCustomObservation("");
       setShowWriteReview(false);
       setReviewFeedback(null);
+      setReviewTouched({ guestName: false, comment: false });
       if (initialProducto) {
         setSelectedProduct(initialProducto);
       } else if (eventProducts.length > 0) {
@@ -218,13 +220,18 @@ export function PersonalizarEventoModal({
   // Submit review form inside tab
   const handleSubmitReview = async (e) => {
     e?.preventDefault();
+    setReviewTouched({ guestName: true, comment: true });
     if (!prodId) return;
     if (newRating < 1) {
       setReviewFeedback({ type: "error", message: "Selecciona una calificación de 1 a 5 estrellas." });
       return;
     }
-    if (!newComment.trim()) {
-      setReviewFeedback({ type: "error", message: "Escribe un breve comentario sobre tu experiencia gastronómica." });
+    if ((!user || !user.nombre) && (!guestName || guestName.trim().length < 2)) {
+      setReviewFeedback({ type: "error", message: "El nombre debe tener al menos 2 caracteres." });
+      return;
+    }
+    if (!newComment.trim() || newComment.trim().length < 5) {
+      setReviewFeedback({ type: "error", message: "El comentario debe tener al menos 5 caracteres." });
       return;
     }
 
@@ -482,13 +489,13 @@ export function PersonalizarEventoModal({
         icono: evento.icono || "party"
       },
       adiciones: selectedAdditions.map((a) => ({
-        idAdicion: a.idAdicion,
+        idAdicion: a.idAdicion || a.id,
         nombre: a.nombre,
         precio: Number(a.precio) || 0,
         cantidad: Number(a.cantidad) || 1,
         imagen: a.imagen || "sauce"
       })),
-      ingredientesRemovidos: removedIngredients.filter((r) => !isEssentialIngredient(r, selectedProduct)),
+      ingredientesRemovidos: removedIngredients,
       observaciones: kitchenNotes || undefined,
       observacion: kitchenNotes || undefined
     };
@@ -527,12 +534,12 @@ export function PersonalizarEventoModal({
       <div className="bg-white dark:bg-gray-900 rounded-3xl sm:rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[94vh] sm:h-[90vh] sm:max-h-[860px] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         
         {/* ── 1. Festival Drop Top Ribbon (Evento Activo) ── */}
-        <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
+        <div className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-black uppercase tracking-wider shadow-md shrink-0 z-30">
           <div className="flex items-center gap-2 min-w-0">
             <FoodIcon name={evento.icono || "party"} size={16} className="shrink-0 animate-pulse" />
             <span className="truncate">{stripEmojis(evento.nombreEvento || evento.nombre || "Promoción Especial")}</span>
             <span className="hidden sm:inline-flex bg-white/20 backdrop-blur-xs text-[10px] px-2 py-0.5 rounded-full font-bold">
-              {evento.tipoEvento || "EVENTO ESPECIAL"}
+              {formatTipoEvento(evento.tipoEvento) || "EVENTO ESPECIAL"}
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-200 shrink-0">
@@ -568,12 +575,12 @@ export function PersonalizarEventoModal({
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `radial-gradient(ellipse at center, rgba(168,85,247,0.22) 0%, rgba(79,70,229,0.12) 45%, transparent 70%)`
+                    background: `radial-gradient(ellipse at center, rgba(239,68,68,0.25) 0%, rgba(245,158,11,0.12) 45%, transparent 70%)`
                   }}
                 />
               </>
             ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-indigo-950/50 to-gray-950" />
+              <div className="absolute inset-0 bg-gradient-to-br from-red-950/40 via-stone-900/50 to-gray-950" />
             )}
 
             {/* Dark gradient scrim at bottom to ensure 100% text readability */}
@@ -600,12 +607,12 @@ export function PersonalizarEventoModal({
                 <FoodIcon name={selectedProduct?.nombre} category={selectedProduct?.categoria} size={15} stroke={2} className="text-amber-400" />
                 <span>{selectedProduct?.categoria || selectedProduct?.categoriaNombre || "Plato del Evento"}</span>
               </span>
-              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
+              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-amber-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>
                   {evento.tipoEvento === "Descuento"
                     ? `-${evento.descuento}% OFF`
-                    : evento.tipoEvento || "Promoción Especial"}
+                    : formatTipoEvento(evento.tipoEvento) || "Promoción Especial"}
                 </span>
               </span>
             </div>
@@ -636,9 +643,9 @@ export function PersonalizarEventoModal({
           {eventProducts.length > 1 && (
             <div className="px-4 sm:px-6 pt-3 pb-1 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-400 flex items-center gap-1.5">
+                <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Elige el plato a personalizar:
+                  Platos incluidos en la promoción:
                 </span>
                 <span className="text-[10.5px] font-bold text-gray-400">
                   {eventProducts.length} opciones
@@ -657,7 +664,7 @@ export function PersonalizarEventoModal({
                       }}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                         isSelected
-                          ? "border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 ring-2 ring-purple-500/30 font-black shadow-xs"
+                          ? "border-red-600 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 ring-2 ring-red-500/30 font-black shadow-xs"
                           : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
                       }`}
                     >
@@ -738,13 +745,13 @@ export function PersonalizarEventoModal({
           )}
 
           {/* ═══ 6. BENEFICIOS EXCLUSIVOS DEL EVENTO ═══ */}
-          <div className="mx-4 sm:mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 text-sm shadow-xs font-bold mt-0.5">
+          <div className="mx-4 sm:mx-6 mt-3 p-3.5 rounded-2xl bg-red-50/80 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#f05454] text-white flex items-center justify-center shrink-0 text-sm shadow-xs font-bold mt-0.5">
               <Sparkles className="w-4 h-4 text-amber-300" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-black text-xs text-purple-800 dark:text-purple-300 uppercase tracking-wider">
+                <span className="font-black text-xs text-red-800 dark:text-red-300 uppercase tracking-wider">
                   Beneficios de esta Promoción:
                 </span>
                 {savings > 0 && (
@@ -753,28 +760,28 @@ export function PersonalizarEventoModal({
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-purple-900/90 dark:text-purple-200 leading-relaxed font-medium">
-                {evento.descripcion || "Disfruta de esta oferta gastronómica especial por tiempo limitado."}
+              <p className="text-xs sm:text-sm text-red-900/90 dark:text-red-200 leading-relaxed font-medium">
+                {evento.descripcion && !/^(test|prueba|asdf)$/i.test(evento.descripcion.trim())
+                  ? evento.descripcion
+                  : "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta de la casa."}
               </p>
             </div>
           </div>
 
-          {/* ═══ 7. SEGMENTED TABS NAVIGATION (IDÉNTICO A FASTFOODPRODUCTMODAL) ═══ */}
+          {/* ═══ 7. SEGMENTED TABS NAVIGATION (PRODUCCIÓN & RECETA PROMOCIONAL) ═══ */}
           <div className="px-4 sm:px-6 pt-3 pb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md z-10 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveTab("personalizar")}
-                className={`flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                className={`flex-1 min-w-[120px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
                   activeTab === "personalizar"
                     ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                 }`}
               >
                 <ChefHat className="w-3.5 h-3.5" />
-                <span>
-                  {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
-                </span>
+                <span>Receta de la Promoción</span>
                 {removedIngredients.length > 0 && (
                   <span className="h-4 w-4 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
                     {removedIngredients.length}
@@ -782,23 +789,25 @@ export function PersonalizarEventoModal({
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("adiciones")}
-                className={`flex-1 min-w-[100px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
-                  activeTab === "adiciones"
-                    ? "bg-white dark:bg-gray-900 text-[#f05454] dark:text-red-400 shadow-sm"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <span>Adiciones</span>
-                {selectedAdditions.length > 0 && (
-                  <span className="h-4 min-w-[16px] px-1 rounded-full bg-[#f05454] text-white text-[10px] flex items-center justify-center font-black">
-                    {selectedAdditions.length}
-                  </span>
-                )}
-              </button>
+              {adicionesList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("adiciones")}
+                  className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    activeTab === "adiciones"
+                      ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Toppings & Extras</span>
+                  {selectedAdditions.length > 0 && (
+                    <span className="h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black">
+                      {selectedAdditions.reduce((sum, a) => sum + (Number(a.cantidad) || 1), 0)}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {allBebidas.length > 0 && (
                 <button
@@ -853,7 +862,7 @@ export function PersonalizarEventoModal({
                       Mise en Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Fórmula oficial de cocina e ingredientes personalizables:
+                      Variante e ingredientes personalizables:
                     </p>
                   </div>
                   {removedIngredients.length > 0 && (
@@ -902,50 +911,54 @@ export function PersonalizarEventoModal({
                   </div>
                 )}
 
-                {/* ── SECCIÓN 2: INGREDIENTES PERSONALIZABLES (EXCLUSIONES A PETICIÓN) ── */}
+                {/* ── SECCIÓN 2: INGREDIENTES DE LA OFERTA CERRADA (Ítems #8 y #17) ── */}
                 {customizableIngredients.length > 0 ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
-                        ¿Deseas retirar algún ingrediente de tu pedido?
+                        Ingredientes y complementos incluidos en la oferta:
                       </p>
-                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                        Toca para alternar (Con / Sin)
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/50">
+                        Fórmula cerrada de promoción
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {customizableIngredients.map((ing) => {
                         const isRemoved = removedIngredients.includes(ing.nombre);
                         return (
-                          <button
+                          <div
                             key={ing.id}
-                            type="button"
                             onClick={() => toggleRemoveIngredient(ing.nombre)}
-                            className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 cursor-pointer active:scale-98 select-none ${
+                            className={`p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-2xs select-none cursor-pointer transition-all ${
                               isRemoved
-                                ? "border-red-400 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-xs ring-2 ring-red-400/40"
-                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-750"
+                                ? "border-red-400 bg-red-50/70 dark:bg-red-950/30 opacity-80 ring-1 ring-red-400/30"
+                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200"
                             }`}
+                            title={isRemoved ? "Clic para volver a incluir este ingrediente" : "Clic para pedir sin este ingrediente"}
                           >
                             <span className="flex items-center gap-2.5 truncate">
-                              <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
+                              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                                isRemoved ? "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300" : "bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-gray-200"
+                              }`}>
                                 <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
                               </span>
-                              <span className={`truncate ${isRemoved ? "line-through opacity-75" : ""}`}>
+                              <span className={`truncate text-xs font-bold ${
+                                isRemoved ? "line-through text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"
+                              }`}>
                                 {ing.nombre}
                               </span>
                             </span>
-                            <span
-                              className={`text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 transition-colors ${
-                                isRemoved
-                                  ? "bg-red-500 text-white"
-                                  : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40"
-                              }`}
-                            >
-                              {isRemoved ? "Sin" : "Con"}
-                            </span>
-                          </button>
+                            {isRemoved ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/50 flex items-center gap-1">
+                                <X className="w-3 h-3 stroke-[3]" /> Quitado
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                                <Check className="w-3 h-3 stroke-[3]" /> Incluido
+                              </span>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -1249,29 +1262,51 @@ export function PersonalizarEventoModal({
                     {(!user || !user.nombre) && (
                       <div>
                         <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">
-                          Tu Nombre:
+                          Tu Nombre: <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
                           value={guestName}
+                          onBlur={() => setReviewTouched((prev) => ({ ...prev, guestName: true }))}
                           onChange={(e) => setGuestName(e.target.value)}
                           placeholder="Ej. Sofía Morales"
-                          className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          className={`w-full text-xs px-3 py-2 rounded-xl border transition-colors outline-none ${
+                            reviewTouched.guestName && (!guestName || guestName.trim().length < 2)
+                              ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-400"
+                          }`}
                         />
+                        {reviewTouched.guestName && (!guestName || guestName.trim().length < 2) && (
+                          <p className="flex items-center gap-1 text-[11px] text-red-600 mt-1 font-medium">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                            <span>El nombre debe tener al menos 2 caracteres.</span>
+                          </p>
+                        )}
                       </div>
                     )}
 
                     <div>
                       <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-300 mb-1">
-                        ¿Qué tal estuvo la preparación y sabor?
+                        ¿Qué tal estuvo la preparación y sabor? <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         rows={3}
                         value={newComment}
+                        onBlur={() => setReviewTouched((prev) => ({ ...prev, comment: true }))}
                         onChange={(e) => setNewComment(e.target.value)}
                         placeholder="Comparte tu experiencia con otros clientes..."
-                        className="w-full text-xs p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                        className={`w-full text-xs p-3 rounded-xl border transition-colors outline-none resize-none ${
+                          reviewTouched.comment && (!newComment.trim() || newComment.trim().length < 5)
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-amber-400"
+                        }`}
                       />
+                      {reviewTouched.comment && (!newComment.trim() || newComment.trim().length < 5) && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-600 mt-1 font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                          <span>El comentario debe tener al menos 5 caracteres.</span>
+                        </p>
+                      )}
                     </div>
 
                     {reviewFeedback && (
@@ -1320,7 +1355,7 @@ export function PersonalizarEventoModal({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-red-600 to-amber-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
                               {r.usuario?.nombre ? r.usuario.nombre.slice(0, 2).toUpperCase() : "C"}
                             </div>
                             <span className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">
@@ -1407,7 +1442,7 @@ export function PersonalizarEventoModal({
                 placeholder="Ej: Término medio, salsas aparte, servilletas adicionales..."
                 value={customObservation}
                 onChange={(e) => setCustomObservation(e.target.value)}
-                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-purple-600 transition"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-red-500 transition"
               />
             </div>
           </div>
@@ -1447,7 +1482,7 @@ export function PersonalizarEventoModal({
               <span className="text-[10px] text-gray-400 uppercase font-black tracking-wider block">
                 Total a pagar
               </span>
-              <span className="text-lg font-black text-purple-700 dark:text-purple-400">
+              <span className="text-lg font-black text-[#f05454] dark:text-red-400">
                 ${grandTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -1462,7 +1497,7 @@ export function PersonalizarEventoModal({
             </div>
             <div className="flex items-baseline gap-1 justify-end">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total:</span>
-              <span className="text-xl font-black text-purple-700 dark:text-purple-400 leading-none">
+              <span className="text-xl font-black text-[#f05454] dark:text-red-400 leading-none">
                 ${grandTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -1472,11 +1507,11 @@ export function PersonalizarEventoModal({
           <button
             type="button"
             onClick={handleConfirmAddToCart}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-800 hover:to-indigo-700 text-white font-black text-sm shadow-[0_8px_20px_rgba(126,34,206,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-amber-600 to-[#f05454] hover:from-red-700 hover:to-amber-700 text-white font-black text-sm shadow-[0_8px_20px_rgba(240,84,84,0.35)] transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0"
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
             <span>
-              Agregar al Carrito • ${grandTotal.toLocaleString("es-CO")}
+              Aprovechar Promoción • ${grandTotal.toLocaleString("es-CO")}
             </span>
           </button>
         </div>

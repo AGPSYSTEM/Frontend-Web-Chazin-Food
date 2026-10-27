@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
+import { validateContrasena, validateConfirmarContrasena } from "@/shared/utils/validationUtils";
 
 export function ResetPassword() {
   const navigate = useNavigate();
@@ -13,39 +14,59 @@ export function ResetPassword() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [touched, setTouched] = useState({ nueva: false, confirmar: false });
+  const [submitted, setSubmitted] = useState(false);
 
   const token = searchParams.get("token");
-  const email = searchParams.get("email");
+  let emailParam = searchParams.get("email");
+
+  // Fallback: Si no viene email en query params, extraerlo del payload JWT del token
+  if (!emailParam && token) {
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload?.email) {
+          emailParam = payload.email;
+        }
+      }
+    } catch {
+      // Ignorar fallback si falla el atob
+    }
+  }
+
+  const email = emailParam ? decodeURIComponent(emailParam) : "";
 
   useEffect(() => {
-    if (!token || !email) {
+    if (!token) {
       toast.error("Enlace inválido", "El enlace de recuperación no es válido");
       setTimeout(() => navigate("/login"), 2000);
     }
-  }, [token, email, navigate, toast]);
+  }, [token, navigate, toast]);
 
-  const validatePassword = (password) => {
-    if (password.length < 6) {
-      return { valid: false, message: "La contraseña debe tener al menos 6 caracteres" };
-    }
-    return { valid: true };
-  };
+  const valNueva = validateContrasena(nuevaContraseña, 6);
+  const valConfirmar = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
+
+  const errorNueva = (touched.nueva || submitted) && !valNueva.isValid ? valNueva.error : "";
+  const errorConfirmar = (touched.confirmar || submitted) && !valConfirmar.isValid ? valConfirmar.error : "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nuevaContraseña || !confirmarContraseña) {
-      toast.error("Campos requeridos", "Por favor completa todos los campos");
+    setSubmitted(true);
+    setTouched({ nueva: true, confirmar: true });
+
+    const checkPass = validateContrasena(nuevaContraseña, 6);
+    const checkConf = validateConfirmarContrasena(nuevaContraseña, confirmarContraseña);
+
+    if (!checkPass.isValid) {
+      toast.error("Campos requeridos", checkPass.error);
       return;
     }
-    const validation = validatePassword(nuevaContraseña);
-    if (!validation.valid) {
-      toast.error("Contraseña inválida", validation.message);
+    if (!checkConf.isValid) {
+      toast.error("Campos requeridos", checkConf.error);
       return;
     }
-    if (nuevaContraseña !== confirmarContraseña) {
-      toast.error("Las contraseñas no coinciden", "Por favor verifica que ambas contraseñas sean iguales");
-      return;
-    }
+
     setIsLoading(true);
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -54,7 +75,7 @@ export function ResetPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
-          email: decodeURIComponent(email),
+          email: email || undefined,
           contrasena: nuevaContraseña
         })
       });
@@ -78,7 +99,7 @@ export function ResetPassword() {
     }
   };
 
-  if (!token || !email) {
+  if (!token) {
     return null;
   }
 
@@ -116,19 +137,27 @@ export function ResetPassword() {
               <h1 className="text-3xl font-bold text-center text-gray-800 mb-3">
                 Restablecer Contraseña
               </h1>
-              <p className="text-center text-gray-600 mb-2">
-                Restableciendo contraseña para:
-              </p>
-              <p className="text-center font-semibold text-red-600 mb-6">
-                {decodeURIComponent(email)}
-              </p>
+              {email ? (
+                <>
+                  <p className="text-center text-gray-600 mb-2">
+                    Restableciendo contraseña para:
+                  </p>
+                  <p className="text-center font-semibold text-red-600 mb-6">
+                    {email}
+                  </p>
+                </>
+              ) : (
+                <p className="text-center text-gray-600 mb-6">
+                  Ingresa tu nueva contraseña para continuar
+                </p>
+              )}
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Nueva contraseña */}
                 <div>
                   <label htmlFor="nueva" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Nueva Contraseña
+                    Nueva Contraseña <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -136,18 +165,34 @@ export function ResetPassword() {
                       id="nueva"
                       type={showPasswords ? "text" : "password"}
                       value={nuevaContraseña}
-                      onChange={(e) => setNuevaContraseña(e.target.value)}
+                      onChange={(e) => {
+                        setNuevaContraseña(e.target.value);
+                        setTouched(prev => ({ ...prev, nueva: true }));
+                      }}
+                      onBlur={() => setTouched(prev => ({ ...prev, nueva: true }))}
                       placeholder="Ingresa tu nueva contraseña"
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className={`w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:outline-none transition-all text-gray-800 font-medium ${
+                        errorNueva
+                          ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                          : touched.nueva && nuevaContraseña.length >= 6
+                          ? "border-emerald-500/80 bg-white focus:border-emerald-500"
+                          : "border-gray-200 bg-gray-50 focus:border-red-500 focus:bg-white"
+                      }`}
                       disabled={isLoading}
                     />
                   </div>
+                  {errorNueva && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{errorNueva}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Confirmar contraseña */}
                 <div>
                   <label htmlFor="confirmar" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Confirmar Contraseña
+                    Confirmar Contraseña <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -155,12 +200,28 @@ export function ResetPassword() {
                       id="confirmar"
                       type={showPasswords ? "text" : "password"}
                       value={confirmarContraseña}
-                      onChange={(e) => setConfirmarContraseña(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmarContraseña(e.target.value);
+                        setTouched(prev => ({ ...prev, confirmar: true }));
+                      }}
+                      onBlur={() => setTouched(prev => ({ ...prev, confirmar: true }))}
                       placeholder="Confirma tu nueva contraseña"
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className={`w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:outline-none transition-all text-gray-800 font-medium ${
+                        errorConfirmar
+                          ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                          : touched.confirmar && confirmarContraseña && confirmarContraseña === nuevaContraseña
+                          ? "border-emerald-500/80 bg-white focus:border-emerald-500"
+                          : "border-gray-200 bg-gray-50 focus:border-red-500 focus:bg-white"
+                      }`}
                       disabled={isLoading}
                     />
                   </div>
+                  {errorConfirmar && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{errorConfirmar}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Botón único para mostrar/ocultar ambas contraseñas */}

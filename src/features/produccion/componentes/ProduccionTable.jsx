@@ -1,7 +1,7 @@
 import { Eye, Trash2, User, Clock, AlertCircle, ArrowRight, CheckCircle2, Check, X, FileText } from "lucide-react";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
-export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails }) {
+export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onViewDetails, canEdit = true, canDelete = true }) {
   const getNextStatusConfig = (currentStatus) => {
     switch (currentStatus) {
       case "En Cola":
@@ -59,8 +59,6 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
               </tr>
             ) : (
               ordenes.map((o) => {
-                const isPorAprobar = o.estado === "Por Aprobar" || o.estadoAprobacion === "PENDIENTE";
-                const isRechazado = o.estado === "Rechazado" || o.estadoAprobacion === "RECHAZADO" || o.estado === "Anulada";
                 const nextConfig = getNextStatusConfig(o.estado);
 
                 return (
@@ -80,7 +78,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => onView(o)}
+                                  onClick={() => onViewDetails && onViewDetails(o)}
                                   className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition shadow-2xs whitespace-nowrap"
                                   title="Ver todos los platillos en el detalle de la orden"
                                 >
@@ -91,7 +89,7 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                               <span>{o.platilloNombre}</span>
                             )}
                             {o.alerta && (
-                              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" title="Pendiente de aprobación / Alerta especial" />
+                              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" title="Alerta especial en orden" />
                             )}
                           </div>
                           <div className="text-xs text-gray-400 font-mono">{o.codigo || `OP-00${o.id}`}</div>
@@ -106,15 +104,28 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                                 return (
                                   <div key={pIdx} className="text-[11px] space-y-0.5">
                                     {adds.length > 0 && (
-                                      <div className="flex flex-wrap gap-1">
-                                        {adds.map((ad, aIdx) => (
+                                      <div className="flex flex-wrap gap-1 items-center">
+                                        {adds.slice(0, 2).map((ad, aIdx) => (
                                           <span
                                             key={aIdx}
                                             className="px-1.5 py-0.5 bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-300 font-bold rounded text-[10px] border border-red-100 dark:border-red-900/50"
                                           >
-                                            + {typeof ad === "object" ? ad.nombre : String(ad)}
+                                            + {typeof ad === "object" ? (ad.nombre || ad.nombreAdicion) : String(ad)}
                                           </span>
                                         ))}
+                                        {adds.length > 2 && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onViewDetails && onViewDetails(o);
+                                            }}
+                                            className="px-1.5 py-0.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-[#F05454] dark:text-red-300 font-bold rounded text-[10px] border border-red-200 dark:border-red-800 transition cursor-pointer"
+                                            title="Ver todas las adiciones en el detalle de la orden"
+                                          >
+                                            +{adds.length - 2} más adiciones →
+                                          </button>
+                                        )}
                                       </div>
                                     )}
                                     {obs && (
@@ -132,8 +143,11 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                               {o.productos.length > 2 && o.productos.slice(2).some(p => (Array.isArray(p.adiciones) && p.adiciones.length > 0) || p.observaciones) && (
                                 <button
                                   type="button"
-                                  onClick={() => onView(o)}
-                                  className="text-[10px] font-bold text-gray-400 hover:text-[#F05454] transition cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onViewDetails && onViewDetails(o);
+                                  }}
+                                  className="text-[10px] font-bold text-gray-400 hover:text-[#F05454] dark:hover:text-red-400 transition cursor-pointer inline-flex items-center gap-1"
                                 >
                                   + más adiciones en detalle →
                                 </button>
@@ -170,30 +184,32 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                       </div>
                     </td>
 
-                    {/* Prioridad */}
+                    {/* Prioridad Secuencial (Turno de Preparación en Cocina - Ítem 117) */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                          o.prioridad === "Alta"
-                            ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                            : o.prioridad === "Media"
-                            ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-                        }`}
-                      >
-                        {o.prioridad || "Normal"}
-                      </span>
+                      {o.prioridad ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black shadow-2xs ${
+                            o.prioridad === 1
+                              ? "bg-red-500 text-white ring-2 ring-red-300 dark:ring-red-900"
+                              : o.prioridad === 2
+                              ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                              : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                          }`}
+                        >
+                          <span>Turno #{o.prioridad}</span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500 text-xs font-medium">
+                          -
+                        </span>
+                      )}
                     </td>
 
-                    {/* Estado */}
+                    {/* Estado de Cocina */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                          isPorAprobar
-                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                            : isRechazado
-                            ? "bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                            : o.estado === "En Preparación"
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
+                          o.estado === "En Preparación"
                             ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                             : o.estado === "Listo" || o.estado === "Listos"
                             ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
@@ -201,58 +217,36 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                             ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                             : o.estado === "Entregado"
                             ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                            : "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                         }`}
                       >
-                        {isPorAprobar && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
-                        {isRechazado && <X className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />}
-                        <span>{isPorAprobar ? "Por Aprobar" : isRechazado ? "Rechazado" : o.estado}</span>
+                        {o.estado === "En Cola" && <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                        {o.estado === "En Preparación" && <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                        {(o.estado === "Listo" || o.estado === "Listos") && <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />}
+                        {o.estado === "Entregado" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                        <span>{o.estado}</span>
                       </span>
                     </td>
 
                     {/* Avanza a */}
                     <td className="px-6 py-4 text-center whitespace-nowrap">
-                      {isPorAprobar ? (
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => onUpdateEstado && onUpdateEstado(o.id, "Aprobado")}
-                            title="Aprobar pedido y enviar a cocina"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Aprobar</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onUpdateEstado && onUpdateEstado(o.id, "Rechazado")}
-                            title="Rechazar pedido"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>Rechazar</span>
-                          </button>
-                        </div>
-                      ) : isRechazado ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
-                          <X className="w-3.5 h-3.5" />
-                          <span>Rechazado</span>
-                        </span>
-                      ) : nextConfig ? (
+                      {nextConfig && canEdit ? (
                         <button
                           type="button"
                           onClick={() => onUpdateEstado && onUpdateEstado(o.id, nextConfig.next)}
                           title={`Avanzar estado a: ${nextConfig.next}`}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${nextConfig.color}`}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 ${nextConfig.color}`}
                         >
                           <span>{nextConfig.label}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                      ) : !nextConfig ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Completado</span>
                         </span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
 
@@ -270,14 +264,16 @@ export function ProduccionTable({ ordenes = [], onUpdateEstado, onDelete, onView
                         </button>
 
                         {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => onDelete && onDelete(o.id)}
-                          title="Eliminar orden"
-                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => onDelete && onDelete(o.id)}
+                            title="Eliminar orden"
+                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

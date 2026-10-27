@@ -247,24 +247,14 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                   </p>
                 </div>
 
-                {/* Fechas */}
+                {/* Stock Máximo */}
                 <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Fecha Expedición</span>
+                    <Layers className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Stock Máximo Capacidad</span>
                   </div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300">
-                    {insumo.fechaExpedicion || "No registrada"}
-                  </p>
-                </div>
-
-                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Fecha Vencimiento</span>
-                  </div>
-                  <p className="font-medium text-gray-700 dark:text-gray-300">
-                    {insumo.fechaVencimiento || "No especificada"}
+                  <p className="font-semibold text-gray-800 dark:text-gray-200">
+                    {Number(insumo.stockMaximo !== undefined && insumo.stockMaximo !== null ? insumo.stockMaximo : 100).toLocaleString("es-CO")} <span className="text-xs font-medium text-gray-500">{insumo.unidadMedida || "und"}</span>
                   </p>
                 </div>
               </div>
@@ -466,8 +456,13 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                         const cantDisp = parseFloat(lot.cantidadDisponible ?? lot.cantidad ?? 0);
                         const fechaVenc = lot.fechaVencimiento;
                         let estaVencido = false;
+                        let diasPorVencer = null;
                         if (fechaVenc) {
-                          estaVencido = new Date(fechaVenc) < new Date();
+                          const vDate = new Date(`${String(fechaVenc).split("T")[0]}T23:59:59`);
+                          const now = new Date();
+                          const diffMs = vDate.getTime() - now.getTime();
+                          diasPorVencer = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                          estaVencido = diffMs < 0;
                         }
 
                         return (
@@ -479,7 +474,7 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                               </span>
                               {lot.idCompra && (
                                 <span className="text-[10px] text-gray-400 block mt-0.5">
-                                  Orden de Compra #{lot.idCompra}
+                                  Compra #{lot.idCompra}
                                 </span>
                               )}
                             </td>
@@ -493,11 +488,17 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                                 <span className={`inline-flex items-center gap-1 text-xs font-medium ${
                                   estaVencido
                                     ? "text-red-600 dark:text-red-400 font-bold"
+                                    : diasPorVencer <= 5
+                                    ? "text-amber-600 dark:text-amber-400 font-bold"
                                     : "text-gray-700 dark:text-gray-300"
                                 }`}>
                                   <Calendar className="w-3 h-3 text-amber-500" />
                                   {fechaVenc}
-                                  {estaVencido && <span className="text-[10px] text-red-500 font-bold">(Vencido)</span>}
+                                  {estaVencido ? (
+                                    <span className="text-[10px] text-red-500 font-bold">(Vencido hace {Math.abs(diasPorVencer)}d)</span>
+                                  ) : diasPorVencer <= 5 ? (
+                                    <span className="text-[10px] text-amber-600 font-bold">(Vence en {diasPorVencer}d)</span>
+                                  ) : null}
                                 </span>
                               ) : (
                                 <span className="text-gray-400 text-xs">Sin fecha</span>

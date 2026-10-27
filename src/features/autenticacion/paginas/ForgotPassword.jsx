@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Send } from "lucide-react";
+import { ArrowLeft, Mail, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
+import { validateEmail } from "@/shared/utils/validationUtils";
 
 export function ForgotPassword() {
   const navigate = useNavigate();
@@ -9,16 +10,19 @@ export function ForgotPassword() {
   const [correo, setCorreo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const emailValidation = validateEmail(correo);
+  const emailError = (touched || submitted) ? emailValidation.error : "";
+  const isEmailValid = (touched || submitted) && emailValidation.isValid && correo.trim().length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!correo) {
-      toast.error("Campo requerido", "Por favor ingresa tu correo electrónico");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(correo)) {
-      toast.error("Correo inválido", "Por favor ingresa un correo electrónico válido");
+    setSubmitted(true);
+    setTouched(true);
+    if (!emailValidation.isValid) {
+      toast.error("Correo inválido", emailValidation.error || "Por favor ingresa un correo electrónico válido");
       return;
     }
     setIsLoading(true);
@@ -97,7 +101,7 @@ export function ForgotPassword() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="correo" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Correo Electrónico
+                    Correo Electrónico <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -105,12 +109,34 @@ export function ForgotPassword() {
                       id="correo"
                       type="email"
                       value={correo}
-                      onChange={(e) => setCorreo(e.target.value)}
+                      onChange={(e) => {
+                        setCorreo(e.target.value);
+                        setTouched(true);
+                      }}
+                      onBlur={() => setTouched(true)}
                       placeholder="tu@correo.com"
-                      className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all text-gray-800 font-medium"
+                      className={`w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:outline-none transition-all text-gray-800 font-medium ${
+                        emailError
+                          ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+                          : isEmailValid
+                          ? "border-emerald-500/80 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                          : "border-gray-200 bg-gray-50 focus:border-red-500 focus:bg-white"
+                      }`}
                       disabled={isLoading}
                     />
                   </div>
+                  {emailError && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>{emailError}</span>
+                    </p>
+                  )}
+                  {isEmailValid && (
+                    <p className="mt-1.5 text-xs font-semibold text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                      <span>Correo válido</span>
+                    </p>
+                  )}
                 </div>
 
                 <button

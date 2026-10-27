@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Plus, Sliders, Sparkles, Flame, Layers } from "lucide-react";
+import { Plus, Sliders, Sparkles, Flame, Layers, Clock } from "lucide-react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
@@ -96,26 +96,26 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     <article
       className={`group rounded-[24px] bg-white dark:bg-gray-900 transition-all flex flex-col justify-between h-full overflow-hidden relative ${
         activeEvent
-          ? "border-2 border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 shadow-md shadow-amber-500/10 dark:shadow-none"
-          : "border border-[#e5e9ef] dark:border-gray-800 shadow-xs hover:shadow-md"
+          ? "border-2 border-orange-500/80 dark:border-orange-500/90 ring-2 ring-orange-400/25 shadow-md shadow-orange-500/15 dark:shadow-none"
+          : "border border-gray-200/90 dark:border-gray-800 shadow-xs hover:shadow-md"
       }`}
     >
       {/* ═══ FAST FOOD EVENT HEADER BANNER ═══ */}
       {activeEvent && (
         <div
           onClick={handleOpenCustomize}
-          className="bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none"
+          className="bg-gradient-to-r from-[#D9383A] via-[#E03E3E] to-amber-600 text-white font-black text-[10px] uppercase tracking-wider py-1.5 px-3 flex items-center justify-between shadow-xs z-10 shrink-0 cursor-pointer hover:opacity-95 transition-opacity select-none border-b border-orange-500/30"
           title={`Evento: ${activeEvent.nombre}. Clic para personalizar.`}
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-200 shrink-0" />
             <span className="truncate">{activeEvent.nombre}</span>
           </div>
-          <span className="bg-black/25 backdrop-blur-xs text-amber-200 text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
-            <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+          <span className="bg-white/15 backdrop-blur-xs text-white text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-white/20">
+            <Clock className="w-2.5 h-2.5 text-amber-200" />
             {activeEvent.discountPercent > 0
               ? `-${activeEvent.discountPercent}% OFF`
-              : activeEvent.tipo || "Promo"}
+              : activeEvent.tipo || "Evento"}
           </span>
         </div>
       )}
@@ -130,6 +130,9 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
           <img
             src={productImage}
             alt={producto.nombre}
+            width="200"
+            height="150"
+            style={{ aspectRatio: "4 / 3" }}
             onError={() => setImageError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -209,23 +212,28 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
         </div>
 
         {/* ── Price & Action Footer ── */}
-        <div className="pt-3 flex flex-col gap-2 mt-3 w-full border-t border-gray-100 dark:border-gray-800">
+        <div className="pt-2.5 flex flex-col gap-2 mt-2 w-full border-t border-gray-100 dark:border-gray-800">
           {/* Price Row */}
-          <div className="flex items-center justify-between gap-2 px-0.5">
-            <div className="text-left flex flex-col min-w-0">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Precio</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-end justify-between gap-2 px-0.5">
+            <div className="text-left flex flex-col min-w-0 flex-1">
+              {/* Header line: PRECIO label + Strikethrough & Discount Tag */}
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Precio</span>
                 {activeEvent && activeEvent.savings > 0 && (
-                  <span className="text-[11px] line-through font-semibold text-gray-400">
-                    ${Number(activeEvent.rawPrice).toLocaleString("es-CO")}
-                  </span>
+                  <>
+                    <span className="text-[10.5px] line-through font-semibold text-gray-400/90">
+                      ${Number(activeEvent.rawPrice).toLocaleString("es-CO")}
+                    </span>
+                    <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-1 py-0.5 rounded border border-emerald-200/70 dark:border-emerald-800/50">
+                      -{activeEvent.discountPercent}%
+                    </span>
+                  </>
                 )}
-                {activeEvent && activeEvent.savings > 0 && (
-                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md">
-                    -{activeEvent.discountPercent}%
-                  </span>
-                )}
-                <span className={`text-sm sm:text-base font-black leading-tight ${
+              </div>
+
+              {/* Main Effective Price */}
+              <div className="mt-1 flex items-baseline">
+                <span className={`text-base sm:text-[17px] font-black tracking-tight leading-none ${
                   activeEvent ? "text-amber-600 dark:text-amber-400" : "text-[#f05454] dark:text-red-400"
                 }`}>
                   ${Number(effectiveBasePrice).toLocaleString("es-CO")}
@@ -233,11 +241,11 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               </div>
             </div>
 
-            {/* Additions count chip */}
+            {/* Additions count chip (cleanly separated on the right) */}
             {adiciones.length > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">
-                <Layers className="w-3 h-3 text-amber-400" />
-                {adiciones.length} extras
+              <span className="shrink-0 self-end mb-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100/90 dark:bg-gray-800/90 px-2.5 py-1 rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-2xs">
+                <Layers className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>{adiciones.length} extras</span>
               </span>
             )}
           </div>
@@ -259,7 +267,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               onClick={handleAdd}
               className={`inline-flex items-center justify-center gap-1 rounded-xl py-2.5 px-2 text-[11px] font-black text-white shadow-xs transition-all cursor-pointer active:scale-95 ${
                 activeEvent
-                  ? "bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 shadow-amber-500/20"
+                  ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-orange-500/25"
                   : "bg-[#f05454] hover:bg-[#d94444]"
               }`}
               title={activeEvent ? `Agregar con precio promocional de ${activeEvent.nombre}` : "Agregar al carrito"}

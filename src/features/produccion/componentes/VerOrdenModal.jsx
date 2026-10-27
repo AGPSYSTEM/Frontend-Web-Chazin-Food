@@ -160,17 +160,21 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
 
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Prioridad
+                Prioridad / Turno
               </p>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  orden.prioridad === "Alta"
-                    ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600"
-                }`}
-              >
-                {orden.prioridad || "Normal"}
-              </span>
+              {orden.prioridad ? (
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black shadow-2xs ${
+                    orden.prioridad === 1
+                      ? "bg-red-500 text-white ring-2 ring-red-300 dark:ring-red-900"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  }`}
+                >
+                  Turno #{orden.prioridad}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xs font-medium">-</span>
+              )}
             </div>
 
             <div>
@@ -296,15 +300,31 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                         {/* Badges rápidos de resumen */}
                         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
                           {itemAdds.length > 0 && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-50 dark:bg-red-950/40 text-[#F05454] dark:text-red-300 border border-red-200/60 dark:border-red-900/40">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(idx);
+                              }}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-[#F05454] dark:text-red-300 border border-red-200/60 dark:border-red-900/40 transition cursor-pointer shadow-2xs"
+                              title={isExpanded ? "Ocultar adiciones" : "Ver adiciones de este platillo"}
+                            >
                               +{itemAdds.length} {itemAdds.length === 1 ? "adición" : "adiciones"}
-                            </span>
+                            </button>
                           )}
                           {itemObs && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(idx);
+                              }}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                              title={isExpanded ? "Ocultar notas" : "Ver notas del cliente"}
+                            >
                               <FileText className="w-2.5 h-2.5" />
                               <span>Nota</span>
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>

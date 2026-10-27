@@ -9,7 +9,8 @@ import {
   Clock,
   RotateCcw,
   CheckCircle2,
-  User
+  User,
+  Search
 } from "lucide-react";
 
 export function TrazabilidadProveedoresModal({
@@ -20,6 +21,7 @@ export function TrazabilidadProveedoresModal({
   onOpenPapelera
 }) {
   const [filterType, setFilterType] = useState("Todos");
+  const [searchTerm, setSearchTerm] = useState("");
 
   if (!isOpen) return null;
 
@@ -29,17 +31,29 @@ export function TrazabilidadProveedoresModal({
   const restauradosCount = eventos.filter((e) => e.tipo === "Restaurado").length;
 
   const filteredEventos = eventos.filter((e) => {
-    if (filterType === "Todos") return true;
-    if (filterType === "Creados") return e.tipo === "Creado";
-    if (filterType === "Editados") return e.tipo === "Editado";
-    if (filterType === "Eliminados") return e.tipo === "Eliminado" || e.tipo === "Inactivado";
-    if (filterType === "Restaurados") return e.tipo === "Restaurado";
-    return true;
+    let matchType = true;
+    if (filterType === "Creados") matchType = e.tipo === "Creado";
+    else if (filterType === "Editados") matchType = e.tipo === "Editado";
+    else if (filterType === "Eliminados") matchType = e.tipo === "Eliminado" || e.tipo === "Inactivado";
+    else if (filterType === "Restaurados") matchType = e.tipo === "Restaurado";
+
+    if (!matchType) return false;
+
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase().trim();
+    return (
+      (e.nombre && e.nombre.toLowerCase().includes(q)) ||
+      (e.descripcion && e.descripcion.toLowerCase().includes(q)) ||
+      (e.tipo && e.tipo.toLowerCase().includes(q)) ||
+      (e.motivo && e.motivo.toLowerCase().includes(q)) ||
+      (e.usuarioNombre && e.usuarioNombre.toLowerCase().includes(q)) ||
+      (e.fecha && e.fecha.toLowerCase().includes(q))
+    );
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[680px] max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[28px] shadow-2xl w-full max-w-[750px] max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -83,9 +97,26 @@ export function TrazabilidadProveedoresModal({
           </div>
         </div>
 
-        {/* Filter Pills row */}
-        <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+        {/* Search Bar - Arriba (#60) */}
+        <div className="px-6 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar en trazabilidad por proveedor, acción o responsable..."
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 outline-none transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Filter Pills row - Abajo con flex-wrap para que se vean completos (#59, #60) */}
+        <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-start flex-wrap gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-1.5 text-gray-400 mr-1 shrink-0 font-medium">
+            <Filter className="w-3.5 h-3.5" />
+            <span className="text-[11px] uppercase tracking-wider">Filtros:</span>
+          </div>
 
           <button
             onClick={() => setFilterType("Todos")}
@@ -95,7 +126,7 @@ export function TrazabilidadProveedoresModal({
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
-            Todos
+            Todos ({eventos.length})
           </button>
 
           <button

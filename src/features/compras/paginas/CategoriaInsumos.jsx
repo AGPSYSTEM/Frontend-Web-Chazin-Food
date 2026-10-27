@@ -1,11 +1,18 @@
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Filter, X } from "lucide-react";
 import { useCategoriaInsumos } from "../hooks/useCategoriaInsumos";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { CategoriaInsumosTable } from "../componentes/categorias/CategoriaInsumosTable";
 import { CategoriaInsumoModal } from "../componentes/categorias/CategoriaInsumoModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function CategoriaInsumos() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Categoría Insumos", "crear");
+  const canEdit = hasPrivilege(user, "Categoría Insumos", "editar");
+  const canDelete = hasPrivilege(user, "Categoría Insumos", "eliminar");
+
   const {
     categorias,
     filteredCategorias,
@@ -68,15 +75,38 @@ export function CategoriaInsumos() {
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
             />
           </div>
-          <button
-            onClick={handleOpenCreate}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0 cursor-pointer"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nueva Categoría</span>
-          </button>
+          {canCreate && (
+            <button
+              onClick={handleOpenCreate}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0 cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nueva Categoría</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Active Filter Indicator (#55, #56) */}
+      {searchTerm.trim() !== "" && (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-medium">
+            <Filter className="w-3.5 h-3.5" />
+            Filtro activo:
+          </span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-gray-300 border border-slate-200 dark:border-gray-700 font-medium">
+            Búsqueda: &ldquo;{searchTerm}&rdquo;
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="hover:text-slate-900 ml-0.5"
+              title="Limpiar búsqueda"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -86,6 +116,8 @@ export function CategoriaInsumos() {
           categorias={filteredCategorias}
           onEdit={handleOpenEdit}
           onDelete={deleteCategoria}
+          canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 

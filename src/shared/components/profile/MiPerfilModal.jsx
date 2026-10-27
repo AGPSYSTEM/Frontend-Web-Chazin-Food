@@ -7,7 +7,7 @@ import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 function FieldError({ msg }) {
   if (!msg) return null;
@@ -45,6 +45,7 @@ export function MiPerfilModal({ isOpen, onClose }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Inicializar formulario con datos del usuario cuando el modal se abre
   useEffect(() => {
@@ -60,6 +61,7 @@ export function MiPerfilModal({ isOpen, onClose }) {
       });
       setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
       setErrors({});
+      setTouched({});
       setTab("datos");
     }
   }, [isOpen, user]);
@@ -67,6 +69,38 @@ export function MiPerfilModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
+
+  const validateSingleField = (name, val, extra = {}) => {
+    switch (name) {
+      case "nombre":
+        return !val.trim() ? "El nombre es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "apellidos":
+        return !val.trim() ? "Los apellidos son obligatorios." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "email":
+        return !val.trim() ? "El correo es obligatorio." : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? "Correo inválido." : "";
+      case "numeroDocumento":
+        if (!val) return "";
+        return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+      case "telefono":
+        if (!val) return "";
+        return val.length < 7 ? "El teléfono debe tener mínimo 7 dígitos." : "";
+      case "passwordActual":
+        return !val ? "Ingresa tu contraseña actual." : "";
+      case "passwordNueva":
+        return !val ? "Ingresa la nueva contraseña." : val.length < 6 ? "Mínimo 6 caracteres." : "";
+      case "passwordConfirm":
+        return !val ? "Confirma la nueva contraseña." : val !== (extra.passwordNueva || passForm.passwordNueva) ? "Las contraseñas no coinciden." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (name, isPass = false) => {
+    setTouched(prev => ({ ...prev, [name]: true }));
+    const val = isPass ? passForm[name] || "" : form[name] || "";
+    const err = validateSingleField(name, val);
+    setErrors(prev => ({ ...prev, [name]: err }));
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,20 +111,25 @@ export function MiPerfilModal({ isOpen, onClose }) {
     } else if (name === "telefono") {
       v = sanitizeTelefono(value);
     } else if (name === "tipoDocumento") {
-      // Reset numero when tipo changes
       setForm((prev) => ({ ...prev, tipoDocumento: v, numeroDocumento: "" }));
       setErrors((prev) => ({ ...prev, tipoDocumento: "", numeroDocumento: "" }));
       return;
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (touched[name]) {
+      const err = validateSingleField(name, v);
+      setErrors((prev) => ({ ...prev, [name]: err }));
+    }
   };
 
   const handlePassChange = (e) => {
     const { name, value } = e.target;
     setPassForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (touched[name]) {
+      const err = validateSingleField(name, value);
+      setErrors((prev) => ({ ...prev, [name]: err }));
+    }
   };
 
   const validateDatos = () => {
@@ -204,7 +243,9 @@ export function MiPerfilModal({ isOpen, onClose }) {
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar modal de mi perfil"
             className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -243,9 +284,10 @@ export function MiPerfilModal({ isOpen, onClose }) {
                       type="text"
                       name="nombre"
                       value={form.nombre}
+                      onBlur={() => handleBlur("nombre")}
                       onChange={handleChange}
                       placeholder="Ej: Juan"
-                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.nombre ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700"}`}
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                     />
                   </div>
                   <FieldError msg={errors.nombre} />
@@ -258,9 +300,10 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     type="text"
                     name="apellidos"
                     value={form.apellidos}
+                    onBlur={() => handleBlur("apellidos")}
                     onChange={handleChange}
                     placeholder="Ej: García López"
-                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.apellidos ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                   <FieldError msg={errors.apellidos} />
                 </div>
@@ -277,9 +320,10 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     type="email"
                     name="email"
                     value={form.email}
+                    onBlur={() => handleBlur("email")}
                     onChange={handleChange}
                     placeholder="correo@ejemplo.com"
-                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.email ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                 </div>
                 <FieldError msg={errors.email} />
@@ -311,10 +355,11 @@ export function MiPerfilModal({ isOpen, onClose }) {
                       type="text"
                       name="numeroDocumento"
                       value={form.numeroDocumento}
+                      onBlur={() => handleBlur("numeroDocumento")}
                       onChange={handleChange}
                       inputMode={docConfig.numericOnly ? "numeric" : "text"}
                       placeholder={docConfig.helper}
-                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.numeroDocumento ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700"}`}
+                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                     />
                   </div>
                   <FieldError msg={errors.numeroDocumento} />
@@ -330,10 +375,11 @@ export function MiPerfilModal({ isOpen, onClose }) {
                     type="tel"
                     name="telefono"
                     value={form.telefono}
+                    onBlur={() => handleBlur("telefono")}
                     onChange={handleChange}
                     inputMode="numeric"
                     placeholder="3001234567"
-                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.telefono ? "border-red-400 dark:border-red-500" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
                 </div>
                 <FieldError msg={errors.telefono} />
@@ -384,18 +430,19 @@ export function MiPerfilModal({ isOpen, onClose }) {
 
               {/* Contraseña actual */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Contraseña Actual</label>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Contraseña Actual <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type={showPass ? "text" : "password"}
                     name="passwordActual"
                     value={passForm.passwordActual}
+                    onBlur={() => handleBlur("passwordActual", true)}
                     onChange={handlePassChange}
                     placeholder="Tu contraseña actual"
-                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordActual ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordActual ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? "Ocultar contraseña actual" : "Mostrar contraseña actual"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -404,18 +451,19 @@ export function MiPerfilModal({ isOpen, onClose }) {
 
               {/* Nueva contraseña */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Nueva Contraseña</label>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Nueva Contraseña <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type={showNewPass ? "text" : "password"}
                     name="passwordNueva"
                     value={passForm.passwordNueva}
+                    onBlur={() => handleBlur("passwordNueva", true)}
                     onChange={handlePassChange}
                     placeholder="Mínimo 6 caracteres"
-                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordNueva ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordNueva ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowNewPass(!showNewPass)} aria-label={showNewPass ? "Ocultar nueva contraseña" : "Mostrar nueva contraseña"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -424,18 +472,19 @@ export function MiPerfilModal({ isOpen, onClose }) {
 
               {/* Confirmar contraseña */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Confirmar Contraseña</label>
+                <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Confirmar Contraseña <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type={showConfirmPass ? "text" : "password"}
                     name="passwordConfirm"
                     value={passForm.passwordConfirm}
+                    onBlur={() => handleBlur("passwordConfirm", true)}
                     onChange={handlePassChange}
                     placeholder="Repite la nueva contraseña"
-                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordConfirm ? "border-red-400" : "border-gray-200 dark:border-gray-700"}`}
+                    className={`w-full pl-9 pr-10 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.passwordConfirm ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
                   />
-                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} aria-label={showConfirmPass ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
                     {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>

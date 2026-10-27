@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { validateTexto } from "@/shared/utils/validationUtils";
 
-const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
+const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const labelCls = "block text-sm font-semibold text-slate-700 dark:text-gray-300 mb-1.5";
 
 export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null }) {
@@ -8,6 +10,8 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [estado, setEstado] = useState("Activo");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   useEffect(() => {
     if (categoria) {
@@ -19,13 +23,85 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
       setDescripcion("");
       setEstado("Activo");
     }
+    setErrors({});
+    setTouched({});
   }, [categoria, isOpen]);
 
   if (!isOpen) return null;
 
+  const handleNombreChange = (e) => {
+    const raw = e.target.value;
+    const clean = raw.replace(/[0-9]/g, "");
+    setNombre(clean);
+    setTouched((prev) => ({ ...prev, nombre: true }));
+
+    let err = "";
+    if (/[0-9]/.test(raw)) {
+      err = "No se permiten números en el nombre de la categoría.";
+    } else if (!clean.trim()) {
+      err = "El nombre de la categoría es obligatorio.";
+    } else if (clean.trim().length < 3) {
+      err = "El nombre debe tener al menos 3 caracteres.";
+    } else {
+      const res = validateTexto(clean, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+      if (!res.isValid) err = res.error;
+    }
+    setErrors((prev) => ({ ...prev, nombre: err }));
+  };
+
+  const handleNombreBlur = () => {
+    setTouched((prev) => ({ ...prev, nombre: true }));
+    let err = "";
+    if (!nombre.trim()) {
+      err = "El nombre de la categoría es obligatorio.";
+    } else if (nombre.trim().length < 3) {
+      err = "El nombre debe tener al menos 3 caracteres.";
+    } else {
+      const res = validateTexto(nombre, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+      if (!res.isValid) err = res.error;
+    }
+    setErrors((prev) => ({ ...prev, nombre: err }));
+  };
+
+  const handleDescripcionChange = (e) => {
+    const val = e.target.value;
+    setDescripcion(val);
+    setTouched((prev) => ({ ...prev, descripcion: true }));
+    const res = validateTexto(val, "descripción", { min: 0, max: 255, required: false });
+    setErrors((prev) => ({ ...prev, descripcion: res.isValid ? "" : res.error }));
+  };
+
+  const handleDescripcionBlur = () => {
+    setTouched((prev) => ({ ...prev, descripcion: true }));
+    const res = validateTexto(descripcion, "descripción", { min: 0, max: 255, required: false });
+    setErrors((prev) => ({ ...prev, descripcion: res.isValid ? "" : res.error }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!nombre.trim()) return;
+    setTouched({ nombre: true, descripcion: true });
+
+    let errNombre = "";
+    if (!nombre.trim()) {
+      errNombre = "El nombre de la categoría es obligatorio.";
+    } else if (nombre.trim().length < 3) {
+      errNombre = "El nombre debe tener al menos 3 caracteres.";
+    } else {
+      const nombreRes = validateTexto(nombre, "nombre de la categoría", { min: 3, max: 50, permitirNumeros: false });
+      if (!nombreRes.isValid) errNombre = nombreRes.error;
+    }
+
+    const descRes = validateTexto(descripcion, "descripción", { min: 0, max: 255, required: false });
+
+    const newErrors = {};
+    if (errNombre) newErrors.nombre = errNombre;
+    if (!descRes.isValid) newErrors.descripcion = descRes.error;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     onSave({ nombre: nombre.trim(), descripcion: descripcion.trim(), estado });
   };
 
@@ -40,19 +116,41 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" noValidate>
           <div>
             <label className={labelCls}>
               Nombre <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              required
               value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className={inputCls}
-              placeholder="Ej: Frutas"
+              onChange={handleNombreChange}
+              onKeyDown={(e) => {
+                if (/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onBlur={handleNombreBlur}
+              className={`${baseInputCls} ${
+                (touched.nombre || nombre.length > 0) && errors.nombre
+                  ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300"
+                  : (touched.nombre || nombre.length > 0) && !errors.nombre && nombre.trim().length >= 3
+                  ? "border-emerald-500/80 bg-emerald-50/15 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400"
+                  : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent"
+              }`}
+              placeholder="Ej: Frutas y Verduras"
             />
+            {(touched.nombre || nombre.length > 0) && errors.nombre ? (
+              <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{errors.nombre}</span>
+              </p>
+            ) : nombre.trim().length >= 3 && !errors.nombre ? (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Nombre válido</span>
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -60,10 +158,21 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <textarea
               rows={3}
               value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              className={`${inputCls} resize-none`}
+              onChange={handleDescripcionChange}
+              onBlur={handleDescripcionBlur}
+              className={`${baseInputCls} resize-none ${
+                (touched.descripcion || descripcion.length > 0) && errors.descripcion
+                  ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300"
+                  : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent"
+              }`}
               placeholder="Describe la categoría..."
             />
+            {(touched.descripcion || descripcion.length > 0) && errors.descripcion && (
+              <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{errors.descripcion}</span>
+              </p>
+            )}
           </div>
 
           <div>
@@ -71,7 +180,7 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <select
               value={estado}
               onChange={(e) => setEstado(e.target.value)}
-              className={`${inputCls} cursor-pointer`}
+              className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
             >
               <option value="Activo">Activo</option>
               <option value="Inactivo">Inactivo</option>
@@ -83,13 +192,13 @@ export function CategoriaInsumoModal({ isOpen, onClose, onSave, categoria = null
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors"
+              className="px-6 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200 hover:bg-gray-50 text-sm font-medium transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#F05454]/80 hover:bg-[#F05454] text-white text-sm font-medium transition-colors shadow-xs"
+              className="px-6 py-2.5 rounded-2xl bg-[#F05454] hover:bg-[#d84343] text-white text-sm font-medium transition-colors shadow-xs cursor-pointer"
             >
               {isEditing ? "Guardar Cambios" : "Guardar"}
             </button>

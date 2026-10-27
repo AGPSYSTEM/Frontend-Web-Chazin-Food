@@ -41,6 +41,7 @@ export function ConfirmProvider({ children }) {
         <ConfirmModal
           isOpen={isOpen}
           type={options.type}
+          icon={options.icon}
           title={options.title}
           message={options.message}
           confirmText={options.confirmText}

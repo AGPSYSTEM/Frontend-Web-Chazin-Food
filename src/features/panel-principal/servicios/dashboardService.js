@@ -1,23 +1,23 @@
 import { apiClient } from "@/shared/api/apiClient";
 
 export const dashboardService = {
-  getStats: async () => {
-    return await apiClient.get("/dashboard/stats");
+  getStats: async (params = {}) => {
+    return await apiClient.get("/dashboard/stats", { params });
   },
 
-  getVentasChart: async () => {
-    return await apiClient.get("/dashboard/ventas-chart");
+  getVentasChart: async (params = {}) => {
+    return await apiClient.get("/dashboard/ventas-chart", { params });
   },
 
-  getProductosPopulares: async () => {
-    return await apiClient.get("/dashboard/productos-populares");
+  getProductosPopulares: async (params = {}) => {
+    return await apiClient.get("/dashboard/productos-populares", { params });
   },
 
-  getAlertasStock: async () => {
-    return await apiClient.get("/dashboard/alertas-stock");
+  getAlertasStock: async (params = {}) => {
+    return await apiClient.get("/dashboard/alertas-stock", { params });
   },
 
-  getVentasRecientes: async () => {
-    return await apiClient.get("/dashboard/ventas-recientes");
+  getVentasRecientes: async (params = {}) => {
+    return await apiClient.get("/dashboard/ventas-recientes", { params });
   }
 };

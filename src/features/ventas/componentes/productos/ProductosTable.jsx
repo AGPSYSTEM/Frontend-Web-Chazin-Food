@@ -10,9 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Lock
 } from "lucide-react";
 import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export const getActiveProductEvent = (producto) => {
   if (!producto || !producto.eventos || !Array.isArray(producto.eventos) || producto.eventos.length === 0) {
@@ -34,13 +36,18 @@ export const getActiveProductEvent = (producto) => {
   );
 };
 
+export const getActiveEvent = getActiveProductEvent;
+
 export function ProductosTable({
   productos = [],
   onEdit,
   onDelete,
   onView,
-  onCreateEvento
+  onCreateEvento,
+  canEdit = true,
+  canDelete = true
 }) {
+  const { warning: notifyWarning } = useNotifications();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -129,7 +136,7 @@ export function ProductosTable({
                   key={p.id}
                   className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <div className="flex items-center gap-3">
                       {p.imagen ? (
                         <img
@@ -143,74 +150,82 @@ export function ProductosTable({
                         </div>
                       )}
                       <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            {p.nombre}
-                          </span>
-                          {p.eventos && p.eventos.length > 0 && (
-                            <EventBadge event={p.eventos[0]} product={p} variant="pill" className="text-[10px] py-0.5" />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
-                          <span>{p.codigo || `PRD-${p.id}`}</span>
-                          {p.eventos && p.eventos.length > 0 && (() => {
-                            const evt = p.eventos[0];
-                            if (evt.tipoEvento === "Descuento" && evt.descuento) {
-                              return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(evt.descuento)}% OFF)</span>;
-                            }
-                            if (evt.tipoEvento === "Promoción Precio" && evt.nuevoPrecio) {
-                              return <span className="text-purple-600 dark:text-purple-400 font-bold">(Promo: ${Number(evt.nuevoPrecio).toLocaleString("es-CO")})</span>;
-                            }
-                            if (evt.tipoEvento === "Añadir Insumos") {
-                              return <span className="text-indigo-600 dark:text-indigo-400 font-bold">(Insumos extra)</span>;
-                            }
-                            return null;
-                          })()}
-                        </div>
+                        {(() => {
+                          const activeEvt = getActiveEvent(p);
+                          return (
+                            <>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                  {p.nombre}
+                                </span>
+                                {activeEvt && (
+                                  <EventBadge event={activeEvt} product={p} variant="pill" className="text-[10px] py-0.5" />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
+                                <span>{p.codigo || `PRD-${p.id}`}</span>
+                                {activeEvt && (() => {
+                                  if (activeEvt.tipoEvento === "Descuento" && activeEvt.descuento) {
+                                    return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(activeEvt.descuento)}% OFF)</span>;
+                                  }
+                                  if (activeEvt.tipoEvento === "Promoción Precio" && activeEvt.nuevoPrecio) {
+                                    return <span className="text-orange-600 dark:text-orange-400 font-bold">(Promo: ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")})</span>;
+                                  }
+                                  if (activeEvt.tipoEvento === "Añadir Insumos" || String(activeEvt.tipoEvento).toLowerCase().includes("insumo") || String(activeEvt.tipoEvento).toLowerCase().includes("topping")) {
+                                    return <span className="text-amber-600 dark:text-amber-400 font-bold">(Topping extra)</span>;
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                       <Tag className="w-3 h-3" />
                       {p.categoria || "Sin categoría"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
-                    {p.eventos && p.eventos.length > 0 && (() => {
-                      const evtDesc = p.eventos.find(e => e.tipoEvento === "Descuento");
-                      const evtPrecio = p.eventos.find(e => e.tipoEvento === "Promoción Precio");
-                      if (evtPrecio && evtPrecio.nuevoPrecio) {
+                  <td className="px-5 py-2.5 font-bold text-gray-900 dark:text-gray-100">
+                    {(() => {
+                      const activeEvt = getActiveEvent(p);
+                      if (!activeEvt) {
+                        return <span>${Number(p.precio || 0).toLocaleString("es-CO")}</span>;
+                      }
+                      if (activeEvt.nuevoPrecio && Number(activeEvt.nuevoPrecio) > 0) {
                         return (
                           <div>
                             <span className="text-xs text-gray-400 line-through block font-normal">
                               ${Number(p.precio || 0).toLocaleString("es-CO")}
                             </span>
-                            <span className="font-extrabold text-purple-600 dark:text-purple-400 text-sm flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5" />
-                              ${Number(evtPrecio.nuevoPrecio).toLocaleString("es-CO")}
+                            <span className="font-extrabold text-orange-600 dark:text-orange-400 text-sm flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                              ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")}
                             </span>
                           </div>
                         );
                       }
-                      if (evtDesc && evtDesc.descuento) {
-                        const finalP = Number(p.precio || 0) * (1 - Number(evtDesc.descuento) / 100);
+                      if (activeEvt.descuento && Number(activeEvt.descuento) > 0) {
+                        const finalP = Number(p.precio || 0) * (1 - Number(activeEvt.descuento) / 100);
                         return (
                           <div>
                             <span className="text-xs text-gray-400 line-through block font-normal">
                               ${Number(p.precio || 0).toLocaleString("es-CO")}
                             </span>
                             <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1">
-                              <Zap className="w-3.5 h-3.5" />
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                               ${Math.round(finalP).toLocaleString("es-CO")}
                             </span>
                           </div>
                         );
                       }
-                      return `$${Number(p.precio || 0).toLocaleString("es-CO")}`;
-                    })() || `$${Number(p.precio || 0).toLocaleString("es-CO")}`}
+                      return <span>${Number(p.precio || 0).toLocaleString("es-CO")}</span>;
+                    })()}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -221,7 +236,7 @@ export function ProductosTable({
                         title={p.hasFicha ? "Stock disponible calculado a partir de insumos en bodega" : "Stock disponible en catálogo"}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${Number(p.stockDisponible || p.stock) <= 5 ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
-                        <span>{p.stockDisponible !== undefined ? p.stockDisponible : p.stock} porciones</span>
+                        <span>{p.stockDisponible !== undefined ? p.stockDisponible : p.stock} unidades</span>
                       </span>
                     ) : (
                       <span
@@ -233,7 +248,7 @@ export function ProductosTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <span
                       className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                         p.estado === "Activo"
@@ -244,19 +259,19 @@ export function ProductosTable({
                       {p.estado || "Activo"}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-5 py-2.5">
                     <div className="flex items-center justify-center gap-1.5">
                       {/* Evento: Editar si está activo y vigente, o Crear si no tiene */}
-                      {(() => {
+                      {canEdit && (() => {
                         const activeEvt = getActiveProductEvent(p);
                         if (activeEvt) {
                           return (
                             <button
                               onClick={() => onCreateEvento && onCreateEvento(p, activeEvt)}
                               title={`Editar Evento Activo: ${activeEvt.nombreEvento || activeEvt.nombre || "Evento"}`}
-                              className="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-300/60 dark:border-purple-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
+                              className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 text-orange-700 dark:text-orange-300 border border-orange-300/80 dark:border-orange-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
                             >
-                              <Zap className="w-4 h-4 fill-purple-600 dark:fill-purple-400 drop-shadow-xs" />
+                              <Zap className="w-4 h-4 fill-orange-500 dark:fill-orange-400 text-orange-600 drop-shadow-xs" />
                               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900 animate-pulse" title="Evento Activo y Vigente" />
                             </button>
                           );
@@ -265,7 +280,7 @@ export function ProductosTable({
                           <button
                             onClick={() => onCreateEvento && onCreateEvento(p, null)}
                             title="Crear Evento / Promoción"
-                            className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-500 dark:text-orange-400 transition-colors cursor-pointer"
                           >
                             <Zap className="w-4 h-4" />
                           </button>
@@ -279,22 +294,42 @@ export function ProductosTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {/* Editar */}
-                      <button
-                        onClick={() => onEdit(p)}
-                        title="Editar producto"
-                        className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {/* Editar (Ítem 104: Restricción si tiene ventas asociadas) */}
+                      {canEdit && (() => {
+                        const tieneVentas = Number(p.ventas || 0) > 0;
+                        return (
+                          <button
+                            onClick={() => {
+                              if (tieneVentas) {
+                                notifyWarning(
+                                  "Edición Restringida",
+                                  `El producto "${p.nombre}" ya registra ${p.ventas} venta(s). Para preservar la trazabilidad e integridad histórica contable, no se puede modificar su ficha o características.`
+                                );
+                                return;
+                              }
+                              onEdit(p);
+                            }}
+                            title={tieneVentas ? `No editable: registra ${p.ventas} venta(s)` : "Editar producto"}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              tieneVentas
+                                ? "opacity-50 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                : "hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {tieneVentas ? <Lock className="w-4 h-4 text-gray-400" /> : <Edit className="w-4 h-4" />}
+                          </button>
+                        );
+                      })()}
                       {/* Eliminar */}
-                      <button
-                        onClick={() => onDelete(p.id, p.nombre)}
-                        title="Eliminar producto"
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => onDelete(p.id, p.nombre)}
+                          title="Eliminar producto"
+                          className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

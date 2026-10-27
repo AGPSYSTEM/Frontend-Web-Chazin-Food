@@ -1,15 +1,21 @@
 import { useState, useEffect } from "react";
-import { X, Upload, Eye, EyeOff, Lock } from "lucide-react";
+import { X, Upload, Eye, EyeOff, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   sanitizeTelefono,
   sanitizeDocumento,
   getDocConfig,
   validateTelefono,
   validateDocumento,
+  validateNombre,
+  validateEmail,
+  validateContrasena,
+  validateConfirmarContrasena,
+  getPasswordCriteria,
   formatNombreCompleto
 } from "@/shared/utils/validationUtils";
 
-const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent transition-colors text-xs placeholder:text-gray-400";
+const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-xs placeholder:text-gray-400 outline-none";
+const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 transition-colors text-xs placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
 
 export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesList = [] }) {
@@ -29,8 +35,84 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
     notificarCambios: true,
     avatarFile: null
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [showPasswords, setShowPasswords] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const validateSingleField = (name, value, currentForm = form) => {
+    let err = "";
+    switch (name) {
+      case "nombre": {
+        const res = validateNombre(value, "nombre");
+        if (!res.isValid) err = res.error;
+        break;
+      }
+      case "apellidos": {
+        if (value && value.trim()) {
+          const res = validateNombre(value, "apellido");
+          if (!res.isValid) err = res.error;
+        }
+        break;
+      }
+      case "documento": {
+        const res = validateDocumento(value, currentForm.tipoDocumento);
+        if (!res.isValid) err = res.error;
+        break;
+      }
+      case "email": {
+        const res = validateEmail(value);
+        if (!res.isValid) err = res.error;
+        break;
+      }
+      case "telefono": {
+        if (value && value.trim()) {
+          const res = validateTelefono(value);
+          if (!res.isValid) err = res.error;
+        }
+        break;
+      }
+      case "password": {
+        if (!isEditing || value) {
+          const res = validateContrasena(value, 8, "contraseña");
+          if (!res.isValid) err = res.error;
+        }
+        break;
+      }
+      case "confirmPassword": {
+        if (!isEditing || currentForm.password) {
+          const res = validateConfirmarContrasena(currentForm.password, value);
+          if (!res.isValid) err = res.error;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    return err;
+  };
+
+  const handleFieldChange = (name, value) => {
+    const updatedForm = { ...form, [name]: value };
+    setForm(updatedForm);
+    setTouched((prev) => ({ ...prev, [name]: true }));
+
+    const err = validateSingleField(name, value, updatedForm);
+    setErrors((prev) => {
+      const next = { ...prev, [name]: err };
+      // If changing password, revalidate confirmPassword if already touched
+      if (name === "password" && (touched.confirmPassword || form.confirmPassword)) {
+        next.confirmPassword = validateSingleField("confirmPassword", form.confirmPassword, updatedForm);
+      }
+      return next;
+    });
+  };
+
+  const handleFieldBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validateSingleField(name, form[name], form);
+    setErrors((prev) => ({ ...prev, [name]: err }));
+  };
 
   useEffect(() => {
     if (usuario) {
@@ -66,6 +148,8 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
         avatarFile: null
       });
     }
+    setErrors({});
+    setTouched({});
     setErrorMsg("");
   }, [usuario, isOpen, rolesList]);
 
@@ -77,36 +161,30 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
     e.preventDefault();
     setErrorMsg("");
 
-    if (!form.nombre.trim()) {
-      setErrorMsg("El nombre del usuario es obligatorio.");
-      return;
-    }
-
-    if (form.telefono) {
-      const telVal = validateTelefono(form.telefono);
-      if (!telVal.isValid) {
-        setErrorMsg(telVal.error);
-        return;
-      }
-    }
-
-    if (form.documento) {
-      const docVal = validateDocumento(form.documento, form.tipoDocumento);
-      if (!docVal.isValid) {
-        setErrorMsg(docVal.error);
-        return;
-      }
-    }
-
+    // Validate all fields
+    const newErrors = {};
+    const fieldsToValidate = ["nombre", "documento", "email"];
+    if (form.apellidos) fieldsToValidate.push("apellidos");
+    if (form.telefono) fieldsToValidate.push("telefono");
     if (!isEditing) {
-      if (form.password !== form.confirmPassword) {
-        setErrorMsg("Las contraseñas no coinciden.");
-        return;
+      fieldsToValidate.push("password", "confirmPassword");
+    }
+
+    let hasErrors = false;
+    fieldsToValidate.forEach((f) => {
+      const err = validateSingleField(f, form[f], form);
+      if (err) {
+        newErrors[f] = err;
+        hasErrors = true;
       }
-      if (form.password.length < 8) {
-        setErrorMsg("La contraseña debe tener al menos 8 caracteres.");
-        return;
-      }
+    });
+
+    if (hasErrors) {
+      setErrors(newErrors);
+      setTouched(fieldsToValidate.reduce((acc, f) => ({ ...acc, [f]: true }), {}));
+      const firstError = Object.values(newErrors).find(Boolean);
+      setErrorMsg(firstError || "Por favor corrige los errores antes de continuar.");
+      return;
     }
 
     onSave({
@@ -117,6 +195,19 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
       documento: sanitizeDocumento(form.documento, form.tipoDocumento),
       notificarEmail: isEditing ? form.notificarCambios : form.enviarCorreoBienvenida
     });
+  };
+
+  const getInputClass = (fieldName) => {
+    const hasValue = form[fieldName] && String(form[fieldName]).length > 0;
+    const hasError = (touched[fieldName] || hasValue) && errors[fieldName];
+    const isValid = (touched[fieldName] || hasValue) && !errors[fieldName] && hasValue;
+    if (hasError) {
+      return `${baseInputCls} border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500 dark:border-red-600 dark:bg-red-950/20 dark:text-red-300`;
+    }
+    if (isValid) {
+      return `${baseInputCls} border-emerald-400/80 bg-emerald-50/15 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/40 dark:border-emerald-600 dark:bg-emerald-950/10`;
+    }
+    return `${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 focus:border-transparent`;
   };
 
   const displayName = formatNombreCompleto(form.nombre, form.apellidos) || "Usuario";
@@ -162,7 +253,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" noValidate autoComplete="off">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 text-xs font-semibold border border-rose-200 dark:border-rose-800">
               {errorMsg}
@@ -189,6 +280,65 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
             </div>
           )}
 
+          {/* Tipo de Documento y Número de Documento — PRIMER campo del formulario */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Tipo de Documento</label>
+              <select
+                value={form.tipoDocumento}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  const newDoc = sanitizeDocumento(form.documento, newTipo);
+                  const updated = { ...form, tipoDocumento: newTipo, documento: newDoc };
+                  setForm(updated);
+                  setTouched((prev) => ({ ...prev, tipoDocumento: true, documento: true }));
+                  const err = validateSingleField("documento", newDoc, updated);
+                  setErrors((prev) => ({ ...prev, documento: err }));
+                }}
+                className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 cursor-pointer`}
+              >
+                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
+                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
+                <option value="PPT">Permiso por Protección Temporal (PPT)</option>
+                <option value="Pasaporte">Pasaporte</option>
+                <option value="NIT">NIT</option>
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Número de Identificación *</label>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {docConfig.helper}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={form.documento}
+                maxLength={docConfig.max}
+                onChange={(e) => {
+                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
+                  handleFieldChange("documento", clean);
+                }}
+                onBlur={() => handleFieldBlur("documento")}
+                className={getInputClass("documento")}
+                placeholder={docConfig.helper}
+              />
+              {(touched.documento || form.documento) && errors.documento ? (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.documento}</span>
+                </p>
+              ) : form.documento && !errors.documento ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Documento válido</span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+
           {/* Nombres y Apellidos Separados */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -200,12 +350,24 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 onChange={(e) => {
                   const val = e.target.value;
                   if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
-                    setForm({ ...form, nombre: val });
+                    handleFieldChange("nombre", val);
                   }
                 }}
-                className={inputCls}
+                onBlur={() => handleFieldBlur("nombre")}
+                className={getInputClass("nombre")}
                 placeholder="Ej: Juan Carlos"
               />
+              {(touched.nombre || form.nombre) && errors.nombre ? (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.nombre}</span>
+                </p>
+              ) : form.nombre && !errors.nombre ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Nombre válido</span>
+                </p>
+              ) : null}
             </div>
             <div>
               <label className={labelCls}>Apellidos</label>
@@ -215,57 +377,24 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 onChange={(e) => {
                   const val = e.target.value;
                   if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
-                    setForm({ ...form, apellidos: val });
+                    handleFieldChange("apellidos", val);
                   }
                 }}
-                className={inputCls}
+                onBlur={() => handleFieldBlur("apellidos")}
+                className={getInputClass("apellidos")}
                 placeholder="Ej: Pérez Gómez"
               />
-            </div>
-          </div>
-
-          {/* Tipo de Documento y Número de Documento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Tipo de Documento</label>
-              <select
-                value={form.tipoDocumento}
-                onChange={(e) => {
-                  const newTipo = e.target.value;
-                  setForm({
-                    ...form,
-                    tipoDocumento: newTipo,
-                    documento: sanitizeDocumento(form.documento, newTipo)
-                  });
-                }}
-                className={`${inputCls} cursor-pointer`}
-              >
-                <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
-                <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
-                <option value="C.E.">Cédula de Extranjería (C.E.)</option>
-                <option value="Pasaporte">Pasaporte</option>
-                <option value="NIT">NIT</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={labelCls}>Número de Documento</label>
-                <span className="text-[10px] text-gray-400 font-medium">
-                  {docConfig.helper}
-                </span>
-              </div>
-              <input
-                type="text"
-                value={form.documento}
-                maxLength={docConfig.max}
-                onChange={(e) => {
-                  const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
-                  setForm({ ...form, documento: clean });
-                }}
-                className={inputCls}
-                placeholder={docConfig.helper}
-              />
+              {(touched.apellidos || form.apellidos) && errors.apellidos ? (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.apellidos}</span>
+                </p>
+              ) : form.apellidos && !errors.apellidos ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Apellido válido</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -276,11 +405,25 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               <input
                 type="email"
                 required
+                autoComplete="off"
+                name="new_user_email"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={inputCls}
+                onChange={(e) => handleFieldChange("email", e.target.value)}
+                onBlur={() => handleFieldBlur("email")}
+                className={getInputClass("email")}
                 placeholder="usuario@chazinfood.com"
               />
+              {(touched.email || form.email) && errors.email ? (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.email}</span>
+                </p>
+              ) : form.email && !errors.email ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Correo electrónico válido</span>
+                </p>
+              ) : null}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -295,12 +438,24 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                 maxLength={10}
                 onChange={(e) => {
                   const clean = sanitizeTelefono(e.target.value);
-                  setForm({ ...form, telefono: clean });
+                  handleFieldChange("telefono", clean);
                 }}
-                className={inputCls}
+                onBlur={() => handleFieldBlur("telefono")}
+                className={getInputClass("telefono")}
                 placeholder="3190000000"
                 inputMode="numeric"
               />
+              {(touched.telefono || form.telefono) && errors.telefono ? (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{errors.telefono}</span>
+                </p>
+              ) : form.telefono && !errors.telefono ? (
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Teléfono válido</span>
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -313,7 +468,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   <select
                     value={form.idRolStr}
                     onChange={(e) => setForm({ ...form, idRolStr: e.target.value })}
-                    className={`${inputCls} cursor-pointer`}
+                    className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                   >
                     {rolesList.length > 0 ? (
                       rolesList.map((r) => (
@@ -336,7 +491,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   <select
                     value={form.estado}
                     onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                    className={`${inputCls} cursor-pointer`}
+                    className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                   >
                     <option value="Activo">Activo</option>
                     <option value="Inactivo">Inactivo</option>
@@ -376,12 +531,43 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                       <input
                         type={showPasswords ? "text" : "password"}
                         required
+                        autoComplete="new-password"
+                        name="new_user_password"
                         value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        className={`${inputCls} pl-10`}
+                        onChange={(e) => handleFieldChange("password", e.target.value)}
+                        onBlur={() => handleFieldBlur("password")}
+                        className={`${getInputClass("password")} pl-10`}
                         placeholder="••••••••"
                       />
                     </div>
+                    {(touched.password || form.password) && (
+                      <div className="mt-2 space-y-1 bg-white/80 dark:bg-gray-900/80 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 text-[10.5px]">
+                        <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Requisitos de seguridad:</p>
+                        {(() => {
+                          const crit = getPasswordCriteria(form.password, 8);
+                          return (
+                            <div className="grid grid-cols-2 gap-1 font-medium">
+                              <span className={`flex items-center gap-1 ${crit.hasLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasLength ? "text-emerald-500" : "text-gray-300"}`} />
+                                Mín. 8 caracteres
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasUpper ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasUpper ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Mayúscula
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasLower ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasLower ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Minúscula
+                              </span>
+                              <span className={`flex items-center gap-1 ${crit.hasNumber ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
+                                <CheckCircle2 className={`w-3 h-3 ${crit.hasNumber ? "text-emerald-500" : "text-gray-300"}`} />
+                                1 Número
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Confirmar Contraseña *</label>
@@ -390,12 +576,30 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                       <input
                         type={showPasswords ? "text" : "password"}
                         required
+                        autoComplete="new-password"
+                        name="new_user_confirm_password"
                         value={form.confirmPassword}
-                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                        className={`${inputCls} pl-10`}
+                        onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
+                        onBlur={() => handleFieldBlur("confirmPassword")}
+                        className={`${getInputClass("confirmPassword")} pl-10`}
                         placeholder="Repite tu contraseña"
                       />
                     </div>
+                    {(touched.confirmPassword || form.confirmPassword) && (
+                      form.confirmPassword ? (
+                        form.password === form.confirmPassword ? (
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span>Las contraseñas coinciden</span>
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1 animate-in fade-in duration-150">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>Las contraseñas no coinciden</span>
+                          </p>
+                        )
+                      ) : null
+                    )}
                   </div>
                 </div>
 
@@ -434,7 +638,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                     <select
                       value={form.idRolStr}
                       onChange={(e) => setForm({ ...form, idRolStr: e.target.value })}
-                      className={`${inputCls} cursor-pointer`}
+                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
                     >
                       {rolesList.length > 0 ? (
                         rolesList.map((r) => (

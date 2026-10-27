@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   User,
   Package,
@@ -45,7 +45,8 @@ import {
   Laptop,
   Key,
   CheckCircle2,
-  Globe
+  Globe,
+  X
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -55,10 +56,11 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
-const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "NIT"];
+const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 const PRESET_AVATAR_CATEGORIES = [
   {
@@ -149,7 +151,19 @@ export function ClientePerfil() {
   const [darkMode, toggleDarkMode] = useDarkMode();
   const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
-  const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "pedidos" | "editar"
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const initialTab = searchParams.get("tab") || location.state?.tab || "fidelidad";
+  const [tab, setTab] = useState(initialTab); // "fidelidad" | "pedidos" | "editar"
+  const [selectedPedidoDetalle, setSelectedPedidoDetalle] = useState(null);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab") || location.state?.tab;
+    if (urlTab && ["fidelidad", "pedidos", "editar"].includes(urlTab)) {
+      setTab(urlTab);
+    }
+  }, [searchParams, location.state]);
+
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -185,6 +199,7 @@ export function ClientePerfil() {
     numeroDocumento: "",
   });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Sync user profile on mount
   useEffect(() => {
@@ -217,6 +232,7 @@ export function ClientePerfil() {
       const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
       setAvatarUrl(userAvatar);
       setErrors({});
+      setTouched({});
     }
   }, [user]);
 
@@ -307,21 +323,43 @@ export function ClientePerfil() {
             currentEstado = "Completada";
           }
 
+          let matchedObs = {};
+          if (matched.observaciones) {
+            if (typeof matched.observaciones === "object" && matched.observaciones !== null) {
+              matchedObs = matched.observaciones;
+            } else if (typeof matched.observaciones === "string" && matched.observaciones.startsWith("{")) {
+              try { matchedObs = JSON.parse(matched.observaciones); } catch (e) {}
+            }
+          }
+
           let items = localOrd.items || [];
           if ((!items || items.length === 0) && matched.productos && Array.isArray(matched.productos)) {
             items = matched.productos;
+          } else if ((!items || items.length === 0) && matchedObs.productos && Array.isArray(matchedObs.productos)) {
+            items = matchedObs.productos;
           }
+
+          const cleanObserv = extractCleanSpecifications(
+            matched.especificaciones ||
+            matchedObs.especificaciones ||
+            matchedObs.nota ||
+            localOrd.especificaciones ||
+            ""
+          );
 
           localOrd.estado = currentEstado;
           mergedPedidos.push({
             id: matched.idVenta || matched.id || localOrd.id,
-            numeroVenta: matched.numeroVenta || localOrd.numeroVenta,
+            numeroVenta: matched.numeroVenta || matchedObs.codigoPedido || localOrd.numeroVenta,
             fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString("es-CO") : localOrd.fecha,
             items,
+            subtotal: matched.subtotal || localOrd.subtotal || localOrd.total,
             total: matched.total || localOrd.total,
-            descuentoAplicado: matched.descuentoAplicado || 0,
-            metodoPago: matched.metodoPago || "Efectivo",
-            tipoEntrega: matched.tipoEntrega || "Domicilio",
+            descuentoAplicado: matched.descuentoAplicado || localOrd.descuentoAplicado || 0,
+            metodoPago: matchedObs.metodoPago || matched.metodoPago || localOrd.metodoPago || "Wompi",
+            tipoEntrega: matchedObs.tipoEntrega || matched.tipoEntrega || localOrd.tipoEntrega || "Domicilio",
+            direccion: matchedObs.direccion || matched.direccion || localOrd.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: cleanObserv,
             estado: currentEstado,
           });
         } else {
@@ -330,10 +368,13 @@ export function ClientePerfil() {
             numeroVenta: localOrd.numeroVenta,
             fecha: localOrd.fecha,
             items: localOrd.items || [],
+            subtotal: localOrd.subtotal || localOrd.total,
             total: localOrd.total,
             descuentoAplicado: localOrd.descuentoAplicado || 0,
-            metodoPago: localOrd.metodoPago || "Efectivo",
+            metodoPago: localOrd.metodoPago || "Wompi",
             tipoEntrega: localOrd.tipoEntrega || "Domicilio",
+            direccion: localOrd.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: extractCleanSpecifications(localOrd.especificaciones || ""),
             estado: localOrd.estado || "Completada",
           });
         }
@@ -356,30 +397,61 @@ export function ClientePerfil() {
             currentEstado = "Completada";
           }
 
+          let oObs = {};
+          if (o.observaciones) {
+            if (typeof o.observaciones === "object" && o.observaciones !== null) {
+              oObs = o.observaciones;
+            } else if (typeof o.observaciones === "string" && o.observaciones.startsWith("{")) {
+              try { oObs = JSON.parse(o.observaciones); } catch (e) {}
+            }
+          }
+
           let items = [];
           if (o.productos && Array.isArray(o.productos) && o.productos.length > 0) {
             items = o.productos.map((p) => ({
               nombre: p.nombre || "Producto",
               cantidad: Number(p.cantidad) || 1,
               precio: Number(p.precioUnitario || p.total) || 0,
+              adiciones: p.adiciones || [],
+              personalizaciones: p.personalizaciones || [],
+            }));
+          } else if (oObs.productos && Array.isArray(oObs.productos) && oObs.productos.length > 0) {
+            items = oObs.productos.map((p) => ({
+              nombre: p.nombre || "Producto",
+              cantidad: Number(p.cantidad) || 1,
+              precio: Number(p.precioUnitario || p.total) || 0,
+              adiciones: p.adiciones || [],
+              personalizaciones: p.personalizaciones || [],
             }));
           } else if (o.detalles && Array.isArray(o.detalles)) {
             items = o.detalles.map((d) => ({
               nombre: d.producto?.nombre || d.nombreProducto || "Producto",
               cantidad: Number(d.cantidad) || 1,
               precio: Number(d.precioUnitario) || 0,
+              adiciones: d.adiciones || [],
+              personalizaciones: d.personalizaciones || [],
             }));
           }
 
+          const cleanObserv = extractCleanSpecifications(
+            o.especificaciones ||
+            oObs.especificaciones ||
+            oObs.nota ||
+            ""
+          );
+
           mergedPedidos.push({
             id: o.idVenta || o.id,
-            numeroVenta: o.numeroVenta || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
+            numeroVenta: o.numeroVenta || oObs.codigoPedido || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
             fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString("es-CO") : "Reciente",
             items,
+            subtotal: Number(o.subtotal) || Number(o.total) || 0,
             total: Number(o.total) || 0,
             descuentoAplicado: Number(o.descuentoAplicado) || 0,
-            metodoPago: o.metodoPago || "Efectivo",
-            tipoEntrega: o.tipoEntrega || "Domicilio",
+            metodoPago: oObs.metodoPago || o.metodoPago || "Wompi",
+            tipoEntrega: oObs.tipoEntrega || o.tipoEntrega || "Domicilio",
+            direccion: oObs.direccion || o.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: cleanObserv,
             estado: currentEstado,
           });
         }
@@ -733,7 +805,42 @@ export function ClientePerfil() {
     }
   };
 
+  const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
+
   // ── Edit form handlers ──
+  const validateSingleField = (name, val, extra = {}) => {
+    switch (name) {
+      case "nombre":
+        if (!val.trim()) return "El nombre es obligatorio.";
+        if (val.includes("@")) return "El nombre no puede contener el carácter '@'.";
+        if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+        return "";
+      case "apellidos":
+        if (!val.trim()) return "Los apellidos son obligatorios.";
+        if (val.includes("@")) return "Los apellidos no pueden contener el carácter '@'.";
+        if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+        return "";
+      case "email":
+        if (!val.trim()) return "El correo es obligatorio.";
+        if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val.trim())) return "Ingresa un correo electrónico válido (ej: usuario@correo.com).";
+        return "";
+      case "numeroDocumento":
+        if (!val) return "";
+        return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+      case "telefono":
+        if (!val) return "";
+        return val.length < 7 ? "Mínimo 7 dígitos." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validateSingleField(name, form[name] || "");
+    setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     let v = value;
@@ -745,40 +852,54 @@ export function ClientePerfil() {
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    // Validación inline inmediata en tiempo real (Item 23)
+    const err = validateSingleField(name, v);
+    setErrors((prev) => ({ ...prev, [name]: err }));
   };
 
   const handleTipoDocChange = (e) => {
     const nuevoTipo = e.target.value;
+    const sanitizedDoc = sanitizeDocumento(form.numeroDocumento, nuevoTipo);
     setForm((prev) => ({
       ...prev,
       tipoDocumento: nuevoTipo,
-      numeroDocumento: sanitizeDocumento(prev.numeroDocumento, nuevoTipo),
+      numeroDocumento: sanitizedDoc,
     }));
-    if (errors.numeroDocumento) setErrors((prev) => ({ ...prev, numeroDocumento: "" }));
+    if (touched.numeroDocumento) {
+      const err = validateSingleField("numeroDocumento", sanitizedDoc, { tipoDocumento: nuevoTipo });
+      setErrors((prev) => ({ ...prev, numeroDocumento: err }));
+    }
   };
 
   const validate = () => {
     const errs = {};
-    if (!form.nombre.trim()) errs.nombre = "El nombre es obligatorio.";
-    else if (form.nombre.trim().length < 2) errs.nombre = "Mínimo 2 caracteres.";
-
-    if (!form.apellidos.trim()) errs.apellidos = "Los apellidos son obligatorios.";
-    else if (form.apellidos.trim().length < 2) errs.apellidos = "Mínimo 2 caracteres.";
-
-    if (!form.email.trim()) errs.email = "El correo es obligatorio.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = "Ingresa un correo electrónico válido.";
-
+    const errNombre = validateSingleField("nombre", form.nombre);
+    if (errNombre) errs.nombre = errNombre;
+    const errApellidos = validateSingleField("apellidos", form.apellidos);
+    if (errApellidos) errs.apellidos = errApellidos;
+    const errEmail = validateSingleField("email", form.email);
+    if (errEmail) errs.email = errEmail;
     if (form.numeroDocumento) {
-      const docErr = validateDocumento(form.numeroDocumento, form.tipoDocumento);
-      if (docErr) errs.numeroDocumento = docErr;
+      const errDoc = validateSingleField("numeroDocumento", form.numeroDocumento);
+      if (errDoc) errs.numeroDocumento = errDoc;
     }
-    if (form.telefono && form.telefono.length < 7) errs.telefono = "Mínimo 7 dígitos.";
+    if (form.telefono) {
+      const errTel = validateSingleField("telefono", form.telefono);
+      if (errTel) errs.telefono = errTel;
+    }
     return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({
+      nombre: true,
+      apellidos: true,
+      email: true,
+      numeroDocumento: true,
+      telefono: true,
+      direccion: true,
+    });
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -816,8 +937,15 @@ export function ClientePerfil() {
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 shadow-md sticky top-0 z-40">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
+            <div
+              className="flex items-center gap-4 cursor-pointer select-none group"
+              onClick={() => {
+                navigate("/");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              title="Ir al inicio - Chazin Food"
+            >
+              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
                 <img
                   src={logoImg}
                   alt="Chazin Food"
@@ -827,7 +955,7 @@ export function ClientePerfil() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors">Chazin Food</h1>
                   <FidelidadBadge
                     tipo={tipoFidelidad}
                     descuento={descuentoPorcentaje}
@@ -844,6 +972,7 @@ export function ClientePerfil() {
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleDarkMode}
+                aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
                 className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
                 title="Cambiar Modo"
               >
@@ -852,6 +981,7 @@ export function ClientePerfil() {
 
               <Link
                 to="/"
+                aria-label="Volver al menú de comidas"
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4 text-[#f05454]" />
@@ -870,6 +1000,7 @@ export function ClientePerfil() {
                   logout();
                   navigate("/");
                 }}
+                aria-label="Cerrar sesión"
                 className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
                 title="Cerrar Sesión"
               >
@@ -1475,7 +1606,7 @@ export function ClientePerfil() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 border-t sm:border-t-0 pt-2.5 sm:pt-0">
                           <div className="text-right">
                             <p className="text-base font-black text-gray-900 dark:text-gray-100">
                               ${(parseFloat(ped.total) || 0).toLocaleString("es-CO")}
@@ -1486,6 +1617,14 @@ export function ClientePerfil() {
                               </p>
                             )}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPedidoDetalle(ped)}
+                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-[#f05454] hover:text-white text-gray-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>Ver detalle</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1520,13 +1659,14 @@ export function ClientePerfil() {
                           type="text"
                           name="nombre"
                           value={form.nombre}
+                          onBlur={() => handleBlur("nombre")}
                           onChange={handleChange}
                           placeholder="Tu nombre"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.nombre} />
+                        <FieldError msg={touched.nombre ? errors.nombre : ""} />
                       </div>
 
                       {/* Apellidos */}
@@ -1538,13 +1678,14 @@ export function ClientePerfil() {
                           type="text"
                           name="apellidos"
                           value={form.apellidos}
+                          onBlur={() => handleBlur("apellidos")}
                           onChange={handleChange}
                           placeholder="Tus apellidos"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.apellidos} />
+                        <FieldError msg={touched.apellidos ? errors.apellidos : ""} />
                       </div>
                     </div>
 
@@ -1559,14 +1700,15 @@ export function ClientePerfil() {
                           type="email"
                           name="email"
                           value={form.email}
+                          onBlur={() => handleBlur("email")}
                           onChange={handleChange}
                           placeholder="tu@correo.com"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.email} />
+                      <FieldError msg={touched.email ? errors.email : ""} />
                     </div>
 
                     {/* Documento */}
@@ -1578,7 +1720,7 @@ export function ClientePerfil() {
                         <select
                           value={form.tipoDocumento}
                           onChange={handleTipoDocChange}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400"
+                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 cursor-pointer"
                         >
                           {TIPOS_DOCUMENTO.map((t) => (
                             <option key={t} value={t}>
@@ -1591,18 +1733,21 @@ export function ClientePerfil() {
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                           N.° Documento
+                          <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
                         </label>
                         <input
                           type="text"
                           name="numeroDocumento"
                           value={form.numeroDocumento}
+                          onBlur={() => handleBlur("numeroDocumento")}
                           onChange={handleChange}
-                          placeholder="Número de identificación"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          inputMode={docConfig.numericOnly ? "numeric" : "text"}
+                          placeholder={docConfig.helper}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.numeroDocumento} />
+                        <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
                       </div>
                     </div>
 
@@ -1617,14 +1762,16 @@ export function ClientePerfil() {
                           type="text"
                           name="telefono"
                           value={form.telefono}
+                          onBlur={() => handleBlur("telefono")}
                           onChange={handleChange}
+                          inputMode="numeric"
                           placeholder="Ej: 3001234567"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.telefono} />
+                      <FieldError msg={touched.telefono ? errors.telefono : ""} />
                     </div>
 
                     {/* Dirección de Entrega por Defecto */}
@@ -1887,6 +2034,164 @@ export function ClientePerfil() {
             )}
           </div>
         </div>
+
+        {/* ═══ MODAL VER DETALLE DE PEDIDO (ITEM 27) ═══ */}
+        {selectedPedidoDetalle && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+            onClick={() => setSelectedPedidoDetalle(null)}
+          >
+            <div
+              className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-2xl border border-gray-150 dark:border-gray-800 space-y-5 text-left max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-red-500 block">
+                    Detalle del Pedido
+                  </span>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2 mt-0.5">
+                    <Receipt className="w-5 h-5 text-red-500" />
+                    <span>{selectedPedidoDetalle.numeroVenta || `Pedido #${selectedPedidoDetalle.id}`}</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{selectedPedidoDetalle.fecha}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPedidoDetalle(null)}
+                  aria-label="Cerrar detalle del pedido"
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status & Delivery Summary */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+                  <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Estado del Pedido</span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${
+                      selectedPedidoDetalle.estado === "Completada" || selectedPedidoDetalle.estado === "Listo"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : selectedPedidoDetalle.estado === "En Preparación"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                        : selectedPedidoDetalle.estado === "Anulada"
+                        ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                    }`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    {selectedPedidoDetalle.estado}
+                  </span>
+                </div>
+                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+                  <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Método de Pago</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-red-500" />
+                    {selectedPedidoDetalle.metodoPago || "Wompi (En línea)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Delivery address & specs */}
+              <div className="p-3.5 rounded-2xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-[#f05454] font-black">
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span>Dirección de Entrega:</span>
+                </div>
+                <p className="font-medium text-gray-800 dark:text-gray-200 pl-5">
+                  {typeof selectedPedidoDetalle.direccion === "string" && selectedPedidoDetalle.direccion.trim().startsWith("{")
+                    ? (() => {
+                        try {
+                          const p = JSON.parse(selectedPedidoDetalle.direccion);
+                          return p.direccion || "Medellín, Antioquia";
+                        } catch (e) {
+                          return "Medellín, Antioquia";
+                        }
+                      })()
+                    : (selectedPedidoDetalle.direccion || "Medellín, Antioquia")}
+                </p>
+                {Boolean(extractCleanSpecifications(selectedPedidoDetalle.especificaciones)) && (
+                  <div className="pt-1.5 border-t border-red-100/60 dark:border-red-900/40 text-gray-600 dark:text-gray-300 text-[11px] pl-5">
+                    <strong>Especificaciones:</strong> {extractCleanSpecifications(selectedPedidoDetalle.especificaciones)}
+                  </div>
+                )}
+              </div>
+
+              {/* Products Breakdown List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  <span>Productos Ordenados:</span>
+                </h4>
+                <div className="space-y-2 divide-y divide-gray-100 dark:divide-gray-800">
+                  {(selectedPedidoDetalle.items || []).map((it, itIdx) => (
+                    <div key={itIdx} className="pt-2 first:pt-0 flex items-start justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 font-black text-xs mt-0.5">
+                          {it.cantidad || 1}x
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{it.nombre}</p>
+                          {it.adiciones && it.adiciones.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {it.adiciones.map((ad, adIdx) => (
+                                <span key={adIdx} className="text-[10px] text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.2 rounded">
+                                  +{ad.nombre || ad}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {it.personalizaciones && it.personalizaciones.length > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                              Sin: {it.personalizaciones.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-bold text-gray-800 dark:text-gray-200 shrink-0">
+                        ${(Number(it.precio || 0) * (Number(it.cantidad) || 1)).toLocaleString("es-CO")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 border border-gray-150 dark:border-gray-700 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">
+                    ${(parseFloat(selectedPedidoDetalle.subtotal || selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+                  </span>
+                </div>
+                {selectedPedidoDetalle.descuentoAplicado > 0 && (
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>Descuento Fidelidad:</span>
+                    <span>-${(parseFloat(selectedPedidoDetalle.descuentoAplicado) || 0).toLocaleString("es-CO")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm font-black text-gray-900 dark:text-gray-100 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+                  <span>Total Pagado:</span>
+                  <span className="text-red-600 dark:text-red-400 text-base">
+                    ${(parseFloat(selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setSelectedPedidoDetalle(null)}
+                className="w-full py-3 rounded-2xl bg-[#f05454] hover:bg-red-600 text-white font-bold text-xs transition cursor-pointer active:scale-98 shadow-md"
+              >
+                Cerrar Detalle
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

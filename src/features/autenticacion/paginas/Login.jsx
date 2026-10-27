@@ -1,7 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import { Lock, Mail, Eye, EyeOff, ChefHat, Sparkles, User, UserPlus, LogIn, Phone, MapPin, CreditCard } from "lucide-react";
+import { GoogleAuthButton } from "@/features/autenticacion/componentes/GoogleAuthButton";
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ChefHat,
+  Sparkles,
+  User,
+  UserPlus,
+  LogIn,
+  Phone,
+  MapPin,
+  CreditCard,
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Check
+} from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import {
@@ -9,8 +27,18 @@ import {
   sanitizeDocumento,
   getDocConfig,
   validateTelefono,
-  validateDocumento
+  validateDocumento,
+  validateNombre,
+  validateEmail
 } from "@/shared/utils/validationUtils";
+
+const TIPOS_DOC_OPTIONS = [
+  { value: "C.C.", label: "C.C. (Cédula de Ciudadanía)" },
+  { value: "T.I.", label: "T.I. (Tarjeta de Identidad)" },
+  { value: "C.E.", label: "C.E. (Cédula de Extranjería)" },
+  { value: "Pasaporte", label: "Pasaporte" },
+  { value: "PPT", label: "PPT (Permiso por Protección Temporal)" }
+];
 
 export function Login() {
   const [tab, setTab] = useState("login");
@@ -22,6 +50,9 @@ export function Login() {
   const [regNombre, setRegNombre] = useState("");
   const [regApellidos, setRegApellidos] = useState("");
   const [regTipoDocumento, setRegTipoDocumento] = useState("C.C.");
+  const [isTipoDocOpen, setIsTipoDocOpen] = useState(false);
+  const tipoDocRef = useRef(null);
+
   const [regDocumento, setRegDocumento] = useState("");
   const [regCorreo, setRegCorreo] = useState("");
   const [regTelefono, setRegTelefono] = useState("");
@@ -32,9 +63,46 @@ export function Login() {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [isRegLoading, setIsRegLoading] = useState(false);
 
+  // Control de campos interactuados para mostrar validaciones en tiempo real
+  const [touched, setTouched] = useState({});
+
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const handleGoogleSuccess = (userData) => {
+    if (userData?.rol && userData.rol.toLowerCase() !== "cliente") {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/");
+    }
+  };
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (tipoDocRef.current && !tipoDocRef.current.contains(event.target)) {
+        setIsTipoDocOpen(false);
+      }
+    }
+    if (isTipoDocOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isTipoDocOpen]);
+
+  // Evitar que el autocompletado del navegador ensucie el registro con credenciales guardadas
+  useEffect(() => {
+    if (tab === "register") {
+      const timer = setTimeout(() => {
+        setRegDireccion((prev) => (prev.includes("@") ? "" : prev));
+        setRegContraseña((prev) => (!touched.regContraseña && prev ? "" : prev));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [tab, touched.regContraseña]);
 
   useEffect(() => {
     const wasDark = document.documentElement.classList.contains("dark");
@@ -46,27 +114,133 @@ export function Login() {
     };
   }, []);
 
+  const markTouched = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  // Validaciones en tiempo real para LOGIN
+  const getLoginCorreoError = () => {
+    if (!touched.loginCorreo && !loginCorreo) return "";
+    return validateEmail(loginCorreo).error;
+  };
+
+  const getLoginContraseñaError = () => {
+    if (!touched.loginContraseña && !loginContraseña) return "";
+    if (!loginContraseña) return "La contraseña es requerida.";
+    if (loginContraseña.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+    return "";
+  };
+
+  // Validaciones en tiempo real para REGISTRO
+  const getRegNombreError = () => {
+    if (!touched.regNombre && !regNombre) return "";
+    return validateNombre(regNombre, "nombre").error;
+  };
+
+  const getRegApellidosError = () => {
+    if (!touched.regApellidos && !regApellidos) return "";
+    return validateNombre(regApellidos, "apellido").error;
+  };
+
+  const getRegDocumentoError = () => {
+    if (!touched.regDocumento && !regDocumento) return "";
+    return validateDocumento(regDocumento, regTipoDocumento).error;
+  };
+
+  const getRegTelefonoError = () => {
+    if (!touched.regTelefono && !regTelefono) return "";
+    if (!regTelefono.trim()) {
+      return "El número de teléfono es obligatorio.";
+    }
+    if (regTelefono.length < 10) {
+      return `Debe tener 10 dígitos (llevas ${regTelefono.length}/10).`;
+    }
+    return "";
+  };
+
+  const getRegCorreoError = () => {
+    if (!touched.regCorreo && !regCorreo) return "";
+    return validateEmail(regCorreo).error;
+  };
+
+  const getRegDireccionError = () => {
+    if (!touched.regDireccion && !regDireccion) return "";
+    if (!regDireccion.trim()) return "La dirección de entrega es obligatoria.";
+    if (regDireccion.trim().length < 5) return "Ingresa una dirección completa (ej: Calle 12 # 34-56).";
+    return "";
+  };
+
+  const getRegContraseñaError = () => {
+    if (!touched.regContraseña && !regContraseña) return "";
+    if (!regContraseña) return "La contraseña es requerida.";
+    if (regContraseña.length < 6) return `Mínimo 6 caracteres (llevas ${regContraseña.length}).`;
+    return "";
+  };
+
+  const getRegConfirmarError = () => {
+    if (!touched.regConfirmar && !regConfirmar) return "";
+    if (!regConfirmar) return "Por favor confirma tu contraseña.";
+    if (regConfirmar !== regContraseña) return "Las contraseñas no coinciden.";
+    return "";
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!loginCorreo || !loginContraseña) {
-      toast.error("Campos requeridos", "Por favor ingresa tu correo y contraseña");
+    setTouched({ loginCorreo: true, loginContraseña: true });
+
+    const emailCheck = validateEmail(loginCorreo);
+    if (!emailCheck.isValid) {
+      toast.error("Correo inválido", emailCheck.error);
       return;
     }
+
+    if (!loginContraseña || loginContraseña.length < 6) {
+      toast.error("Contraseña inválida", "La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
     setIsLoginLoading(true);
     const result = await login(loginCorreo, loginContraseña);
     if (result === true || result?.success) {
       toast.success("¡Bienvenido!", "Inicio de sesión exitoso");
       setTimeout(() => navigate("/"), 500);
     } else {
-      toast.error("Error de autenticación", result?.message || "Correo o contraseña incorrectos");
+      const msg = result?.message || "";
+      if (
+        msg.toLowerCase().includes("la cuenta no existe") ||
+        msg.toLowerCase().includes("no existe") ||
+        result?.status === 404
+      ) {
+        toast.error("La cuenta no existe", "No se encontró ninguna cuenta registrada con este correo.");
+      } else {
+        toast.error("Error de autenticación", msg || "Correo o contraseña incorrectos");
+      }
     }
     setIsLoginLoading(false);
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!regNombre.trim() || !regApellidos.trim() || !regDocumento.trim() || !regCorreo.trim() || !regContraseña.trim() || !regConfirmar.trim() || !regDireccion.trim()) {
-      toast.error("Campos requeridos", "Por favor completa todos los campos obligatorios");
+    setTouched({
+      regNombre: true,
+      regApellidos: true,
+      regDocumento: true,
+      regCorreo: true,
+      regTelefono: true,
+      regDireccion: true,
+      regContraseña: true,
+      regConfirmar: true
+    });
+
+    const nomVal = validateNombre(regNombre, "nombre");
+    if (!nomVal.isValid) {
+      toast.error("Nombre inválido", nomVal.error);
+      return;
+    }
+
+    const apeVal = validateNombre(regApellidos, "apellido");
+    if (!apeVal.isValid) {
+      toast.error("Apellidos inválidos", apeVal.error);
       return;
     }
 
@@ -76,12 +250,25 @@ export function Login() {
       return;
     }
 
-    if (regTelefono) {
-      const telVal = validateTelefono(regTelefono);
-      if (!telVal.isValid) {
-        toast.error("Teléfono inválido", telVal.error);
-        return;
-      }
+    const emailCheck = validateEmail(regCorreo);
+    if (!emailCheck.isValid) {
+      toast.error("Correo inválido", emailCheck.error);
+      return;
+    }
+
+    if (!regTelefono.trim()) {
+      toast.error("Teléfono requerido", "El número de teléfono es obligatorio");
+      return;
+    }
+    const telVal = validateTelefono(regTelefono);
+    if (!telVal.isValid) {
+      toast.error("Teléfono inválido", telVal.error);
+      return;
+    }
+
+    if (!regDireccion.trim() || regDireccion.trim().length < 5) {
+      toast.error("Dirección requerida", "Ingresa una dirección de entrega completa");
+      return;
     }
 
     if (regContraseña.length < 6) {
@@ -114,13 +301,32 @@ export function Login() {
     setIsRegLoading(false);
   };
 
-  const inputBase = "relative w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm";
-  const inputWithRight = "relative w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm";
-  const selectBase = "relative w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm appearance-none cursor-pointer";
+  const getInputClass = (hasError, isOk) =>
+    `relative w-full pl-12 pr-4 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+    }`;
 
-  const regInputBase = "relative w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm";
-  const regInputWithRight = "relative w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm";
-  const regSelectBase = "relative w-full pl-10 pr-3 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm appearance-none cursor-pointer";
+  const getInputWithRightClass = (hasError, isOk) =>
+    `relative w-full pl-12 pr-12 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+    }`;
+
+  const getRegInputClass = (hasError, isOk) =>
+    `relative w-full pl-10 pr-3 py-2.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-xs sm:text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+    }`;
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden flex items-center justify-center p-4">
@@ -142,15 +348,15 @@ export function Login() {
       <div className={`relative w-full ${tab === "register" ? "max-w-xl" : "max-w-md"} z-10 my-4 transition-all duration-300`}>
         {/* Logo */}
         <div className="text-center mb-4 sm:mb-6">
-          <div className="inline-flex items-center justify-center relative mb-3 sm:mb-4">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 animate-pulse" />
-            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20">
+          <Link to="/" className="inline-flex items-center justify-center relative mb-3 sm:mb-4 group cursor-pointer" title="Volver al inicio">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 group-hover:opacity-50 transition-opacity animate-pulse" />
+            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20 group-hover:scale-105 transition-transform">
               <img src={logoImg} alt="Chazin Food" className={`transition-all duration-300 ${tab === "register" ? "w-14 h-14" : "w-20 h-20"} object-contain`} />
             </div>
             <div className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-rose-600 p-1.5 rounded-full shadow-lg">
               <ChefHat className="w-4 h-4 text-white" />
             </div>
-          </div>
+          </Link>
           <h1 className="text-3xl sm:text-4xl font-bold mb-1 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 bg-clip-text text-transparent">
             Chazin Food
           </h1>
@@ -186,10 +392,10 @@ export function Login() {
           <div className={tab === "register" ? "p-5 sm:p-6" : "p-8"}>
             {/* LOGIN */}
             {tab === "login" && (
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Correo Electrónico
+                    Correo Electrónico <span className="text-red-500">*</span>
                   </label>
                   <div className="relative group">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-rose-500 rounded-xl opacity-0 group-focus-within:opacity-10 blur transition-opacity" />
@@ -197,16 +403,32 @@ export function Login() {
                     <input
                       type="email"
                       value={loginCorreo}
-                      onChange={(e) => setLoginCorreo(e.target.value)}
-                      className={inputBase}
+                      onChange={(e) => {
+                        setLoginCorreo(e.target.value);
+                        markTouched("loginCorreo");
+                      }}
+                      onBlur={() => markTouched("loginCorreo")}
+                      className={getInputClass(!!getLoginCorreoError(), touched.loginCorreo && !getLoginCorreoError())}
                       placeholder="usuario@chazinfood.com"
                     />
                   </div>
+                  {getLoginCorreoError() && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{getLoginCorreoError()}</span>
+                    </p>
+                  )}
+                  {touched.loginCorreo && !getLoginCorreoError() && loginCorreo && (
+                    <p className="mt-1.5 text-xs font-semibold text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Correo válido</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Contraseña
+                    Contraseña <span className="text-red-500">*</span>
                   </label>
                   <div className="relative group">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-rose-500 rounded-xl opacity-0 group-focus-within:opacity-10 blur transition-opacity" />
@@ -214,24 +436,34 @@ export function Login() {
                     <input
                       type={showLoginPassword ? "text" : "password"}
                       value={loginContraseña}
-                      onChange={(e) => setLoginContraseña(e.target.value)}
-                      className={inputWithRight}
+                      onChange={(e) => {
+                        setLoginContraseña(e.target.value);
+                        markTouched("loginContraseña");
+                      }}
+                      onBlur={() => markTouched("loginContraseña")}
+                      className={getInputWithRightClass(!!getLoginContraseñaError(), touched.loginContraseña && !getLoginContraseñaError())}
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
                       onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors z-10"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors z-10 cursor-pointer"
                     >
                       {showLoginPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
+                  {getLoginContraseñaError() && (
+                    <p className="mt-1.5 text-xs font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{getLoginContraseñaError()}</span>
+                    </p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isLoginLoading}
-                  className="relative w-full bg-gradient-to-r from-red-500 via-rose-500 to-red-500 text-white font-bold py-4 px-4 rounded-xl transition-all duration-500 shadow-lg hover:shadow-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group text-sm"
+                  disabled={isLoginLoading || !loginCorreo.includes("@")}
+                  className="relative w-full bg-gradient-to-r from-red-500 via-rose-500 to-red-500 text-white font-bold py-4 px-4 rounded-xl transition-all duration-500 shadow-lg hover:shadow-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group text-sm cursor-pointer"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {isLoginLoading ? (
@@ -249,6 +481,17 @@ export function Login() {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
                 </button>
 
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-400 font-medium">O continúa con</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+
                 <div className="text-center pt-2">
                   <Link to="/forgot-password" className="text-sm text-red-600 hover:text-red-700 font-semibold hover:underline transition-colors">
                     ¿Olvidaste tu contraseña?
@@ -259,7 +502,7 @@ export function Login() {
 
             {/* REGISTRO */}
             {tab === "register" && (
-              <form onSubmit={handleRegister} className="space-y-3">
+              <form onSubmit={handleRegister} className="space-y-3" noValidate autoComplete="off">
                 <p className="text-xs text-gray-500 text-center -mt-1 mb-2">
                   Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
                 </p>
@@ -273,12 +516,25 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_first_name"
+                        autoComplete="off"
                         value={regNombre}
-                        onChange={(e) => setRegNombre(e.target.value.replace(/[0-9]/g, ""))}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[@0-9]/g, "");
+                          setRegNombre(val);
+                          markTouched("regNombre");
+                        }}
+                        onBlur={() => markTouched("regNombre")}
+                        className={getRegInputClass(!!getRegNombreError(), touched.regNombre && !getRegNombreError())}
                         placeholder="Juan"
                       />
                     </div>
+                    {getRegNombreError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegNombreError()}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -289,35 +545,78 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_last_name"
+                        autoComplete="off"
                         value={regApellidos}
-                        onChange={(e) => setRegApellidos(e.target.value.replace(/[0-9]/g, ""))}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[@0-9]/g, "");
+                          setRegApellidos(val);
+                          markTouched("regApellidos");
+                        }}
+                        onBlur={() => markTouched("regApellidos")}
+                        className={getRegInputClass(!!getRegApellidosError(), touched.regApellidos && !getRegApellidosError())}
                         placeholder="Pérez"
                       />
                     </div>
+                    {getRegApellidosError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegApellidosError()}</span>
+                      </p>
+                    )}
                   </div>
 
-                  <div>
+                  {/* Tipo de Documento con selector redondeado (border-radius) */}
+                  <div className="relative" ref={tipoDocRef}>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Tipo de Documento <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative group">
-                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
-                      <select
-                        value={regTipoDocumento}
-                        onChange={(e) => {
-                          const newTipo = e.target.value;
-                          setRegTipoDocumento(newTipo);
-                          setRegDocumento(sanitizeDocumento(regDocumento, newTipo));
-                        }}
-                        className={regSelectBase}
-                      >
-                        <option value="C.C.">C.C. (Cédula de Ciudadanía)</option>
-                        <option value="T.I.">T.I. (Tarjeta de Identidad)</option>
-                        <option value="C.E.">C.E. (Cédula de Extranjería)</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                      </select>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsTipoDocOpen(!isTipoDocOpen)}
+                      className="relative w-full pl-10 pr-9 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 hover:border-gray-300 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm text-gray-900 text-left flex items-center justify-between cursor-pointer"
+                    >
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <span className="truncate">
+                        {TIPOS_DOC_OPTIONS.find((opt) => opt.value === regTipoDocumento)?.label || regTipoDocumento}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                          isTipoDocOpen ? "rotate-180 text-red-500" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {/* Desplegable con bordes redondeados (border-radius 2xl) */}
+                    {isTipoDocOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl shadow-2xl border-2 border-gray-100 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden backdrop-blur-md">
+                        <div className="space-y-0.5">
+                          {TIPOS_DOC_OPTIONS.map((opt) => {
+                            const isSelected = regTipoDocumento === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => {
+                                  setRegTipoDocumento(opt.value);
+                                  setRegDocumento(sanitizeDocumento(regDocumento, opt.value));
+                                  setIsTipoDocOpen(false);
+                                  markTouched("regDocumento");
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center justify-between cursor-pointer ${
+                                  isSelected
+                                    ? "bg-red-50 text-red-600 font-bold"
+                                    : "text-gray-700 hover:bg-gray-100"
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -335,20 +634,31 @@ export function Login() {
                         type="text"
                         value={regDocumento}
                         maxLength={getDocConfig(regTipoDocumento).max}
-                        onChange={(e) => setRegDocumento(sanitizeDocumento(e.target.value, regTipoDocumento))}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegDocumento(sanitizeDocumento(e.target.value, regTipoDocumento));
+                          markTouched("regDocumento");
+                        }}
+                        onBlur={() => markTouched("regDocumento")}
+                        className={getRegInputClass(!!getRegDocumentoError(), touched.regDocumento && !getRegDocumentoError())}
                         placeholder={getDocConfig(regTipoDocumento).helper}
                       />
                     </div>
+                    {getRegDocumentoError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegDocumentoError()}</span>
+                      </p>
+                    )}
                   </div>
 
+                  {/* Teléfono (Obligatorio) */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-gray-700">
-                        Teléfono
+                        Teléfono <span className="text-red-500">*</span>
                       </label>
                       <span className="text-[10px] text-gray-400 font-medium">
-                        Máx. 10 dígitos ({regTelefono.length}/10)
+                        {regTelefono.length}/10 dígitos
                       </span>
                     </div>
                     <div className="relative group">
@@ -357,12 +667,31 @@ export function Login() {
                         type="tel"
                         value={regTelefono}
                         maxLength={10}
-                        onChange={(e) => setRegTelefono(sanitizeTelefono(e.target.value))}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegTelefono(sanitizeTelefono(e.target.value));
+                          markTouched("regTelefono");
+                        }}
+                        onBlur={() => markTouched("regTelefono")}
+                        className={getRegInputClass(
+                          !!getRegTelefonoError(),
+                          touched.regTelefono && !getRegTelefonoError() && regTelefono.length === 10
+                        )}
                         placeholder="3190000000"
                         inputMode="numeric"
                       />
                     </div>
+                    {getRegTelefonoError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegTelefonoError()}</span>
+                      </p>
+                    )}
+                    {touched.regTelefono && !getRegTelefonoError() && regTelefono.length === 10 && (
+                      <p className="mt-1 text-[11px] font-semibold text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Teléfono válido</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -373,12 +702,30 @@ export function Login() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="email"
+                        name="reg_user_email"
+                        autoComplete="off"
                         value={regCorreo}
-                        onChange={(e) => setRegCorreo(e.target.value)}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegCorreo(e.target.value);
+                          markTouched("regCorreo");
+                        }}
+                        onBlur={() => markTouched("regCorreo")}
+                        className={getRegInputClass(!!getRegCorreoError(), touched.regCorreo && !getRegCorreoError())}
                         placeholder="tu@correo.com"
                       />
                     </div>
+                    {getRegCorreoError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegCorreoError()}</span>
+                      </p>
+                    )}
+                    {touched.regCorreo && !getRegCorreoError() && regCorreo && (
+                      <p className="mt-1 text-[11px] font-semibold text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span>Correo válido</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -389,12 +736,24 @@ export function Login() {
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="delivery_address_reg"
+                        autoComplete="street-address"
                         value={regDireccion}
-                        onChange={(e) => setRegDireccion(e.target.value)}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegDireccion(e.target.value);
+                          markTouched("regDireccion");
+                        }}
+                        onBlur={() => markTouched("regDireccion")}
+                        className={getRegInputClass(!!getRegDireccionError(), touched.regDireccion && !getRegDireccionError())}
                         placeholder="Calle 12 # 34-56"
                       />
                     </div>
+                    {getRegDireccionError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegDireccionError()}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -405,12 +764,24 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_password"
+                        autoComplete="new-password"
                         value={regContraseña}
-                        onChange={(e) => setRegContraseña(e.target.value)}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegContraseña(e.target.value);
+                          markTouched("regContraseña");
+                        }}
+                        onBlur={() => markTouched("regContraseña")}
+                        className={getRegInputClass(!!getRegContraseñaError(), touched.regContraseña && !getRegContraseñaError())}
                         placeholder="Mínimo 6 caracteres"
                       />
                     </div>
+                    {getRegContraseñaError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegContraseñaError()}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -421,12 +792,24 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_confirm_password"
+                        autoComplete="new-password"
                         value={regConfirmar}
-                        onChange={(e) => setRegConfirmar(e.target.value)}
-                        className={regInputBase}
+                        onChange={(e) => {
+                          setRegConfirmar(e.target.value);
+                          markTouched("regConfirmar");
+                        }}
+                        onBlur={() => markTouched("regConfirmar")}
+                        className={getRegInputClass(!!getRegConfirmarError(), touched.regConfirmar && !getRegConfirmarError())}
                         placeholder="Repite tu contraseña"
                       />
                     </div>
+                    {getRegConfirmarError() && (
+                      <p className="mt-1 text-[11px] font-semibold text-red-500 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{getRegConfirmarError()}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="sm:col-span-2 flex items-center gap-2">
@@ -443,8 +826,8 @@ export function Login() {
 
                 <button
                   type="submit"
-                  disabled={isRegLoading}
-                  className="relative w-full bg-gradient-to-r from-red-500 via-rose-500 to-red-500 text-white font-bold py-3 px-4 rounded-xl transition-all duration-500 shadow-lg hover:shadow-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group text-sm mt-3"
+                  disabled={isRegLoading || !regCorreo.includes("@") || regTelefono.length !== 10}
+                  className="relative w-full bg-gradient-to-r from-red-500 via-rose-500 to-red-500 text-white font-bold py-3 px-4 rounded-xl transition-all duration-500 shadow-lg hover:shadow-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group text-sm mt-3 cursor-pointer"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {isRegLoading ? (
@@ -460,6 +843,17 @@ export function Login() {
                     )}
                   </span>
                 </button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-gray-400 font-medium">O continúa con</span>
+                  </div>
+                </div>
+
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
               </form>
             )}
           </div>
