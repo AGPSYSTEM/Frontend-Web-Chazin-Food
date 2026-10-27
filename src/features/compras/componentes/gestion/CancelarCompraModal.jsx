@@ -618,7 +618,7 @@ export function CancelarCompraModal({ isOpen, onClose, compra, onConfirm }) {
             <div className="border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900 shadow-xs">
               {detalles.length === 0 ? (
                 <div className="p-6 text-center text-xs text-gray-400">
-                  No hay insumos registrados en esta orden de compra.
+                  No hay insumos registrados en esta compra.
                 </div>
               ) : (
                 detalles.map((d, idx) => {
@@ -855,7 +855,7 @@ export function CancelarCompraModal({ isOpen, onClose, compra, onConfirm }) {
                   "Cambio de producto acordado",
                   "Error en cantidades o precios",
                   "Cancelación por parte del proveedor",
-                  "Orden de compra duplicada",
+                  "Compra duplicada",
                   "Reembolso de dinero acordado"
                 ].map((chip, cIdx) => (
                   <button

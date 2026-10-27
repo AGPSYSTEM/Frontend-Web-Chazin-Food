@@ -488,8 +488,14 @@ export function PersonalizarEventoModal({
         tipoEvento: evento.tipoEvento,
         icono: evento.icono || "party"
       },
-      adiciones: [], // Restricción en eventos (Item 17): adiciones únicamente en productos normales
-      ingredientesRemovidos: [], // Restricción en eventos (Item 8 y 17): receta fija
+      adiciones: selectedAdditions.map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio) || 0,
+        cantidad: Number(a.cantidad) || 1,
+        imagen: a.imagen || "sauce"
+      })),
+      ingredientesRemovidos: removedIngredients,
       observaciones: kitchenNotes || undefined,
       observacion: kitchenNotes || undefined
     };
@@ -783,6 +789,26 @@ export function PersonalizarEventoModal({
                 )}
               </button>
 
+              {adicionesList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("adiciones")}
+                  className={`flex-1 min-w-[110px] py-2 px-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                    activeTab === "adiciones"
+                      ? "bg-white dark:bg-gray-900 text-amber-600 dark:text-amber-400 shadow-sm"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Toppings & Extras</span>
+                  {selectedAdditions.length > 0 && (
+                    <span className="h-4 min-w-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black">
+                      {selectedAdditions.reduce((sum, a) => sum + (Number(a.cantidad) || 1), 0)}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {allBebidas.length > 0 && (
                 <button
                   type="button"
@@ -897,25 +923,44 @@ export function PersonalizarEventoModal({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-                      {customizableIngredients.map((ing) => (
-                        <div
-                          key={ing.id}
-                          className="p-3 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 flex items-center justify-between gap-2 shadow-2xs select-none"
-                        >
-                          <span className="flex items-center gap-2.5 truncate">
-                            <span className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-700 dark:text-gray-200 shadow-2xs">
-                              <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {customizableIngredients.map((ing) => {
+                        const isRemoved = removedIngredients.includes(ing.nombre);
+                        return (
+                          <div
+                            key={ing.id}
+                            onClick={() => toggleRemoveIngredient(ing.nombre)}
+                            className={`p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-2xs select-none cursor-pointer transition-all ${
+                              isRemoved
+                                ? "border-red-400 bg-red-50/70 dark:bg-red-950/30 opacity-80 ring-1 ring-red-400/30"
+                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200"
+                            }`}
+                            title={isRemoved ? "Clic para volver a incluir este ingrediente" : "Clic para pedir sin este ingrediente"}
+                          >
+                            <span className="flex items-center gap-2.5 truncate">
+                              <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                                isRemoved ? "bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300" : "bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-gray-200"
+                              }`}>
+                                <FoodIcon name={ing.icono || ing.nombre} size={18} stroke={1.75} />
+                              </span>
+                              <span className={`truncate text-xs font-bold ${
+                                isRemoved ? "line-through text-red-600 dark:text-red-400" : "text-gray-800 dark:text-gray-200"
+                              }`}>
+                                {ing.nombre}
+                              </span>
                             </span>
-                            <span className="truncate text-xs font-bold text-gray-800 dark:text-gray-200">
-                              {ing.nombre}
-                            </span>
-                          </span>
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                            <Check className="w-3 h-3 stroke-[3]" /> Incluido
-                          </span>
-                        </div>
-                      ))}
+                            {isRemoved ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/50 flex items-center gap-1">
+                                <X className="w-3 h-3 stroke-[3]" /> Quitado
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                                <Check className="w-3 h-3 stroke-[3]" /> Incluido
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (

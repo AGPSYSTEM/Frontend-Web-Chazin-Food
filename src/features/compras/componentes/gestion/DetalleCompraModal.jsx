@@ -111,7 +111,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onCancelar, onEdit
                 )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Orden de compra #{compra.id}
+                Compra #{compra.id}
               </p>
             </div>
           </div>

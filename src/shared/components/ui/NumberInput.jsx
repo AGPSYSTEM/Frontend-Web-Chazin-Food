@@ -17,6 +17,8 @@ export function NumberInput({
   required = false,
   formatThousands = false,
   allowDecimals = false,
+  showStepper = true,
+  hideStepper = false,
   onKeyDown,
   onPaste,
   ...props
@@ -24,15 +26,19 @@ export function NumberInput({
   const inputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
   const allowNegative = Number(min) < 0;
+  const shouldShowStepper = Boolean(showStepper && !hideStepper);
 
   const emitChange = (nextVal) => {
     if (onChange) {
-      onChange({
+      const syntheticEvent = {
         target: {
           value: nextVal,
           name: props.name || ""
-        }
-      });
+        },
+        valueOf: () => nextVal,
+        toString: () => String(nextVal)
+      };
+      onChange(syntheticEvent);
     }
   };
 
@@ -141,10 +147,10 @@ export function NumberInput({
         onPaste={handlePasteInternal}
         placeholder={placeholder}
         required={required}
-        className={`${className} pr-7`}
+        className={`${className} ${shouldShowStepper ? "pr-7" : ""}`}
         {...props}
       />
-      {isFocused && !props.disabled && !props.readOnly && (
+      {shouldShowStepper && isFocused && !props.disabled && !props.readOnly && (
         <div className="absolute right-2 flex flex-col items-center justify-center select-none z-10 gap-[2px]">
           <button
             type="button"

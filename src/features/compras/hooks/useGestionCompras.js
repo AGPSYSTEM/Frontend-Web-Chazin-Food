@@ -151,7 +151,7 @@ export function useGestionCompras() {
   const createCompra = async (data) => {
     try {
       await comprasService.createCompra(data);
-      notify.success("Compra registrada", "La orden de compra se creó exitosamente");
+      notify.success("Compra registrada", "La compra se registró exitosamente");
       await fetchCompras();
       return true;
     } catch (err) {
@@ -163,7 +163,7 @@ export function useGestionCompras() {
   const updateCompra = async (id, data) => {
     try {
       await comprasService.updateCompra(id, data);
-      notify.success("Compra actualizada", "La orden de compra se editó correctamente");
+      notify.success("Compra actualizada", "La compra se editó correctamente");
       await fetchCompras();
       return true;
     } catch (err) {
@@ -188,7 +188,7 @@ export function useGestionCompras() {
     if (!cancelData) {
       const confirmed = await notify.confirmAction(
         "¿Anular compra?",
-        "¿Estás seguro de que deseas anular esta orden de compra?",
+        "¿Estás seguro de que deseas anular esta compra?",
         "Sí, anular"
       );
       if (!confirmed) return false;

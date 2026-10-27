@@ -74,7 +74,7 @@ export function GestionCompras() {
     await refetch();
     notify.success(
       "¡Compra confirmada!",
-      "La orden de compra se registró exitosamente y los insumos fueron sumados automáticamente al inventario."
+      "La compra se registró exitosamente y los insumos fueron sumados automáticamente al inventario."
     );
   };
 

@@ -48,9 +48,9 @@ export const getDefaultDrinkImageForFlavor = (flavorName = "", prodName = "") =>
   const fn = String(flavorName || "").toLowerCase();
   const pn = String(prodName || "").toLowerCase();
   if (fn.includes("sin azúcar") || fn.includes("sin azucar") || fn.includes("light") || fn.includes("zero") || fn.includes("black")) {
-    if (pn.includes("coca")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+    if (pn.includes("coca")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png";
     if (pn.includes("pepsi")) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789872832/akjyapmemvunluyjl0vo.png";
-    return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+    return "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png";
   }
   if (fn.includes("uva")) return "/images/drinks/uva_postobon-removebg-preview.png";
   if (fn.includes("naranja")) return "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png";

@@ -745,11 +745,13 @@ export function PosCheckoutModal({
                   <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
                   <NumberInput
                     formatThousands={true}
+                    showStepper={false}
                     min={0}
                     value={efectivoPaga}
-                    onChange={(val) => {
+                    onChange={(e) => {
                       setPagoTouched(true);
-                      setEfectivoPaga(val);
+                      const raw = e?.target ? e.target.value : e;
+                      setEfectivoPaga(raw);
                     }}
                     onBlur={() => setPagoTouched(true)}
                     placeholder={`Mínimo: $${finalTotal.toLocaleString("es-CO")}`}

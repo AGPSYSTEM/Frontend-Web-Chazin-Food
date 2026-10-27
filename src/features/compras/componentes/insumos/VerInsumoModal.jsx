@@ -474,7 +474,7 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                               </span>
                               {lot.idCompra && (
                                 <span className="text-[10px] text-gray-400 block mt-0.5">
-                                  Orden de Compra #{lot.idCompra}
+                                  Compra #{lot.idCompra}
                                 </span>
                               )}
                             </td>

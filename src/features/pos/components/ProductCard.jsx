@@ -212,23 +212,28 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
         </div>
 
         {/* ── Price & Action Footer ── */}
-        <div className="pt-3 flex flex-col gap-2 mt-3 w-full border-t border-gray-100 dark:border-gray-800">
+        <div className="pt-2.5 flex flex-col gap-2 mt-2 w-full border-t border-gray-100 dark:border-gray-800">
           {/* Price Row */}
-          <div className="flex items-center justify-between gap-2 px-0.5">
-            <div className="text-left flex flex-col min-w-0">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider leading-none">Precio</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-end justify-between gap-2 px-0.5">
+            <div className="text-left flex flex-col min-w-0 flex-1">
+              {/* Header line: PRECIO label + Strikethrough & Discount Tag */}
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Precio</span>
                 {activeEvent && activeEvent.savings > 0 && (
-                  <span className="text-[11px] line-through font-semibold text-gray-400">
-                    ${Number(activeEvent.rawPrice).toLocaleString("es-CO")}
-                  </span>
+                  <>
+                    <span className="text-[10.5px] line-through font-semibold text-gray-400/90">
+                      ${Number(activeEvent.rawPrice).toLocaleString("es-CO")}
+                    </span>
+                    <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-1 py-0.5 rounded border border-emerald-200/70 dark:border-emerald-800/50">
+                      -{activeEvent.discountPercent}%
+                    </span>
+                  </>
                 )}
-                {activeEvent && activeEvent.savings > 0 && (
-                  <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md">
-                    -{activeEvent.discountPercent}%
-                  </span>
-                )}
-                <span className={`text-sm sm:text-base font-black leading-tight ${
+              </div>
+
+              {/* Main Effective Price */}
+              <div className="mt-1 flex items-baseline">
+                <span className={`text-base sm:text-[17px] font-black tracking-tight leading-none ${
                   activeEvent ? "text-amber-600 dark:text-amber-400" : "text-[#f05454] dark:text-red-400"
                 }`}>
                   ${Number(effectiveBasePrice).toLocaleString("es-CO")}
@@ -236,11 +241,11 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               </div>
             </div>
 
-            {/* Additions count chip */}
+            {/* Additions count chip (cleanly separated on the right) */}
             {adiciones.length > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">
-                <Layers className="w-3 h-3 text-amber-400" />
-                {adiciones.length} extras
+              <span className="shrink-0 self-end mb-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100/90 dark:bg-gray-800/90 px-2.5 py-1 rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-2xs">
+                <Layers className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>{adiciones.length} extras</span>
               </span>
             )}
           </div>

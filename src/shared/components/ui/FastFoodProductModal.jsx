@@ -292,8 +292,8 @@ export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, 
     if (hasColombiana) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
     if (hasManzana) return "/images/drinks/manzana_400ml-removebg-preview.png";
     if (hasCoca) {
-      if (dietActive) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
-      return "/images/drinks/coca_cola-removebg-preview.png";
+      if (dietActive) return OFFICIAL_DRINK_IMAGES.coca_cola_light;
+      return OFFICIAL_DRINK_IMAGES.coca_cola;
     }
     if (hasPepsi) {
       if (dietActive) return "/images/drinks/pepsi_light-removebg-preview.png";
@@ -830,8 +830,8 @@ export function FastFoodProductModal({
         esOriginal: true,
         precio: Number(producto?.precio || 0),
         imagen: getDrinkBottleImage("400ml", producto, origName, isCocaDiet) ||
-                (isCocaDiet ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
-                (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                (isCocaDiet ? OFFICIAL_DRINK_IMAGES.coca_cola_light : null) ||
+                (isCoca ? OFFICIAL_DRINK_IMAGES.coca_cola : null) ||
                 (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
                 producto?.imagen || null
       };
@@ -1050,7 +1050,7 @@ export function FastFoodProductModal({
   const getVariantImage = useCallback((varName) => {
     const vn = String(varName || "").toLowerCase();
     if (vn.includes("light") || vn.includes("sin azúcar") || vn.includes("sin azucar") || vn.includes("zero")) {
-      return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png";
+      return OFFICIAL_DRINK_IMAGES.coca_cola_light;
     }
     return null;
   }, []);
@@ -2010,7 +2010,16 @@ export function FastFoodProductModal({
                   key={heroImage}
                   src={heroImage}
                   alt={producto.nombre}
-                  onError={() => setImageError(true)}
+                  onError={(e) => {
+                    if (isDrink) {
+                      const fallback = isDietSelected ? OFFICIAL_DRINK_IMAGES.coca_cola_light : OFFICIAL_DRINK_IMAGES.coca_cola;
+                      if (e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                        return;
+                      }
+                    }
+                    setImageError(true);
+                  }}
                   className="max-h-[170px] sm:max-h-[200px] w-auto max-w-[90%] object-contain drop-shadow-[0_22px_28px_rgba(0,0,0,0.7)] select-none animate-in zoom-in-95 duration-300"
                 />
               ) : (
@@ -2425,6 +2434,11 @@ export function FastFoodProductModal({
                                 <img
                                   src={bottleImg}
                                   alt={size.label}
+                                  onError={(e) => {
+                                    if (size.id === "400ml") {
+                                      e.currentTarget.src = isDietSelected ? OFFICIAL_DRINK_IMAGES.coca_cola_light : OFFICIAL_DRINK_IMAGES.coca_cola;
+                                    }
+                                  }}
                                   className="max-h-full max-w-full object-contain drop-shadow-md transition-transform duration-200 group-hover:scale-110"
                                 />
                               </div>
@@ -2509,8 +2523,8 @@ export function FastFoodProductModal({
                         const varImg = variant.imagen ||
                           getDrinkBottleImage("400ml", producto, variant, isDietEffective) ||
                           (isPepsi && isDietEffective ? "/images/drinks/pepsi_light-removebg-preview.png" : null) ||
-                          (isCoca && isDietEffective ? "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342941/rcxdoursw1roe9f8bmpw.png" : null) ||
-                          (isCoca ? "/images/drinks/coca_cola-removebg-preview.png" : null) ||
+                          (isCoca && isDietEffective ? OFFICIAL_DRINK_IMAGES.coca_cola_light : null) ||
+                          (isCoca ? OFFICIAL_DRINK_IMAGES.coca_cola : null) ||
                           (isPepsi ? "/images/drinks/pepsi_400ml-removebg-preview.png" : null) ||
                           producto.imagen;
 
