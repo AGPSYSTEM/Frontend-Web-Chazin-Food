@@ -167,10 +167,16 @@ export function Cart({
         type="button"
         onClick={handleProceed}
         disabled={loading || isEmpty}
+        title={isEmpty ? "Agregue al menos un producto a la comanda para continuar" : "Finalizar y cobrar pedido"}
         className="mt-3 w-full rounded-[16px] bg-[#f05454] hover:bg-[#e04545] px-4 py-3 text-xs sm:text-sm font-black text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer active:scale-98"
       >
         {loading ? "Procesando..." : "Finalizar Pedido"}
       </button>
+      {isEmpty && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-1.5 font-medium">
+          Selecciona productos del menú para habilitar el cobro
+        </p>
+      )}
     </div>
   );
 }

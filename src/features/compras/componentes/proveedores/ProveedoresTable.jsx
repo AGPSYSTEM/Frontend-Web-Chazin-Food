@@ -17,7 +17,7 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleE
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scroll-smooth touch-pan-x focus:outline-none">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
