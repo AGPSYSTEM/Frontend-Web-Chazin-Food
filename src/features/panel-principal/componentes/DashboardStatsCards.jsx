@@ -58,7 +58,10 @@ export function DashboardStatsCards({ stats = {} }) {
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                   {card.title}
                 </span>
-                <h3 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight truncate">
+                <h3
+                  title={card.value}
+                  className="text-lg xl:text-xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight leading-snug break-words"
+                >
                   {card.value}
                 </h3>
               </div>
