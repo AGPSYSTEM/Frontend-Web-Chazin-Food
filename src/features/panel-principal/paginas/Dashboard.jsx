@@ -245,8 +245,11 @@ export function Dashboard() {
               <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                 Total de ventas (COP)
               </span>
-              <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} COP
+              <span
+                title={`$${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} COP`}
+                className="text-base sm:text-lg xl:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight leading-snug break-words"
+              >
+                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} <span className="text-xs font-bold text-gray-400 dark:text-gray-500">COP</span>
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -268,8 +271,11 @@ export function Dashboard() {
               <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                 Ventas del Período (COP)
               </span>
-              <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} COP
+              <span
+                title={`$${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} COP`}
+                className="text-base sm:text-lg xl:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight leading-snug break-words"
+              >
+                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} <span className="text-xs font-bold text-gray-400 dark:text-gray-500">COP</span>
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-green-100/80 dark:bg-green-950/50 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -385,7 +391,7 @@ export function Dashboard() {
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
                   itemStyle={tooltipItemStyle}
-                  formatter={(value) => [`$${Number(value).toLocaleString("es-CO")} COP`, ""]}
+                  formatter={(value, name) => [`$${Number(value || 0).toLocaleString("es-CO")} COP`, name || "Monto"]}
                 />
                 <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
                 {/* Etiquetas Compras y Ventas (Ítem 33) */}
