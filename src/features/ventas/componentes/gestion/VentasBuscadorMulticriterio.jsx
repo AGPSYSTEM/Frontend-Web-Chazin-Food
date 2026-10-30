@@ -561,7 +561,7 @@ export function VentasBuscadorMulticriterio({
       {/* Contador de Resultados Dinámico */}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-0.5">
         <span>
-          Mostrando <strong className="text-gray-900 dark:text-gray-100">{filteredRecords}</strong> de {totalRecords} pedidos
+          Mostrando <strong className="text-gray-900 dark:text-gray-100">{filteredRecords}</strong> de {totalRecords} ventas
           {hasActiveFilters && " (filtrados)"}
         </span>
       </div>

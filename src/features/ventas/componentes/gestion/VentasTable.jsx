@@ -118,7 +118,6 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
               <th className="px-5 py-3.5 whitespace-nowrap">TIEMPO ESTIMADO</th>
               <th className="px-5 py-3.5 whitespace-nowrap">MÉTODO</th>
               <th className="px-5 py-3.5 whitespace-nowrap">TOTAL</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">ESTADO</th>
               <th className="px-5 py-3.5 whitespace-nowrap text-right">ACCIONES</th>
             </tr>
           </thead>
@@ -220,14 +219,6 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                     )}
                   </td>
 
-                  {/* Estado Badge (Verde Pagado) */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Pagado
-                    </span>
-                  </td>
-
                   {/* Acciones */}
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
                     <div className="inline-flex items-center gap-2">
@@ -235,7 +226,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                         <button
                           type="button"
                           onClick={() => onAprobarPago(v.id)}
-                          title="Aprobar pago y enviar pedido a cocina"
+                          title="Aprobar pago y enviar a cocina"
                           className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer text-xs font-bold shadow-2xs"
                         >
                           Aprobar pago
@@ -243,7 +234,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                       )}
                       <button
                         onClick={() => onViewDetail && onViewDetail(v)}
-                        title="Ver Detalle del Pedido"
+                        title="Ver Detalle de la Venta"
                         className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
                       >
                         <Eye className="w-4 h-4 text-[#F05454]" />

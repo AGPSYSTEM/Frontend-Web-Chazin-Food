@@ -90,7 +90,7 @@ export function GestionVentas() {
   // Export to Excel (.xlsx) con los datos filtrados actualmente
   const handleExportExcel = () => {
     const headers = [
-      "N° Factura / Pedido",
+      "N° Factura / Venta",
       "Cliente",
       "Fecha",
       "Horario",
@@ -118,7 +118,7 @@ export function GestionVentas() {
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
     worksheet["!cols"] = [
-      { wch: 22 }, // N° Factura / Pedido
+      { wch: 22 }, // N° Factura / Venta
       { wch: 24 }, // Cliente
       { wch: 14 }, // Fecha
       { wch: 16 }, // Horario
@@ -131,10 +131,10 @@ export function GestionVentas() {
     ];
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Pedidos");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Historial de Ventas");
     XLSX.writeFile(
       workbook,
-      `Historial_Pedidos_${selectedPeriod}_${new Date().toISOString().split("T")[0]}.xlsx`
+      `Historial_Ventas_${selectedPeriod}_${new Date().toISOString().split("T")[0]}.xlsx`
     );
   };
 
@@ -147,7 +147,7 @@ export function GestionVentas() {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Historial de Pedidos - Chazin Food</title>
+          <title>Historial de Ventas - Chazin Food</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; color: #1e293b; }
             h1 { color: #F05454; font-size: 24px; margin-bottom: 4px; }
@@ -161,12 +161,12 @@ export function GestionVentas() {
           </style>
         </head>
         <body>
-          <h1>Chazin Food — Historial de Pedidos</h1>
+          <h1>Chazin Food — Historial de Ventas</h1>
           <h2>Período: ${periodText} | Registros: ${filteredVentas.length} | Generado el: ${new Date().toLocaleDateString("es-CO")} ${new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</h2>
           <table>
             <thead>
               <tr>
-                <th>N° Pedido</th>
+                <th>N° Venta</th>
                 <th>Cliente</th>
                 <th>Fecha & Horario</th>
                 <th>Entrega</th>
@@ -189,7 +189,7 @@ export function GestionVentas() {
               `).join("")}
             </tbody>
           </table>
-          <div class="footer">Chazin Food — Sistema de Gestión Comercial y Pedidos</div>
+          <div class="footer">Chazin Food — Sistema de Gestión Comercial y Ventas</div>
           <script>
             window.onload = function() { window.print(); }
           </script>
@@ -243,7 +243,7 @@ export function GestionVentas() {
             Gestión de Ventas
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Monitoreo de pedidos pagados, historial completo y análisis comercial
+            Monitoreo de ventas, historial completo y análisis comercial
           </p>
         </div>
         <button
@@ -256,13 +256,14 @@ export function GestionVentas() {
       </div>
 
       {/* Top 4 Stats Cards */}
-      <VentasStatsCards ventas={ventas} stats={stats} />
+      <VentasStatsCards ventas={ventas} stats={stats} selectedPeriod={selectedPeriod} />
 
       {/* Main Navigation Container */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-6">
-        {/* Tabs Header */}
-        <div className="border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-8 -mb-px">
+        {/* Tabs Header con Selector de Período Integrado */}
+        <div className="border-b border-gray-100 dark:border-gray-800 pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-6 sm:gap-8 -mb-px overflow-x-auto">
+
             <button
               onClick={() => setActiveTab("pedidos_pagados")}
               className={`flex items-center gap-2 pb-3.5 text-sm font-semibold transition-colors relative cursor-pointer ${
@@ -276,7 +277,7 @@ export function GestionVentas() {
                   activeTab === "pedidos_pagados" ? "text-[#F05454]" : "text-gray-400"
                 }`}
               />
-              <span>Pedidos Pagados</span>
+              <span>Ventas</span>
             </button>
 
             <button
@@ -311,11 +312,38 @@ export function GestionVentas() {
               <span>Reportes</span>
             </button>
           </div>
+
+          {/* Selector de Período Global (Afecta las Ventas, Historial y los Reportes) */}
+          <div className="flex items-center gap-1 bg-gray-100/90 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-2xs shrink-0 self-start md:self-auto">
+            {[
+              { id: "hoy", label: "Hoy" },
+              { id: "7_dias", label: "7 días" },
+              { id: "este_mes", label: "Este mes" },
+              { id: "este_ano", label: "Este año" },
+              { id: "personalizado", label: "Histórico" }
+            ].map((p) => {
+              const isSelected = selectedPeriod === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedPeriod(p.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isSelected
+                      ? "bg-[#F05454] text-white shadow-xs"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/80 dark:hover:bg-gray-700/60"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* TAB 1: REPORTES */}
         {activeTab === "reportes" ? (
-          <VentasReportesView ventas={ventas} />
+          <VentasReportesView ventas={ventas} selectedPeriod={selectedPeriod} />
         ) : activeTab === "historial" ? (
           /* TAB 2: HISTORIAL */
           <div className="space-y-6 pt-1">
@@ -455,7 +483,7 @@ export function GestionVentas() {
                   <Search className="w-7 h-7 stroke-[1.5]" />
                 </div>
                 <p className="text-base font-bold text-gray-800 dark:text-gray-100">
-                  No se encontraron pedidos con los criterios aplicados
+                  No se encontraron ventas con los criterios aplicados
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md">
                   {searchTerm ? `No hay resultados para "${searchTerm}". ` : ""}
@@ -466,7 +494,7 @@ export function GestionVentas() {
                     onClick={clearAllFilters}
                     className="mt-2 px-4 py-2 rounded-xl bg-[#F05454] hover:bg-[#d84040] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                   >
-                    Restablecer filtros y ver todos los pedidos
+                    Restablecer filtros y ver todas las ventas
                   </button>
                 )}
               </div>
