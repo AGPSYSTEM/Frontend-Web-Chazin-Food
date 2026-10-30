@@ -150,7 +150,7 @@ export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado 
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-100/80 dark:bg-gray-800/80 border-b border-gray-200/80 dark:border-gray-800 text-xs font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wider">
-              <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Pedido</th>
+              <th className="px-5 py-3.5 whitespace-nowrap">N° Factura / Venta</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Cliente</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Origen</th>
               <th className="px-5 py-3.5 whitespace-nowrap">Fecha & Horario</th>
@@ -299,7 +299,7 @@ export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado 
                   <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
                     <button
                       onClick={() => onViewDetail && onViewDetail(v)}
-                      title="Ver Detalle del Pedido"
+                      title="Ver Detalle de la Venta"
                       className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
                     >
                       <Eye className="w-4 h-4 text-[#F05454]" />

@@ -382,7 +382,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
           </button>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="bg-white/20 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              Detalle del Pedido
+              Detalle de la Venta
             </span>
             <span
               className={`text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
@@ -428,7 +428,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                   </div>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>{venta.responsable?.tieneCuenta ? "Cuenta de usuario registrada y activa" : "Pedido generado vía catálogo en línea"}</span>
+                    <span>{venta.responsable?.tieneCuenta ? "Cuenta de usuario registrada y activa" : "Venta generada vía catálogo en línea"}</span>
                   </p>
                 </div>
               </div>
@@ -675,7 +675,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
           <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3 flex items-center justify-between text-emerald-700 dark:text-emerald-300 font-bold text-xs sm:text-sm">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Estado de Pago: Pagado</span>
+              <span>Estado de la Venta</span>
             </div>
             <span className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black px-2.5 py-0.5 rounded-full">
               {venta.estado || "Completada"}
@@ -686,7 +686,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
           <div>
             <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-[#f05454]" />
-              <span>Productos del Pedido ({productos.length})</span>
+              <span>Productos de la Venta ({productos.length})</span>
             </h4>
           </div>
 
@@ -795,7 +795,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
             <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <span className="text-base font-black text-gray-900 dark:text-gray-100">
-                Total Pagado
+                Total
               </span>
               <span className="text-2xl font-black text-[#F05454] dark:text-red-400">
                 ${total.toLocaleString("es-CO")}
