@@ -350,14 +350,14 @@ export default function PosVendedor() {
           {/* Products Grid */}
           <div className="flex-1">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
                 {categoriaActiva === null
                   ? "Todos los Productos"
                   : categoriaActiva === "eventos"
                   ? "Promociones y Ofertas"
                   : (categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
               </h2>
-              <span className="text-xs font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+              <span className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
                 {visibleProducts.length} {visibleProducts.length === 1 ? "producto" : "productos"}
               </span>
             </div>
