@@ -43,16 +43,35 @@ export default function KioskProductCard({ producto, onSelect }) {
         }
       }}
       aria-label={`Seleccionar ${producto.nombre}, precio ${formatPrice(finalPrice)} COP`}
-      className="group relative flex flex-col justify-between rounded-3xl bg-white border-2 border-gray-200/90 hover:border-red-400 p-3.5 sm:p-4 shadow-sm hover:shadow-xl shadow-red-500/10 transition-all cursor-pointer select-none overflow-hidden min-h-[280px] sm:min-h-[300px]"
+      className={`group relative flex flex-col justify-between rounded-3xl p-3.5 sm:p-4 transition-all cursor-pointer select-none overflow-hidden min-h-[290px] sm:min-h-[310px] ${
+        activeEvent
+          ? "bg-linear-to-b from-amber-50/40 via-white to-white border-3 border-amber-500 ring-4 ring-amber-400/40 shadow-xl shadow-amber-500/20"
+          : "bg-white border-2 border-gray-200/90 hover:border-red-400 shadow-sm hover:shadow-xl shadow-red-500/10"
+      }`}
     >
-      {/* Promo badge floating at top right */}
-      {is2x1Promo && (
+      {/* ═══ CONTORNO & BANNER DE EVENTO ACTIVO ═══ */}
+      {activeEvent && (
+        <div className="w-full bg-linear-to-r from-red-600 via-rose-600 to-amber-500 text-white font-black text-xs py-1.5 px-3 rounded-2xl flex items-center justify-between shadow-xs mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Flame className="w-4 h-4 fill-amber-300 text-amber-300 animate-pulse shrink-0" />
+            <span className="truncate uppercase tracking-wider">
+              {activeEvent.nombre || activeEvent.nombreEvento || "Evento Activo"}
+            </span>
+          </div>
+          <span className="bg-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
+            {discountPercent > 0 ? `-${discountPercent}%` : is2x1Promo ? "2X1" : "PROMO"}
+          </span>
+        </div>
+      )}
+
+      {/* Promo badge floating at top right of image */}
+      {is2x1Promo && !activeEvent && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-amber-400 text-amber-950 font-black text-xs px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
           <Flame className="w-3.5 h-3.5 fill-amber-950" />
           <span>¡2x1 Promo!</span>
         </div>
       )}
-      {!is2x1Promo && discountPercent > 0 && (
+      {!is2x1Promo && discountPercent > 0 && !activeEvent && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-red-600 text-white font-black text-xs px-2.5 py-1 rounded-full shadow-md">
           <Tag className="w-3.5 h-3.5" />
           <span>{discountPercent}% OFF</span>
@@ -103,4 +122,3 @@ export default function KioskProductCard({ producto, onSelect }) {
     </motion.div>
   );
 }
-

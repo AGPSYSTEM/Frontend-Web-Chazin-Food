@@ -2,22 +2,27 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChefHat, ArrowLeft, Sparkles, Utensils, ShoppingBag } from "lucide-react";
 import usePOS from "../hooks/usePOS";
-import KioskWelcome from "../components/KioskWelcome";
 import KioskPromoCarousel from "../components/KioskPromoCarousel";
 import KioskCategoryRail from "../components/KioskCategoryRail";
 import KioskProductCard from "../components/KioskProductCard";
-import KioskProductModal from "../components/KioskProductModal";
 import KioskBottomBar from "../components/KioskBottomBar";
 import KioskOrderReviewModal from "../components/KioskOrderReviewModal";
-import KioskCheckoutModal from "../components/KioskCheckoutModal";
+import PosCheckoutModal from "../components/PosCheckoutModal";
 import KioskConfirmation from "../components/KioskConfirmation";
-import KioskInactivityModal from "../components/KioskInactivityModal";
 import KioskCancelConfirmModal from "../components/KioskCancelConfirmModal";
+import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 
 export default function PosVendedor() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isAdmin = userRol === "administrador" || userRol === "admin" || user?.idRol === 1;
 
   const {
     categorias,
@@ -37,27 +42,29 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
-  // Kiosk State Machine: 'welcome' | 'catalog' | 'confirmation'
-  const [kioskStep, setKioskStep] = useState("welcome");
+  // Kiosk State: Inicia directamente en "catalog" (sección de crear venta)
+  const [kioskStep, setKioskStep] = useState("catalog");
   const [orderMode, setOrderMode] = useState("Comer aquí"); // "Comer aquí" | "Para llevar"
 
-  // Modals state
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  // Product Customization Modal (FastFoodProductModal anterior con mise en place, adiciones, gaseosas y reseñas)
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [customizingFicha, setCustomizingFicha] = useState(null);
+  const [allAdiciones, setAllAdiciones] = useState([]);
+  const [fichasCache, setFichasCache] = useState({});
+
+  // Review & Checkout Modals
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
-  const [isInactivityOpen, setIsInactivityOpen] = useState(false);
 
-  // Animations & Feedback
+  // Animation bounce feedback
   const [isCartBouncing, setIsCartBouncing] = useState(false);
-  const [allAdiciones, setAllAdiciones] = useState([]);
 
   // Result of completed order
   const [lastCreatedOrder, setLastCreatedOrder] = useState(null);
   const [lastOrderData, setLastOrderData] = useState(null);
 
-  // Load additions once on mount
+  // Load additions
   useEffect(() => {
     adicionesService
       .getAdiciones()
@@ -70,8 +77,23 @@ export default function PosVendedor() {
           );
         }
       })
-      .catch((err) => console.warn("Error cargando adiciones en Kiosco:", err));
+      .catch((err) => console.warn("Error cargando adiciones en POS:", err));
   }, []);
+
+  // Bebidas para combos y acompañantes
+  const allBebidas = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+      const name = String(p.nombre || "").toLowerCase();
+      return (
+        cat.includes("bebida") ||
+        cat.includes("gaseos") ||
+        cat.includes("refresco") ||
+        name.includes("gaseosa") ||
+        name.includes("agua")
+      );
+    });
+  }, [productos]);
 
   // Total items in cart
   const totalCartItems = useMemo(() => {
@@ -138,7 +160,7 @@ export default function PosVendedor() {
     });
 
     const now = new Date();
-    // Prioritize event products first
+    // Priorizar productos con eventos de primero
     return [...list].sort((a, b) => {
       const aEvts = Array.isArray(a.eventos) ? a.eventos : [];
       const bEvts = Array.isArray(b.eventos) ? b.eventos : [];
@@ -158,66 +180,42 @@ export default function PosVendedor() {
     });
   }, [productos, categoriaActiva, categorias]);
 
-  // Inactivity timeout handler (60s without touch in catalog)
-  useEffect(() => {
-    if (kioskStep !== "catalog") return;
+  // Open FastFoodProductModal (el modal anterior completo)
+  const handleOpenCustomize = async (producto) => {
+    setCustomizingProduct(producto);
+    const prodId = producto.id || producto.idProducto;
+    if (fichasCache[prodId]) {
+      setCustomizingFicha(fichasCache[prodId]);
+      return;
+    }
 
-    let timeoutId;
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        setIsInactivityOpen(true);
-      }, 60000); // 60s
-    };
-
-    const events = ["touchstart", "touchend", "mousedown", "keydown", "scroll"];
-    events.forEach((evt) => window.addEventListener(evt, resetTimer, { passive: true }));
-    resetTimer();
-
-    return () => {
-      clearTimeout(timeoutId);
-      events.forEach((evt) => window.removeEventListener(evt, resetTimer));
-    };
-  }, [kioskStep]);
-
-  // Reset entire kiosk state
-  const handleResetKiosk = useCallback(() => {
-    clearCart();
-    setOrderMode("Comer aquí");
-    setKioskStep("welcome");
-    setLastCreatedOrder(null);
-    setLastOrderData(null);
-    setIsProductModalOpen(false);
-    setIsReviewOpen(false);
-    setIsCheckoutOpen(false);
-    setIsCancelConfirmOpen(false);
-    setIsInactivityOpen(false);
-  }, [clearCart]);
-
-  // Start ordering from Welcome screen
-  const handleSelectOrderMode = (mode) => {
-    setOrderMode(mode);
-    setKioskStep("catalog");
+    try {
+      const f = await fichasTecnicasService.getFichaByProducto(prodId);
+      if (f) {
+        setFichasCache((prev) => ({ ...prev, [prodId]: f }));
+        setCustomizingFicha(f);
+      } else {
+        setCustomizingFicha(null);
+      }
+    } catch (e) {
+      console.warn("No se pudo cargar ficha técnica para producto:", prodId);
+      setCustomizingFicha(null);
+    }
   };
 
-  // Open product modal
-  const handleOpenProduct = (producto) => {
-    setSelectedProduct(producto);
-    setIsProductModalOpen(true);
-  };
-
-  // Add product to cart with bounce feedback
-  const handleConfirmAddProduct = ({
+  // Confirm product customization from FastFoodProductModal
+  const handleModalConfirm = ({
     producto,
     cantidad,
     adiciones,
-    observacion,
-    is2x1Promo
+    bebidas,
+    observacion
   }) => {
+    const displayName = producto.nombrePersonalizado || producto.nombre;
     addProduct({
       productoId: producto.idProducto || producto.id,
       varianteId: producto.idVariante || producto.id || producto.idProducto,
-      nombre: producto.nombre,
+      nombre: displayName,
       precio: producto.precio,
       adiciones: (adiciones || []).map((a) => ({
         idAdicion: a.idAdicion || a.id,
@@ -230,45 +228,84 @@ export default function PosVendedor() {
       observacion,
       cantidad: Number(cantidad) || 1,
       stock: producto.stock,
-      is2x1Promo: Boolean(is2x1Promo),
-      cantidadCocina: is2x1Promo ? (Number(cantidad) || 1) * 2 : Number(cantidad) || 1
+      is2x1Promo: Boolean(producto.is2x1Promo),
+      cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1))
     });
 
-    // Trigger bounce animation on bottom bar
+    let comboCfg = producto.configuracionCombo;
+    if (typeof comboCfg === "string") {
+      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
+    }
+    const isComboProd = Boolean(comboCfg?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
+    let includedQuotaRemaining = requiredDrinks;
+
+    if (Array.isArray(bebidas) && bebidas.length > 0) {
+      for (const b of bebidas) {
+        const qty = Number(b.cantidad || 1);
+        const covered = isComboProd ? Math.min(includedQuotaRemaining, qty) : 0;
+        const extraQty = qty - covered;
+        if (isComboProd) includedQuotaRemaining -= covered;
+
+        if (!isComboProd || extraQty > 0) {
+          addProduct({
+            productoId: b.id || b.idProducto,
+            varianteId: b.id || b.idProducto,
+            nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
+            precio: Number(b.precio || 0),
+            adiciones: [],
+            observacion: isComboProd ? `Bebida extra de ${displayName}` : `Acompañante de ${displayName}`,
+            cantidad: isComboProd ? extraQty : qty,
+            stock: b.stock
+          });
+        }
+      }
+    }
+
+    setCustomizingProduct(null);
+    setCustomizingFicha(null);
+
+    // Bouncing animation on cart
     setIsCartBouncing(true);
     setTimeout(() => setIsCartBouncing(false), 600);
   };
 
-  // Complete checkout
+  // Complete checkout via PosCheckoutModal (modal de pago anterior)
   const handleConfirmCheckout = async (checkoutData) => {
     try {
-      const res = await submitOrder(checkoutData);
+      const res = await submitOrder({
+        ...checkoutData,
+        tipoEntrega: orderMode === "Comer aquí" ? "En Mesa" : "Recoger",
+        empaqueParaLlevar: orderMode === "Para llevar"
+      });
       setLastCreatedOrder(res);
       setLastOrderData(checkoutData);
       setIsCheckoutOpen(false);
       setIsReviewOpen(false);
       setKioskStep("confirmation");
     } catch (err) {
-      console.error("Error al registrar venta en kiosco:", err);
+      console.error("Error al registrar venta en POS:", err);
     }
   };
 
-  // Staff discrete exit handler
+  // Reset after order completion
+  const handleResetKiosk = useCallback(() => {
+    clearCart();
+    setOrderMode("Comer aquí");
+    setKioskStep("catalog");
+    setLastCreatedOrder(null);
+    setLastOrderData(null);
+    setIsReviewOpen(false);
+    setIsCheckoutOpen(false);
+    setIsCancelConfirmOpen(false);
+  }, [clearCart]);
+
+  // Staff discrete exit handler (volver a gestión de ventas)
   const handleStaffExit = () => {
     navigate("/ventas/gestion-ventas");
   };
 
-  // Step 1: Welcome Screen
-  if (kioskStep === "welcome") {
-    return (
-      <KioskWelcome
-        onSelectOrderMode={handleSelectOrderMode}
-        onExitStaff={handleStaffExit}
-      />
-    );
-  }
-
-  // Step 3: Confirmation Screen
+  // Step 2: Confirmation Screen
   if (kioskStep === "confirmation") {
     const orderNumber =
       lastCreatedOrder?.idVenta ||
@@ -285,10 +322,10 @@ export default function PosVendedor() {
     );
   }
 
-  // Step 2: Catalog & Ordering Screen
+  // Step 1: Catalog & Ordering Screen (Entra de una vez a crear venta)
   return (
     <div className="relative min-h-screen w-full bg-[#FAFAFA] flex flex-col justify-between select-none pb-28">
-      {/* Top Header: Logo, Current Order Mode Pill & Discrete Staff Icon */}
+      {/* Top Header: Logo, Toggle Comer aquí / Para llevar & Acceso a Gestión de Ventas */}
       <header className="w-full bg-white border-b-2 border-gray-150 shadow-2xs sticky top-0 z-30 px-4 sm:px-6 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs border border-amber-300">
@@ -298,27 +335,48 @@ export default function PosVendedor() {
             <span className="text-[10px] font-black tracking-widest text-[#A91B2E] uppercase">
               Chazin Food
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-base font-black text-gray-900">
-                Punto de Venta
-              </span>
-              <span className="text-xs font-black bg-red-100 text-[#A91B2E] px-2.5 py-0.5 rounded-full border border-red-200">
-                {orderMode}
-              </span>
-            </div>
+            <h1 className="text-base sm:text-lg font-black text-gray-900 leading-none">
+              Punto de Venta
+            </h1>
           </div>
         </div>
 
-        {/* Staff Discrete Exit Button */}
+        {/* Center: Toggle Comer aquí / Para llevar */}
+        <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setOrderMode("Comer aquí")}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              orderMode === "Comer aquí"
+                ? "bg-[#A91B2E] text-white shadow-xs"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Comer aquí
+          </button>
+          <button
+            type="button"
+            onClick={() => setOrderMode("Para llevar")}
+            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              orderMode === "Para llevar"
+                ? "bg-[#A91B2E] text-white shadow-xs"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Para llevar
+          </button>
+        </div>
+
+        {/* Staff Return Button */}
         <button
           type="button"
           onClick={handleStaffExit}
           aria-label="Volver a Gestión de Ventas"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 text-xs font-bold transition-all cursor-pointer opacity-75 hover:opacity-100"
-          title="Gestión de Ventas (Personal)"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 text-xs font-bold transition-all cursor-pointer"
+          title="Gestión de Ventas"
         >
           <ChefHat className="w-4 h-4 text-[#A91B2E]" />
-          <span className="hidden sm:inline">Personal</span>
+          <span className="hidden sm:inline">Gestión de Ventas</span>
           <ArrowLeft className="w-3.5 h-3.5" />
         </button>
       </header>
@@ -338,7 +396,7 @@ export default function PosVendedor() {
           {/* Top Promo Carousel */}
           <KioskPromoCarousel
             productos={productos}
-            onSelectProduct={handleOpenProduct}
+            onSelectProduct={handleOpenCustomize}
           />
 
           {/* Products Grid */}
@@ -368,7 +426,7 @@ export default function PosVendedor() {
                   <KioskProductCard
                     key={p.id || p.idProducto}
                     producto={p}
-                    onSelect={handleOpenProduct}
+                    onSelect={handleOpenCustomize}
                   />
                 ))}
               </div>
@@ -387,16 +445,22 @@ export default function PosVendedor() {
         isBouncing={isCartBouncing}
       />
 
-      {/* Product Customization Modal (Radix Dialog) */}
-      <KioskProductModal
-        isOpen={isProductModalOpen}
-        onClose={() => setIsProductModalOpen(false)}
-        producto={selectedProduct}
+      {/* Modal anterior completo: FastFoodProductModal (mise en place, adiciones, gaseosas y reseñas) */}
+      <FastFoodProductModal
+        isOpen={Boolean(customizingProduct)}
+        onClose={() => {
+          setCustomizingProduct(null);
+          setCustomizingFicha(null);
+        }}
+        producto={customizingProduct}
+        ficha={customizingFicha}
         allAdiciones={allAdiciones}
-        onConfirmAdd={handleConfirmAddProduct}
+        allBebidas={allBebidas}
+        onConfirm={handleModalConfirm}
+        mode="pos"
       />
 
-      {/* Order Review Modal "Mi Pedido" (Radix Dialog) */}
+      {/* Order Review Modal "Mi Pedido" */}
       <KioskOrderReviewModal
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
@@ -415,35 +479,24 @@ export default function PosVendedor() {
         }}
       />
 
-      {/* Checkout Modal (Radix Dialog) */}
-      <KioskCheckoutModal
+      {/* Modal de Pago Anterior: PosCheckoutModal (clientes, fidelidad, cálculo de vuelto, 16 dígitos de tarjeta) */}
+      <PosCheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         cart={cart}
-        orderMode={orderMode}
         subtotal={subtotal}
         descuento={descuento}
         total={total}
-        onConfirmCheckout={handleConfirmCheckout}
+        onConfirm={handleConfirmCheckout}
         loading={loading}
       />
 
-      {/* Cancel Confirmation Modal (Radix Dialog) */}
+      {/* Cancel Confirmation Modal */}
       <KioskCancelConfirmModal
         isOpen={isCancelConfirmOpen}
         onClose={() => setIsCancelConfirmOpen(false)}
         onConfirmCancel={() => {
           setIsCancelConfirmOpen(false);
-          handleResetKiosk();
-        }}
-      />
-
-      {/* 60s Inactivity Modal (Radix Dialog) */}
-      <KioskInactivityModal
-        isOpen={isInactivityOpen}
-        onStayActive={() => setIsInactivityOpen(false)}
-        onTimeout={() => {
-          setIsInactivityOpen(false);
           handleResetKiosk();
         }}
       />
