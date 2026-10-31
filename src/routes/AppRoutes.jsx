@@ -179,10 +179,25 @@ export function AppRoutes() {
       allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
-  // If user can create or view in "Gestión de Ventas" or is Vendedor, grant route access to POS
   const isVendedor = userRol === "vendedor" || userRol.includes("vendedor") || user?.idRol === 2;
-  if (
-    (hasPrivilege(user, "Gestión de Ventas", "crear") || hasPrivilege(user, "Gestión de Ventas", "ver") || isVendedor) &&
+  if (isVendedor) {
+    // El rol Vendedor tiene acceso completo a los módulos de Ventas y Producción
+    const vendedorPerms = [
+      "Punto de Venta",
+      "Gestión de Ventas",
+      "Clientes",
+      "Categoría Productos",
+      "Productos",
+      "Fichas Técnicas",
+      "Gestión de Producción"
+    ];
+    for (const perm of vendedorPerms) {
+      if (PERMISSION_ROUTE_MAP[perm] && !allowedRoutesMap.has(PERMISSION_ROUTE_MAP[perm].path)) {
+        allowedRoutesMap.set(PERMISSION_ROUTE_MAP[perm].path, PERMISSION_ROUTE_MAP[perm]);
+      }
+    }
+  } else if (
+    (hasPrivilege(user, "Gestión de Ventas", "crear") || hasPrivilege(user, "Gestión de Ventas", "ver")) &&
     !allowedRoutesMap.has("ventas/pos")
   ) {
     allowedRoutesMap.set("ventas/pos", PERMISSION_ROUTE_MAP["Punto de Venta"]);
