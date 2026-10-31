@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator, Lock } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -65,6 +65,7 @@ const labelCls = "block text-xs font-semibold text-gray-700 dark:text-gray-300 m
 export function ProductoModal({ isOpen, onClose, onSave, producto = null, categorias = [] }) {
   const notify = useNotifications();
   const isEditing = !!producto;
+  const tieneVentasProtegido = Boolean(isEditing && (producto?.tieneVentas || Number(producto?.ventas || 0) > 0));
   const [form, setForm] = useState({
     nombre: "",
     idCategoriaProducto: null,
@@ -124,6 +125,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const handleChange = (field, val) => {
     const updated = { ...form, [field]: val };
     setForm(updated);
+    setFichaTecnica((prev) =>
+      prev?._isRestoredVersionCommit ? { ...prev, _isRestoredVersionCommit: false } : prev
+    );
     if (touched[field] || submitted) {
       const err = validateField(field, val);
       setErrors((prev) => ({ ...prev, [field]: err }));
@@ -483,6 +487,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const handleMainPriceChange = (newPrice) => {
     setForm((f) => ({ ...f, precio: newPrice }));
+    setFichaTecnica((prev) =>
+      prev?._isRestoredVersionCommit ? { ...prev, _isRestoredVersionCommit: false } : prev
+    );
     if (touched.precio || submitted) {
       const err = validateField("precio", newPrice);
       setErrors((prev) => ({ ...prev, precio: err }));
@@ -619,6 +626,45 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   if (!isOpen) return null;
 
+  const entityDataActual = {
+    nombre: form.nombre || "",
+    categoria: form.categoria || "",
+    idCategoriaProducto: form.idCategoriaProducto || null,
+    precio: Number(form.precio) || 0,
+    descripcion: form.descripcion || "",
+    imagen: form.imagen || "",
+    estado: form.estado || "Activo",
+    adiciones: Array.isArray(form.adiciones) ? form.adiciones : []
+  };
+
+  const prevEntityDataInicial = producto
+    ? {
+        nombre: producto.nombre || "",
+        categoria: producto.categoria || "",
+        idCategoriaProducto: producto.idCategoriaProducto || null,
+        precio: Number(producto.precio) || 0,
+        descripcion: producto.descripcion || "",
+        imagen: producto.imagen || "",
+        estado: producto.estado || "Activo",
+        adiciones: Array.isArray(producto.adiciones) ? producto.adiciones : []
+      }
+    : null;
+
+  const handleRestoreEntityData = (restoredEnt) => {
+    if (!restoredEnt || typeof restoredEnt !== "object") return;
+    setForm((prev) => ({
+      ...prev,
+      nombre: tieneVentasProtegido ? prev.nombre : (restoredEnt.nombre ?? prev.nombre),
+      categoria: tieneVentasProtegido ? prev.categoria : (restoredEnt.categoria ?? prev.categoria),
+      idCategoriaProducto: tieneVentasProtegido
+        ? prev.idCategoriaProducto
+        : (restoredEnt.idCategoriaProducto ?? prev.idCategoriaProducto),
+      precio: restoredEnt.precio !== undefined ? String(restoredEnt.precio) : prev.precio,
+      descripcion: restoredEnt.descripcion !== undefined ? restoredEnt.descripcion : prev.descripcion,
+      estado: restoredEnt.estado || prev.estado
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -748,7 +794,19 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               bebidasPermitidas: configCombo.bebidasPermitidas || []
             }
           : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [] },
-        fichaTecnica: configCombo.esCombo ? null : fichaTecnica
+        fichaTecnica: configCombo.esCombo
+          ? null
+          : fichaTecnica
+          ? {
+              ...fichaTecnica,
+              datosEntidad: {
+                ...entityDataActual,
+                imagen: finalImageUrl,
+                precio: basePrice
+              },
+              _prevDatosEntidad: prevEntityDataInicial
+            }
+          : null
       });
 
       setFileToUpload(null);
@@ -822,19 +880,45 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
         {/* Body */}
         <form onSubmit={handleSubmit} noValidate className="p-6 overflow-y-auto flex-1 space-y-6">
+          {tieneVentasProtegido && (
+            <div className="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-3 text-xs">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider text-[11px]">
+                  Candado de Identidad Activo (Producto con Ventas Asociadas)
+                </p>
+                <p className="text-amber-800 dark:text-amber-300 leading-relaxed">
+                  El <strong>Nombre del Producto</strong> y la <strong>Categoría</strong> están protegidos con candado para preservar la integridad histórica de las ventas pasadas. El <strong>Precio de Venta</strong>, <strong>Descripción</strong>, <strong>Imagen</strong> y <strong>Ficha Técnica</strong> se pueden actualizar libremente y guardarán la versión anterior (con su precio e ingredientes de esa época) en el historial.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>
-                Nombre del Producto <span className="text-red-500">*</span>
+              <label className={`${labelCls} flex items-center justify-between`}>
+                <span>
+                  Nombre del Producto <span className="text-red-500">*</span>
+                </span>
+                {tieneVentasProtegido && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-full">
+                    <Lock className="w-2.5 h-2.5" /> Protegido por ventas
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 required
+                disabled={tieneVentasProtegido}
                 value={form.nombre}
                 onBlur={() => handleBlur("nombre")}
                 onChange={(e) => handleChange("nombre", e.target.value)}
                 className={`${inputCls} ${
-                  (touched.nombre || submitted) && errors.nombre
+                  tieneVentasProtegido
+                    ? "bg-gray-100 dark:bg-gray-800/70 text-gray-500 dark:text-gray-400 cursor-not-allowed border-amber-200 dark:border-amber-800/50"
+                    : (touched.nombre || submitted) && errors.nombre
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                     : ""
                 }`}
@@ -849,8 +933,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             <div>
-              <label className={labelCls}>Categoría</label>
+              <label className={`${labelCls} flex items-center justify-between`}>
+                <span>Categoría</span>
+                {tieneVentasProtegido && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-full">
+                    <Lock className="w-2.5 h-2.5" /> Protegida por ventas
+                  </span>
+                )}
+              </label>
               <select
+                disabled={tieneVentasProtegido}
                 value={form.categoria}
                 onChange={(e) => {
                   const selectedName = e.target.value;
@@ -865,7 +957,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     setConfigCombo(prev => ({ ...prev, esCombo: true }));
                   }
                 }}
-                className={inputCls}
+                className={`${inputCls} ${
+                  tieneVentasProtegido
+                    ? "bg-gray-100 dark:bg-gray-800/70 text-gray-500 dark:text-gray-400 cursor-not-allowed border-amber-200 dark:border-amber-800/50"
+                    : ""
+                }`}
               >
                 {categorias.map((c) => (
                   <option key={c.id || c.idCategoriaProducto || c.nombre} value={c.nombre}>
@@ -1531,6 +1627,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               productId={producto?.id || producto?.idProducto}
               productName={form.nombre}
               initialData={producto?.fichaTecnica || null}
+              entityData={entityDataActual}
+              prevEntityData={prevEntityDataInicial}
+              onRestoreEntityData={handleRestoreEntityData}
               onChange={(data) => setFichaTecnica(data)}
               onSave={(data) => setFichaTecnica(data)}
             />

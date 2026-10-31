@@ -306,6 +306,14 @@ export function Insumos() {
         isOpen={!!viewingInsumo}
         onClose={() => setViewingInsumo(null)}
         insumo={viewingInsumo}
+        onEdit={
+          canEdit
+            ? (ins) => {
+                setViewingInsumo(null);
+                handleOpenEdit(ins);
+              }
+            : undefined
+        }
       />
 
       {/* Trazabilidad Modal */}

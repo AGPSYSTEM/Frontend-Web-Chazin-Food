@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, FlaskConical, Scale, Leaf } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, FlaskConical, Scale, Leaf, History, Calendar } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
+import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
+import {
+  normalizeFichaWithVersions,
+  formatFechaHoraFicha,
+  extractFichaVersionMeta,
+  buildRestoredVersionState
+} from "../utils/fichaVersionUtils";
 
 const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#F05454] focus:border-transparent text-sm";
 const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
@@ -18,7 +25,17 @@ function FieldError({ msg }) {
   );
 }
 
-export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, onChange, readOnly = false }) {
+export function FichaTecnicaInsumo({
+  insumoId,
+  insumoName,
+  initialData,
+  onSave,
+  onChange,
+  readOnly = false,
+  entityData = null,
+  prevEntityData = null,
+  onRestoreEntityData = null
+}) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
   const [dbInsumosList, setDbInsumosList] = useState([]);
@@ -39,6 +56,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const loadedKeyRef = useRef(null);
+  const [versionInfo, setVersionInfo] = useState({
+    versionActual: 1,
+    fechaInicioVigencia: null,
+    versionesAnteriores: [],
+    prevFichaSnapshot: null
+  });
 
   const validateField = (field, val, currentInsumos = insumos) => {
     switch (field) {
@@ -73,7 +96,22 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
     setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
+  const clearRestoredCommitFlag = useCallback(() => {
+    setVersionInfo((prev) =>
+      prev.prevFichaSnapshot?._isRestoredVersionCommit
+        ? {
+            ...prev,
+            prevFichaSnapshot: {
+              ...prev.prevFichaSnapshot,
+              _isRestoredVersionCommit: false
+            }
+          }
+        : prev
+    );
+  }, []);
+
   const handleFieldChange = (field, setter, val) => {
+    clearRestoredCommitFlag();
     setter(val);
     if (touched[field]) {
       const err = validateField(field, val);
@@ -97,8 +135,12 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
       .catch(() => setDbInsumosList([]));
   }, []);
 
-  const populateFields = useCallback((f) => {
-    if (!f) return;
+  const populateFields = useCallback((fRaw) => {
+    if (!fRaw) return;
+    const f = normalizeFichaWithVersions(fRaw, "INSUMO_PREPARADO", insumoId);
+    if (fRaw?._isRestoredVersionCommit) {
+      f._isRestoredVersionCommit = true;
+    }
     setInsumos(f.detalles || f.insumos || f.ingredientes || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
     setTiempoPreparacion(f.tiempoPreparacion !== null && f.tiempoPreparacion !== undefined ? String(f.tiempoPreparacion) : "");
@@ -108,8 +150,78 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
     setInformacionNutricional(f.informacionNutricional || "");
     setCondicionesAlmacenamiento(f.condicionesAlmacenamiento || "");
     setVidaUtil(f.vidaUtil || "");
-    setObservaciones(f.observaciones || "");
-  }, []);
+    setObservaciones(extractFichaVersionMeta(f.observaciones || "").cleanObservaciones);
+    setVersionInfo({
+      versionActual: f.versionActual || 1,
+      fechaInicioVigencia: f.fechaInicioVigencia || f.fechaCreacion || null,
+      versionesAnteriores: Array.isArray(f.versionesAnteriores) ? f.versionesAnteriores : [],
+      prevFichaSnapshot: f
+    });
+  }, [insumoId]);
+
+  const handleRestoreVersion = async (ver) => {
+    if (!ver) return;
+    const currentFichaState = {
+      ...(versionInfo.prevFichaSnapshot || {}),
+      idInsumo: insumoId || null,
+      idInsumoPreparado: insumoId || null,
+      tipo: "INSUMO_PREPARADO",
+      procedimiento: procedimiento.trim(),
+      tiempoPreparacion: Number(tiempoPreparacion) || 0,
+      rendimiento: rendimiento.trim(),
+      especificaciones: especificaciones.trim(),
+      caracteristicas: caracteristicas.trim(),
+      informacionNutricional: informacionNutricional.trim(),
+      condicionesAlmacenamiento: condicionesAlmacenamiento.trim(),
+      vidaUtil: vidaUtil.trim(),
+      observaciones: observaciones.trim(),
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData || null,
+      detalles: insumos
+    };
+
+    const restored = buildRestoredVersionState(currentFichaState, ver, {
+      tipo: "INSUMO_PREPARADO",
+      entityId: insumoId
+    });
+
+    populateFields(restored);
+
+    if (typeof onRestoreEntityData === "function") {
+      onRestoreEntityData(restored.datosEntidad || ver.datosEntidad || entityData);
+    }
+
+    if (insumoId) {
+      try {
+        setSaving(true);
+        const savedFicha = await fichasTecnicasService.saveFichaInsumoPreparado(insumoId, {
+          ...restored,
+          idInsumo: insumoId,
+          idInsumoPreparado: insumoId,
+          _prevFicha: restored,
+          _isRestoredVersionCommit: true,
+          _restoredSnapshot: restored
+        });
+        if (savedFicha) {
+          const finalRestored = { ...savedFicha, _isRestoredVersionCommit: true };
+          populateFields(finalRestored);
+          onChange?.(finalRestored);
+          onSave?.(finalRestored);
+        }
+      } catch (err) {
+        console.error("Error restaurando versión de insumo preparado:", err);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    notify.success(
+      `Versión ${ver.version} Vigente (En uso actual)`,
+      `Se cargó y activó la Versión ${ver.version} con su fecha de creación original y estado Vigente (En uso actual).`
+    );
+  };
 
   // Load ficha data from prop or backend API
   useEffect(() => {
@@ -155,8 +267,22 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
       condicionesAlmacenamiento: condicionesAlmacenamiento.trim(),
       vidaUtil: vidaUtil.trim(),
       observaciones: observaciones.trim(),
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || null,
+      _prevDatosEntidad: prevEntityData || versionInfo.prevFichaSnapshot?.datosEntidad || entityData || null,
+      _prevFicha: versionInfo.prevFichaSnapshot
+        ? {
+            ...versionInfo.prevFichaSnapshot,
+            datosEntidad: versionInfo.prevFichaSnapshot.datosEntidad || prevEntityData || entityData || null
+          }
+        : null,
+      _isRestoredVersionCommit: Boolean(versionInfo.prevFichaSnapshot?._isRestoredVersionCommit),
+      _restoredSnapshot: versionInfo.prevFichaSnapshot,
       detalles: insumos.map((i) => ({
         idInsumo: i.idInsumo || i.id,
+        nombreInsumo: i.nombreInsumo || i.insumo?.nombre || i.nombre,
         cantidad: Number(i.cantidad || 1),
         unidadMedida: i.unidadMedida || i.insumo?.unidadMedida || "und"
       })),
@@ -166,7 +292,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
     if (onChange) {
       onChange(payload);
     }
-  }, [insumos, procedimiento, tiempoPreparacion, rendimiento, especificaciones, caracteristicas, informacionNutricional, condicionesAlmacenamiento, vidaUtil, observaciones, insumoId]);
+  }, [insumos, procedimiento, tiempoPreparacion, rendimiento, especificaciones, caracteristicas, informacionNutricional, condicionesAlmacenamiento, vidaUtil, observaciones, insumoId, versionInfo.prevFichaSnapshot, versionInfo.versionActual, versionInfo.fechaInicioVigencia, versionInfo.versionesAnteriores, entityData, prevEntityData]);
 
   const insumosSugeridos = dbInsumosList.filter((ins) => {
     const t = searchInsumo.trim().toLowerCase();
@@ -176,6 +302,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   }).slice(0, 6);
 
   const agregarInsumo = (ins) => {
+    clearRestoredCommitFlag();
     const next = [
       ...insumos,
       {
@@ -194,6 +321,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   };
 
   const quitarInsumo = (idx) => {
+    clearRestoredCommitFlag();
     const next = insumos.filter((_, i) => i !== idx);
     setInsumos(next);
     if (touched.insumos) {
@@ -202,6 +330,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   };
 
   const actualizarCantidad = (idx, delta) => {
+    clearRestoredCommitFlag();
     setInsumos((prev) =>
       prev.map((item, i) => {
         if (i === idx) {
@@ -215,6 +344,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   };
 
   const setCantidadDirecta = (idx, valor) => {
+    clearRestoredCommitFlag();
     const sanitized = String(valor).replace(/[^0-9]/g, '');
     const num = sanitized === '' ? '' : Math.max(1, parseInt(sanitized, 10));
     setInsumos((prev) =>
@@ -235,6 +365,7 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
   };
 
   const handleTiempoChange = (e) => {
+    clearRestoredCommitFlag();
     const raw = e.target.value.replace(/[^0-9]/g, '');
     if (raw === '') {
       setTiempoPreparacion('');
@@ -316,8 +447,22 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
       condicionesAlmacenamiento: condicionesAlmacenamiento.trim(),
       vidaUtil: vidaUtil.trim(),
       observaciones: observaciones.trim(),
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || null,
+      _prevDatosEntidad: prevEntityData || versionInfo.prevFichaSnapshot?.datosEntidad || entityData || null,
+      _prevFicha: versionInfo.prevFichaSnapshot
+        ? {
+            ...versionInfo.prevFichaSnapshot,
+            datosEntidad: versionInfo.prevFichaSnapshot.datosEntidad || prevEntityData || entityData || null
+          }
+        : null,
+      _isRestoredVersionCommit: Boolean(versionInfo.prevFichaSnapshot?._isRestoredVersionCommit),
+      _restoredSnapshot: versionInfo.prevFichaSnapshot,
       detalles: insumos.map((i) => ({
         idInsumo: i.idInsumo || i.id,
+        nombreInsumo: i.nombreInsumo || i.insumo?.nombre || i.nombre,
         cantidad: Number(i.cantidad || 1),
         unidadMedida: i.unidadMedida || i.insumo?.unidadMedida || "und"
       }))
@@ -329,7 +474,10 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
         const savedFicha = await fichasTecnicasService.saveFichaInsumoPreparado(insumoId, payload);
         populateFields(savedFicha);
         onSave?.(savedFicha);
-        notify.success("Ficha Guardada", `Ficha técnica de "${insumoName || "Insumo Preparado"}" guardada exitosamente.`);
+        notify.success(
+          "Ficha Guardada",
+          `La Versión ${savedFicha?.versionActual || versionInfo.versionActual} de "${insumoName || "Insumo Preparado"}" se encuentra Vigente (En uso actual).`
+        );
       } catch (err) {
         console.error(err);
         notify.error("Error", "No se pudo guardar la ficha técnica en el servidor.");
@@ -399,9 +547,18 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
             </p>
           </div>
         )}
+
+        {/* Historial de Versionamiento en modo lectura */}
+        <FichaVersionesHistorial
+          versionActual={versionInfo.versionActual}
+          fechaInicioVigencia={versionInfo.fechaInicioVigencia}
+          versionesAnteriores={versionInfo.versionesAnteriores}
+        />
       </div>
     );
   }
+
+  const isConfigured = insumos.length > 0 || procedimiento.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -410,14 +567,24 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
         onClick={() => setExpanded(!expanded)}
         className="flex items-center justify-between cursor-pointer p-4 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl transition hover:bg-rose-50 dark:hover:bg-rose-950/30"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#F05454] text-white flex items-center justify-center font-bold">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="w-9 h-9 rounded-xl bg-[#F05454] text-white flex items-center justify-center font-bold shrink-0">
             <FlaskConical className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-              Ficha Técnica / Receta del Insumo Preparado
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                Ficha Técnica / Receta del Insumo Preparado
+              </h3>
+              <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-0.5 rounded-full font-bold">
+                Versión {versionInfo.versionActual} (Vigente)
+              </span>
+              {versionInfo.versionesAnteriores.length > 0 && (
+                <span className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                  <History className="w-3 h-3" /> {versionInfo.versionesAnteriores.length} versión(es) anterior(es)
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {insumoName ? `Receta de ${insumoName}` : "Ingredientes, porciones, instrucciones de preparación y conservación"}
             </p>
@@ -430,6 +597,27 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
 
       {expanded && (
         <div className="space-y-6 pt-2">
+          {/* Banner informativo de vigencia y versionamiento */}
+          {insumoId && isConfigured && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-start sm:items-center gap-2.5">
+                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <span className="font-black text-emerald-900 dark:text-emerald-200">
+                    Versión Actual (v{versionInfo.versionActual}):{" "}
+                  </span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    Vigente desde el{" "}
+                    <strong className="text-gray-900 dark:text-gray-100">
+                      {formatFechaHoraFicha(versionInfo.fechaInicioVigencia)}
+                    </strong>
+                    . Al guardar cambios, esta versión pasará a{" "}
+                    <strong className="text-[#F05454]">Versiones Anteriores</strong> con su fecha y hora exacta de finalización de uso.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
           {/* 1. SECCIÓN DE INGREDIENTES / INSUMOS BASE */}
           <div className="bg-gray-50/50 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-4">
             <div className="flex items-center justify-between">
@@ -705,6 +893,17 @@ export function FichaTecnicaInsumo({ insumoId, insumoName, initialData, onSave, 
               <span>{saving ? "Guardando..." : "Guardar Ficha Técnica"}</span>
             </button>
           </div>
+
+          {/* Historial de Versiones Anteriores */}
+          {insumoId && (
+            <FichaVersionesHistorial
+              versionActual={versionInfo.versionActual}
+              fechaInicioVigencia={versionInfo.fechaInicioVigencia}
+              versionesAnteriores={versionInfo.versionesAnteriores}
+              onRestoreVersion={handleRestoreVersion}
+              datosEntidadActual={entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData}
+            />
+          )}
         </div>
       )}
     </div>

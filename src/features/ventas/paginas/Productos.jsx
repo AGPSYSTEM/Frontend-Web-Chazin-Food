@@ -265,6 +265,7 @@ export function Productos() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           producto={editingProducto}
+          onEdit={canEdit ? (prod) => handleOpenEdit(prod) : undefined}
         />
       )}
 

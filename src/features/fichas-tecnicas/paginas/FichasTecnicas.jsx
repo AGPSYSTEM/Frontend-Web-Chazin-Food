@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { FileText, Search, ChevronLeft, Package, Utensils, Eye, Edit2, Sparkles, CheckCircle2, FlaskConical } from "lucide-react";
+import { FileText, Search, ChevronLeft, Package, Utensils, Eye, Edit2, Sparkles, CheckCircle2, FlaskConical, History, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { FichaTecnicaProducto } from "../componentes/FichaTecnicaProducto";
 import { FichaTecnicaInsumo } from "../componentes/FichaTecnicaInsumo";
 import { FichaTecnicaDetalleModal } from "../componentes/FichaTecnicaDetalleModal";
+import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
+import { formatFechaHoraFicha, normalizeFichaWithVersions } from "../utils/fichaVersionUtils";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
@@ -12,6 +14,7 @@ export function FichasTecnicas({ readOnly = false }) {
   const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'preparados'
   const [productos, setProductos] = useState([]);
   const [preparados, setPreparados] = useState([]);
+  const [fichasMap, setFichasMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   // States for modals and full edit page
@@ -22,9 +25,10 @@ export function FichasTecnicas({ readOnly = false }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [prodRes, prepRes] = await Promise.allSettled([
+      const [prodRes, prepRes, fichasRes] = await Promise.allSettled([
         productosService.getProductos(),
-        insumosService.getInsumosPreparados()
+        insumosService.getInsumosPreparados(),
+        fichasTecnicasService.getFichas()
       ]);
 
       if (prodRes.status === "fulfilled") {
@@ -43,6 +47,19 @@ export function FichasTecnicas({ readOnly = false }) {
       if (prepRes.status === "fulfilled") {
         const list = Array.isArray(prepRes.value) ? prepRes.value : prepRes.value?.data || [];
         setPreparados(list);
+      }
+
+      if (fichasRes.status === "fulfilled" && Array.isArray(fichasRes.value)) {
+        const nextMap = {};
+        fichasRes.value.forEach((f) => {
+          if (f?.idProducto) {
+            nextMap[`producto:${f.idProducto}`] = f;
+          }
+          if (f?.idInsumo) {
+            nextMap[`insumo:${f.idInsumo}`] = f;
+          }
+        });
+        setFichasMap(nextMap);
       }
     } catch (err) {
       console.error("Error cargando catálogo para fichas técnicas:", err);
@@ -217,6 +234,16 @@ export function FichasTecnicas({ readOnly = false }) {
             const isProducto = activeTab === "productos";
             const itemId = item.id || item.idProducto || item.idInsumo;
             const categoriaName = item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado");
+            const fichaRaw =
+              fichasMap[`${isProducto ? "producto" : "insumo"}:${itemId}`] ||
+              item.fichaTecnica ||
+              null;
+            const fichaData = fichaRaw
+              ? normalizeFichaWithVersions(fichaRaw, isProducto ? "producto" : "insumo", itemId)
+              : null;
+            const prevCount = Array.isArray(fichaData?.versionesAnteriores)
+              ? fichaData.versionesAnteriores.length
+              : 0;
             
             return (
               <div
@@ -224,16 +251,51 @@ export function FichasTecnicas({ readOnly = false }) {
                 onClick={() => setSelectedDetalle(item)}
                 className="text-left bg-white dark:bg-gray-900 rounded-3xl p-5 border border-gray-100 dark:border-gray-800 shadow-xs hover:shadow-md hover:border-rose-200 dark:hover:border-rose-900 transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-[#F05454] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    {isProducto ? <Utensils className="w-6 h-6" /> : <FlaskConical className="w-6 h-6" />}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-[#F05454] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      {isProducto ? <Utensils className="w-6 h-6" /> : <FlaskConical className="w-6 h-6" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-[#F05454] transition-colors">
+                        {item.nombre}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{categoriaName}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-[#F05454] transition-colors">
-                      {item.nombre}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{categoriaName}</p>
-                  </div>
+
+                  {/* Información de Versión y Vigencia */}
+                  {fichaData ? (
+                    <div className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Versión {fichaData.versionActual || 1} (Vigente)
+                        </span>
+                        {prevCount > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <History className="w-3 h-3" />
+                            {prevCount} {prevCount === 1 ? "versión anterior" : "versiones anteriores"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                        <Calendar className="w-3 h-3 text-[#F05454] shrink-0" />
+                        <span className="truncate">
+                          Desde el <strong className="text-gray-800 dark:text-gray-200">{formatFechaHoraFicha(fichaData.fechaInicioVigencia || fichaData.fechaCreacion)}</strong>
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-2xl bg-gray-50/70 dark:bg-gray-800/30 border border-dashed border-gray-200 dark:border-gray-700/70 flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                        Sin ficha técnica registrada
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
+                        Pendiente
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800/80 gap-2">
