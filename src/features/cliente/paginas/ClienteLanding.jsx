@@ -444,7 +444,7 @@ export function ClienteLanding() {
   const navigate = useNavigate();
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal, getProductQuantityInCart } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
-  const { success, error, confirmAction, confirmLogout } = useNotifications();
+  const { success, error, warning, info, confirmAction, confirmLogout } = useNotifications();
 
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
