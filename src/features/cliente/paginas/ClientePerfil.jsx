@@ -261,9 +261,18 @@ export function ClientePerfil() {
   const [passErrors, setPassErrors] = useState({});
   const [passTouched, setPassTouched] = useState({});
   const [savingPass, setSavingPass] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
   const [showPassActual, setShowPassActual] = useState(false);
   const [showPassNueva, setShowPassNueva] = useState(false);
   const [showPassConfirm, setShowPassConfirm] = useState(false);
+
+  const toggleAllPasswords = () => {
+    const next = !showPasswords;
+    setShowPasswords(next);
+    setShowPassActual(next);
+    setShowPassNueva(next);
+    setShowPassConfirm(next);
+  };
 
 // Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
 
@@ -2124,6 +2133,27 @@ export function ClientePerfil() {
                             <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordConfirm}</p>
                           )}
                         </div>
+                      </div>
+
+                      {/* Botón Mostrar / Ocultar contraseñas */}
+                      <div className="flex items-center justify-start pt-1">
+                        <button
+                          type="button"
+                          onClick={toggleAllPasswords}
+                          className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer select-none"
+                        >
+                          {showPasswords ? (
+                            <>
+                              <EyeOff className="w-4 h-4 text-gray-500 shrink-0" />
+                              <span>Ocultar contraseñas</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 text-gray-500 shrink-0" />
+                              <span>Mostrar contraseñas</span>
+                            </>
+                          )}
+                        </button>
                       </div>
 
                       <div className="pt-2">
