@@ -49,6 +49,11 @@ export function Layout() {
   const isActive = (path) => location.pathname === path;
   const isInSection = (prefix) => location.pathname.startsWith(prefix);
 
+  // Modo Kiosco: pantalla completa sin barra lateral administrativa ni cabecera
+  if (location.pathname === "/ventas/pos") {
+    return <Outlet />;
+  }
+
   const handleNavClick = () => {
     setSidebarOpen(false);
   };

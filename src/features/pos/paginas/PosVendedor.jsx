@@ -1,31 +1,35 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft } from "lucide-react";
+import { ChefHat, ArrowLeft, Sparkles, Utensils, ShoppingBag } from "lucide-react";
 import usePOS from "../hooks/usePOS";
-import ProductCard from "../components/ProductCard";
-import Cart from "../components/Cart";
-import PosCheckoutModal from "../components/PosCheckoutModal";
-import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+import KioskWelcome from "../components/KioskWelcome";
+import KioskPromoCarousel from "../components/KioskPromoCarousel";
+import KioskCategoryRail from "../components/KioskCategoryRail";
+import KioskProductCard from "../components/KioskProductCard";
+import KioskProductModal from "../components/KioskProductModal";
+import KioskBottomBar from "../components/KioskBottomBar";
+import KioskOrderReviewModal from "../components/KioskOrderReviewModal";
+import KioskCheckoutModal from "../components/KioskCheckoutModal";
+import KioskConfirmation from "../components/KioskConfirmation";
+import KioskInactivityModal from "../components/KioskInactivityModal";
+import KioskCancelConfirmModal from "../components/KioskCancelConfirmModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
-import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
-import { useToast } from "@/shared/context/ToastContext";
-import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 
 export default function PosVendedor() {
   const navigate = useNavigate();
-  const toast = useToast();
+
   const {
     categorias,
     productos,
     categoriaActiva,
     setCategoriaActiva,
-    searchTerm,
-    setSearchTerm,
     cart,
     addProduct,
     increment,
     decrement,
-    setItemObservacion,
+    removeItem,
+    clearCart,
     subtotal,
     descuento,
     total,
@@ -33,13 +37,27 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [customizingProduct, setCustomizingProduct] = useState(null);
-  const [customizingFicha, setCustomizingFicha] = useState(null);
-  const [allAdiciones, setAllAdiciones] = useState([]);
-  const [fichasCache, setFichasCache] = useState({});
+  // Kiosk State Machine: 'welcome' | 'catalog' | 'confirmation'
+  const [kioskStep, setKioskStep] = useState("welcome");
+  const [orderMode, setOrderMode] = useState("Comer aquí"); // "Comer aquí" | "Para llevar"
 
+  // Modals state
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [isInactivityOpen, setIsInactivityOpen] = useState(false);
+
+  // Animations & Feedback
+  const [isCartBouncing, setIsCartBouncing] = useState(false);
+  const [allAdiciones, setAllAdiciones] = useState([]);
+
+  // Result of completed order
+  const [lastCreatedOrder, setLastCreatedOrder] = useState(null);
+  const [lastOrderData, setLastOrderData] = useState(null);
+
+  // Load additions once on mount
   useEffect(() => {
     adicionesService
       .getAdiciones()
@@ -52,125 +70,15 @@ export default function PosVendedor() {
           );
         }
       })
-      .catch((err) => console.warn("Error cargando adiciones en POS:", err));
+      .catch((err) => console.warn("Error cargando adiciones en Kiosco:", err));
   }, []);
 
-  const allBebidas = useMemo(() => {
-    return (productos || []).filter((p) => {
-      const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
-      const name = String(p.nombre || "").toLowerCase();
-      return (
-        cat.includes("bebida") ||
-        cat.includes("gaseos") ||
-        cat.includes("refresco") ||
-        name.includes("gaseosa") ||
-        name.includes("agua")
-      );
-    });
-  }, [productos]);
+  // Total items in cart
+  const totalCartItems = useMemo(() => {
+    return cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+  }, [cart]);
 
-  const handleOpenCustomize = async (producto) => {
-    setCustomizingProduct(producto);
-    const prodId = producto.id || producto.idProducto;
-    if (fichasCache[prodId]) {
-      setCustomizingFicha(fichasCache[prodId]);
-      return;
-    }
-
-    try {
-      const f = await fichasTecnicasService.getFichaByProducto(prodId);
-      if (f) {
-        setFichasCache((prev) => ({ ...prev, [prodId]: f }));
-        setCustomizingFicha(f);
-      } else {
-        setCustomizingFicha(null);
-      }
-    } catch (e) {
-      console.warn("No se pudo cargar ficha técnica para producto:", prodId);
-      setCustomizingFicha(null);
-    }
-  };
-
-  const handleModalConfirm = ({
-    producto,
-    cantidad,
-    adiciones,
-    bebidas,
-    observacion
-  }) => {
-    const displayName = producto.nombrePersonalizado || producto.nombre;
-    addProduct({
-      productoId: producto.idProducto || producto.id,
-      varianteId: producto.idVariante || producto.id || producto.idProducto,
-      nombre: displayName,
-      precio: producto.precio,
-      adiciones: (adiciones || []).map((a) => ({
-        idAdicion: a.idAdicion || a.id,
-        id: a.idAdicion || a.id,
-        nombre: a.nombre,
-        precio: Number(a.precio || 0),
-        cantidad: Number(a.cantidad || 1),
-        imagen: a.imagen || ""
-      })),
-      observacion,
-      cantidad: Number(cantidad) || 1,
-      stock: producto.stock,
-      is2x1Promo: Boolean(producto.is2x1Promo),
-      cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1))
-    });
-
-    let comboCfg = producto.configuracionCombo;
-    if (typeof comboCfg === "string") {
-      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
-    }
-    const isComboProd = Boolean(comboCfg?.esCombo);
-    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
-    let includedQuotaRemaining = requiredDrinks;
-
-    if (Array.isArray(bebidas) && bebidas.length > 0) {
-      for (const b of bebidas) {
-        const qty = Number(b.cantidad || 1);
-        const covered = isComboProd ? Math.min(includedQuotaRemaining, qty) : 0;
-        const extraQty = qty - covered;
-        if (isComboProd) includedQuotaRemaining -= covered;
-
-        // Solo agregar al carrito como ítem con costo si es un producto normal O es bebida extra por encima del combo
-        if (!isComboProd || extraQty > 0) {
-          addProduct({
-            productoId: b.id || b.idProducto,
-            varianteId: b.id || b.idProducto,
-            nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
-            precio: Number(b.precio || 0),
-            adiciones: [],
-            observacion: isComboProd ? `Bebida extra de ${displayName}` : `Acompañante de ${displayName}`,
-            cantidad: isComboProd ? extraQty : qty,
-            stock: b.stock
-          });
-        }
-      }
-    }
-
-    setCustomizingProduct(null);
-    setCustomizingFicha(null);
-    toast.success(
-      "¡Producto configurado!",
-      `${displayName} agregado al pedido con éxito.`
-    );
-  };
-
-  const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
-
-  const handleConfirmCheckout = async (checkoutData) => {
-    try {
-      await submitOrder(checkoutData);
-      setIsCheckoutModalOpen(false);
-      setIsMobileCartOpen(false);
-      toast.success("¡Venta completada!", "El pedido fue registrado exitosamente.");
-    } catch (err) {
-      toast.error("Error al registrar venta", err.message || "No se pudo procesar la venta.");
-    }
-  };
-
+  // Count active event products
   const eventProductsCount = useMemo(() => {
     const now = new Date();
     return (productos || []).filter((p) => {
@@ -184,10 +92,9 @@ export default function PosVendedor() {
     }).length;
   }, [productos]);
 
+  // Filter products by selected category
   const visibleProducts = useMemo(() => {
     const list = (productos || []).filter((p) => {
-      const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-      if (!matchSearch) return false;
       if (categoriaActiva === null) return true;
 
       if (categoriaActiva === "eventos") {
@@ -201,355 +108,345 @@ export default function PosVendedor() {
         });
       }
 
-      const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
+      const selectedCatObj = (categorias || []).find(
+        (c) => (c.id || c.idCategoriaProducto) === categoriaActiva
+      );
       const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
       const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
       const prodName = (p.nombre || "").toLowerCase().trim();
 
-      const matchCatId = (p.idCategoriaProducto === categoriaActiva) || (p.categoriaId === categoriaActiva) || (p.id === categoriaActiva);
-      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+      const matchCatId =
+        p.idCategoriaProducto === categoriaActiva ||
+        p.categoriaId === categoriaActiva ||
+        p.id === categoriaActiva;
+      const matchCatName =
+        catName &&
+        (prodCatName === catName ||
+          prodCatName.includes(catName) ||
+          catName.includes(prodCatName));
 
-      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
-      const matchSubcategory = singularCatName.length >= 3 && (
-        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
-      );
+      const singularCatName = catName.endsWith("es")
+        ? catName.slice(0, -2)
+        : catName.endsWith("s")
+        ? catName.slice(0, -1)
+        : catName;
+      const matchSubcategory =
+        singularCatName.length >= 3 &&
+        (prodCatName.includes(singularCatName) || prodName.includes(singularCatName));
 
       return matchCatId || matchCatName || matchSubcategory;
     });
 
     const now = new Date();
-    // Priorizar productos con eventos de primero en POS
+    // Prioritize event products first
     return [...list].sort((a, b) => {
       const aEvts = Array.isArray(a.eventos) ? a.eventos : [];
       const bEvts = Array.isArray(b.eventos) ? b.eventos : [];
-      const aHasEvent = aEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
-      const bHasEvent = bEvts.some(e => (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) && (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`)));
+      const aHasEvent = aEvts.some(
+        (e) =>
+          (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) &&
+          (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`))
+      );
+      const bHasEvent = bEvts.some(
+        (e) =>
+          (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) &&
+          (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`))
+      );
       if (aHasEvent && !bHasEvent) return -1;
       if (!aHasEvent && bHasEvent) return 1;
       return 0;
     });
-  }, [productos, categoriaActiva, searchTerm, categorias]);
+  }, [productos, categoriaActiva, categorias]);
 
+  // Inactivity timeout handler (60s without touch in catalog)
+  useEffect(() => {
+    if (kioskStep !== "catalog") return;
+
+    let timeoutId;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsInactivityOpen(true);
+      }, 60000); // 60s
+    };
+
+    const events = ["touchstart", "touchend", "mousedown", "keydown", "scroll"];
+    events.forEach((evt) => window.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((evt) => window.removeEventListener(evt, resetTimer));
+    };
+  }, [kioskStep]);
+
+  // Reset entire kiosk state
+  const handleResetKiosk = useCallback(() => {
+    clearCart();
+    setOrderMode("Comer aquí");
+    setKioskStep("welcome");
+    setLastCreatedOrder(null);
+    setLastOrderData(null);
+    setIsProductModalOpen(false);
+    setIsReviewOpen(false);
+    setIsCheckoutOpen(false);
+    setIsCancelConfirmOpen(false);
+    setIsInactivityOpen(false);
+  }, [clearCart]);
+
+  // Start ordering from Welcome screen
+  const handleSelectOrderMode = (mode) => {
+    setOrderMode(mode);
+    setKioskStep("catalog");
+  };
+
+  // Open product modal
+  const handleOpenProduct = (producto) => {
+    setSelectedProduct(producto);
+    setIsProductModalOpen(true);
+  };
+
+  // Add product to cart with bounce feedback
+  const handleConfirmAddProduct = ({
+    producto,
+    cantidad,
+    adiciones,
+    observacion,
+    is2x1Promo
+  }) => {
+    addProduct({
+      productoId: producto.idProducto || producto.id,
+      varianteId: producto.idVariante || producto.id || producto.idProducto,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      adiciones: (adiciones || []).map((a) => ({
+        idAdicion: a.idAdicion || a.id,
+        id: a.idAdicion || a.id,
+        nombre: a.nombre,
+        precio: Number(a.precio || 0),
+        cantidad: Number(a.cantidad || 1),
+        imagen: a.imagen || ""
+      })),
+      observacion,
+      cantidad: Number(cantidad) || 1,
+      stock: producto.stock,
+      is2x1Promo: Boolean(is2x1Promo),
+      cantidadCocina: is2x1Promo ? (Number(cantidad) || 1) * 2 : Number(cantidad) || 1
+    });
+
+    // Trigger bounce animation on bottom bar
+    setIsCartBouncing(true);
+    setTimeout(() => setIsCartBouncing(false), 600);
+  };
+
+  // Complete checkout
+  const handleConfirmCheckout = async (checkoutData) => {
+    try {
+      const res = await submitOrder(checkoutData);
+      setLastCreatedOrder(res);
+      setLastOrderData(checkoutData);
+      setIsCheckoutOpen(false);
+      setIsReviewOpen(false);
+      setKioskStep("confirmation");
+    } catch (err) {
+      console.error("Error al registrar venta en kiosco:", err);
+    }
+  };
+
+  // Staff discrete exit handler
+  const handleStaffExit = () => {
+    navigate("/ventas/gestion-ventas");
+  };
+
+  // Step 1: Welcome Screen
+  if (kioskStep === "welcome") {
+    return (
+      <KioskWelcome
+        onSelectOrderMode={handleSelectOrderMode}
+        onExitStaff={handleStaffExit}
+      />
+    );
+  }
+
+  // Step 3: Confirmation Screen
+  if (kioskStep === "confirmation") {
+    const orderNumber =
+      lastCreatedOrder?.idVenta ||
+      lastCreatedOrder?.id ||
+      lastCreatedOrder?.data?.idVenta ||
+      "042";
+
+    return (
+      <KioskConfirmation
+        orderId={orderNumber}
+        orderData={lastOrderData}
+        onReset={handleResetKiosk}
+      />
+    );
+  }
+
+  // Step 2: Catalog & Ordering Screen
   return (
-    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 pb-24 lg:pb-5 transition-colors">
-      <div className="w-full">
-        {/* Header */}
-        <header className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1 py-1">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white shrink-0">
-                <ShoppingCart className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
-                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
-              </div>
-            </div>
-
-            {/* Mobile quick cart badge */}
-            <button
-              type="button"
-              onClick={() => setIsMobileCartOpen(true)}
-              className="lg:hidden relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 border border-red-200 dark:border-red-800 shrink-0"
-              aria-label="Ver carrito"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              {totalCartItems > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f05454] text-[10px] font-black text-white">
-                  {totalCartItems}
-                </span>
-              )}
-            </button>
+    <div className="relative min-h-screen w-full bg-[#FAFAFA] flex flex-col justify-between select-none pb-28">
+      {/* Top Header: Logo, Current Order Mode Pill & Discrete Staff Icon */}
+      <header className="w-full bg-white border-b-2 border-gray-150 shadow-2xs sticky top-0 z-30 px-4 sm:px-6 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs border border-amber-300">
+            <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
           </div>
-
-          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
-            <button
-              type="button"
-              onClick={() => navigate("/ventas/gestion-ventas")}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
-              title="Volver a Gestión de Ventas"
-            >
-              <ArrowLeft className="w-4 h-4 text-[#F05454]" />
-              <span className="hidden sm:inline">Gestión de Ventas</span>
-            </button>
-
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
-            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
-            <input
-              aria-label="Buscar producto"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
-              placeholder="Buscar producto..."
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                aria-label="Limpiar búsqueda"
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
+          <div>
+            <span className="text-[10px] font-black tracking-widest text-[#A91B2E] uppercase">
+              Chazin Food
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black text-gray-900">
+                Punto de Venta
+              </span>
+              <span className="text-xs font-black bg-red-100 text-[#A91B2E] px-2.5 py-0.5 rounded-full border border-red-200">
+                {orderMode}
+              </span>
             </div>
-          </div>
-        </header>
-
-        {/* Mobile Horizontal Categories (Visible only on < lg) */}
-        <div className="lg:hidden mb-3.5 overflow-x-auto no-scrollbar pb-1">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCategoriaActiva(null)}
-              aria-label="Mostrar todos los productos"
-              className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
-                categoriaActiva === null
-                  ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
-                  : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
-              }`}
-            >
-              <FoodIcon name="plate" size={16} />
-              <span>Todos</span>
-            </button>
-
-            {eventProductsCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setCategoriaActiva("eventos")}
-                aria-label="Filtrar por eventos"
-                className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
-                  categoriaActiva === "eventos"
-                    ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
-                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 animate-pulse" />
-                <span>Eventos ({eventProductsCount})</span>
-              </button>
-            )}
-
-            {categorias.map((c) => {
-              const active = categoriaActiva === c.id;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setCategoriaActiva(c.id)}
-                  aria-label={`Filtrar por categoría ${c.nombre}`}
-                  className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
-                    active
-                      ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
-                      : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
-                  }`}
-                >
-                  <FoodIcon name={c.nombre} size={16} />
-                  <span>{c.nombre}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
-        {/* 3 Column Flex Layout */}
-        <div className="flex flex-col lg:flex-row gap-4 w-full items-start">
-          {/* Categorías (Left Column - Desktop only) */}
-          <aside className="hidden lg:block lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm sticky top-4 self-start">
+        {/* Staff Discrete Exit Button */}
+        <button
+          type="button"
+          onClick={handleStaffExit}
+          aria-label="Volver a Gestión de Ventas"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 text-xs font-bold transition-all cursor-pointer opacity-75 hover:opacity-100"
+          title="Gestión de Ventas (Personal)"
+        >
+          <ChefHat className="w-4 h-4 text-[#A91B2E]" />
+          <span className="hidden sm:inline">Personal</span>
+          <ArrowLeft className="w-3.5 h-3.5" />
+        </button>
+      </header>
+
+      {/* Main Kiosk Area: Vertical Category Rail (Left) + Products Grid (Center) */}
+      <main className="w-full max-w-7xl mx-auto flex-1 flex gap-3 sm:gap-4 p-3 sm:p-5 items-start">
+        {/* Left Category Rail */}
+        <KioskCategoryRail
+          categorias={categorias}
+          categoriaActiva={categoriaActiva}
+          onSelectCategoria={setCategoriaActiva}
+          eventCount={eventProductsCount}
+        />
+
+        {/* Right / Center Products Content Area */}
+        <section className="flex-1 min-w-0 flex flex-col">
+          {/* Top Promo Carousel */}
+          <KioskPromoCarousel
+            productos={productos}
+            onSelectProduct={handleOpenProduct}
+          />
+
+          {/* Products Grid */}
+          <div className="flex-1">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#1f2d3d] dark:text-gray-100">Categorías</h2>
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
-                <Sparkles className="h-3.5 w-3.5" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => setCategoriaActiva(null)}
-                className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-bold transition-all ${
-                  categoriaActiva === null
-                    ? "bg-[#f05454] text-white shadow-[0_8px_16px_rgba(240,84,84,0.25)]"
-                    : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
-                }`}
-              >
-                <FoodIcon name="plate" size={16} />
-                <span className="truncate">Todos</span>
-              </button>
-
-              {eventProductsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setCategoriaActiva("eventos")}
-                  className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-black transition-all ${
-                    categoriaActiva === "eventos"
-                      ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_8px_16px_rgba(245,158,11,0.3)]"
-                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 border border-amber-200/80 dark:border-amber-800/60"
-                  }`}
-                >
-                  <Flame className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-pulse shrink-0" />
-                  <span className="truncate">Eventos ({eventProductsCount})</span>
-                </button>
-              )}
-
-              {categorias.map((c) => {
-                const active = categoriaActiva === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCategoriaActiva(c.id)}
-                    className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-bold transition-all ${
-                      active
-                        ? "bg-[#f05454] text-white shadow-[0_8px_16px_rgba(240,84,84,0.25)]"
-                        : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    <FoodIcon name={c.nombre} size={16} />
-                    <span className="truncate">{c.nombre}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
-
-          {/* Productos (Center Main Grid) */}
-          <main className="flex-1 min-w-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-[#f8f8f8] dark:bg-gray-900/60 p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-black text-[#1f2d3d] dark:text-gray-100">Productos</h2>
-              <div className="rounded-full bg-[#edf2f7] dark:bg-gray-800 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#5f7285] dark:text-gray-300">
-                {visibleProducts.length} items
-              </div>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                {categoriaActiva === null
+                  ? "Todos los Productos"
+                  : categoriaActiva === "eventos"
+                  ? "Promociones y Ofertas"
+                  : (categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
+              </h2>
+              <span className="text-xs font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+                {visibleProducts.length} {visibleProducts.length === 1 ? "producto" : "productos"}
+              </span>
             </div>
 
             {visibleProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed border-[#dbe3ed] dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-14 text-center text-[#75859a] dark:text-gray-400">
-                <p className="text-lg font-bold text-[#445366] dark:text-gray-200">No se encontraron productos</p>
-                <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
+              <div className="w-full py-16 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white text-center p-6">
+                <Utensils className="w-12 h-12 text-gray-300 mb-2" />
+                <p className="text-lg font-black text-gray-700">No hay productos en esta categoría</p>
+                <p className="text-sm font-semibold text-gray-400 mt-1">Selecciona otra categoría a la izquierda</p>
               </div>
             ) : (
-              <div className="grid gap-3.5 sm:gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {visibleProducts.map((p) => (
-                  <ProductCard
-                    key={p.id}
+                  <KioskProductCard
+                    key={p.id || p.idProducto}
                     producto={p}
-                    onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
-                      addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
-                    }
-                    onCustomize={handleOpenCustomize}
+                    onSelect={handleOpenProduct}
                   />
                 ))}
               </div>
             )}
-          </main>
-
-          {/* Carrito (Right Column Panel - Desktop only) */}
-          <section className="hidden lg:block lg:w-[285px] shrink-0 sticky top-4 self-start">
-            <Cart
-              cart={cart}
-              increment={increment}
-              decrement={decrement}
-              setItemObservacion={setItemObservacion}
-              onOpenCheckout={() => setIsCheckoutModalOpen(true)}
-              submitOrder={() => submitOrder()}
-              loading={loading}
-              subtotal={subtotal}
-              descuento={descuento}
-              total={total}
-            />
-          </section>
-        </div>
-      </div>
-
-      {/* Mobile Floating Cart Action Bar (< lg) */}
-      {totalCartItems > 0 && (
-        <div className="lg:hidden fixed bottom-3 inset-x-3 z-40">
-          <div className="bg-gray-900/95 dark:bg-gray-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-gray-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f05454] text-white shrink-0">
-                <ShoppingBag className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#f05454] text-[10px] font-black">
-                  {totalCartItems}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  Total
-                </p>
-                <p className="text-base font-black text-white truncate">
-                  ${Number(total || 0).toLocaleString("es-CO")}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsCheckoutModalOpen(true)}
-              className="px-4 py-2.5 bg-[#f05454] hover:bg-[#e04545] text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
-            >
-              <span>Finalizar Pedido</span>
-              <ChevronRight className="h-4 w-4 stroke-[3]" />
-            </button>
           </div>
-        </div>
-      )}
+        </section>
+      </main>
 
-      {/* Mobile Slide-up Modal Drawer */}
-      {isMobileCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
-          <div
-            className="fixed inset-0"
-            onClick={() => setIsMobileCartOpen(false)}
-            aria-hidden="true"
-          />
+      {/* Fixed Bottom Bar: Cart item count, total, "Ver mi pedido" and "Cancelar pedido" */}
+      <KioskBottomBar
+        totalItems={totalCartItems}
+        total={total}
+        orderMode={orderMode}
+        onOpenReview={() => setIsReviewOpen(true)}
+        onCancelOrder={() => setIsCancelConfirmOpen(true)}
+        isBouncing={isCartBouncing}
+      />
 
-          <div className="relative z-10 w-full sm:max-w-md max-h-[85vh] bg-[#f8f8f8] dark:bg-gray-900 rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
-            <Cart
-              cart={cart}
-              increment={increment}
-              decrement={decrement}
-              setItemObservacion={setItemObservacion}
-              onOpenCheckout={() => {
-                setIsMobileCartOpen(false);
-                setIsCheckoutModalOpen(true);
-              }}
-              submitOrder={() => submitOrder()}
-              loading={loading}
-              subtotal={subtotal}
-              descuento={descuento}
-              total={total}
-              onClose={() => setIsMobileCartOpen(false)}
-            />
-          </div>
-        </div>
-      )}
+      {/* Product Customization Modal (Radix Dialog) */}
+      <KioskProductModal
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
+        producto={selectedProduct}
+        allAdiciones={allAdiciones}
+        onConfirmAdd={handleConfirmAddProduct}
+      />
 
-      {/* Pos Checkout Modal */}
-      <PosCheckoutModal
-        isOpen={isCheckoutModalOpen}
-        onClose={() => setIsCheckoutModalOpen(false)}
+      {/* Order Review Modal "Mi Pedido" (Radix Dialog) */}
+      <KioskOrderReviewModal
+        isOpen={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
         cart={cart}
+        orderMode={orderMode}
+        onChangeOrderMode={setOrderMode}
+        onIncrement={increment}
+        onDecrement={decrement}
+        onRemoveItem={removeItem}
         subtotal={subtotal}
         descuento={descuento}
         total={total}
-        onConfirm={handleConfirmCheckout}
+        onProceedToCheckout={() => {
+          setIsReviewOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
+
+      {/* Checkout Modal (Radix Dialog) */}
+      <KioskCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        cart={cart}
+        orderMode={orderMode}
+        subtotal={subtotal}
+        descuento={descuento}
+        total={total}
+        onConfirmCheckout={handleConfirmCheckout}
         loading={loading}
       />
 
-      {/* Fast Food Product Customization Modal (Mise en place, Adiciones, Ficha Técnica) */}
-      <FastFoodProductModal
-        isOpen={Boolean(customizingProduct)}
-        onClose={() => {
-          setCustomizingProduct(null);
-          setCustomizingFicha(null);
+      {/* Cancel Confirmation Modal (Radix Dialog) */}
+      <KioskCancelConfirmModal
+        isOpen={isCancelConfirmOpen}
+        onClose={() => setIsCancelConfirmOpen(false)}
+        onConfirmCancel={() => {
+          setIsCancelConfirmOpen(false);
+          handleResetKiosk();
         }}
-        producto={customizingProduct}
-        ficha={customizingFicha}
-        allAdiciones={allAdiciones}
-        allBebidas={allBebidas}
-        onConfirm={handleModalConfirm}
-        mode="pos"
+      />
+
+      {/* 60s Inactivity Modal (Radix Dialog) */}
+      <KioskInactivityModal
+        isOpen={isInactivityOpen}
+        onStayActive={() => setIsInactivityOpen(false)}
+        onTimeout={() => {
+          setIsInactivityOpen(false);
+          handleResetKiosk();
+        }}
       />
     </div>
   );
 }
-
