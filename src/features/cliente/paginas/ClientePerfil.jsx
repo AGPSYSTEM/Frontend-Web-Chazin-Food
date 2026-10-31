@@ -46,6 +46,9 @@ import {
   Key,
   CheckCircle2,
   Globe,
+  Eye,
+  EyeOff,
+  Lock,
   X
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
@@ -219,6 +222,8 @@ export function ClientePerfil() {
         }
       }
 
+      const rawDocVal = user.numeroDocumento || user.documento || "";
+      const validDocVal = (rawDocVal && String(rawDocVal).trim().length >= 6) ? String(rawDocVal).trim() : "";
       setForm({
         nombre: user.nombre || "",
         apellidos: user.apellidos || user.apellido || "",
@@ -226,7 +231,7 @@ export function ClientePerfil() {
         telefono: user.telefono || "",
         direccion: cleanDir,
         tipoDocumento: user.tipoDocumento || "C.C.",
-        numeroDocumento: user.numeroDocumento || user.documento || "",
+        numeroDocumento: validDocVal,
       });
 
       const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
@@ -235,6 +240,100 @@ export function ClientePerfil() {
       setTouched({});
     }
   }, [user]);
+
+  const isGoogleUser = useMemo(() => {
+    return Boolean(
+      user?.esUsuarioGoogle ||
+      (user?.foto && user?.foto.includes("googleusercontent.com")) ||
+      (user?.avatar && user?.avatar.includes("googleusercontent.com"))
+    );
+  }, [user]);
+
+  const rawDocUser = user?.numeroDocumento || user?.documento || "";
+  const tieneCedulaRegistrada = Boolean(rawDocUser && String(rawDocUser).trim().length >= 6);
+
+  // Estados de seguridad y contraseña
+  const [passForm, setPassForm] = useState({
+    passwordActual: "",
+    passwordNueva: "",
+    passwordConfirm: "",
+  });
+  const [passErrors, setPassErrors] = useState({});
+  const [passTouched, setPassTouched] = useState({});
+  const [savingPass, setSavingPass] = useState(false);
+  const [showPassActual, setShowPassActual] = useState(false);
+  const [showPassNueva, setShowPassNueva] = useState(false);
+  const [showPassConfirm, setShowPassConfirm] = useState(false);
+
+  // Toast automático para advertir sobre cédula no registrada
+  const hasNotifiedDocRef = useRef(false);
+  useEffect(() => {
+    if (user && !hasNotifiedDocRef.current) {
+      hasNotifiedDocRef.current = true;
+      if (!tieneCedulaRegistrada) {
+        const timer = setTimeout(() => {
+          warning(
+            "Completa tu perfil",
+            "Por favor registra tu número de cédula (6 a 10 dígitos) para habilitar tus compras en línea y facturación."
+          );
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, tieneCedulaRegistrada, warning]);
+
+  const handlePassSubmit = async (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!isGoogleUser && !passForm.passwordActual) {
+      errs.passwordActual = "Ingresa tu contraseña actual.";
+    }
+    if (!passForm.passwordNueva) {
+      errs.passwordNueva = "Ingresa la nueva contraseña.";
+    } else if (passForm.passwordNueva.length < 6) {
+      errs.passwordNueva = "La contraseña debe tener al menos 6 caracteres.";
+    }
+    if (!passForm.passwordConfirm) {
+      errs.passwordConfirm = "Confirma la nueva contraseña.";
+    } else if (passForm.passwordNueva !== passForm.passwordConfirm) {
+      errs.passwordConfirm = "Las contraseñas no coinciden.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setPassErrors(errs);
+      setPassTouched({ passwordActual: true, passwordNueva: true, passwordConfirm: true });
+      return;
+    }
+
+    setSavingPass(true);
+    try {
+      const payload = {
+        passwordNueva: passForm.passwordNueva,
+        crearPasswordDirecta: isGoogleUser,
+      };
+      if (!isGoogleUser && passForm.passwordActual) {
+        payload.passwordActual = passForm.passwordActual;
+      }
+      const res = await updateProfile(payload);
+      if (res && res.success !== false) {
+        success(
+          isGoogleUser ? "¡Contraseña creada con éxito!" : "¡Contraseña actualizada!",
+          isGoogleUser
+            ? "Ahora puedes iniciar sesión ingresando tu correo y tu nueva contraseña."
+            : "Tu contraseña ha sido actualizada correctamente."
+        );
+        setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
+        setPassErrors({});
+        setPassTouched({});
+      } else {
+        notifyError("Error", res?.message || "No se pudo actualizar la contraseña.");
+      }
+    } catch (err) {
+      notifyError("Error", err.message || "No se pudo actualizar la contraseña.");
+    } finally {
+      setSavingPass(false);
+    }
+  };
 
   // Detect client device and browser for Active Sessions
   const deviceInfo = useMemo(() => {
@@ -825,7 +924,7 @@ export function ClientePerfil() {
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val.trim())) return "Ingresa un correo electrónico válido (ej: usuario@correo.com).";
         return "";
       case "numeroDocumento":
-        if (!val) return "";
+        if (!val || !val.trim()) return "El número de documento es obligatorio para facturación y compras.";
         return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
       case "telefono":
         if (!val) return "";
@@ -1648,6 +1747,20 @@ export function ClientePerfil() {
                     </p>
                   </div>
 
+                  {!tieneCedulaRegistrada && (
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+                      <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-1">
+                        <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                          Cédula pendiente de registro
+                        </p>
+                        <p className="text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                          Para cumplir con las normas colombianas de facturación y habilitar tus compras en línea en Chazin Food, por favor registra tu número de cédula (6 a 10 dígitos).
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Nombre */}
@@ -1731,9 +1844,16 @@ export function ClientePerfil() {
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                          N.° Documento
-                          <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                          <span>
+                            N.° Documento <span className="text-red-500">*</span>
+                            <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
+                          </span>
+                          {!tieneCedulaRegistrada && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              Pendiente
+                            </span>
+                          )}
                         </label>
                         <input
                           type="text"
@@ -1816,6 +1936,167 @@ export function ClientePerfil() {
                       </button>
                     </div>
                   </form>
+
+                  {/* ── Tarjeta de Seguridad y Contraseña de Acceso ── */}
+                  <div className="bg-gray-50/80 dark:bg-gray-800/40 p-6 rounded-3xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <h4 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                          <Key className="w-4 h-4 text-[#f05454]" />
+                          <span>Seguridad &amp; Contraseña de Acceso</span>
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {isGoogleUser
+                            ? "Asigna una contraseña para ingresar también escribiendo tu correo y contraseña directamente."
+                            : "Actualiza tu contraseña para mantener la seguridad de tu cuenta."}
+                        </p>
+                      </div>
+                      {isGoogleUser && (
+                        <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-blue-100/80 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 shrink-0">
+                          <Globe className="w-3.5 h-3.5" /> Cuenta Google
+                        </span>
+                      )}
+                    </div>
+
+                    {isGoogleUser && (
+                      <div className="bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/70 rounded-2xl p-4 flex items-start gap-3">
+                        <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                        <div className="text-xs space-y-1">
+                          <p className="font-bold text-blue-900 dark:text-blue-200">
+                            Acceso vinculado con Google OAuth 2.0
+                          </p>
+                          <p className="text-blue-800 dark:text-blue-300/90 leading-relaxed">
+                            Actualmente accedes mediante Google. Si deseas ingresar también directamente ingresando tu correo electrónico en el login tradicional, crea tu contraseña a continuación (no se requiere contraseña actual).
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <form onSubmit={handlePassSubmit} className="space-y-4" noValidate>
+                      {!isGoogleUser && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            Contraseña Actual <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassActual ? "text" : "password"}
+                              name="passwordActual"
+                              value={passForm.passwordActual}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordActual: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordActual: "" }));
+                              }}
+                              placeholder="Tu contraseña actual"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordActual && passErrors.passwordActual
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassActual(!showPassActual)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordActual && passErrors.passwordActual && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordActual}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            {isGoogleUser ? "Crear Contraseña" : "Nueva Contraseña"} <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassNueva ? "text" : "password"}
+                              name="passwordNueva"
+                              value={passForm.passwordNueva}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordNueva: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordNueva: "" }));
+                              }}
+                              placeholder="Mínimo 6 caracteres"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordNueva && passErrors.passwordNueva
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassNueva(!showPassNueva)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordNueva && passErrors.passwordNueva && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordNueva}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            Confirmar Contraseña <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassConfirm ? "text" : "password"}
+                              name="passwordConfirm"
+                              value={passForm.passwordConfirm}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordConfirm: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordConfirm: "" }));
+                              }}
+                              placeholder="Repite la contraseña"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordConfirm && passErrors.passwordConfirm
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassConfirm(!showPassConfirm)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordConfirm && passErrors.passwordConfirm && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordConfirm}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="submit"
+                          disabled={savingPass}
+                          className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 dark:bg-gray-100 hover:bg-black dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-2xl transition-all shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-60 cursor-pointer"
+                        >
+                          {savingPass ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span>Guardando contraseña...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Key className="w-4 h-4" />
+                              <span>{isGoogleUser ? "Crear y Asignar Contraseña" : "Actualizar Contraseña"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
 
                 {/* ── Right Column: Foto de Perfil & Sesiones Activas ── */}

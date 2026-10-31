@@ -64,6 +64,16 @@ export function validateDocumento(value = "", tipoDoc = "C.C.") {
 }
 
 /**
+ * Retorna true si el documento es válido y cumple longitud mínima
+ */
+export function isCedulaValida(documento = "", tipoDoc = "C.C.") {
+  if (!documento) return false;
+  const clean = sanitizeDocumento(documento, tipoDoc);
+  const res = validateDocumento(clean, tipoDoc);
+  return Boolean(res.isValid);
+}
+
+/**
  * Teléfono Colombia: solo números, máximo 10 dígitos (ej: 3001234567)
  */
 export function sanitizeTelefono(value = "") {

@@ -22,7 +22,7 @@ import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
 import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
-import { validateNombre } from "@/shared/utils/validationUtils";
+import { validateNombre, validateDocumento, sanitizeDocumento } from "@/shared/utils/validationUtils";
 import { formatTime12h, formatDateSafe } from "@/shared/utils/dateUtils";
 
 const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
@@ -461,6 +461,8 @@ export function ClienteLanding() {
   const [showCheckout, setShowCheckout] = useState(false);
 
   const [checkoutNombre, setCheckoutNombre] = useState("");
+  const [checkoutTipoDoc, setCheckoutTipoDoc] = useState("C.C.");
+  const [checkoutDocumento, setCheckoutDocumento] = useState("");
   const [checkoutDireccion, setCheckoutDireccion] = useState("");
   const [checkoutMetodoPago] = useState("wompi");
   const [checkoutEspecificaciones, setCheckoutEspecificaciones] = useState("");
@@ -1533,6 +1535,10 @@ export function ClienteLanding() {
       return;
     }
     setCheckoutNombre(user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "");
+    const rawDocUser = user?.numeroDocumento || user?.documento || "";
+    const cleanDocUser = (rawDocUser && String(rawDocUser).trim().length >= 6) ? String(rawDocUser).trim() : "";
+    setCheckoutTipoDoc(user?.tipoDocumento || "C.C.");
+    setCheckoutDocumento(cleanDocUser);
     const rawDir = user?.direccion || "";
     let cleanDir = rawDir;
     if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
@@ -1553,6 +1559,10 @@ export function ClienteLanding() {
     if (cart.length > 0) {
       const fullName = target?.nombre ? `${target.nombre} ${target.apellidos || ''}`.trim() : "";
       setCheckoutNombre(fullName);
+      const rawDocAuth = target?.numeroDocumento || target?.documento || "";
+      const cleanDocAuth = (rawDocAuth && String(rawDocAuth).trim().length >= 6) ? String(rawDocAuth).trim() : "";
+      setCheckoutTipoDoc(target?.tipoDocumento || "C.C.");
+      setCheckoutDocumento(cleanDocAuth);
       const rawDir = target?.direccion || "";
       let cleanDir = rawDir;
       if (typeof rawDir === 'string' && rawDir.trim().startsWith('{')) {
@@ -1672,10 +1682,24 @@ export function ClienteLanding() {
       error("Nombre inválido", valNom.error);
       return;
     }
+    // Validación obligatoria de Cédula/Documento para facturación electrónica y compras
+    const valDoc = validateDocumento(checkoutDocumento, checkoutTipoDoc);
+    if (!valDoc.isValid) {
+      setCheckoutErrors((prev) => ({ ...prev, documento: valDoc.error }));
+      error("Cédula o documento obligatorio", valDoc.error || "Ingresa tu número de cédula válido (6 a 10 dígitos).");
+      return;
+    }
     if (!checkoutDireccion.trim()) {
       setCheckoutErrors((prev) => ({ ...prev, direccion: "Por favor ingresa la dirección de entrega." }));
       error("Dirección requerida", "Por favor ingresa la dirección de entrega.");
       return;
+    }
+
+    if (user && updateProfile && (!user.numeroDocumento || user.numeroDocumento !== checkoutDocumento)) {
+      updateProfile({
+        tipoDocumento: checkoutTipoDoc,
+        numeroDocumento: checkoutDocumento
+      }).catch(err => console.warn("Sincronización en segundo plano de documento falló:", err));
     }
 
     const tiempoEstimadoCalculado = "35-45 min";
@@ -1700,6 +1724,9 @@ export function ClienteLanding() {
         origenNombre: "Venta Online (Web)",
         tiempoEstimadoEntrega: tiempoEstimadoCalculado,
         direccion: checkoutDireccion,
+        clienteDocumento: checkoutDocumento,
+        documento: checkoutDocumento,
+        tipoDocumento: checkoutTipoDoc,
         estadoEntrega: "PENDIENTE",
         observaciones: JSON.stringify({
           tipoEntrega: "Domicilio",
@@ -1708,6 +1735,8 @@ export function ClienteLanding() {
           tiempoEstimadoEntrega: tiempoEstimadoCalculado,
           horaEstado: new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true }),
           direccion: checkoutDireccion,
+          clienteDocumento: checkoutDocumento,
+          tipoDocumento: checkoutTipoDoc,
           especificaciones: combinedSpecs || "",
           clienteNombre: checkoutNombre || (user?.nombre ? `${user.nombre} ${user.apellidos || ''}` : "Cliente"),
           productos: cart.map(item => {
@@ -2921,6 +2950,68 @@ export function ClienteLanding() {
                     <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                     <span>35 - 45 min</span>
                   </span>
+                </div>
+
+                {/* Cédula y Documento para Facturación y Seguridad */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      Tipo Doc. <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={checkoutTipoDoc}
+                      onChange={(e) => {
+                        const newT = e.target.value;
+                        setCheckoutTipoDoc(newT);
+                        setCheckoutDocumento((prev) => sanitizeDocumento(prev, newT));
+                      }}
+                      className="w-full px-3 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-[#E03E3E] transition cursor-pointer"
+                    >
+                      <option value="C.C.">C.C.</option>
+                      <option value="C.E.">C.E.</option>
+                      <option value="T.I.">T.I.</option>
+                      <option value="Pasaporte">Pasaporte</option>
+                      <option value="PPT">PPT</option>
+                      <option value="NIT">NIT</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                      N.° de Cédula / Documento <span className="text-red-500">*</span>
+                      <span className="ml-1 text-[11px] text-gray-400 font-normal">(6 a 10 dígitos)</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={checkoutDocumento}
+                      onChange={(e) => {
+                        const val = sanitizeDocumento(e.target.value, checkoutTipoDoc);
+                        setCheckoutDocumento(val);
+                        const valRes = validateDocumento(val, checkoutTipoDoc);
+                        if (!valRes.isValid) {
+                          setCheckoutErrors((prev) => ({ ...prev, documento: valRes.error }));
+                        } else {
+                          setCheckoutErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.documento;
+                            return n;
+                          });
+                        }
+                      }}
+                      className={`w-full px-4 py-3 bg-white dark:bg-gray-800 border rounded-2xl text-sm font-medium text-gray-900 dark:text-gray-100 outline-none transition ${
+                        checkoutErrors.documento
+                          ? "border-red-500 focus:border-red-600 focus:ring-1 focus:ring-red-500"
+                          : "border-gray-200 dark:border-gray-700 focus:border-[#E03E3E]"
+                      }`}
+                      placeholder="Ej: 1020304050"
+                    />
+                    {checkoutErrors.documento && (
+                      <p className="text-[11px] text-red-500 font-bold mt-1.5 flex items-center gap-1 animate-in fade-in">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{checkoutErrors.documento}</span>
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div>

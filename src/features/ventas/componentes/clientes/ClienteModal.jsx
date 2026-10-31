@@ -37,7 +37,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
         nombre: cliente.nombre || "",
         apellidos: cliente.apellidos || "",
         tipoDocumento: cliente.tipoDocumento || "C.C.",
-        documento: cliente.documento || (cliente.idUsuario ? String(cliente.idUsuario) : ""),
+        documento: (cliente.documento && String(cliente.documento).length >= 6) ? cliente.documento : (cliente.numeroDocumento && String(cliente.numeroDocumento).length >= 6) ? cliente.numeroDocumento : "",
         email: cliente.email || "",
         telefono: sanitizeTelefono(cliente.telefono || ""),
         direccion: cliente.direccion || "",
@@ -73,7 +73,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
     if (isEditing && (c.id === cliente?.id || c.idCliente === cliente?.idCliente)) return false;
     if (!cleanDocCurrent || cleanDocCurrent.trim().length < 5) return false;
     const docClean = cleanDocCurrent.trim();
-    const cDoc = sanitizeDocumento(c.documento || (c.idUsuario ? String(c.idUsuario) : ""), c.tipoDocumento || form.tipoDocumento);
+    const cDoc = sanitizeDocumento(c.documento || c.numeroDocumento || "", c.tipoDocumento || form.tipoDocumento);
     return docClean === cDoc;
   });
 

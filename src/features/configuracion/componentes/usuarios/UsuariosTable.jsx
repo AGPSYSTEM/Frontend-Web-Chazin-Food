@@ -1,5 +1,5 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { formatNombreCompleto, isCedulaValida } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
   if (!raw) return "-";
@@ -169,7 +169,9 @@ export function UsuariosTable({
                       {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                      {usuario.documento ? `Doc: ${usuario.documento}` : `ID #${usuario.id || usuario.idUsuario}`}
+                      {isCedulaValida(usuario.documento, usuario.tipoDocumento)
+                        ? `Doc: ${usuario.documento}`
+                        : `ID #${usuario.id || usuario.idUsuario} (Doc. pendiente)`}
                     </p>
                   </div>
                 </div>
@@ -333,10 +335,22 @@ export function UsuariosTable({
                     {/* DOCUMENTO */}
                     <td className="px-6 py-4">
                       <div className="text-sm text-slate-600 dark:text-gray-300 whitespace-nowrap">
-                        {usuario.tipoDocumento && (
-                          <span className="text-xs text-gray-400 font-medium mr-1">{usuario.tipoDocumento}</span>
+                        {isCedulaValida(usuario.documento, usuario.tipoDocumento) ? (
+                          <>
+                            {usuario.tipoDocumento && (
+                              <span className="text-xs text-gray-400 font-medium mr-1">{usuario.tipoDocumento}</span>
+                            )}
+                            <span className="font-medium">{usuario.documento}</span>
+                          </>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
+                            title="Cédula no registrada o pendiente de validación"
+                          >
+                            <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                            Sin registrar
+                          </span>
                         )}
-                        <span className="font-medium">{usuario.documento || "-"}</span>
                       </div>
                     </td>
 

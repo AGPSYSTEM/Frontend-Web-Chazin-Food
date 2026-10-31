@@ -120,7 +120,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
         nombre: usuario.nombre || "",
         apellidos: usuario.apellidos || "",
         tipoDocumento: usuario.tipoDocumento || "C.C.",
-        documento: usuario.documento || (usuario.idUsuario ? String(usuario.idUsuario) : ""),
+        documento: (usuario.documento && String(usuario.documento).length >= 6) ? usuario.documento : (usuario.numeroDocumento && String(usuario.numeroDocumento).length >= 6) ? usuario.numeroDocumento : "",
         email: usuario.email || usuario.correo || "",
         telefono: sanitizeTelefono(usuario.telefono || ""),
         password: "",
