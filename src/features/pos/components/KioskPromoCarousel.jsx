@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Flame, Sparkles, ChevronRight, Tag } from "lucide-react";
+import { Sparkles, ChevronRight, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 export default function KioskPromoCarousel({ productos = [], onSelectProduct }) {
   // Find products that have active events or 2x1 promotions or special discounts
@@ -59,7 +60,7 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
             onSelectProduct(currentItem);
           }
         }}
-        aria-label={`Promoción destacada: ${currentItem?.nombre}. Toca para ordenar.`}
+        aria-label={`Promoción destacada: ${stripEmojis(currentItem?.nombre)}. Toca para ordenar.`}
         className="relative w-full h-40 sm:h-48 rounded-3xl overflow-hidden bg-linear-to-r from-red-700 via-rose-600 to-amber-500 shadow-lg text-white flex items-center justify-between p-4 sm:p-6 cursor-pointer border-2 border-amber-300/40 group active:scale-[0.99] transition-transform"
       >
         {/* Ambient background particles/glow */}
@@ -75,11 +76,11 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
             transition={{ duration: 0.35 }}
             className="relative z-10 flex-1 flex flex-col justify-between h-full pr-4 max-w-lg"
           >
-            {/* Promo Tag */}
+            {/* Promo Tag (100% SVG Vectorial, Cero Emojis) */}
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 bg-amber-400 text-amber-950 px-3 py-1 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider shadow-xs">
-                <Flame className="w-4 h-4 fill-amber-950 animate-bounce" />
-                {activeEvent?.nombre || "¡OFERTA DESTACADA!"}
+                <Tag className="w-3.5 h-3.5 text-amber-950 stroke-[2.5]" />
+                {stripEmojis(activeEvent?.nombre || activeEvent?.nombreEvento || "OFERTA DESTACADA")}
               </span>
               {activeEvent?.descuentoPorcentaje && (
                 <span className="inline-flex items-center gap-1 bg-white/20 text-white px-2.5 py-0.5 rounded-full text-xs font-black backdrop-blur-xs">
@@ -92,10 +93,10 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
             {/* Product Name */}
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight line-clamp-1 drop-shadow-xs">
-                {currentItem?.nombre}
+                {stripEmojis(currentItem?.nombre)}
               </h2>
               <p className="text-xs sm:text-sm text-red-100 font-semibold line-clamp-1 mt-0.5">
-                {currentItem?.descripcion || "Delicioso sabor recién preparado a la orden."}
+                {stripEmojis(currentItem?.descripcion) || "Delicioso sabor recién preparado a la orden."}
               </p>
             </div>
 
@@ -105,7 +106,7 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
                 {formatPrice(currentItem?.precio)}
               </span>
               <span className="hidden sm:inline-flex items-center gap-1 bg-white text-[#A91B2E] px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md group-hover:bg-amber-300 group-hover:text-amber-950 transition-colors">
-                <span>Toca para pedir</span>
+                <span>Pedir ahora</span>
                 <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
               </span>
             </div>
@@ -121,7 +122,7 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.4 }}
               src={currentItem.imagen}
-              alt={currentItem?.nombre}
+              alt={stripEmojis(currentItem?.nombre)}
               className="w-full h-full object-cover rounded-xl"
             />
           ) : (
@@ -152,4 +153,3 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 import React from "react";
-import { Utensils, Flame } from "lucide-react";
+import { Utensils, Tag } from "lucide-react";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 export default function KioskCategoryRail({
   categorias = [],
@@ -32,7 +33,7 @@ export default function KioskCategoryRail({
         </span>
       </button>
 
-      {/* Botón: Eventos / Promociones si existen */}
+      {/* Botón: Eventos / Promociones si existen (100% SVG Vectorial, Cero Emojis) */}
       {eventCount > 0 && (
         <button
           type="button"
@@ -44,8 +45,8 @@ export default function KioskCategoryRail({
               : "bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/40 shadow-xs"
           }`}
         >
-          <div className="p-1 rounded-xl mb-1 text-amber-500 animate-pulse">
-            <Flame className="w-6 h-6 sm:w-7 sm:h-7 fill-amber-500" />
+          <div className="p-1 rounded-xl mb-1 text-amber-500">
+            <Tag className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2]" />
           </div>
           <span className="text-sm sm:text-base font-black leading-tight break-words">
             Promociones
@@ -60,7 +61,7 @@ export default function KioskCategoryRail({
       {categorias.map((cat) => {
         const catId = cat.id || cat.idCategoriaProducto;
         const isActive = categoriaActiva === catId;
-        const catName = cat.nombre || "Categoría";
+        const catName = stripEmojis(cat.nombre || "Categoría");
 
         return (
           <button
@@ -86,4 +87,3 @@ export default function KioskCategoryRail({
     </aside>
   );
 }
-

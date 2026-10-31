@@ -466,7 +466,7 @@ export function PersonalizarEventoModal({
       .join(". ");
 
     if (is2x1) {
-      const promoTag = `🔥 ¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${cantidad} pagada + ${kitchenPrepQty - cantidad} gratis)`;
+      const promoTag = `¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${cantidad} pagada + ${kitchenPrepQty - cantidad} gratis)`;
       kitchenNotes = kitchenNotes ? `${promoTag} • ${kitchenNotes}` : promoTag;
     }
 

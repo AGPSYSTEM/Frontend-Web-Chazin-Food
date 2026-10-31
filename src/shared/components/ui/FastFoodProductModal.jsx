@@ -1872,7 +1872,7 @@ export function FastFoodProductModal({
 
     let fullNotes = [];
     if (is2x1Promo) {
-      fullNotes.push(`🔥 ¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${quantity} pagada + ${kitchenPrepQty - quantity} gratis)`);
+      fullNotes.push(`¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${quantity} pagada + ${kitchenPrepQty - quantity} gratis)`);
     }
     if (isComboWithDrinks && selectedDrinks.length > 0) {
       const drinksSummary = selectedDrinks

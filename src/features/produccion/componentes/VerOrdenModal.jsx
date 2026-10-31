@@ -11,7 +11,8 @@ import {
   Clock, 
   User, 
   Layers,
-  MapPin
+  MapPin,
+  Tag
 } from "lucide-react";
 import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -292,7 +293,7 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                           </span>
                           {(prod.isPromo2x1 || prod.nombre?.includes("2x1") || itemObs?.includes("2x1")) && (
                             <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-2xs">
-                              🔥 2x1 (Preparar {qty})
+                              <Tag className="w-3 h-3 stroke-[2.5]" /><span>2x1 (Preparar {qty})</span>
                             </span>
                           )}
                         </div>

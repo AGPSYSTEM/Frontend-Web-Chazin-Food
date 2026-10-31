@@ -67,7 +67,7 @@ export default function KioskWelcome({ onSelectOrderMode, onExitStaff }) {
             Pide en pantalla en menos de 1 minuto
           </p>
           <div className="mt-4 inline-flex items-center gap-2 bg-amber-100/90 text-amber-900 border border-amber-300 px-4 py-1.5 rounded-full text-sm sm:text-base font-extrabold shadow-2xs">
-            <span>✨ ¿Cómo deseas disfrutar tu pedido hoy?</span>
+            <span>¿Cómo deseas disfrutar tu pedido hoy?</span>
           </div>
         </motion.div>
 

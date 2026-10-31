@@ -526,7 +526,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                   }`}
                   title="Alternar prefijo 'Aprox.'"
                 >
-                  ⚡ + Aprox.
+                  + Aprox.
                 </button>
                 {["15-20 min", "25-35 min", "45 min", "1 hora", "1 h 15 min", "Listo para entrega"].map((preset) => (
                   <button

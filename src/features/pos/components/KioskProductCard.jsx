@@ -1,6 +1,7 @@
 import React from "react";
-import { Sparkles, Flame, Tag } from "lucide-react";
+import { Sparkles, Tag, Plus } from "lucide-react";
 import { motion } from "motion/react";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 export default function KioskProductCard({ producto, onSelect }) {
   if (!producto) return null;
@@ -42,20 +43,20 @@ export default function KioskProductCard({ producto, onSelect }) {
           onSelect(producto);
         }
       }}
-      aria-label={`Seleccionar ${producto.nombre}, precio ${formatPrice(finalPrice)} COP`}
+      aria-label={`Seleccionar ${stripEmojis(producto.nombre)}, precio ${formatPrice(finalPrice)} COP`}
       className={`group relative flex flex-col justify-between rounded-3xl p-3.5 sm:p-4 transition-all cursor-pointer select-none overflow-hidden min-h-[290px] sm:min-h-[310px] ${
         activeEvent
           ? "bg-linear-to-b from-amber-50/40 via-white to-white dark:from-amber-950/40 dark:via-gray-900 dark:to-gray-900 border-3 border-amber-500 dark:border-amber-500 ring-4 ring-amber-400/40 dark:ring-amber-500/30 shadow-xl shadow-amber-500/20 dark:shadow-amber-500/10"
           : "bg-white dark:bg-gray-900 border-2 border-gray-200/90 dark:border-gray-800 hover:border-red-400 dark:hover:border-red-500/60 shadow-sm hover:shadow-xl shadow-red-500/10"
       }`}
     >
-      {/* ═══ CONTORNO & BANNER DE EVENTO ACTIVO ═══ */}
+      {/* ═══ CONTORNO & BANNER DE EVENTO ACTIVO (100% SVG Vectorial, Cero Emojis) ═══ */}
       {activeEvent && (
         <div className="w-full bg-linear-to-r from-red-600 via-rose-600 to-amber-500 dark:from-red-700 dark:via-rose-700 dark:to-amber-600 text-white font-black text-xs py-1.5 px-3 rounded-2xl flex items-center justify-between shadow-xs mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <Flame className="w-4 h-4 fill-amber-300 text-amber-300 animate-pulse shrink-0" />
+            <Tag className="w-3.5 h-3.5 text-white shrink-0 stroke-[2.2]" />
             <span className="truncate uppercase tracking-wider">
-              {activeEvent.nombre || activeEvent.nombreEvento || "Evento Activo"}
+              {stripEmojis(activeEvent.nombre || activeEvent.nombreEvento || "Evento Activo")}
             </span>
           </div>
           <span className="bg-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
@@ -67,8 +68,8 @@ export default function KioskProductCard({ producto, onSelect }) {
       {/* Promo badge floating at top right of image */}
       {is2x1Promo && !activeEvent && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-amber-400 text-amber-950 font-black text-xs px-2.5 py-1 rounded-full shadow-md uppercase tracking-wider">
-          <Flame className="w-3.5 h-3.5 fill-amber-950" />
-          <span>¡2x1 Promo!</span>
+          <Tag className="w-3.5 h-3.5 text-amber-950 stroke-[2.2]" />
+          <span>2x1 Promo</span>
         </div>
       )}
       {!is2x1Promo && discountPercent > 0 && !activeEvent && (
@@ -83,7 +84,7 @@ export default function KioskProductCard({ producto, onSelect }) {
         {producto.imagen ? (
           <img
             src={producto.imagen}
-            alt={producto.nombre}
+            alt={stripEmojis(producto.nombre)}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -98,11 +99,11 @@ export default function KioskProductCard({ producto, onSelect }) {
       {/* Product Details (Legible at 1 meter, max 2 lines title) */}
       <div className="mt-3 flex-1 flex flex-col justify-between">
         <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 group-hover:text-[#A91B2E] dark:group-hover:text-red-400 transition-colors">
-          {producto.nombre}
+          {stripEmojis(producto.nombre)}
         </h3>
 
-        {/* Pricing area */}
-        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-baseline justify-between gap-2">
+        {/* Pricing & CTA Button area (Tactile fast-food action button) */}
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-black text-[#A91B2E] dark:text-red-400">
               {formatPrice(finalPrice)}
@@ -114,9 +115,10 @@ export default function KioskProductCard({ producto, onSelect }) {
             )}
           </div>
 
-          <span className="text-[11px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">
-            Tocar
-          </span>
+          <div className="flex items-center gap-1.5 bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs group-hover:scale-105 active:scale-95 transition-all">
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>Pedir</span>
+          </div>
         </div>
       </div>
     </motion.div>

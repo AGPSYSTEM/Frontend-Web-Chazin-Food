@@ -312,9 +312,7 @@ export function PosCheckoutModal({
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Mostrador físico</p>
                 </div>
               </div>
-              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0">
-                ✓
-              </span>
+              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0"><Check className="w-3 h-3 stroke-[3]" /></span>
             </div>
           </div>
 
@@ -468,7 +466,7 @@ export function PosCheckoutModal({
                               </span>
                             )}
                             <span className="px-2.5 py-1 bg-white dark:bg-gray-800 text-[#f05454] group-hover:bg-[#f05454] group-hover:text-white border border-[#f05454] text-[11px] font-black rounded-xl transition shadow-2xs">
-                              {isCurrentlySelected ? "Seleccionado ✓" : "Asociar"}
+                              {isCurrentlySelected ? "Seleccionado" : "Asociar"}
                             </span>
                           </div>
                         </div>
@@ -697,9 +695,7 @@ export function PosCheckoutModal({
                 <Banknote className="w-5 h-5 text-inherit" />
                 <span className="text-xs font-bold text-inherit">Efectivo</span>
                 {metodoPago === "efectivo" && (
-                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
-                    ✓
-                  </span>
+                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black"><Check className="w-3 h-3 stroke-[3]" /></span>
                 )}
               </button>
 
@@ -716,9 +712,7 @@ export function PosCheckoutModal({
                 <CreditCard className="w-5 h-5 text-inherit" />
                 <span className="text-xs font-bold text-inherit">Tarjeta</span>
                 {metodoPago === "tarjeta" && (
-                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
-                    ✓
-                  </span>
+                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black"><Check className="w-3 h-3 stroke-[3]" /></span>
                 )}
               </button>
             </div>

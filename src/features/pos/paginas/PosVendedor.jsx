@@ -20,6 +20,7 @@ import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 export default function PosVendedor() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -355,7 +356,7 @@ export default function PosVendedor() {
                   ? "Todos los Productos"
                   : categoriaActiva === "eventos"
                   ? "Promociones y Ofertas"
-                  : (categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
+                  : stripEmojis(categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
               </h2>
               <span className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
                 {visibleProducts.length} {visibleProducts.length === 1 ? "producto" : "productos"}

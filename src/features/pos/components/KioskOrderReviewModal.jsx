@@ -1,4 +1,5 @@
 import React from "react";
+import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Plus, Minus, Trash2, ArrowLeft, CheckCircle2, ShoppingBag } from "lucide-react";
 
@@ -82,7 +83,7 @@ export default function KioskOrderReviewModal({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <h4 className="text-base sm:text-lg font-black text-gray-900 leading-snug">
-                          {item.nombre}
+                          {stripEmojis(item.nombre)}
                         </h4>
                         <span className="sm:hidden text-lg font-black text-[#A91B2E]">
                           {formatPrice(itemTotal)}
@@ -97,7 +98,7 @@ export default function KioskOrderReviewModal({
                               key={aidx}
                               className="text-[11px] font-bold bg-white text-gray-700 px-2 py-0.5 rounded-md border border-gray-200"
                             >
-                              +{a.nombre}
+                              +{stripEmojis(a.nombre)}
                             </span>
                           ))}
                         </div>
@@ -118,7 +119,7 @@ export default function KioskOrderReviewModal({
                         <button
                           type="button"
                           onClick={() => onDecrement(idx)}
-                          aria-label={`Reducir cantidad de ${item.nombre}`}
+                          aria-label={`Reducir cantidad de ${stripEmojis(item.nombre)}`}
                           className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center justify-center font-black active:scale-95 cursor-pointer"
                         >
                           <Minus className="w-4 h-4 stroke-[3]" />
@@ -129,7 +130,7 @@ export default function KioskOrderReviewModal({
                         <button
                           type="button"
                           onClick={() => onIncrement(idx)}
-                          aria-label={`Aumentar cantidad de ${item.nombre}`}
+                          aria-label={`Aumentar cantidad de ${stripEmojis(item.nombre)}`}
                           className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-[#A91B2E] text-white flex items-center justify-center font-black active:scale-95 cursor-pointer"
                         >
                           <Plus className="w-4 h-4 stroke-[3]" />
@@ -145,7 +146,7 @@ export default function KioskOrderReviewModal({
                       <button
                         type="button"
                         onClick={() => onRemoveItem(idx)}
-                        aria-label={`Eliminar ${item.nombre} del pedido`}
+                        aria-label={`Eliminar ${stripEmojis(item.nombre)} del pedido`}
                         className="w-10 h-10 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 flex items-center justify-center transition-all cursor-pointer active:scale-95"
                         title="Quitar del pedido"
                       >

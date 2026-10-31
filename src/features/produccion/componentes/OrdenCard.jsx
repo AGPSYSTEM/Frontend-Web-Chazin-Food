@@ -1,4 +1,4 @@
-import { User, Clock, AlertCircle, Eye, Check, X } from "lucide-react";
+import { User, Clock, AlertCircle, Eye, Check, X, Sparkles } from "lucide-react";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 
 export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
@@ -60,7 +60,7 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
                 }}
                 className="mt-1 text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-semibold text-left cursor-pointer"
               >
-                <span>★ Con adiciones / notas personalizadas</span>
+                <span className="inline-flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" /><span>Con adiciones / notas personalizadas</span></span>
                 <span className="text-[10px] text-gray-400 font-normal">(ver detalle)</span>
               </button>
             )}
