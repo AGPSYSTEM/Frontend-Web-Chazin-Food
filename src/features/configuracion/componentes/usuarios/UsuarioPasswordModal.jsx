@@ -27,7 +27,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
   const handlePasswordChange = (val) => {
     setPassword(val);
     setTouched((prev) => ({ ...prev, password: true }));
-    const passErr = validateContrasena(val, 8, "contraseña");
+    const passErr = validateContrasena(val, 6, "contraseña");
     setErrors((prev) => {
       const next = { ...prev, password: passErr.isValid ? "" : passErr.error };
       if (touched.confirmPassword || confirmPassword) {
@@ -51,7 +51,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     if (field === "password") {
-      const res = validateContrasena(password, 8, "contraseña");
+      const res = validateContrasena(password, 6, "contraseña");
       setErrors((prev) => ({ ...prev, password: res.isValid ? "" : res.error }));
     } else if (field === "confirmPassword") {
       const res = validateConfirmarContrasena(password, confirmPassword);
@@ -63,7 +63,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
     e.preventDefault();
     setErrorMsg("");
 
-    const passRes = validateContrasena(password, 8, "contraseña");
+    const passRes = validateContrasena(password, 6, "contraseña");
     const confRes = validateConfirmarContrasena(password, confirmPassword);
 
     const newErrors = {};
@@ -165,12 +165,12 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
                 <div className="mt-2 space-y-1 bg-purple-50/50 dark:bg-purple-950/20 p-2.5 rounded-xl border border-purple-100 dark:border-purple-900/50 text-[10.5px]">
                   <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Requisitos de contraseña:</p>
                   {(() => {
-                    const crit = getPasswordCriteria(password, 8);
+                    const crit = getPasswordCriteria(password, 6);
                     return (
                       <div className="grid grid-cols-2 gap-1 font-medium">
                         <span className={`flex items-center gap-1 ${crit.hasLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
                           <CheckCircle2 className={`w-3 h-3 ${crit.hasLength ? "text-emerald-500" : "text-gray-300"}`} />
-                          Mín. 8 caracteres
+                          Mín. 6 caracteres
                         </span>
                         <span className={`flex items-center gap-1 ${crit.hasUpper ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
                           <CheckCircle2 className={`w-3 h-3 ${crit.hasUpper ? "text-emerald-500" : "text-gray-300"}`} />
@@ -251,7 +251,7 @@ export function UsuarioPasswordModal({ isOpen, onClose, onSave, usuario }) {
 
           {/* Explicatory text */}
           <p className="text-xs text-gray-400 leading-relaxed font-normal">
-            La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas y números
+            La contraseña debe tener al menos 6 caracteres, incluir mayúsculas, minúsculas y números
           </p>
 
           {/* Blue Notification Box (Matching Captura 1) */}
