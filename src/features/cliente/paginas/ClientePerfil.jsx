@@ -273,8 +273,8 @@ export function ClientePerfil() {
       if (!tieneCedulaRegistrada) {
         const timer = setTimeout(() => {
           warning(
-            "Completa tu perfil",
-            "Por favor registra tu número de cédula (6 a 10 dígitos) para habilitar tus compras en línea y facturación."
+            "Identificación pendiente",
+            "Tu cuenta aún no tiene un número de documento registrado. Por favor registra tu cédula (6 a 10 dígitos) para habilitar la facturación electrónica y tus compras en línea."
           );
         }, 800);
         return () => clearTimeout(timer);
@@ -1752,10 +1752,10 @@ export function ClientePerfil() {
                       <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <div className="text-xs space-y-1">
                         <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
-                          Cédula pendiente de registro
+                          Tu cuenta no cuenta con un número de documento registrado
                         </p>
                         <p className="text-amber-800 dark:text-amber-300/90 leading-relaxed">
-                          Para cumplir con las normas colombianas de facturación y habilitar tus compras en línea en Chazin Food, por favor registra tu número de cédula (6 a 10 dígitos).
+                          Para cumplir con los requisitos de facturación electrónica y procesar tus pedidos en Chazin Food, por favor registra tu número de cédula válido (6 a 10 dígitos).
                         </p>
                       </div>
                     </div>

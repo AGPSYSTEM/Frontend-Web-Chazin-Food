@@ -1686,7 +1686,17 @@ export function ClienteLanding() {
     const valDoc = validateDocumento(checkoutDocumento, checkoutTipoDoc);
     if (!valDoc.isValid) {
       setCheckoutErrors((prev) => ({ ...prev, documento: valDoc.error }));
-      error("Cédula o documento obligatorio", valDoc.error || "Ingresa tu número de cédula válido (6 a 10 dígitos).");
+      const msg = !checkoutDocumento?.trim()
+        ? "Tu cuenta aún no tiene un número de documento registrado. Por favor ingresa tu cédula (6 a 10 dígitos) para emitir tu factura y procesar tu pedido."
+        : `El número de documento no es válido: ${valDoc.error}`;
+      error("Cédula o documento requerido", msg);
+      setTimeout(() => {
+        const docInput = document.getElementById("checkout-documento-input");
+        if (docInput) {
+          docInput.focus();
+          docInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
       return;
     }
     if (!checkoutDireccion.trim()) {
@@ -2981,6 +2991,7 @@ export function ClienteLanding() {
                       <span className="ml-1 text-[11px] text-gray-400 font-normal">(6 a 10 dígitos)</span>
                     </label>
                     <input
+                      id="checkout-documento-input"
                       type="text"
                       inputMode="numeric"
                       value={checkoutDocumento}
