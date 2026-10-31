@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban, ArrowRight } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban, ArrowRight, Globe, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -531,22 +531,42 @@ export function ClienteLanding() {
   }, [showCheckout, showCart, showProductModal, showPersonalizarEventoModal, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
+  const [dismissedGoogleBanner, setDismissedGoogleBanner] = useState(() => {
+    return sessionStorage.getItem("chazin_google_banner_dismissed") === "true";
+  });
+
+  const isGoogleUser = Boolean(
+    user?.esUsuarioGoogle ||
+    (user?.foto && user?.foto.includes("googleusercontent.com")) ||
+    (user?.avatar && user?.avatar.includes("googleusercontent.com"))
+  );
+
+  const googlePendingFields = useMemo(() => {
+    if (!isAuthenticated || !isGoogleUser) return [];
+    const fields = [];
+    const rawDoc = user?.numeroDocumento || user?.documento || "";
+    if (!rawDoc || String(rawDoc).trim().length < 6) {
+      fields.push("cédula");
+    }
+    const rawTel = user?.telefono || "";
+    if (!rawTel || String(rawTel).trim().length < 7) {
+      fields.push("teléfono");
+    }
+    let rawDir = user?.direccion || "";
+    if (typeof rawDir === "string" && rawDir.trim().startsWith("{")) {
+      try {
+        const parsed = JSON.parse(rawDir);
+        rawDir = parsed.direccion || "";
+      } catch (e) {}
+    }
+    if (!rawDir || String(rawDir).trim().length < 5) {
+      fields.push("dirección");
+    }
+    return fields;
+  }, [isAuthenticated, isGoogleUser, user?.numeroDocumento, user?.documento, user?.telefono, user?.direccion]);
+
   const rawUserDoc = user?.numeroDocumento || user?.documento || "";
   const tieneDocRegistrado = Boolean(rawUserDoc && String(rawUserDoc).trim().length >= 6);
-
-  // Notificación Toast cada vez que el usuario sin cédula entra al menú/tienda
-  useEffect(() => {
-    if (isAuthenticated && user && !tieneDocRegistrado) {
-      const timer = setTimeout(() => {
-        warning(
-          "Identificación pendiente en tu perfil",
-          "Tu cuenta aún no tiene un número de cédula registrado. Por favor ingresa a 'Mi Perfil' y completa tu documento para poder realizar pedidos y habilitar la facturación.",
-          7000
-        );
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, user?.id, user?.idUsuario, tieneDocRegistrado, warning]);
 
   // Ref y desplazamiento suave para carrusel 'Complementa tu orden' en Carrito
   const complementosRef = useRef(null);
@@ -1998,12 +2018,14 @@ export function ClienteLanding() {
                   onClick={() => navigate("/perfil")}
                   aria-label="Ir a mi perfil"
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer relative"
-                  title={!tieneDocRegistrado ? "Identificación pendiente en tu perfil" : "Mi Perfil"}
+                  title={isGoogleUser && googlePendingFields.length > 0 ? "Datos pendientes en tu perfil" : "Mi Perfil"}
                 >
                   <User className="w-5 h-5 text-[#f05454]" />
                   <span className="hidden sm:inline">Mi Perfil</span>
-                  {!tieneDocRegistrado && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-gray-900 animate-pulse shrink-0" />
+                  {isGoogleUser && googlePendingFields.length > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white animate-pulse">
+                      Datos pendientes
+                    </span>
                   )}
                 </button>
               ) : (
@@ -2045,6 +2067,46 @@ export function ClienteLanding() {
           </div>
         </div>
       </header>
+
+      {/* Banner de aviso amigable para completar datos de Google Auth (Sin toasts) */}
+      {isAuthenticated && isGoogleUser && googlePendingFields.length > 0 && !dismissedGoogleBanner && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-[#f05454] text-white shadow-md relative z-30 transition-all">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs sm:text-sm">
+            <div className="flex items-center gap-2.5 text-center sm:text-left">
+              <span className="p-1.5 rounded-lg bg-white/20 shrink-0">
+                <Globe className="w-4 h-4 text-white" />
+              </span>
+              <p className="font-medium leading-tight">
+                <span className="font-bold">¡Bienvenido con Google, {user?.nombre}!</span>
+                {" "}Para habilitar tus pedidos y entregas, completa tu{" "}
+                <span className="underline font-bold bg-white/10 px-1.5 py-0.5 rounded">
+                  {googlePendingFields.join(", ")}
+                </span>
+                {" "}en tu perfil.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => navigate("/perfil?tab=editar")}
+                className="px-3.5 py-1.5 bg-white text-gray-900 font-bold rounded-xl text-xs hover:bg-amber-50 transition shadow-sm cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <span>Completar datos</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  setDismissedGoogleBanner(true);
+                  sessionStorage.setItem("chazin_google_banner_dismissed", "true");
+                }}
+                className="p-1 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition cursor-pointer"
+                title="Cerrar aviso"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Punto de referencia semántico principal para Accesibilidad */}
       <main id="main-content">

@@ -265,19 +265,7 @@ export function ClientePerfil() {
   const [showPassNueva, setShowPassNueva] = useState(false);
   const [showPassConfirm, setShowPassConfirm] = useState(false);
 
-  // Toast automático cada vez que el cliente sin cédula entra a su perfil
-  useEffect(() => {
-    if (user && !tieneCedulaRegistrada) {
-      const timer = setTimeout(() => {
-        warning(
-          "Identificación pendiente en tu perfil",
-          "Tu cuenta aún no tiene un número de documento registrado. Por favor completa el campo de cédula (6 a 10 dígitos) a continuación y guarda los cambios para habilitar tus compras.",
-          7000
-        );
-      }, 700);
-      return () => clearTimeout(timer);
-    }
-  }, [user?.id, user?.idUsuario, tieneCedulaRegistrada, warning]);
+// Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
 
   const handlePassSubmit = async (e) => {
     e.preventDefault();
@@ -1744,7 +1732,62 @@ export function ClientePerfil() {
                     </p>
                   </div>
 
-                  {!tieneCedulaRegistrada && (
+                  {/* Onboarding exclusivo para usuarios de Google Auth con datos pendientes */}
+                  {isGoogleUser && (!form.numeroDocumento || form.numeroDocumento.length < 6 || !form.telefono || form.telefono.length < 7 || !form.direccion || form.direccion.length < 5) && (
+                    <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50/50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/20 border-2 border-amber-300 dark:border-amber-700/80 rounded-3xl p-5 shadow-xs space-y-3.5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-black shadow-sm mt-0.5">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <div className="text-xs space-y-1 flex-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-black text-amber-950 dark:text-amber-100 text-sm sm:text-base flex items-center gap-2">
+                              <span>Completa tus datos de entrega y facturación</span>
+                            </h4>
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                              Acceso con Google OAuth 2.0
+                            </span>
+                          </div>
+                          <p className="text-amber-900 dark:text-amber-200/90 leading-relaxed text-xs">
+                            Al iniciar con Google, datos como tu <strong>teléfono</strong> y <strong>dirección</strong> quedan pendientes por privacidad. Completa los campos marcados como <strong className="text-amber-800 dark:text-amber-300">Pendiente</strong> a continuación para que el restaurante pueda coordinar tus domicilios y emitir tu factura:
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Checklist dinámico interactivo con progreso en vivo */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.numeroDocumento && form.numeroDocumento.length >= 6
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.numeroDocumento && form.numeroDocumento.length >= 6 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Cédula: {form.numeroDocumento && form.numeroDocumento.length >= 6 ? 'Lista ✓' : 'Falta registrar'}</span>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.telefono && form.telefono.length >= 7
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.telefono && form.telefono.length >= 7 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Teléfono: {form.telefono && form.telefono.length >= 7 ? 'Listo ✓' : 'Falta registrar'}</span>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.direccion && form.direccion.length >= 5
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.direccion && form.direccion.length >= 5 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Dirección: {form.direccion && form.direccion.length >= 5 ? 'Lista ✓' : 'Falta registrar'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Banner tradicional para usuarios de registro normal sin cédula */}
+                  {!isGoogleUser && !tieneCedulaRegistrada && (
                     <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
                       <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <div className="text-xs space-y-1">
@@ -1870,8 +1913,13 @@ export function ClientePerfil() {
 
                     {/* Teléfono */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Teléfono Celular
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                        <span>Teléfono Celular</span>
+                        {isGoogleUser && (!form.telefono || form.telefono.trim().length < 7) && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Pendiente
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1893,8 +1941,13 @@ export function ClientePerfil() {
 
                     {/* Dirección de Entrega por Defecto */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Dirección de Entrega por Defecto
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                        <span>Dirección de Entrega por Defecto</span>
+                        {isGoogleUser && (!form.direccion || form.direccion.trim().length < 5) && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Pendiente
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
