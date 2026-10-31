@@ -170,6 +170,9 @@ export function Layout() {
     return "Chazin Food";
   };
 
+  const isPosView = location.pathname === "/ventas/pos";
+  const showFullTopHeader = isVendedor || isPosView;
+
   const modulePills = [
     {
       to: "/ventas/pos",
@@ -605,7 +608,35 @@ export function Layout() {
       {/* Main column: Persistent Top Header + Scrollable Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Navigation Header (Persistent across all modules & pages) */}
-        <header className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs select-none">
+        {/* Mobile top header para Admin cuando no está en POS (solo móvil < lg) */}
+        {!showFullTopHeader && (
+          <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-xs shrink-0 select-none">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95 cursor-pointer"
+              aria-label="Abrir menú"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" title="Ir al inicio">
+              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-white ring-2 ring-gray-100 dark:ring-gray-700">
+                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
+              </div>
+              <span className="font-bold text-gray-800 dark:text-gray-100 tracking-tight">Chazin Food</span>
+            </Link>
+            <button
+              onClick={() => toggleDarkMode()}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-600 dark:text-gray-400 active:scale-95 cursor-pointer"
+              aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
+            >
+              {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5" />}
+            </button>
+          </div>
+        )}
+
+        {/* Barra superior completa: Siempre para Vendedor, y para Admin ÚNICAMENTE al crear venta (/ventas/pos) */}
+        {showFullTopHeader && (
+          <header className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs select-none">
           {/* Left: Mobile menu toggle (< lg) + Logo + Dynamic Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             {!isVendedor && (
@@ -723,6 +754,7 @@ export function Layout() {
             </button>
           </div>
         </header>
+        )}
 
         {/* Main scrollable body */}
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
