@@ -163,6 +163,18 @@ export function usePOS({ initialClienteId = null } = {}) {
     });
   }
 
+  function removeItem(index) {
+    setCart((prev) => {
+      const next = [...prev];
+      next.splice(index, 1);
+      return next;
+    });
+  }
+
+  function clearCart() {
+    setCart([]);
+  }
+
   function decrement(index) {
     setCart((prev) => {
       const next = [...prev];
@@ -314,6 +326,8 @@ export function usePOS({ initialClienteId = null } = {}) {
     addProduct,
     increment,
     decrement,
+    removeItem,
+    clearCart,
     toggleAdicion,
     setItemObservacion,
     subtotal,
