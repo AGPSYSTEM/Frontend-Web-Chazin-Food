@@ -1,13 +1,15 @@
-import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles } from "lucide-react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles, CheckCircle2, Edit, Clock, Thermometer, Award } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { normalizeFichaWithVersions, formatFechaHoraFicha } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
+import { FichaVersionesHistorial } from "@/features/fichas-tecnicas/componentes/FichaVersionesHistorial";
 import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 
-export function VerProductoModal({ isOpen, onClose, producto }) {
+export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [resenasData, setResenasData] = useState({ promedio: 0, total: 0, resenas: [] });
@@ -27,14 +29,14 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
     if (isOpen && (producto?.id || producto?.idProducto)) {
       const pId = producto.id || producto.idProducto;
       if (producto.fichaTecnica) {
-        setFichaTecnica(producto.fichaTecnica);
+        setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
       }
       setLoadingFicha(true);
       fichasTecnicasService.getFichaByProducto(pId)
-        .then(f => setFichaTecnica(f || producto.fichaTecnica || null))
+        .then(f => setFichaTecnica(f || (producto.fichaTecnica ? normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId) : null)))
         .catch(err => {
           console.error("Error cargando ficha", err);
-          if (producto.fichaTecnica) setFichaTecnica(producto.fichaTecnica);
+          if (producto.fichaTecnica) setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
         })
         .finally(() => setLoadingFicha(false));
 
@@ -53,14 +55,14 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
 
   // Cálculos para datos del producto
   const precioVenta = Number(producto.precio || 0);
-  
+
   // Costo real calculado a partir de la suma de insumos de la ficha técnica
   const costoRealCalculado = fichaTecnica?.detalles?.length > 0
     ? fichaTecnica.detalles.reduce((acc, d) => {
-        const cant = Number(d.cantidad || 0);
-        const precioUnit = Number(d.precioUnitario || d.insumo?.precioUnitario || 0);
-        return acc + (cant * precioUnit);
-      }, 0)
+      const cant = Number(d.cantidad || 0);
+      const precioUnit = Number(d.precioUnitario || d.insumo?.precioUnitario || 0);
+      return acc + (cant * precioUnit);
+    }, 0)
     : 0;
 
   const costoProduccion = Math.round(costoRealCalculado);
@@ -68,7 +70,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
   const margenPorcentaje = precioVenta > 0 && costoProduccion > 0
     ? Math.round((margenGanancia / precioVenta) * 100)
     : 0;
-  
+
   const totalVendidos = Number(producto.ventas ?? producto.totalVendidos ?? 0);
   const totalIngresos = totalVendidos * precioVenta;
 
@@ -111,17 +113,16 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     >
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl flex flex-col overflow-hidden relative max-h-[94vh] border border-gray-100 dark:border-gray-800">
-        
+
         {/* Top Showcase Header */}
         <div className="relative w-full bg-gradient-to-b from-gray-50/90 via-gray-100/40 to-white dark:from-gray-800/60 dark:via-gray-850 dark:to-gray-900 p-6 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-800 shrink-0">
-          
+
           {/* Badge Disponible */}
           <div className="absolute top-4 left-4 z-20">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-xs border ${
-              isDisponible 
-                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" 
-                : "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
-            }`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-xs border ${isDisponible
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+              : "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+              }`}>
               <span className={`w-2 h-2 rounded-full ${isDisponible ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
               {isDisponible ? "Disponible" : "Inactivo"}
             </span>
@@ -153,7 +154,7 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
 
         {/* Body Section */}
         <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
-          
+
           {/* Product Title & Category */}
           <div className="border-b border-gray-100 dark:border-gray-800 pb-4">
             <div className="flex items-center justify-between gap-3">
@@ -208,11 +209,25 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Insumos */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <ChefHat className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Insumos de la Ficha Técnica</h3>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Insumos de la Ficha Técnica</h3>
+                </div>
+                {fichaTecnica && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Versión {fichaTecnica.versionActual || 1} (Vigente)
+                  </span>
+                )}
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px]">
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px] space-y-2.5">
+                {fichaTecnica && (
+                  <div className="pb-2 border-b border-gray-200/70 dark:border-gray-700/60 text-[11px] text-gray-600 dark:text-gray-400">
+                    <span className="font-bold text-gray-700 dark:text-gray-300">Vigente desde:</span>{" "}
+                    {formatFechaHoraFicha(fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion)}
+                  </div>
+                )}
                 {loadingFicha ? (
                   <p className="text-xs text-gray-400 text-center py-4">Cargando insumos...</p>
                 ) : fichaTecnica && fichaTecnica.detalles && fichaTecnica.detalles.length > 0 ? (
@@ -271,6 +286,103 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
               </div>
             </div>
           </div>
+
+          {/* Detalles completos de Elaboración de la Ficha Técnica */}
+          {fichaTecnica && (
+            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-[#F05454]" />
+                  Especificaciones y Procedimiento de la Ficha Técnica
+                </h4>
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(producto)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-[#F05454] text-xs font-bold transition cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    <span>Editar Producto y Ficha Técnica</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">
+                    Tiempo Preparación
+                  </span>
+                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    {fichaTecnica.tiempoPreparacion || 1} minutos
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">
+                    Rendimiento / Porciones
+                  </span>
+                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    {fichaTecnica.rendimiento || "1 porción"}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-0.5">
+                    Vida Útil
+                  </span>
+                  <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    {fichaTecnica.vidaUtil || "Consumo inmediato"}
+                  </p>
+                </div>
+              </div>
+
+              {fichaTecnica.procedimiento && (
+                <div className="p-3.5 bg-white dark:bg-gray-900/60 rounded-xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">
+                    Procedimiento de Preparación Paso a Paso
+                  </span>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                    {fichaTecnica.procedimiento}
+                  </p>
+                </div>
+              )}
+
+              {fichaTecnica.condicionesAlmacenamiento && (
+                <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-900 dark:text-blue-200 mb-0.5">
+                    <Thermometer className="w-3.5 h-3.5 text-blue-600" />
+                    Condiciones de Almacenamiento
+                  </div>
+                  <p className="text-blue-800 dark:text-blue-300">
+                    {fichaTecnica.condicionesAlmacenamiento}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Historial de Versiones de la Ficha Técnica del Producto */}
+          {fichaTecnica && (
+            <div className="pt-2">
+              <FichaVersionesHistorial
+                versionActual={fichaTecnica.versionActual || 1}
+                fechaInicioVigencia={fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion}
+                versionesAnteriores={fichaTecnica.versionesAnteriores || []}
+                datosEntidadActual={
+                  fichaTecnica.datosEntidad || {
+                    nombre: producto.nombre,
+                    categoria: producto.categoria,
+                    precio: Number(producto.precio || 0),
+                    descripcion: producto.descripcion
+                  }
+                }
+                nombreEntidad={producto.nombre}
+                esProducto={true}
+                readOnly={true}
+              />
+            </div>
+          )}
 
           {/* Variantes y Presentaciones: Separadas para bebidas o estándar para comidas */}
           {variantes.length > 0 && (
@@ -516,7 +628,17 @@ export function VerProductoModal({ isOpen, onClose, producto }) {
           </div>
 
           {/* Footer Action */}
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(producto)}
+                className="px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Editar Producto y Ficha Técnica</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

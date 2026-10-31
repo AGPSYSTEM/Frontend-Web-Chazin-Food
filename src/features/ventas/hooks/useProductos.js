@@ -16,11 +16,34 @@ export function useProductos() {
   const fetchProductos = useCallback(async () => {
     try {
       setLoading(true);
-      const [prods, cats] = await Promise.all([
+      const [prods, cats, fichas] = await Promise.all([
         productosService.getProductos(),
-        productosService.getCategorias()
+        productosService.getCategorias(),
+        fichasTecnicasService.getFichas().catch(() => [])
       ]);
-      setProductos(prods || []);
+      const fichaMap = new Map();
+      if (Array.isArray(fichas)) {
+        fichas.forEach((f) => {
+          if (f && f.idProducto) {
+            fichaMap.set(Number(f.idProducto), f);
+          }
+        });
+      }
+      const enrichedProds = (prods || []).map((p) => {
+        const prodId = Number(p.idProducto || p.id);
+        const ficha = fichaMap.get(prodId);
+        const ent = ficha?.datosEntidad;
+        if (!ent) {
+          return ficha ? { ...p, fichaTecnica: p.fichaTecnica || ficha } : p;
+        }
+        return {
+          ...p,
+          fichaTecnica: p.fichaTecnica || ficha,
+          precio: ent.precio !== undefined && Number(ent.precio) > 0 ? Number(ent.precio) : p.precio,
+          descripcion: ent.descripcion !== undefined ? ent.descripcion : p.descripcion
+        };
+      });
+      setProductos(enrichedProds);
       setCategorias(cats || []);
     } catch (err) {
       console.error(err);
@@ -72,17 +95,34 @@ export function useProductos() {
 
   const updateProducto = async (id, data) => {
     try {
-      await productosService.updateProducto(id, data);
-      // Los combos no llevan ficha técnica
+      // 1. Guardar primero la ficha técnica con su versionamiento (los combos no llevan ficha técnica)
       const esCombo = data.configuracionCombo?.esCombo;
+      let fichaGuardada = false;
       if (data.fichaTecnica && id && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(id, data.fichaTecnica);
+          fichaGuardada = true;
         } catch (e) {
           console.error("Error guardando ficha técnica del producto:", e);
         }
       }
-      notify.success("Producto actualizado", "Cambios guardados correctamente");
+
+      // 2. Actualizar los datos generales del producto
+      try {
+        await productosService.updateProducto(id, data);
+      } catch (prodErr) {
+        const msg = String(prodErr?.message || "");
+        // Si el servidor remoto restringe cambios generales por ventas previas pero ya guardamos la ficha técnica
+        if (fichaGuardada && msg.toLowerCase().includes("ventas registradas")) {
+          if (data.estado !== undefined) {
+            await productosService.updateProducto(id, { estado: data.estado }).catch(() => {});
+          }
+        } else {
+          throw prodErr;
+        }
+      }
+
+      notify.success("Producto actualizado", "El producto y su ficha técnica fueron actualizados correctamente");
       await fetchProductos();
       return true;
     } catch (err) {

@@ -19,11 +19,15 @@ import {
   ChefHat,
   Thermometer,
   HeartPulse,
-  Award
+  Award,
+  Edit
 } from "lucide-react";
 import { apiClient } from "@/shared/api/apiClient";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { normalizeFichaWithVersions, formatFechaHoraFicha } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
+import { FichaVersionesHistorial } from "@/features/fichas-tecnicas/componentes/FichaVersionesHistorial";
 
-export function VerInsumoModal({ isOpen, onClose, insumo }) {
+export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
   const [activeTab, setActiveTab] = useState("general"); // "general" | "receta" | "lotes"
   const [lotes, setLotes] = useState([]);
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -36,19 +40,23 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
 
     setActiveTab("general");
     setLotes(Array.isArray(insumo.lotes) ? insumo.lotes : []);
-    setFichaTecnica(insumo.fichaTecnica || null);
+    const id = insumo.idInsumo || insumo.id;
+    setFichaTecnica(
+      insumo.fichaTecnica
+        ? normalizeFichaWithVersions(insumo.fichaTecnica, "insumo", id)
+        : null
+    );
 
-    // Cargar datos adicionales si faltan (lotes o ficha técnica)
+    // Cargar datos adicionales si faltan (lotes o ficha técnica actualizada con versiones)
     const cargarExtras = async () => {
       try {
         setLoadingExtra(true);
-        const id = insumo.idInsumo || insumo.id;
         if (!id) return;
 
-        // Si es preparado y no tiene ficha técnica o ingredientes completos, consultar ficha técnica
-        if (esPreparado && !insumo.fichaTecnica) {
+        // Si es preparado, consultar ficha técnica con su historial de versiones
+        if (esPreparado) {
           try {
-            const ft = await apiClient.get(`/fichas-tecnicas/insumo/${id}`);
+            const ft = await fichasTecnicasService.getFichaByInsumoPreparado(id);
             if (ft) setFichaTecnica(ft);
           } catch (_) {}
         }
@@ -341,11 +349,23 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
 
               {/* Datos de Ficha Técnica */}
               {fichaTecnica ? (
-                <div className="space-y-3 pt-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-purple-600" />
-                    Detalles de Elaboración y Control de Calidad
-                  </h4>
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-purple-600" />
+                      Detalles de Elaboración y Control de Calidad
+                    </h4>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Versión {fichaTecnica.versionActual || 1} (Vigente)
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200">
+                    <span className="font-bold">Vigencia de esta versión:</span> Desde el{" "}
+                    <strong>{formatFechaHoraFicha(fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion)}</strong> —{" "}
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold">En uso actual</span>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
@@ -399,6 +419,26 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
                       </p>
                     </div>
                   )}
+
+                  {/* Historial de Versiones Anteriores del Insumo Preparado */}
+                  <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <FichaVersionesHistorial
+                      versionActual={fichaTecnica.versionActual || 1}
+                      fechaInicioVigencia={fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion}
+                      versionesAnteriores={fichaTecnica.versionesAnteriores || []}
+                      datosEntidadActual={
+                        fichaTecnica.datosEntidad || {
+                          nombre: insumo.nombre,
+                          unidadMedida: insumo.unidadMedida,
+                          precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
+                          descripcion: insumo.descripcion
+                        }
+                      }
+                      nombreEntidad={insumo.nombre}
+                      esProducto={false}
+                      readOnly={true}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 text-center text-xs text-gray-400">
@@ -525,11 +565,21 @@ export function VerInsumoModal({ isOpen, onClose, insumo }) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="flex items-center justify-end gap-2.5 p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(insumo)}
+              className="px-4 py-2 text-xs font-bold text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              <span>{esPreparado ? "Editar Insumo y Ficha Técnica" : "Editar Insumo"}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors"
+            className="px-5 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors cursor-pointer"
           >
             Cerrar
           </button>

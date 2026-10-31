@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { insumosService } from "../servicios/insumosService";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { normalizeFichaWithVersions } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
@@ -51,25 +52,36 @@ export function useInsumos() {
         estado: i.estado === 1 || i.estado === "Activo" || i.estado === "1" ? "Activo" : "Inactivo"
       }));
 
-      const prepMapped = (preparadosData || []).map(p => ({
-        id: p.id,
-        idInsumo: p.id,
-        nombre: p.nombre,
-        tipo: "Preparado",
-        descripcion: p.descripcion || "",
-        precio: p.precioVenta || p.costoTotal || 0,
-        costo: p.costoTotal || 0,
-        unidadMedida: p.unidadMedida || "und",
-        estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
-        fichaTecnica: p.fichaTecnica || null,
-        ingredientes: (p.insumos || p.componentes || []).map(d => ({
-          id: d.idInsumo,
-          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
-          cantidad: parseFloat(d.cantidad || 0),
-          unidadMedida: d.unidadMedida || "und",
-          precioUnitario: parseFloat(d.precioUnitario || 0)
-        }))
-      }));
+      const prepMapped = (preparadosData || []).map(p => {
+        const fichaNorm = p.fichaTecnica
+          ? normalizeFichaWithVersions(p.fichaTecnica, "INSUMO_PREPARADO", p.id)
+          : null;
+        const ent = fichaNorm?.datosEntidad;
+        const resolvedPrecio =
+          ent?.precioUnitario !== undefined && Number(ent.precioUnitario) > 0
+            ? Number(ent.precioUnitario)
+            : (p.precioVenta || p.costoTotal || 0);
+        return {
+          id: p.id,
+          idInsumo: p.id,
+          nombre: p.nombre,
+          tipo: "Preparado",
+          descripcion: ent?.descripcion !== undefined ? ent.descripcion : (p.descripcion || ""),
+          precio: resolvedPrecio,
+          precioUnitario: resolvedPrecio,
+          costo: p.costoTotal || 0,
+          unidadMedida: ent?.unidadMedida || p.unidadMedida || "und",
+          estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
+          fichaTecnica: fichaNorm,
+          ingredientes: (p.insumos || p.componentes || []).map(d => ({
+            id: d.idInsumo,
+            nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+            cantidad: parseFloat(d.cantidad || 0),
+            unidadMedida: d.unidadMedida || "und",
+            precioUnitario: parseFloat(d.precioUnitario || 0)
+          }))
+        };
+      });
 
       setInsumos([...baseMapped, ...prepMapped]);
       setCategorias(categoriasData || []);
@@ -102,7 +114,7 @@ export function useInsumos() {
         costo: p.costoTotal || 0,
         unidadMedida: p.unidadMedida || "und",
         estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
-        fichaTecnica: p.fichaTecnica || null,
+        fichaTecnica: p.fichaTecnica ? normalizeFichaWithVersions(p.fichaTecnica, "insumo", p.id) : null,
         ingredientes: (p.insumos || p.componentes || []).map(d => ({
           id: d.idInsumo,
           nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
@@ -213,6 +225,13 @@ export function useInsumos() {
     try {
       const isPrep = data.tipo === "Preparado";
       if (isPrep) {
+        if (data.fichaTecnica && id) {
+          try {
+            await fichasTecnicasService.saveFichaInsumoPreparado(id, data.fichaTecnica);
+          } catch (e) {
+            console.error("Error guardando ficha técnica del preparado:", e);
+          }
+        }
         const payload = {
           nombre: data.nombre,
           descripcion: data.descripcion || "",
@@ -223,17 +242,9 @@ export function useInsumos() {
             idInsumo: i.id || i.idInsumo,
             cantidad: i.cantidad,
             unidadMedida: i.unidadMedida || "und"
-          })),
-          fichaTecnica: data.fichaTecnica || null
+          }))
         };
         await insumosService.updatePreparado(id, payload);
-        if (data.fichaTecnica && id) {
-          try {
-            await fichasTecnicasService.saveFichaInsumoPreparado(id, data.fichaTecnica);
-          } catch (e) {
-            console.error("Error guardando ficha técnica del preparado:", e);
-          }
-        }
       } else {
         const payload = {
           nombre: data.nombre,

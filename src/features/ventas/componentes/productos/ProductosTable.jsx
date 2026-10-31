@@ -294,29 +294,27 @@ export function ProductosTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {/* Editar (Ítem 104: Restricción si tiene ventas asociadas) */}
+                      {/* Editar producto y su Ficha Técnica (con Candado de Identidad si tiene ventas asociadas) */}
                       {canEdit && (() => {
-                        const tieneVentas = Number(p.ventas || 0) > 0;
+                        const hasSalesLock = Boolean(p.tieneVentas || Number(p.ventas || 0) > 0);
                         return (
                           <button
-                            onClick={() => {
-                              if (tieneVentas) {
-                                notifyWarning(
-                                  "Edición Restringida",
-                                  `El producto "${p.nombre}" ya registra ${p.ventas} venta(s). Para preservar la trazabilidad e integridad histórica contable, no se puede modificar su ficha o características.`
-                                );
-                                return;
-                              }
-                              onEdit(p);
-                            }}
-                            title={tieneVentas ? `No editable: registra ${p.ventas} venta(s)` : "Editar producto"}
-                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                              tieneVentas
-                                ? "opacity-50 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            onClick={() => onEdit && onEdit(p)}
+                            title={
+                              hasSalesLock
+                                ? "Producto con ventas asociadas: Identidad protegida 🔒 • Permite actualizar y versionar Precio, Descripción y Ficha Técnica"
+                                : "Editar producto y ficha técnica"
+                            }
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer relative ${
+                              hasSalesLock
+                                ? "hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400"
                                 : "hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400"
                             }`}
                           >
-                            {tieneVentas ? <Lock className="w-4 h-4 text-gray-400" /> : <Edit className="w-4 h-4" />}
+                            <Edit className="w-4 h-4" />
+                            {hasSalesLock && (
+                              <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 absolute -top-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full" />
+                            )}
                           </button>
                         );
                       })()}

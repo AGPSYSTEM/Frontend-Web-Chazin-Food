@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf, Calculator, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf, Calculator, ArrowUp, ArrowDown, Sparkles, History, Calendar } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
+import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
+import {
+  normalizeFichaWithVersions,
+  formatFechaHoraFicha,
+  extractFichaVersionMeta,
+  buildRestoredVersionState
+} from "../utils/fichaVersionUtils";
 
 const FASES_DEFAULT = [
   { id: "p1", fase: "Alistamiento / Mise en place", descripcion: "" },
@@ -73,7 +80,17 @@ function FieldError({ msg }) {
   );
 }
 
-export function FichaTecnicaProducto({ productId, productName, initialData, onSave, onChange, readOnly = false }) {
+export function FichaTecnicaProducto({
+  productId,
+  productName,
+  initialData,
+  onSave,
+  onChange,
+  readOnly = false,
+  entityData = null,
+  prevEntityData = null,
+  onRestoreEntityData = null
+}) {
   const notify = useNotifications();
   const [expanded, setExpanded] = useState(true);
   const [dbInsumosList, setDbInsumosList] = useState([]);
@@ -94,6 +111,12 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [versionInfo, setVersionInfo] = useState({
+    versionActual: 1,
+    fechaInicioVigencia: null,
+    versionesAnteriores: [],
+    prevFichaSnapshot: null
+  });
 
   const validateField = (field, val, currentInsumos = insumos) => {
     switch (field) {
@@ -128,7 +151,22 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setErrors((prev) => ({ ...prev, [field]: err }));
   };
 
+  const clearRestoredCommitFlag = useCallback(() => {
+    setVersionInfo((prev) =>
+      prev.prevFichaSnapshot?._isRestoredVersionCommit
+        ? {
+            ...prev,
+            prevFichaSnapshot: {
+              ...prev.prevFichaSnapshot,
+              _isRestoredVersionCommit: false
+            }
+          }
+        : prev
+    );
+  }, []);
+
   const handleFieldChange = (field, setter, val) => {
+    clearRestoredCommitFlag();
     setter(val);
     if (touched[field]) {
       const err = validateField(field, val);
@@ -170,6 +208,19 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       condicionesAlmacenamiento,
       vidaUtil,
       observaciones,
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || null,
+      _prevDatosEntidad: prevEntityData || versionInfo.prevFichaSnapshot?.datosEntidad || entityData || null,
+      _prevFicha: versionInfo.prevFichaSnapshot
+        ? {
+            ...versionInfo.prevFichaSnapshot,
+            datosEntidad: versionInfo.prevFichaSnapshot.datosEntidad || prevEntityData || entityData || null
+          }
+        : null,
+      _isRestoredVersionCommit: Boolean(versionInfo.prevFichaSnapshot?._isRestoredVersionCommit),
+      _restoredSnapshot: versionInfo.prevFichaSnapshot,
       detalles: insumos.map(i => {
         const cost = Number(i.costoUnitario || i.precioUnitario || i.insumo?.precioUnitario || i.insumo?.costo || 0);
         return {
@@ -191,7 +242,9 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   }, [
     procedimiento, tiempoPreparacion, rendimiento, especificaciones,
     caracteristicas, informacionNutricional, condicionesAlmacenamiento,
-    vidaUtil, observaciones, insumos, productId
+    vidaUtil, observaciones, insumos, productId, versionInfo.prevFichaSnapshot,
+    versionInfo.versionActual, versionInfo.fechaInicioVigencia, versionInfo.versionesAnteriores,
+    entityData, prevEntityData
   ]);
 
   // Load insumos list for autocomplete search
@@ -226,13 +279,18 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     loadFichaData();
   }, [loadFichaData]);
 
-  const populateFields = (f) => {
+  const populateFields = (fRaw) => {
+    const f = normalizeFichaWithVersions(fRaw, "PRODUCTO", productId);
+    if (fRaw?._isRestoredVersionCommit) {
+      f._isRestoredVersionCommit = true;
+    }
     const rawInsumos = f.detalles || f.insumos || [];
     setInsumos(rawInsumos.map(item => {
       const matchDb = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id));
       const cost = Number(item.costoUnitario || item.precioUnitario || matchDb?.precioUnitario || matchDb?.costo || 0);
       return {
         ...item,
+        nombreInsumo: item.nombreInsumo || item.insumo?.nombre || item.nombre || matchDb?.nombre,
         costoUnitario: cost
       };
     }));
@@ -246,7 +304,78 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     setInformacionNutricional(f.informacionNutricional || "");
     setCondicionesAlmacenamiento(f.condicionesAlmacenamiento || "");
     setVidaUtil(f.vidaUtil || "");
-    setObservaciones(f.observaciones || "");
+    setObservaciones(extractFichaVersionMeta(f.observaciones || "").cleanObservaciones);
+    setVersionInfo({
+      versionActual: f.versionActual || 1,
+      fechaInicioVigencia: f.fechaInicioVigencia || f.fechaCreacion || null,
+      versionesAnteriores: Array.isArray(f.versionesAnteriores) ? f.versionesAnteriores : [],
+      prevFichaSnapshot: f
+    });
+  };
+
+  const handleRestoreVersion = async (ver) => {
+    if (!ver) return;
+    const currentFichaState = {
+      ...(versionInfo.prevFichaSnapshot || {}),
+      idProducto: productId || null,
+      procedimiento,
+      tiempoPreparacion: Number(tiempoPreparacion) || 0,
+      rendimiento,
+      especificaciones,
+      caracteristicas,
+      informacionNutricional,
+      condicionesAlmacenamiento,
+      vidaUtil,
+      observaciones,
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData || null,
+      detalles: insumos
+    };
+
+    const restored = buildRestoredVersionState(currentFichaState, ver, {
+      tipo: "PRODUCTO",
+      entityId: productId
+    });
+
+    populateFields(restored);
+
+    if (typeof onRestoreEntityData === "function") {
+      onRestoreEntityData(restored.datosEntidad || ver.datosEntidad || entityData);
+    }
+
+    if (productId) {
+      try {
+        setSaving(true);
+        const savedFicha = await fichasTecnicasService.saveFichaProducto(productId, {
+          ...restored,
+          idProducto: productId,
+          _prevFicha: restored,
+          _isRestoredVersionCommit: true,
+          _restoredSnapshot: restored
+        });
+        if (savedFicha) {
+          const finalRestored = { ...savedFicha, _isRestoredVersionCommit: true };
+          populateFields(finalRestored);
+          if (typeof onChangeRef.current === "function") {
+            onChangeRef.current(finalRestored);
+          }
+          if (typeof onSave === "function") {
+            onSave(finalRestored);
+          }
+        }
+      } catch (err) {
+        console.error("Error restaurando versión de ficha técnica:", err);
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    notify.success(
+      `Versión ${ver.version} Vigente (En uso actual)`,
+      `Se cargó y activó la Versión ${ver.version} con su fecha de creación original y estado Vigente (En uso actual).`
+    );
   };
 
   const insumosSugeridos = dbInsumosList.filter((ins) => {
@@ -257,6 +386,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   }).slice(0, 6);
 
   const agregarInsumo = (ins) => {
+    clearRestoredCommitFlag();
     const cost = Number(ins.precioUnitario || ins.costo || ins.precio || 0);
     const next = [
       ...insumos,
@@ -277,6 +407,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const quitarInsumo = (idx) => {
+    clearRestoredCommitFlag();
     const next = insumos.filter((_, i) => i !== idx);
     setInsumos(next);
     if (touched.insumos) {
@@ -285,6 +416,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const actualizarCantidad = (idx, delta) => {
+    clearRestoredCommitFlag();
     setInsumos((prev) =>
       prev.map((item, i) => {
         if (i === idx) {
@@ -300,6 +432,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const handleTiempoChange = (e) => {
+    clearRestoredCommitFlag();
     const raw = e.target.value.replace(/[^0-9]/g, '');
     if (raw === '') {
       setTiempoPreparacion('');
@@ -326,6 +459,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
 
   // Requisito 102: Manejadores de pasos de proceso lógico
   const actualizarPaso = (idx, campo, valor) => {
+    clearRestoredCommitFlag();
     const nuevos = pasosProceso.map((p, i) => i === idx ? { ...p, [campo]: valor } : p);
     setPasosProceso(nuevos);
     const textSerializado = serializarPasos(nuevos);
@@ -337,6 +471,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const agregarPaso = () => {
+    clearRestoredCommitFlag();
     const nuevo = {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       fase: `Paso ${pasosProceso.length + 1}`,
@@ -348,6 +483,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
 
   const eliminarPaso = (idx) => {
     if (pasosProceso.length <= 1) return;
+    clearRestoredCommitFlag();
     const nuevos = pasosProceso.filter((_, i) => i !== idx);
     setPasosProceso(nuevos);
     const textSerializado = serializarPasos(nuevos);
@@ -361,6 +497,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   const moverPaso = (idx, direccion) => {
     const targetIdx = idx + direccion;
     if (targetIdx < 0 || targetIdx >= pasosProceso.length) return;
+    clearRestoredCommitFlag();
     const copia = [...pasosProceso];
     const temp = copia[idx];
     copia[idx] = copia[targetIdx];
@@ -371,6 +508,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const aplicarFasesEstandar = () => {
+    clearRestoredCommitFlag();
     const defaultSteps = [
       { id: `p-${Date.now()}-1`, fase: "Alistamiento / Mise en place", descripcion: "Selección, pesaje, lavado y porcionado de insumos requeridos." },
       { id: `p-${Date.now()}-2`, fase: "Cocción / Procesamiento térmico", descripcion: "Cocción de proteínas y preparación térmica de ingredientes." },
@@ -386,6 +524,7 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
   };
 
   const actualizarUnidad = (idx, unidadMedida) => {
+    clearRestoredCommitFlag();
     setInsumos((prev) => prev.map((item, i) => (i === idx ? { ...item, unidadMedida } : item)));
   };
 
@@ -444,10 +583,25 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
       condicionesAlmacenamiento,
       vidaUtil,
       observaciones,
+      versionActual: versionInfo.versionActual,
+      fechaInicioVigencia: versionInfo.fechaInicioVigencia,
+      versionesAnteriores: versionInfo.versionesAnteriores,
+      datosEntidad: entityData || versionInfo.prevFichaSnapshot?.datosEntidad || null,
+      _prevDatosEntidad: prevEntityData || versionInfo.prevFichaSnapshot?.datosEntidad || entityData || null,
+      _prevFicha: versionInfo.prevFichaSnapshot
+        ? {
+            ...versionInfo.prevFichaSnapshot,
+            datosEntidad: versionInfo.prevFichaSnapshot.datosEntidad || prevEntityData || entityData || null
+          }
+        : null,
+      _isRestoredVersionCommit: Boolean(versionInfo.prevFichaSnapshot?._isRestoredVersionCommit),
+      _restoredSnapshot: versionInfo.prevFichaSnapshot,
       detalles: insumos.map(i => ({
         idInsumo: i.idInsumo || i.id,
+        nombreInsumo: i.nombreInsumo || i.insumo?.nombre || i.nombre,
         cantidad: Number(i.cantidad || 1),
-        unidadMedida: i.unidadMedida || 'und'
+        unidadMedida: i.unidadMedida || 'und',
+        precioUnitario: Number(i.costoUnitario || i.precioUnitario || i.insumo?.precioUnitario || 0)
       }))
     };
 
@@ -458,9 +612,14 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
     if (productId) {
       try {
         setSaving(true);
-        await fichasTecnicasService.saveFichaProducto(productId, payload);
-        notify.success("Cambios Guardados", `Los cambios de la ficha técnica de ${productName || "producto"} han sido guardados.`);
-        notify.success("Ficha Técnica Guardada", `Se guardó correctamente la ficha técnica de ${productName || "producto"}`);
+        const savedFicha = await fichasTecnicasService.saveFichaProducto(productId, payload);
+        if (savedFicha) {
+          populateFields(savedFicha);
+        }
+        notify.success(
+          "Ficha Técnica Guardada",
+          `La Versión ${savedFicha?.versionActual || versionInfo.versionActual} de ${productName || "producto"} se encuentra Vigente (En uso actual).`
+        );
       } catch (err) {
         console.error(err);
         notify.error("Error", "No se pudo guardar la ficha técnica en la base de datos");
@@ -570,6 +729,13 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
             </div>
           )}
         </div>
+
+        {/* Historial de Versionamiento en modo lectura */}
+        <FichaVersionesHistorial
+          versionActual={versionInfo.versionActual}
+          fechaInicioVigencia={versionInfo.fechaInicioVigencia}
+          versionesAnteriores={versionInfo.versionesAnteriores}
+        />
       </div>
     );
   }
@@ -583,20 +749,44 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between mb-3 hover:bg-gray-50 dark:hover:bg-gray-800 p-3 rounded-xl transition-colors"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {expanded ? <ChevronUp className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
           <FileText className="w-5 h-5 text-[#F05454]" />
           <h3 className="font-bold text-gray-800 dark:text-gray-100">Ficha Técnica del Producto</h3>
-          {isConfigured && !expanded && (
-            <span className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 px-2.5 py-1 rounded-full font-medium">
-              Configurada
+          <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-0.5 rounded-full font-bold">
+            Versión {versionInfo.versionActual} (Vigente)
+          </span>
+          {versionInfo.versionesAnteriores.length > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <History className="w-3 h-3" /> {versionInfo.versionesAnteriores.length} versión(es) anterior(es)
             </span>
           )}
         </div>
       </button>
 
-      <div className={`transition-all duration-300 overflow-hidden ${expanded ? "max-h-[4000px] opacity-100" : "max-h-0 opacity-0"}`}>
+      <div className={`transition-all duration-300 overflow-hidden ${expanded ? "max-h-[15000px] opacity-100" : "max-h-0 opacity-0"}`}>
         <div className="space-y-6 bg-gray-50/70 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800">
+          {/* Banner informativo de vigencia y versionamiento */}
+          {productId && isConfigured && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-start sm:items-center gap-2.5">
+                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <span className="font-black text-emerald-900 dark:text-emerald-200">
+                    Versión Actual (v{versionInfo.versionActual}):{" "}
+                  </span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    Vigente desde el{" "}
+                    <strong className="text-gray-900 dark:text-gray-100">
+                      {formatFechaHoraFicha(versionInfo.fechaInicioVigencia)}
+                    </strong>
+                    . Al guardar cambios, esta versión pasará a{" "}
+                    <strong className="text-[#F05454]">Versiones Anteriores</strong> con su fecha y hora exacta de finalización de uso.
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Section 1: Insumos / Ingredientes */}
           <div>
@@ -1008,12 +1198,23 @@ export function FichaTecnicaProducto({ productId, productName, initialData, onSa
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>{saving ? "Guardando..." : "Guardar Ficha Técnica"}</span>
             </button>
           </div>
+
+          {/* Historial de Versiones Anteriores */}
+          {productId && (
+            <FichaVersionesHistorial
+              versionActual={versionInfo.versionActual}
+              fechaInicioVigencia={versionInfo.fechaInicioVigencia}
+              versionesAnteriores={versionInfo.versionesAnteriores}
+              onRestoreVersion={handleRestoreVersion}
+              datosEntidadActual={entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData}
+            />
+          )}
         </div>
       </div>
     </div>
