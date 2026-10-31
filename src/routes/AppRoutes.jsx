@@ -188,7 +188,6 @@ export function AppRoutes() {
       "Clientes",
       "Categoría Productos",
       "Productos",
-      "Fichas Técnicas",
       "Gestión de Producción"
     ];
     for (const perm of vendedorPerms) {
