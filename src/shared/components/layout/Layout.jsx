@@ -132,8 +132,8 @@ export function Layout() {
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
-    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" },
-    { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" }
+    { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
+    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
   ];
   const ventasItems = isVendedor
     ? allVentasItems
