@@ -1,3 +1,4 @@
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import React from "react";
 import { ShoppingBag, ChevronRight, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
@@ -9,12 +10,16 @@ export default function KioskBottomBar({
   onCancelOrder,
   isBouncing = false
 }) {
+  const { user } = useAuth();
+  const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isAdmin = userRol === "administrador" || userRol === "admin" || user?.idRol === 1;
   const formatPrice = (val) => `$${Number(val || 0).toLocaleString("es-CO")}`;
 
   return (
     <nav
       aria-label="Barra de resumen del pedido"
-      className="fixed bottom-0 right-0 left-0 lg:left-64 z-40 bg-white/95 backdrop-blur-md border-t-2 border-red-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-3.5 sm:p-4 select-none"
+      className={`fixed bottom-0 right-0 left-0 ${isAdmin ? "lg:left-64" : "left-0"} z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t-2 border-red-100 dark:border-gray-800 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-3.5 sm:p-4 select-none`}
     >
       <div className="w-full px-2 sm:px-6 flex items-center justify-between gap-3 sm:gap-6">
         {/* Left: Cart Counter & Total */}
@@ -34,11 +39,11 @@ export default function KioskBottomBar({
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gray-500">
+              <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
                 {totalItems} {totalItems === 1 ? "ítem agregado" : "ítems agregados"}
               </span>
             </div>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900 leading-none">
+            <p className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-gray-100 leading-none">
               {formatPrice(total)}
             </p>
           </div>
@@ -52,9 +57,9 @@ export default function KioskBottomBar({
             onClick={onCancelOrder}
             disabled={totalItems === 0}
             aria-label="Cancelar pedido y comenzar de nuevo"
-            className="h-12 sm:h-14 px-3 sm:px-5 rounded-2xl border-2 border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-600 disabled:opacity-40 text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:pointer-events-none"
+            className="h-12 sm:h-14 px-3 sm:px-5 rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40 text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:pointer-events-none"
           >
-            <Trash2 className="w-4 h-4 text-gray-500" />
+            <Trash2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <span className="hidden sm:inline">Cancelar</span>
           </button>
 

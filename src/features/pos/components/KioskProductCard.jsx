@@ -45,13 +45,13 @@ export default function KioskProductCard({ producto, onSelect }) {
       aria-label={`Seleccionar ${producto.nombre}, precio ${formatPrice(finalPrice)} COP`}
       className={`group relative flex flex-col justify-between rounded-3xl p-3.5 sm:p-4 transition-all cursor-pointer select-none overflow-hidden min-h-[290px] sm:min-h-[310px] ${
         activeEvent
-          ? "bg-linear-to-b from-amber-50/40 via-white to-white border-3 border-amber-500 ring-4 ring-amber-400/40 shadow-xl shadow-amber-500/20"
-          : "bg-white border-2 border-gray-200/90 hover:border-red-400 shadow-sm hover:shadow-xl shadow-red-500/10"
+          ? "bg-linear-to-b from-amber-50/40 via-white to-white dark:from-amber-950/40 dark:via-gray-900 dark:to-gray-900 border-3 border-amber-500 dark:border-amber-500 ring-4 ring-amber-400/40 dark:ring-amber-500/30 shadow-xl shadow-amber-500/20 dark:shadow-amber-500/10"
+          : "bg-white dark:bg-gray-900 border-2 border-gray-200/90 dark:border-gray-800 hover:border-red-400 dark:hover:border-red-500/60 shadow-sm hover:shadow-xl shadow-red-500/10"
       }`}
     >
       {/* ═══ CONTORNO & BANNER DE EVENTO ACTIVO ═══ */}
       {activeEvent && (
-        <div className="w-full bg-linear-to-r from-red-600 via-rose-600 to-amber-500 text-white font-black text-xs py-1.5 px-3 rounded-2xl flex items-center justify-between shadow-xs mb-2">
+        <div className="w-full bg-linear-to-r from-red-600 via-rose-600 to-amber-500 dark:from-red-700 dark:via-rose-700 dark:to-amber-600 text-white font-black text-xs py-1.5 px-3 rounded-2xl flex items-center justify-between shadow-xs mb-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <Flame className="w-4 h-4 fill-amber-300 text-amber-300 animate-pulse shrink-0" />
             <span className="truncate uppercase tracking-wider">
@@ -79,7 +79,7 @@ export default function KioskProductCard({ producto, onSelect }) {
       )}
 
       {/* Big Appetizing Photo */}
-      <div className="relative w-full h-36 sm:h-44 rounded-2xl bg-gray-50 overflow-hidden flex items-center justify-center border border-gray-100">
+      <div className="relative w-full h-36 sm:h-44 rounded-2xl bg-gray-50 dark:bg-gray-800/80 overflow-hidden flex items-center justify-center border border-gray-100 dark:border-gray-700/60">
         {producto.imagen ? (
           <img
             src={producto.imagen}
@@ -97,24 +97,24 @@ export default function KioskProductCard({ producto, onSelect }) {
 
       {/* Product Details (Legible at 1 meter, max 2 lines title) */}
       <div className="mt-3 flex-1 flex flex-col justify-between">
-        <h3 className="text-lg sm:text-xl font-black text-gray-900 leading-snug line-clamp-2 group-hover:text-[#A91B2E] transition-colors">
+        <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 group-hover:text-[#A91B2E] dark:group-hover:text-red-400 transition-colors">
           {producto.nombre}
         </h3>
 
         {/* Pricing area */}
-        <div className="mt-2 pt-2 border-t border-gray-100 flex items-baseline justify-between gap-2">
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-[#A91B2E]">
+            <span className="text-2xl sm:text-3xl font-black text-[#A91B2E] dark:text-red-400">
               {formatPrice(finalPrice)}
             </span>
             {discountPercent > 0 && (
-              <span className="text-sm font-bold text-gray-400 line-through">
+              <span className="text-sm font-bold text-gray-400 dark:text-gray-500 line-through">
                 {formatPrice(originalPrice)}
               </span>
             )}
           </div>
 
-          <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">
+          <span className="text-[11px] font-black uppercase text-gray-400 dark:text-gray-500 tracking-wider">
             Tocar
           </span>
         </div>

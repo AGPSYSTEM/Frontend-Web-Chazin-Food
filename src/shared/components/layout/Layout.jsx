@@ -25,7 +25,8 @@ import {
   ChefHat,
   Store,
   UtensilsCrossed,
-  ArrowLeft
+  ArrowLeft,
+  Layers
 } from "lucide-react";
 import {
   NavIconInicio,
@@ -194,24 +195,33 @@ export function Layout() {
       isDivider: true
     },
     {
-      to: "/produccion/gestion",
-      label: "Producción",
-      icon: ChefHat,
-      iconColor: "text-amber-500",
-      isActive: (p) => p.startsWith("/produccion")
+      to: "/ventas/categoria-productos",
+      label: "Categoría Productos",
+      icon: Layers,
+      iconColor: "text-purple-500",
+      isActive: (p) => p.startsWith("/ventas/categoria-productos")
     },
     {
       to: "/ventas/productos",
       label: "Productos",
       icon: UtensilsCrossed,
       iconColor: "text-emerald-500",
-      isActive: (p) => p.startsWith("/ventas/productos") || p.startsWith("/ventas/categoria-productos")
+      isActive: (p) => p === "/ventas/productos"
+    },
+    {
+      to: "/produccion/gestion",
+      label: "Gestión de Producción",
+      icon: ChefHat,
+      iconColor: "text-amber-500",
+      isActive: (p) => p.startsWith("/produccion")
     }
   ];
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-      {/* ── Overlay backdrop (solo para drawer móvil < lg) ── */}
+      {!isVendedor && (
+        <>
+          {/* ── Overlay backdrop (solo para drawer móvil < lg) ── */}
       {sidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
@@ -589,6 +599,8 @@ export function Layout() {
           <div className="h-4" />
         </nav>
       </aside>
+        </>
+      )}
 
       {/* Main column: Persistent Top Header + Scrollable Main Content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
@@ -596,13 +608,15 @@ export function Layout() {
         <header className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs select-none">
           {/* Left: Mobile menu toggle (< lg) + Logo + Dynamic Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <button
+            {!isVendedor && (
+              <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95 cursor-pointer"
               aria-label="Abrir menú lateral"
             >
               <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
+            )}
 
             <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Ir al inicio">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shrink-0 border border-amber-300 bg-white">
