@@ -1,16 +1,11 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ChefHat,
   ArrowLeft,
   Sparkles,
   Utensils,
-  ShoppingBag,
-  Store,
-  TrendingUp,
-  Users,
-  UtensilsCrossed,
-  Layers
+  ShoppingBag
 } from "lucide-react";
 import usePOS from "../hooks/usePOS";
 import KioskPromoCarousel from "../components/KioskPromoCarousel";
@@ -25,8 +20,6 @@ import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
-
 export default function PosVendedor() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -335,104 +328,9 @@ export default function PosVendedor() {
 
   // Step 1: Catalog & Ordering Screen (Entra de una vez a crear venta)
   return (
-    <div className="relative min-h-screen w-full bg-[#FAFAFA] flex flex-col justify-between select-none pb-28">
-      {/* Top Header: Logo, Accesos directos a los módulos del Vendedor & Estado de Usuario */}
-      <header className="w-full bg-white dark:bg-gray-900 border-b-2 border-gray-150 dark:border-gray-800 shadow-2xs sticky top-0 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-        {/* Brand & Título */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden shadow-xs border border-amber-300">
-            <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <span className="text-[10px] font-black tracking-widest text-[#A91B2E] uppercase">
-              Chazin Food
-            </span>
-            <h1 className="text-sm sm:text-lg font-black text-gray-900 dark:text-gray-100 leading-none">
-              Punto de Venta
-            </h1>
-          </div>
-        </div>
-
-        {/* ═══ MÓDULOS CON ACCESO DEL VENDEDOR (Arriba en lugar de Comer aquí / Para llevar) ═══ */}
-        <nav aria-label="Módulos accesibles" className="flex items-center gap-1 sm:gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs overflow-x-auto no-scrollbar">
-          {/* Punto de Venta (Activo) */}
-          <Link
-            to="/ventas/pos"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black bg-[#A91B2E] text-white shadow-xs transition-all shrink-0"
-            title="Punto de Venta (Crear Venta)"
-          >
-            <Store className="w-3.5 h-3.5" />
-            <span>Punto de Venta</span>
-          </Link>
-
-          {/* Gestión de Ventas */}
-          <Link
-            to="/ventas/gestion-ventas"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-white dark:hover:bg-gray-700 transition-all shrink-0"
-            title="Gestión de Ventas"
-          >
-            <TrendingUp className="w-3.5 h-3.5 text-[#A91B2E]" />
-            <span>Ventas</span>
-          </Link>
-
-          {/* Clientes */}
-          <Link
-            to="/ventas/clientes"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-white dark:hover:bg-gray-700 transition-all shrink-0"
-            title="Clientes"
-          >
-            <Users className="w-3.5 h-3.5 text-blue-500" />
-            <span>Clientes</span>
-          </Link>
-
-          {/* Separador visual */}
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5 shrink-0" />
-
-          {/* Gestión de Producción */}
-          <Link
-            to="/produccion/gestion"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-white dark:hover:bg-gray-700 transition-all shrink-0"
-            title="Gestión de Producción"
-          >
-            <ChefHat className="w-3.5 h-3.5 text-amber-500" />
-            <span>Producción</span>
-          </Link>
-
-          {/* Productos */}
-          <Link
-            to="/ventas/productos"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-white dark:hover:bg-gray-700 transition-all shrink-0"
-            title="Productos"
-          >
-            <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Productos</span>
-          </Link>
-
-          {/* Fichas Técnicas */}
-          <Link
-            to="/ventas/fichas-tecnicas"
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 hover:text-gray-900 hover:bg-white dark:hover:bg-gray-700 transition-all shrink-0"
-            title="Fichas Técnicas"
-          >
-            <Layers className="w-3.5 h-3.5 text-purple-500" />
-            <span>Fichas</span>
-          </Link>
-        </nav>
-
-        {/* User Role Badge */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-600 dark:text-gray-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden sm:inline">{user?.nombre || "Usuario"}</span>
-            <span className="text-[10px] bg-red-100 dark:bg-red-950/50 text-[#A91B2E] dark:text-red-400 px-2 py-0.5 rounded-md font-black capitalize">
-              {userRol || "Vendedor"}
-            </span>
-          </div>
-        </div>
-      </header>
-
+    <div className="relative min-h-full w-full bg-[#FAFAFA] dark:bg-gray-950 flex flex-col justify-between select-none pb-28">
       {/* Main Kiosk Area: Vertical Category Rail (Left) + Products Grid (Center) */}
-      <main className="w-full flex-1 flex gap-3 sm:gap-4 p-3 sm:p-5 items-start">
+      <div className="w-full flex-1 flex gap-3 sm:gap-4 p-3 sm:p-5 items-start">
         {/* Left Category Rail */}
         <KioskCategoryRail
           categorias={categorias}
@@ -483,7 +381,7 @@ export default function PosVendedor() {
             )}
           </div>
         </section>
-      </main>
+      </div>
 
       {/* Fixed Bottom Bar: Cart item count, total, "Ver mi pedido" and "Cancelar pedido" */}
       <KioskBottomBar

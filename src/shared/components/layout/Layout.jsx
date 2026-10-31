@@ -22,7 +22,9 @@ import {
   Shield,
   UserCircle,
   LayoutDashboard,
-  ChefHat
+  ChefHat,
+  Store,
+  UtensilsCrossed
 } from "lucide-react";
 import {
   NavIconInicio,
@@ -123,7 +125,7 @@ export function Layout() {
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
   const produccionItems = isVendedor
-    ? allProduccionItems
+    ? allProduccionItems.filter(i => i.to !== "/ventas/fichas-tecnicas")
     : allProduccionItems.filter(i => hasPerm(i.perm));
   const showProduccion = isVendedor || hasPerm("Producción") || produccionItems.length > 0;
   const produccionPaths = produccionItems.map((i) => i.to);
@@ -150,6 +152,63 @@ export function Layout() {
   ];
   const usuariosItems = allUsuariosItems.filter(i => hasPerm(i.perm));
   const showUsuarios = hasPerm("Usuarios") || usuariosItems.length > 0;
+
+  const getPageTitle = (path) => {
+    if (path === "/ventas/pos") return "Punto de Venta";
+    if (path.startsWith("/ventas/gestion-ventas") || path.startsWith("/ventas/detalle")) return "Gestión de Ventas";
+    if (path.startsWith("/ventas/clientes")) return "Clientes";
+    if (path.startsWith("/produccion/gestion")) return "Gestión de Producción";
+    if (path.startsWith("/ventas/categoria-productos")) return "Categoría Productos";
+    if (path.startsWith("/ventas/productos")) return "Productos";
+    if (path.startsWith("/compras/categoria-insumos")) return "Categoría Insumos";
+    if (path.startsWith("/compras/insumos")) return "Insumos";
+    if (path.startsWith("/compras/proveedores")) return "Proveedores";
+    if (path.startsWith("/compras/gestion")) return "Gestión de Compras";
+    if (path.startsWith("/configuracion/roles")) return "Roles";
+    if (path.startsWith("/configuracion/usuarios")) return "Usuarios";
+    if (path === "/") return "Dashboard";
+    return "Chazin Food";
+  };
+
+  const modulePills = [
+    {
+      to: "/ventas/pos",
+      label: "Punto de Venta",
+      icon: Store,
+      isActive: (p) => p === "/ventas/pos"
+    },
+    {
+      to: "/ventas/gestion-ventas",
+      label: "Ventas",
+      icon: TrendingUp,
+      iconColor: "text-[#A91B2E]",
+      isActive: (p) => p.startsWith("/ventas/gestion-ventas") || p.startsWith("/ventas/detalle")
+    },
+    {
+      to: "/ventas/clientes",
+      label: "Clientes",
+      icon: Users,
+      iconColor: "text-blue-500",
+      isActive: (p) => p.startsWith("/ventas/clientes")
+    },
+    {
+      isDivider: true
+    },
+    {
+      to: "/produccion/gestion",
+      label: "Producción",
+      icon: ChefHat,
+      iconColor: "text-amber-500",
+      isActive: (p) => p.startsWith("/produccion")
+    },
+    {
+      to: "/ventas/productos",
+      label: "Productos",
+      icon: UtensilsCrossed,
+      iconColor: "text-emerald-500",
+      isActive: (p) => p.startsWith("/ventas/productos") || p.startsWith("/ventas/categoria-productos")
+    }
+  ];
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
@@ -532,36 +591,118 @@ export function Layout() {
         </nav>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 pb-4">
-        {/* Mobile top header (solo móvil < lg) */}
-        <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-sm">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95"
-            aria-label="Abrir menú"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+      {/* Main column: Persistent Top Header + Scrollable Main Content */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+        {/* Top Navigation Header (Persistent across all modules & pages) */}
+        <header className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 shadow-xs select-none">
+          {/* Left: Mobile menu toggle (< lg) + Logo + Dynamic Title */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95 cursor-pointer"
+              aria-label="Abrir menú lateral"
+            >
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
 
-          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" title="Ir al inicio">
-            <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-white ring-2 ring-gray-100 dark:ring-gray-700">
-              <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
+            <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Ir al inicio">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shrink-0 border border-amber-300 bg-white">
+                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="text-[10px] font-black tracking-widest text-[#A91B2E] uppercase block leading-tight">
+                  Chazin Food
+                </span>
+                <h1 className="text-sm sm:text-base font-black text-gray-900 dark:text-gray-100 leading-tight">
+                  {getPageTitle(location.pathname)}
+                </h1>
+              </div>
+            </Link>
+          </div>
+
+          {/* Center: Module Navigation Pills (Punto de Venta, Ventas, Clientes | Producción, Productos - Sin Fichas) */}
+          <nav aria-label="Módulos accesibles" className="flex items-center gap-1 sm:gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs overflow-x-auto no-scrollbar max-w-[50vw] sm:max-w-none">
+            {modulePills.map((item, idx) => {
+              if (item.isDivider) {
+                return (
+                  <div key={idx} className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5 shrink-0" />
+                );
+              }
+              const Icon = item.icon;
+              const active = item.isActive(location.pathname);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all shrink-0 cursor-pointer ${
+                    active
+                      ? "bg-[#A91B2E] text-white shadow-xs font-black"
+                      : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 font-bold"
+                  }`}
+                  title={item.label}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${active ? "text-white" : item.iconColor || ""}`} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right: User Role Badge + Mi Perfil + Modo Oscuro + Cerrar Sesión */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* User role badge */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 text-xs font-bold text-gray-700 dark:text-gray-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="truncate max-w-[120px]">{user?.nombre || "Usuario"}</span>
+              <span className="text-[10px] bg-red-100 dark:bg-red-950/60 text-[#A91B2E] dark:text-red-400 px-2 py-0.5 rounded-md font-black capitalize">
+                {userRol || "Vendedor"}
+              </span>
             </div>
-            <span className="font-bold text-gray-800 dark:text-gray-100 tracking-tight">Chazin Food</span>
-          </Link>
 
-          <button
-            onClick={() => toggleDarkMode()}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-600 dark:text-gray-400 active:scale-95"
-            aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
-          >
-            {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5" />}
-          </button>
-        </div>
+            {/* Icono de Mi Perfil (modal en 3ra captura) */}
+            <button
+              type="button"
+              onClick={() => setPerfilOpen(true)}
+              title="Mi Perfil"
+              aria-label="Abrir mi perfil"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
+            >
+              <UserCircle className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-blue-500" />
+            </button>
 
-        <Outlet />
-      </main>
+            {/* Icono de Sol / Luna para modo claro / oscuro */}
+            <button
+              type="button"
+              onClick={() => toggleDarkMode()}
+              title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
+            >
+              {darkMode ? (
+                <Sun className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-yellow-400" />
+              ) : (
+                <Moon className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+
+            {/* Icono de Salir hacia el login (Cerrar Sesión) */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Cerrar Sesión"
+              aria-label="Cerrar Sesión"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-red-200 dark:border-red-900/50"
+            >
+              <LogOut className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+            </button>
+          </div>
+        </header>
+
+        {/* Main scrollable body */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+          <Outlet />
+        </main>
+      </div>
 
       {/* Modal de perfil staff */}
       <MiPerfilModal isOpen={perfilOpen} onClose={() => setPerfilOpen(false)} />
