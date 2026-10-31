@@ -11,16 +11,22 @@ import {
   Edit2,
   ShieldAlert,
   Info,
-  Check,
   Flame,
   Scale,
-  ThermometerSnowflake,
-  ShieldCheck,
-  Sparkle,
   HelpCircle,
-  FlaskConical
+  FlaskConical,
+  History,
+  Calendar,
+  RotateCcw
 } from "lucide-react";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
+import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
+import {
+  normalizeFichaWithVersions,
+  formatFechaHoraFicha,
+  formatPeriodoVigenciaFicha,
+  extractFichaVersionMeta
+} from "../utils/fichaVersionUtils";
 
 export function FichaTecnicaDetalleModal({
   isOpen,
@@ -32,6 +38,7 @@ export function FichaTecnicaDetalleModal({
 }) {
   const [ficha, setFicha] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedHistoricalVersion, setSelectedHistoricalVersion] = useState(null);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -47,6 +54,7 @@ export function FichaTecnicaDetalleModal({
     if (isOpen && item) {
       const id = item.id || item.idProducto || item.idInsumo;
       setLoading(true);
+      setSelectedHistoricalVersion(null);
 
       const fetchPromise = isProducto
         ? fichasTecnicasService.getFichaByProducto(id)
@@ -66,7 +74,13 @@ export function FichaTecnicaDetalleModal({
               res.vidaUtil ||
               res.informacionNutricional)
           ) {
-            setFicha(res);
+            setFicha(
+              normalizeFichaWithVersions(
+                res,
+                isProducto ? "PRODUCTO" : "INSUMO_PREPARADO",
+                id
+              )
+            );
           } else {
             setFicha(null);
           }
@@ -78,6 +92,7 @@ export function FichaTecnicaDetalleModal({
         .finally(() => setLoading(false));
     } else {
       setFicha(null);
+      setSelectedHistoricalVersion(null);
     }
   }, [isOpen, item, isProducto]);
 
@@ -88,9 +103,20 @@ export function FichaTecnicaDetalleModal({
     item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado");
   const unidadMedida = item.unidadMedida || item.unidad || "und";
 
+  // Si el usuario seleccionó previsualizar una versión anterior, mostramos los datos de esa versión
+  const activeDisplayData = selectedHistoricalVersion || ficha;
+
   // Data extraction
-  const listaInsumos = ficha?.detalles || ficha?.insumos || ficha?.ingredientes || [];
-  const procedimientoText = (ficha?.procedimiento || ficha?.descripcion || "").trim();
+  const listaInsumos =
+    activeDisplayData?.detalles ||
+    activeDisplayData?.insumos ||
+    activeDisplayData?.ingredientes ||
+    [];
+  const procedimientoText = (
+    activeDisplayData?.procedimiento ||
+    activeDisplayData?.descripcion ||
+    ""
+  ).trim();
   const pasos = procedimientoText
     ? procedimientoText
         .split("\n")
@@ -98,10 +124,17 @@ export function FichaTecnicaDetalleModal({
         .filter(Boolean)
     : [];
 
-  const tiempoEstimado = ficha?.tiempoPreparacion ? `${ficha.tiempoPreparacion} min` : null;
-  const rendimientoText = ficha?.rendimiento || null;
-  const vidaUtilText = ficha?.vidaUtil || null;
-  const almacenamientoText = ficha?.condicionesAlmacenamiento || null;
+  const tiempoEstimado = activeDisplayData?.tiempoPreparacion
+    ? `${activeDisplayData.tiempoPreparacion} min`
+    : null;
+  const rendimientoText = activeDisplayData?.rendimiento || null;
+  const vidaUtilText = activeDisplayData?.vidaUtil || null;
+  const almacenamientoText = activeDisplayData?.condicionesAlmacenamiento || null;
+  const cleanObs = extractFichaVersionMeta(activeDisplayData?.observaciones || "").cleanObservaciones;
+
+  const versionActual = ficha?.versionActual || 1;
+  const fechaInicioActual = ficha?.fechaInicioVigencia || ficha?.fechaCreacion || null;
+  const versionesAnteriores = Array.isArray(ficha?.versionesAnteriores) ? ficha.versionesAnteriores : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -127,9 +160,17 @@ export function FichaTecnicaDetalleModal({
               </span>
               <span className="text-xs text-gray-400 font-medium">• {itemCategoria}</span>
               {ficha ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Ficha Configurada
-                </span>
+                <>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Versión {versionActual} (Vigente)
+                  </span>
+                  {versionesAnteriores.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
+                      <History className="w-3 h-3" /> {versionesAnteriores.length}{" "}
+                      {versionesAnteriores.length === 1 ? "versión anterior" : "versiones anteriores"}
+                    </span>
+                  )}
+                </>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> Sin Ficha Registrada
@@ -176,6 +217,61 @@ export function FichaTecnicaDetalleModal({
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Banner de Vigencia Temporal (Actual o Versión Anterior Seleccionada) */}
+            {selectedHistoricalVersion ? (
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-600 text-white flex items-center gap-1">
+                      <History className="w-3.5 h-3.5" />
+                      Viendo Versión Anterior #{selectedHistoricalVersion.version}
+                    </span>
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                      Registro Histórico (No vigente)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHistoricalVersion(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer self-start sm:self-center"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Volver a Versión Actual (v{versionActual})</span>
+                  </button>
+                </div>
+                <p className="text-xs text-amber-950 dark:text-amber-100 font-semibold leading-relaxed">
+                  Esta ficha técnica estuvo en uso{" "}
+                  <span className="underline decoration-amber-500 font-black">
+                    {formatPeriodoVigenciaFicha(
+                      selectedHistoricalVersion.fechaInicio || selectedHistoricalVersion.fechaCreacion,
+                      selectedHistoricalVersion.fechaFin || selectedHistoricalVersion.fechaFinalizacion
+                    )}
+                  </span>
+                  .
+                </p>
+              </div>
+            ) : (
+              <div className="p-3.5 sm:px-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-black text-emerald-900 dark:text-emerald-200">
+                      Versión {versionActual} (En uso actual):{" "}
+                    </span>
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      Creada y vigente desde el{" "}
+                      <strong className="text-gray-900 dark:text-gray-100">
+                        {formatFechaHoraFicha(fechaInicioActual)}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] self-start sm:self-center shrink-0">
+                  Finalización de uso: Vigente
+                </span>
+              </div>
+            )}
+
             {/* Métricas clave */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3.5 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl">
@@ -220,7 +316,10 @@ export function FichaTecnicaDetalleModal({
               <div className="flex items-center justify-between">
                 <h4 className="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
                   <Package className="w-4 h-4 text-[#F05454]" />
-                  <span>Ingredientes / Insumos Base Requeridos</span>
+                  <span>
+                    Ingredientes / Insumos Base Requeridos
+                    {selectedHistoricalVersion ? ` (Versión ${selectedHistoricalVersion.version})` : ""}
+                  </span>
                 </h4>
                 <span className="text-[11px] font-bold text-gray-400">
                   {listaInsumos.length} insumo{listaInsumos.length === 1 ? "" : "s"}
@@ -233,8 +332,8 @@ export function FichaTecnicaDetalleModal({
                     const insName =
                       det.insumo?.nombre ||
                       det.insumoNombre ||
-                      det.nombre ||
                       det.nombreInsumo ||
+                      det.nombre ||
                       `Insumo #${det.idInsumo || det.id || idx + 1}`;
                     const cant = det.cantidad ?? 1;
                     const unidad = det.unidadMedida || det.insumo?.unidadMedida || "und";
@@ -268,7 +367,10 @@ export function FichaTecnicaDetalleModal({
             <div className="bg-gray-50/80 dark:bg-gray-800/40 p-4 sm:p-5 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-3">
               <h4 className="text-xs sm:text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#F05454]" />
-                <span>Procedimiento de Preparación / Elaboración</span>
+                <span>
+                  Procedimiento de Preparación / Elaboración
+                  {selectedHistoricalVersion ? ` (Versión ${selectedHistoricalVersion.version})` : ""}
+                </span>
               </h4>
 
               {pasos.length > 0 ? (
@@ -300,35 +402,35 @@ export function FichaTecnicaDetalleModal({
 
             {/* Especificaciones y Almacenamiento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {ficha.especificaciones && (
+              {activeDisplayData.especificaciones && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 text-blue-500" /> Especificaciones Técnicas / Calidad
                   </p>
                   <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                    {ficha.especificaciones}
+                    {activeDisplayData.especificaciones}
                   </p>
                 </div>
               )}
 
-              {ficha.caracteristicas && (
+              {activeDisplayData.caracteristicas && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Características Organolépticas
                   </p>
                   <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                    {ficha.caracteristicas}
+                    {activeDisplayData.caracteristicas}
                   </p>
                 </div>
               )}
 
-              {ficha.informacionNutricional && (
+              {activeDisplayData.informacionNutricional && (
                 <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-1">
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Flame className="w-3.5 h-3.5 text-orange-500" /> Información Nutricional
                   </p>
                   <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium">
-                    {ficha.informacionNutricional}
+                    {activeDisplayData.informacionNutricional}
                   </p>
                 </div>
               )}
@@ -344,17 +446,26 @@ export function FichaTecnicaDetalleModal({
                 </div>
               )}
 
-              {ficha.observaciones && (
+              {cleanObs && (
                 <div className="col-span-full p-4 bg-amber-50/60 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 space-y-1">
                   <p className="text-[11px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                     <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Observaciones y Alérgenos
                   </p>
                   <p className="text-xs text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
-                    {ficha.observaciones}
+                    {cleanObs}
                   </p>
                 </div>
               )}
             </div>
+
+            {/* Historial de Versiones Anteriores */}
+            <FichaVersionesHistorial
+              versionActual={versionActual}
+              fechaInicioVigencia={fechaInicioActual}
+              versionesAnteriores={versionesAnteriores}
+              selectedVersion={selectedHistoricalVersion}
+              onSelectVersion={(ver) => setSelectedHistoricalVersion(ver)}
+            />
           </div>
         )}
 

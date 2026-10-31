@@ -312,6 +312,9 @@ export function InsumoModal({
 
     const updated = { ...form, [field]: sanitized };
     setForm(updated);
+    setFichaTecnica((prev) =>
+      prev?._isRestoredVersionCommit ? { ...prev, _isRestoredVersionCommit: false } : prev
+    );
     setTouched((prev) => ({ ...prev, [field]: true }));
     const err = validateField(field, sanitized, updated);
     const nextErrors = { ...errors, [field]: err };
@@ -336,6 +339,9 @@ export function InsumoModal({
       imagen: esSalsa && (!form.imagen || form.imagen === "bacon") ? "sauce" : form.imagen
     };
     setForm(updated);
+    setFichaTecnica((prev) =>
+      prev?._isRestoredVersionCommit ? { ...prev, _isRestoredVersionCommit: false } : prev
+    );
     setTouched((prev) => ({ ...prev, nombre: true }));
     const err = validateField("nombre", nuevoNombre, updated);
     setErrors((prev) => ({ ...prev, nombre: err }));
@@ -482,6 +488,30 @@ export function InsumoModal({
         return;
       }
 
+      const entityDataActualInsumo = {
+        nombre: form.nombre.trim(),
+        descripcion: form.descripcion.trim(),
+        precioUnitario: Number(form.precioUnitario) || 0,
+        unidadMedida: form.unidadMedida || "und — unidad",
+        estado: form.estado || "Activo",
+        incluyeIva: form.incluyeIva ? 1 : 0,
+        esAdicion: esAdicionFinal,
+        precioAdicion: precioAdicionFinal
+      };
+
+      const prevEntityDataInicialInsumo = insumo
+        ? {
+            nombre: insumo.nombre || "",
+            descripcion: insumo.descripcion || "",
+            precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
+            unidadMedida: insumo.unidadMedida || "und — unidad",
+            estado: insumo.estado || "Activo",
+            incluyeIva: insumo.incluyeIva ? 1 : 0,
+            esAdicion: Boolean(insumo.esAdicion),
+            precioAdicion: Number(insumo.precioAdicion || 0)
+          }
+        : null;
+
       onSave({
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim(),
@@ -505,6 +535,8 @@ export function InsumoModal({
           condicionesAlmacenamiento: ft.condicionesAlmacenamiento.trim(),
           vidaUtil: ft.vidaUtil.trim(),
           observaciones: (ft.observaciones || "").trim(),
+          datosEntidad: entityDataActualInsumo,
+          _prevDatosEntidad: prevEntityDataInicialInsumo,
           detalles: ingredientes
         },
         ingredientes
@@ -983,6 +1015,38 @@ export function InsumoModal({
                     insumoId={insumo?.id}
                     insumoName={form.nombre}
                     initialData={initialFichaTecnica}
+                    entityData={{
+                      nombre: form.nombre || "",
+                      descripcion: form.descripcion || "",
+                      precioUnitario: Number(form.precioUnitario) || 0,
+                      unidadMedida: form.unidadMedida || "und — unidad",
+                      estado: form.estado || "Activo"
+                    }}
+                    prevEntityData={
+                      insumo
+                        ? {
+                            nombre: insumo.nombre || "",
+                            descripcion: insumo.descripcion || "",
+                            precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
+                            unidadMedida: insumo.unidadMedida || "und — unidad",
+                            estado: insumo.estado || "Activo"
+                          }
+                        : null
+                    }
+                    onRestoreEntityData={(restoredEnt) => {
+                      if (!restoredEnt || typeof restoredEnt !== "object") return;
+                      setForm((prev) => ({
+                        ...prev,
+                        nombre: restoredEnt.nombre ?? prev.nombre,
+                        descripcion: restoredEnt.descripcion ?? prev.descripcion,
+                        precioUnitario:
+                          restoredEnt.precioUnitario !== undefined
+                            ? String(restoredEnt.precioUnitario)
+                            : prev.precioUnitario,
+                        unidadMedida: restoredEnt.unidadMedida ?? prev.unidadMedida,
+                        estado: restoredEnt.estado || prev.estado
+                      }));
+                    }}
                     onChange={(data) => setFichaTecnica(data)}
                     onSave={(data) => setFichaTecnica(data)}
                   />
