@@ -16,7 +16,7 @@ export default function KioskBottomBar({
       aria-label="Barra de resumen del pedido"
       className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-red-100 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] p-3.5 sm:p-4 select-none"
     >
-      <div className="w-full max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+      <div className="w-full px-2 sm:px-6 flex items-center justify-between gap-3 sm:gap-6">
         {/* Left: Cart Counter & Total */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <motion.div
