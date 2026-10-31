@@ -24,7 +24,8 @@ import {
   LayoutDashboard,
   ChefHat,
   Store,
-  UtensilsCrossed
+  UtensilsCrossed,
+  ArrowLeft
 } from "lucide-react";
 import {
   NavIconInicio,
@@ -121,17 +122,15 @@ export function Layout() {
   const allProduccionItems = [
     { to: "/ventas/categoria-productos", label: "Categoría Productos", perm: "Categoría Productos" },
     { to: "/ventas/productos", label: "Productos", perm: "Productos" },
-    { to: "/ventas/fichas-tecnicas", label: "Fichas Técnicas", perm: "Fichas Técnicas" },
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
   const produccionItems = isVendedor
-    ? allProduccionItems.filter(i => i.to !== "/ventas/fichas-tecnicas")
+    ? allProduccionItems
     : allProduccionItems.filter(i => hasPerm(i.perm));
   const showProduccion = isVendedor || hasPerm("Producción") || produccionItems.length > 0;
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
-    { to: "/ventas/pos", label: "Punto de Venta", perm: "Punto de Venta" },
     { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" },
     { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" }
   ];
@@ -620,33 +619,46 @@ export function Layout() {
             </Link>
           </div>
 
-          {/* Center: Module Navigation Pills (Punto de Venta, Ventas, Clientes | Producción, Productos - Sin Fichas) */}
-          <nav aria-label="Módulos accesibles" className="flex items-center gap-1 sm:gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs overflow-x-auto no-scrollbar max-w-[50vw] sm:max-w-none">
-            {modulePills.map((item, idx) => {
-              if (item.isDivider) {
+          {/* Center: En vista de Admin solo botón de volver a Gestión de Ventas; en Vendedor barra de módulos */}
+          {isAdmin ? (
+            location.pathname === "/ventas/pos" ? (
+              <Link
+                to="/ventas/gestion-ventas"
+                className="flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-black bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/50 text-[#A91B2E] dark:text-red-400 border border-red-200 dark:border-red-900/60 shadow-xs transition-all active:scale-95 cursor-pointer"
+                title="Volver a Gestión de Ventas"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Volver a Gestión de Ventas</span>
+              </Link>
+            ) : null
+          ) : (
+            <nav aria-label="Módulos accesibles" className="flex items-center gap-1 sm:gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs overflow-x-auto no-scrollbar max-w-[50vw] sm:max-w-none">
+              {modulePills.map((item, idx) => {
+                if (item.isDivider) {
+                  return (
+                    <div key={idx} className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5 shrink-0" />
+                  );
+                }
+                const Icon = item.icon;
+                const active = item.isActive(location.pathname);
                 return (
-                  <div key={idx} className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5 shrink-0" />
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all shrink-0 cursor-pointer ${
+                      active
+                        ? "bg-[#A91B2E] text-white shadow-xs font-black"
+                        : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 font-bold"
+                    }`}
+                    title={item.label}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${active ? "text-white" : item.iconColor || ""}`} />
+                    <span>{item.label}</span>
+                  </Link>
                 );
-              }
-              const Icon = item.icon;
-              const active = item.isActive(location.pathname);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm transition-all shrink-0 cursor-pointer ${
-                    active
-                      ? "bg-[#A91B2E] text-white shadow-xs font-black"
-                      : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 font-bold"
-                  }`}
-                  title={item.label}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${active ? "text-white" : item.iconColor || ""}`} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+              })}
+            </nav>
+          )}
 
           {/* Right: User Role Badge + Mi Perfil + Modo Oscuro + Cerrar Sesión */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
