@@ -179,9 +179,10 @@ export function AppRoutes() {
       allowedRoutesMap.set(routeConfig.path, routeConfig);
     }
   }
-  // If user can create or view in "Gestión de Ventas", grant route access to POS for the "Crear venta" button
+  // If user can create or view in "Gestión de Ventas" or is Vendedor, grant route access to POS
+  const isVendedor = userRol === "vendedor" || userRol.includes("vendedor") || user?.idRol === 2;
   if (
-    (hasPrivilege(user, "Gestión de Ventas", "crear") || hasPrivilege(user, "Gestión de Ventas", "ver")) &&
+    (hasPrivilege(user, "Gestión de Ventas", "crear") || hasPrivilege(user, "Gestión de Ventas", "ver") || isVendedor) &&
     !allowedRoutesMap.has("ventas/pos")
   ) {
     allowedRoutesMap.set("ventas/pos", PERMISSION_ROUTE_MAP["Punto de Venta"]);
@@ -189,7 +190,10 @@ export function AppRoutes() {
   const allowedRoutes = Array.from(allowedRoutesMap.values());
 
   const hasDashboard = hasPrivilege(user, "Dashboard", "ver");
-  const defaultPath = hasPrivilege(user, "Gestión de Ventas", "ver")
+  // Para rol Vendedor, entrar de una vez a la sección de crear venta (/ventas/pos)
+  const defaultPath = isVendedor
+    ? "ventas/pos"
+    : hasPrivilege(user, "Gestión de Ventas", "ver")
     ? "ventas/gestion-ventas"
     : hasPrivilege(user, "Punto de Venta", "ver")
     ? "ventas/pos"
@@ -203,7 +207,9 @@ export function AppRoutes() {
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/activar-cuenta" element={<ActivarCuenta />} />
         <Route path="/" element={<Layout />}>
-          {hasDashboard ? (
+          {isVendedor ? (
+            <Route index element={<Navigate to="/ventas/pos" replace />} />
+          ) : hasDashboard ? (
             <Route index element={<Dashboard />} />
           ) : defaultPath ? (
             <Route index element={<Navigate to={`/${defaultPath}`} replace />} />

@@ -49,8 +49,13 @@ export function Layout() {
   const isActive = (path) => location.pathname === path;
   const isInSection = (prefix) => location.pathname.startsWith(prefix);
 
-  // Modo Kiosco: pantalla completa sin barra lateral administrativa ni cabecera
-  if (location.pathname === "/ventas/pos") {
+  // Modo Kiosco: pantalla completa solo para vendedor en /ventas/pos.
+  // Los administradores conservan su barra lateral de navegación administrativa.
+  const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
+  const userRol = String(rawRol || "").toLowerCase().trim();
+  const isAdmin = userRol === "administrador" || userRol === "admin" || user?.idRol === 1;
+
+  if (location.pathname === "/ventas/pos" && !isAdmin) {
     return <Outlet />;
   }
 
