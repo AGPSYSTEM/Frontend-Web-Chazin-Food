@@ -716,42 +716,47 @@ export function Layout() {
               </span>
             </div>
 
-            {/* Icono de Mi Perfil (modal en 3ra captura) */}
-            <button
-              type="button"
-              onClick={() => setPerfilOpen(true)}
-              title="Mi Perfil"
-              aria-label="Abrir mi perfil"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
-            >
-              <UserCircle className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-blue-500" />
-            </button>
+            {/* Iconos de Perfil, Modo Oscuro y Cerrar Sesión (solo para Vendedor/no-admin; en vista de admin ya están en la barra lateral) */}
+            {!isAdmin && (
+              <>
+                {/* Icono de Mi Perfil (modal en 3ra captura) */}
+                <button
+                  type="button"
+                  onClick={() => setPerfilOpen(true)}
+                  title="Mi Perfil"
+                  aria-label="Abrir mi perfil"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
+                >
+                  <UserCircle className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-blue-500" />
+                </button>
 
-            {/* Icono de Sol / Luna para modo claro / oscuro */}
-            <button
-              type="button"
-              onClick={() => toggleDarkMode()}
-              title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-              aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
-            >
-              {darkMode ? (
-                <Sun className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-yellow-400" />
-              ) : (
-                <Moon className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-gray-600 dark:text-gray-300" />
-              )}
-            </button>
+                {/* Icono de Sol / Luna para modo claro / oscuro */}
+                <button
+                  type="button"
+                  onClick={() => toggleDarkMode()}
+                  title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                  aria-label={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-gray-200 dark:border-gray-700"
+                >
+                  {darkMode ? (
+                    <Sun className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-yellow-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-gray-600 dark:text-gray-300" />
+                  )}
+                </button>
 
-            {/* Icono de Salir hacia el login (Cerrar Sesión) */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              title="Cerrar Sesión"
-              aria-label="Cerrar Sesión"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-red-200 dark:border-red-900/50"
-            >
-              <LogOut className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
-            </button>
+                {/* Icono de Salir hacia el login (Cerrar Sesión) */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Cerrar Sesión"
+                  aria-label="Cerrar Sesión"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center transition-all cursor-pointer active:scale-95 border border-red-200 dark:border-red-900/50"
+                >
+                  <LogOut className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                </button>
+              </>
+            )}
           </div>
         </header>
         )}
