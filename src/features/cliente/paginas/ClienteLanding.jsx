@@ -531,6 +531,23 @@ export function ClienteLanding() {
   }, [showCheckout, showCart, showProductModal, showPersonalizarEventoModal, showResenasModal]);
   const [adicionesList, setAdicionesList] = useState(adicionesDisponibles);
 
+  const rawUserDoc = user?.numeroDocumento || user?.documento || "";
+  const tieneDocRegistrado = Boolean(rawUserDoc && String(rawUserDoc).trim().length >= 6);
+
+  // Notificación Toast cada vez que el usuario sin cédula entra al menú/tienda
+  useEffect(() => {
+    if (isAuthenticated && user && !tieneDocRegistrado) {
+      const timer = setTimeout(() => {
+        warning(
+          "Identificación pendiente en tu perfil",
+          "Tu cuenta aún no tiene un número de cédula registrado. Por favor ingresa a 'Mi Perfil' y completa tu documento para poder realizar pedidos y habilitar la facturación.",
+          7000
+        );
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user?.id, user?.idUsuario, tieneDocRegistrado, warning]);
+
   // Ref y desplazamiento suave para carrusel 'Complementa tu orden' en Carrito
   const complementosRef = useRef(null);
   const scrollComplementos = (direction) => {
@@ -1980,10 +1997,14 @@ export function ClienteLanding() {
                 <button
                   onClick={() => navigate("/perfil")}
                   aria-label="Ir a mi perfil"
-                  className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer relative"
+                  title={!tieneDocRegistrado ? "Identificación pendiente en tu perfil" : "Mi Perfil"}
                 >
                   <User className="w-5 h-5 text-[#f05454]" />
                   <span className="hidden sm:inline">Mi Perfil</span>
+                  {!tieneDocRegistrado && (
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-gray-900 animate-pulse shrink-0" />
+                  )}
                 </button>
               ) : (
                 <button

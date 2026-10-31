@@ -265,22 +265,19 @@ export function ClientePerfil() {
   const [showPassNueva, setShowPassNueva] = useState(false);
   const [showPassConfirm, setShowPassConfirm] = useState(false);
 
-  // Toast automático para advertir sobre cédula no registrada
-  const hasNotifiedDocRef = useRef(false);
+  // Toast automático cada vez que el cliente sin cédula entra a su perfil
   useEffect(() => {
-    if (user && !hasNotifiedDocRef.current) {
-      hasNotifiedDocRef.current = true;
-      if (!tieneCedulaRegistrada) {
-        const timer = setTimeout(() => {
-          warning(
-            "Identificación pendiente",
-            "Tu cuenta aún no tiene un número de documento registrado. Por favor registra tu cédula (6 a 10 dígitos) para habilitar la facturación electrónica y tus compras en línea."
-          );
-        }, 800);
-        return () => clearTimeout(timer);
-      }
+    if (user && !tieneCedulaRegistrada) {
+      const timer = setTimeout(() => {
+        warning(
+          "Identificación pendiente en tu perfil",
+          "Tu cuenta aún no tiene un número de documento registrado. Por favor completa el campo de cédula (6 a 10 dígitos) a continuación y guarda los cambios para habilitar tus compras.",
+          7000
+        );
+      }, 700);
+      return () => clearTimeout(timer);
     }
-  }, [user, tieneCedulaRegistrada, warning]);
+  }, [user?.id, user?.idUsuario, tieneCedulaRegistrada, warning]);
 
   const handlePassSubmit = async (e) => {
     e.preventDefault();
