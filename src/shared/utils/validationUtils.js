@@ -212,12 +212,12 @@ export function formatDireccion(dir = "") {
 
 /**
  * Criterios de seguridad de contraseña en tiempo real:
- * - Longitud mínima (por defecto 8)
+ * - Longitud mínima (por defecto 6)
  * - Letra mayúscula
  * - Letra minúscula
  * - Número
  */
-export function getPasswordCriteria(password = "", minLength = 8) {
+export function getPasswordCriteria(password = "", minLength = 6) {
   const p = String(password || "");
   const hasLength = p.length >= minLength;
   const hasUpper = /[A-ZÁÉÍÓÚÑ]/.test(p);
@@ -237,10 +237,10 @@ export function getPasswordCriteria(password = "", minLength = 8) {
 /**
  * Valida contraseñas con feedback en vivo:
  * - Requerida
- * - Longitud mínima (8 caracteres recomendados)
+ * - Longitud mínima (6 caracteres recomendados)
  * - Mayúsculas, minúsculas y números
  */
-export function validateContrasena(val = "", minLength = 8, campo = "contraseña") {
+export function validateContrasena(val = "", minLength = 6, campo = "contraseña") {
   const str = String(val || "");
   if (!str) return { isValid: false, error: `La ${campo} es obligatoria.` };
   if (str.length < minLength) {

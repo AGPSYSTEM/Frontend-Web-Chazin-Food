@@ -74,7 +74,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
       }
       case "password": {
         if (!isEditing || value) {
-          const res = validateContrasena(value, 8, "contraseña");
+          const res = validateContrasena(value, 6, "contraseña");
           if (!res.isValid) err = res.error;
         }
         break;
@@ -544,12 +544,12 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                       <div className="mt-2 space-y-1 bg-white/80 dark:bg-gray-900/80 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 text-[10.5px]">
                         <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Requisitos de seguridad:</p>
                         {(() => {
-                          const crit = getPasswordCriteria(form.password, 8);
+                          const crit = getPasswordCriteria(form.password, 6);
                           return (
                             <div className="grid grid-cols-2 gap-1 font-medium">
                               <span className={`flex items-center gap-1 ${crit.hasLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
                                 <CheckCircle2 className={`w-3 h-3 ${crit.hasLength ? "text-emerald-500" : "text-gray-300"}`} />
-                                Mín. 8 caracteres
+                                Mín. 6 caracteres
                               </span>
                               <span className={`flex items-center gap-1 ${crit.hasUpper ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-400"}`}>
                                 <CheckCircle2 className={`w-3 h-3 ${crit.hasUpper ? "text-emerald-500" : "text-gray-300"}`} />
@@ -623,7 +623,7 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   </button>
                 </div>
                 <p className="text-[11px] text-gray-400">
-                  La contraseña debe tener al menos 8 caracteres
+                  La contraseña debe tener al menos 6 caracteres
                 </p>
               </div>
 
