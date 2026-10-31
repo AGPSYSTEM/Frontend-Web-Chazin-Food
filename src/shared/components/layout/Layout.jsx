@@ -49,15 +49,10 @@ export function Layout() {
   const isActive = (path) => location.pathname === path;
   const isInSection = (prefix) => location.pathname.startsWith(prefix);
 
-  // Modo Kiosco: pantalla completa solo para vendedor en /ventas/pos.
-  // Los administradores conservan su barra lateral de navegación administrativa.
   const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
   const userRol = String(rawRol || "").toLowerCase().trim();
   const isAdmin = userRol === "administrador" || userRol === "admin" || user?.idRol === 1;
-
-  if (location.pathname === "/ventas/pos" && !isAdmin) {
-    return <Outlet />;
-  }
+  const isVendedor = userRol === "vendedor" || userRol.includes("vendedor") || user?.idRol === 2;
 
   const handleNavClick = () => {
     setSidebarOpen(false);
@@ -127,16 +122,21 @@ export function Layout() {
     { to: "/ventas/fichas-tecnicas", label: "Fichas Técnicas", perm: "Fichas Técnicas" },
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
-  const produccionItems = allProduccionItems.filter(i => hasPerm(i.perm));
-  const showProduccion = hasPerm("Producción") || produccionItems.length > 0;
+  const produccionItems = isVendedor
+    ? allProduccionItems
+    : allProduccionItems.filter(i => hasPerm(i.perm));
+  const showProduccion = isVendedor || hasPerm("Producción") || produccionItems.length > 0;
   const produccionPaths = produccionItems.map((i) => i.to);
 
   const allVentasItems = [
-    { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
-    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
+    { to: "/ventas/pos", label: "Punto de Venta", perm: "Punto de Venta" },
+    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" },
+    { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" }
   ];
-  const ventasItems = allVentasItems.filter(i => hasPerm(i.perm));
-  const showVentas = hasPerm("Ventas") || ventasItems.length > 0;
+  const ventasItems = isVendedor
+    ? allVentasItems
+    : allVentasItems.filter(i => hasPerm(i.perm));
+  const showVentas = isVendedor || hasPerm("Ventas") || ventasItems.length > 0;
   const ventasPaths = [...ventasItems.map((i) => i.to), "/ventas/pos"];
 
   const allConfigItems = [

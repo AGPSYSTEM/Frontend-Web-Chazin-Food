@@ -341,31 +341,7 @@ export default function PosVendedor() {
           </div>
         </div>
 
-        {/* Center: Toggle Comer aquí / Para llevar */}
-        <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setOrderMode("Comer aquí")}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
-              orderMode === "Comer aquí"
-                ? "bg-[#A91B2E] text-white shadow-xs"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Comer aquí
-          </button>
-          <button
-            type="button"
-            onClick={() => setOrderMode("Para llevar")}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer ${
-              orderMode === "Para llevar"
-                ? "bg-[#A91B2E] text-white shadow-xs"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Para llevar
-          </button>
-        </div>
+
 
         {/* Staff Return Button */}
         <button

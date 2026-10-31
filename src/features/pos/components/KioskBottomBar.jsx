@@ -5,7 +5,6 @@ import { motion } from "motion/react";
 export default function KioskBottomBar({
   totalItems = 0,
   total = 0,
-  orderMode = "Comer aquí",
   onOpenReview,
   onCancelOrder,
   isBouncing = false
@@ -35,12 +34,8 @@ export default function KioskBottomBar({
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-gray-500">
-                {orderMode}
-              </span>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-400">•</span>
-              <span className="text-[10px] sm:text-xs font-bold text-gray-500">
-                {totalItems} {totalItems === 1 ? "ítem" : "ítems"}
+              <span className="text-xs font-bold text-gray-500">
+                {totalItems} {totalItems === 1 ? "ítem agregado" : "ítems agregados"}
               </span>
             </div>
             <p className="text-2xl sm:text-3xl font-black text-gray-900 leading-none">
@@ -79,4 +74,3 @@ export default function KioskBottomBar({
     </nav>
   );
 }
-
