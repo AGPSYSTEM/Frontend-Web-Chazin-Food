@@ -1840,7 +1840,8 @@ export function ClienteLanding() {
           customerData: {
             email: user?.email || "",
             nombre: checkoutNombre || `${user?.nombre || ''} ${user?.apellidos || ''}`.trim() || "Cliente",
-            telefono: user?.telefono || ""
+            telefono: user?.telefono || "",
+            documento: checkoutDocumento || ""
           }
         });
       } catch (widgetErr) {
@@ -1850,16 +1851,32 @@ export function ClienteLanding() {
           montoEnCentavos: intencion.montoEnCentavos,
           moneda: intencion.moneda,
           firma: intencion.firma,
-          publicKey: intencion.publicKey
+          publicKey: intencion.publicKey,
+          redirectUrl: window.location.origin
         });
-        const win = window.open(directUrl, "_blank");
-        if (win) {
+
+        let win = null;
+        try {
+          win = window.open(directUrl, "_blank");
+        } catch (e) {
+          win = null;
+        }
+
+        if (win && !win.closed) {
           success("Pasarela Wompi Abierta", "Se abrió la pasarela oficial de Wompi en una nueva pestaña para completar tu pago de forma segura.");
           clearCart();
           setShowCart(false);
+          setShowCheckout(false);
           return;
         }
-        throw widgetErr;
+
+        // Fallback garantizado: si el navegador bloqueó ventanas emergentes (Adblock / Chrome Popup Blocker)
+        // Redirigir de forma directa y transparente en la pestaña actual
+        clearCart();
+        setShowCart(false);
+        setShowCheckout(false);
+        window.location.href = directUrl;
+        return;
       }
 
       // 3. Evaluar resultado retornado por Wompi
@@ -3264,7 +3281,7 @@ export function ClienteLanding() {
                   </div>
 
                   <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
-                    Al confirmar, se abrirá el formulario seguro de Wompi. Una vez completado tu pago, el pedido pasará directamente a preparación en cocina.
+                    Al confirmar, se abrirá el formulario seguro de Wompi. Si tu navegador tiene un bloqueador de ventanas o anuncios activo, serás transferido automáticamente a la pasarela web oficial para completar tu pago de forma segura.
                   </p>
                 </div>
 
