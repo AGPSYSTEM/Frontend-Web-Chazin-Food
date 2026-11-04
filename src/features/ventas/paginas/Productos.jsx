@@ -67,10 +67,13 @@ export function Productos() {
     const totalVendidos = productos.reduce((acc, p) => acc + (p.ventas || 0), 0);
     const eventosActivos = productos.reduce((acc, p) => acc + (p.eventos && p.eventos.length > 0 ? 1 : 0), 0);
 
+    const masVendidoMonto = (masVendido.ventas || 0) * (Number(masVendido.precio) || 0);
+
     return {
       total,
       masVendidoNombre: masVendido.nombre || "—",
       masVendidoVentas: masVendido.ventas || 0,
+      masVendidoMonto,
       totalVendidos,
       eventosActivos
     };
@@ -155,7 +158,7 @@ export function Productos() {
           <div>
             <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Más Vendido</p>
             <p className="text-lg font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{stats.masVendidoNombre}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">{stats.masVendidoVentas} ventas</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{stats.masVendidoVentas} unidades {stats.masVendidoMonto > 0 ? `• ${stats.masVendidoMonto.toLocaleString("es-CO")} COP` : ""}</p>
           </div>
         </div>
 

@@ -419,6 +419,7 @@ export function Dashboard() {
           </div>
 
           {finalPopulares.length > 0 ? (
+            <>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 layout="vertical"
@@ -461,7 +462,16 @@ export function Dashboard() {
                   }}
                 />
                 <Tooltip
-                  formatter={(value) => [`${value} unidades`, "Total Vendido"]}
+                  formatter={(value, name, item) => {
+                    const data = item?.payload || {};
+                    const ingresos = Number(data.ingresos || (value * (data.precioUnitario || 0)) || 0);
+                    const unitPrice = Number(data.precioUnitario || (value > 0 && ingresos > 0 ? Math.round(ingresos / value) : 0));
+                    const pct = data.porcentaje || 0;
+                    return [
+                      `${value} unidades vendidas${ingresos > 0 ? ` • Representa: ${ingresos.toLocaleString("es-CO")} COP` : ""}${unitPrice > 0 ? ` • (${unitPrice.toLocaleString("es-CO")} c/u)` : ""}${pct > 0 ? ` (${pct}%)` : ""}`,
+                      "Ventas por Producto"
+                    ];
+                  }}
                   labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
@@ -474,6 +484,52 @@ export function Dashboard() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+
+            {/* Tabla de Desglose: Por unidad y cuánto representa en ventas de acuerdo al número vendido */}
+            <div className="mt-4 pt-3.5 border-t border-gray-100 dark:border-gray-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider px-1">
+                <span>Producto</span>
+                <div className="flex items-center gap-4 text-right">
+                  <span className="w-14">Unidades</span>
+                  <span className="w-20">Precio Unit.</span>
+                  <span className="w-24">Total Ventas</span>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {finalPopulares.map((item, idx) => {
+                  const qty = Number(item.ventas || 0);
+                  const unitPrice = Number(item.precioUnitario || (qty > 0 && item.ingresos ? Math.round(item.ingresos / qty) : 0));
+                  const totalIngresos = Number(item.ingresos || (qty * unitPrice) || 0);
+
+                  return (
+                    <div key={idx} className="py-2 px-1 flex items-center justify-between text-xs hover:bg-gray-50/60 dark:hover:bg-gray-800/40 rounded-lg transition-colors">
+                      <div className="min-w-0 flex-1 pr-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-950/60 text-[#f05454] font-black text-[10px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200 truncate" title={item.nombre}>
+                            {item.nombre}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-right shrink-0 font-mono">
+                        <span className="w-14 font-bold text-gray-700 dark:text-gray-300">
+                          {qty} <span className="text-[10px] text-gray-400 font-sans">und</span>
+                        </span>
+                        <span className="w-20 text-gray-500 dark:text-gray-400 text-[11px]">
+                          {unitPrice > 0 ? `${unitPrice.toLocaleString("es-CO")}` : "—"}
+                        </span>
+                        <span className="w-24 font-black text-emerald-600 dark:text-emerald-400">
+                          {totalIngresos > 0 ? `${totalIngresos.toLocaleString("es-CO")}` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            </>
           ) : (
             <div className="flex items-center justify-center h-[260px] text-gray-400 dark:text-gray-600 text-sm">
               Sin ventas registradas para este período
