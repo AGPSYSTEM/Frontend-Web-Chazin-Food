@@ -107,6 +107,79 @@ const quickAccess = [
   }
 ];
 
+const defaultProductPrices = {
+  "hamburguesa clásica chazin": 18000,
+  "hamburguesa clasica chazin": 18000,
+  "hamburguesa doble carne & tocineta": 25000,
+  "hamburguesa doble carne": 25000,
+  "hamburguesa pollo crispy gourmet": 21000,
+  "hamburguesa pollo crispy": 21000,
+  "hamburguesa bbq bacon chazin": 22000,
+  "hamburguesa mexicana chazin": 22000,
+  "hamburguesa campesina chazin": 23000,
+  "perro caliente especial americano": 14000,
+  "perro especial americano": 14000,
+  "perro suizo chazin": 17000,
+  "perro mexicano clásico": 16000,
+  "perro criollo especial chazin": 17000,
+  "salchipapa salvaje gourmet": 24000,
+  "salchipapa criolla chazin": 20000,
+  "salchipapa costeña chazin": 22000,
+  "combo pareja chazin": 38000,
+  "porción papas a la francesa (150g)": 7500,
+  "porción papas a la francesa": 7500,
+  "porcion papas a la francesa": 7500,
+  "papas a la francesa": 7500,
+  "papas corral grandes": 9000,
+  "gaseosa coca-cola 400ml": 4500,
+  "gaseosa coca cola 400ml": 4500,
+  "gaseosa coca-cola": 4500,
+  "gaseosa manzana postobón 400ml": 4500,
+  "gaseosa manzana postobon": 4500,
+  "gaseosa postobón manzana 400ml": 4500,
+  "gaseosa postobon manzana": 4500,
+  "gaseosa pepsi 400ml": 4500,
+  "gaseosa pepsi": 4500
+};
+
+function CustomProductoTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload || {};
+    const nombre = data.nombreLimpio || data.nombre || "Producto";
+    const qty = Number(data.ventas || payload[0].value || 0);
+    const unitPrice = Number(data.precioUnitario || 0);
+    const totalVentas = Number(data.ingresos || (qty * unitPrice) || 0);
+    const pct = data.porcentaje || 0;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-700 p-3.5 rounded-2xl shadow-xl text-xs space-y-1 animate-in fade-in duration-150 min-w-[210px]">
+        <p className="font-extrabold text-gray-900 dark:text-gray-100 text-sm leading-snug">
+          {nombre}
+        </p>
+        <p className="font-extrabold text-[#10B981] text-sm">
+          Unidades : {qty} {qty === 1 ? "venta" : "ventas"}
+        </p>
+        {totalVentas > 0 && (
+          <p className="font-bold text-teal-600 dark:text-teal-400 text-xs">
+            Total en ventas: ${totalVentas.toLocaleString("es-CO")} COP
+          </p>
+        )}
+        {unitPrice > 0 && (
+          <p className="text-gray-600 dark:text-gray-300 text-xs font-medium">
+            Precio unitario: ${unitPrice.toLocaleString("es-CO")} c/u
+          </p>
+        )}
+        {pct > 0 && (
+          <p className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
+            Representación: {pct}% del volumen de ventas
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function Dashboard() {
   const isDark = useDarkMode();
   const {
@@ -138,6 +211,29 @@ export function Dashboard() {
 
   const finalVentasData = Array.isArray(ventasChart) && ventasChart.length > 0 ? ventasChart : defaultVentasData;
   const finalPopulares = Array.isArray(productosPopulares) && productosPopulares.length > 0 ? productosPopulares : defaultProductosPopulares;
+
+  const totalPopularesUnidades = finalPopulares.reduce((acc, p) => acc + (Number(p.ventas || p.cantidad) || 0), 0);
+
+  const enrichedPopulares = finalPopulares.map((p) => {
+    const cleanName = (p.nombre || "").replace(/\s*\(.*?\)/g, "").replace(/\s*-\s*base/i, "").trim();
+    const cleanKey = cleanName.toLowerCase();
+    const qty = Number(p.ventas || p.cantidad || 0);
+
+    const refPrice = defaultProductPrices[cleanKey] || (cleanKey.includes("hamburguesa") ? 18000 : cleanKey.includes("perro") ? 14000 : cleanKey.includes("gaseosa") ? 4500 : 15000);
+    const unitPrice = Number(p.precioUnitario > 0 ? p.precioUnitario : refPrice);
+    const totalIngresos = Number(p.ingresos > 0 ? p.ingresos : (qty * unitPrice));
+    const pct = Number(p.porcentaje > 0 ? p.porcentaje : (totalPopularesUnidades > 0 ? Math.round((qty / totalPopularesUnidades) * 100) : 0));
+
+    return {
+      ...p,
+      nombreLimpio: cleanName,
+      nombreShort: cleanName,
+      ventas: qty,
+      precioUnitario: unitPrice,
+      ingresos: totalIngresos,
+      porcentaje: pct
+    };
+  });
   const finalAlertas = Array.isArray(alertasStock) && alertasStock.length > 0 ? alertasStock : defaultAlertasStock;
 
   const periods = [
@@ -418,15 +514,11 @@ export function Dashboard() {
             </span>
           </div>
 
-          {finalPopulares.length > 0 ? (
-            <>
+          {enrichedPopulares.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 layout="vertical"
-                data={finalPopulares.map(p => ({
-                  ...p,
-                  nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
-                }))}
+                data={enrichedPopulares}
                 margin={{ top: 10, right: 25, left: 25, bottom: 30 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "#374151" : "#f1f5f9"} />
@@ -461,75 +553,18 @@ export function Dashboard() {
                     fontWeight: 600
                   }}
                 />
+                {/* Mini-tarjeta interactiva con toda la información al pasar el cursor */}
                 <Tooltip
-                  formatter={(value, name, item) => {
-                    const data = item?.payload || {};
-                    const ingresos = Number(data.ingresos || (value * (data.precioUnitario || 0)) || 0);
-                    const unitPrice = Number(data.precioUnitario || (value > 0 && ingresos > 0 ? Math.round(ingresos / value) : 0));
-                    const pct = data.porcentaje || 0;
-                    return [
-                      `${value} unidades vendidas${ingresos > 0 ? ` • Representa: ${ingresos.toLocaleString("es-CO")} COP` : ""}${unitPrice > 0 ? ` • (${unitPrice.toLocaleString("es-CO")} c/u)` : ""}${pct > 0 ? ` (${pct}%)` : ""}`,
-                      "Ventas por Producto"
-                    ];
-                  }}
-                  labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
-                  contentStyle={tooltipStyle}
-                  labelStyle={tooltipLabelStyle}
-                  itemStyle={tooltipItemStyle}
+                  content={<CustomProductoTooltip />}
+                  cursor={{ fill: "rgba(156, 163, 175, 0.12)" }}
                 />
                 <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={20}>
-                  {finalPopulares.map((_, index) => (
+                  {enrichedPopulares.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.12} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-
-            {/* Tabla de Desglose: Por unidad y cuánto representa en ventas de acuerdo al número vendido */}
-            <div className="mt-4 pt-3.5 border-t border-gray-100 dark:border-gray-800 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider px-1">
-                <span>Producto</span>
-                <div className="flex items-center gap-4 text-right">
-                  <span className="w-14">Unidades</span>
-                  <span className="w-20">Precio Unit.</span>
-                  <span className="w-24">Total Ventas</span>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {finalPopulares.map((item, idx) => {
-                  const qty = Number(item.ventas || 0);
-                  const unitPrice = Number(item.precioUnitario || (qty > 0 && item.ingresos ? Math.round(item.ingresos / qty) : 0));
-                  const totalIngresos = Number(item.ingresos || (qty * unitPrice) || 0);
-
-                  return (
-                    <div key={idx} className="py-2 px-1 flex items-center justify-between text-xs hover:bg-gray-50/60 dark:hover:bg-gray-800/40 rounded-lg transition-colors">
-                      <div className="min-w-0 flex-1 pr-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-950/60 text-[#f05454] font-black text-[10px] flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <span className="font-bold text-gray-800 dark:text-gray-200 truncate" title={item.nombre}>
-                            {item.nombre}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-right shrink-0 font-mono">
-                        <span className="w-14 font-bold text-gray-700 dark:text-gray-300">
-                          {qty} <span className="text-[10px] text-gray-400 font-sans">und</span>
-                        </span>
-                        <span className="w-20 text-gray-500 dark:text-gray-400 text-[11px]">
-                          {unitPrice > 0 ? `${unitPrice.toLocaleString("es-CO")}` : "—"}
-                        </span>
-                        <span className="w-24 font-black text-emerald-600 dark:text-emerald-400">
-                          {totalIngresos > 0 ? `${totalIngresos.toLocaleString("es-CO")}` : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            </>
           ) : (
             <div className="flex items-center justify-center h-[260px] text-gray-400 dark:text-gray-600 text-sm">
               Sin ventas registradas para este período

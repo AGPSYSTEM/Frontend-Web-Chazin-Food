@@ -21,36 +21,37 @@ const CustomChartTooltip = ({ active, payload, label, unit = "Ingresos", isCurre
     const val = payload[0].value;
     const formatted = isCurrency ? `$${Number(val).toLocaleString("es-CO")}` : `${val} ${val === 1 ? 'venta' : 'ventas'}`;
     const payloadData = payload[0].payload;
-    const titleLabel = payloadData?.mesCompleto || payloadData?.fechaCompleta || payloadData?.dia || label;
+    const titleLabel = payloadData?.nombreLimpio || payloadData?.nombre || payloadData?.mesCompleto || payloadData?.fechaCompleta || payloadData?.dia || label;
+    const ingresos = payloadData?.ingresos !== undefined ? Number(payloadData.ingresos) : 0;
+    const precioUnitario = payloadData?.precioUnitario !== undefined ? Number(payloadData.precioUnitario) : 0;
+    const porcentaje = payloadData?.porcentaje !== undefined ? Number(payloadData.porcentaje) : 0;
+
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 rounded-xl shadow-xl text-xs space-y-1">
-        <p className="font-bold text-gray-700 dark:text-gray-200 mb-0.5">{titleLabel}</p>
+      <div className="bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-700 p-3.5 rounded-2xl shadow-xl text-xs space-y-1 animate-in fade-in duration-150 min-w-[210px]">
+        <p className="font-extrabold text-gray-900 dark:text-gray-100 text-sm leading-snug">
+          {titleLabel}
+        </p>
         <p className="font-extrabold text-[#10B981] text-sm">
           {unit} : {formatted}
         </p>
+        {ingresos > 0 && (
+          <p className="font-bold text-teal-600 dark:text-teal-400 text-xs">
+            Total en ventas: ${ingresos.toLocaleString("es-CO")} COP
+          </p>
+        )}
+        {precioUnitario > 0 && (
+          <p className="text-gray-600 dark:text-gray-300 text-xs font-medium">
+            Precio unitario: ${precioUnitario.toLocaleString("es-CO")} c/u
+          </p>
+        )}
+        {porcentaje > 0 && (
+          <p className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
+            Representación: {porcentaje}% del volumen de ventas
+          </p>
+        )}
         {payloadData?.cantidadVentas !== undefined && isCurrency && (
           <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
             Volumen: {payloadData.cantidadVentas} {payloadData.cantidadVentas === 1 ? 'venta' : 'ventas'}
-          </p>
-        )}
-        {payloadData?.ventas !== undefined && !isCurrency && (
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-            Facturado: ${Number(payloadData.ventas).toLocaleString("es-CO")} COP
-          </p>
-        )}
-        {payloadData?.ingresos !== undefined && (
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-            Total en ventas: ${Number(payloadData.ingresos).toLocaleString("es-CO")} COP
-          </p>
-        )}
-        {payloadData?.precioUnitario !== undefined && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-            Precio unitario: ${Number(payloadData.precioUnitario).toLocaleString("es-CO")} c/u
-          </p>
-        )}
-        {payloadData?.porcentaje !== undefined && (
-          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-            Representación: ${payloadData.porcentaje}% del volumen de ventas
           </p>
         )}
       </div>
@@ -599,47 +600,6 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "personalizad
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-
-          {/* Desglose de Ventas por Unidad y Monto Total Representado */}
-          {reportData.productosMasVendidos.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-200/60 dark:border-gray-800 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1">
-                <span>Producto</span>
-                <div className="flex items-center gap-4 text-right">
-                  <span className="w-14">Unidades</span>
-                  <span className="w-20">Precio Unit.</span>
-                  <span className="w-24">Total Ventas</span>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {reportData.productosMasVendidos.map((item, idx) => (
-                  <div key={idx} className="py-2 px-1 flex items-center justify-between text-xs hover:bg-gray-100/60 dark:hover:bg-gray-800/40 rounded-lg transition-colors">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-4 h-4 rounded-full bg-red-100 dark:bg-red-950/60 text-[#f05454] font-black text-[10px] flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200 truncate" title={item.nombreLimpio}>
-                          {item.nombreLimpio}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-right shrink-0 font-mono">
-                      <span className="w-14 font-bold text-gray-700 dark:text-gray-300">
-                        {item.cantidad} <span className="text-[10px] text-gray-400 font-sans">und</span>
-                      </span>
-                      <span className="w-20 text-gray-500 dark:text-gray-400 text-[11px]">
-                        {item.precioUnitario > 0 ? `${item.precioUnitario.toLocaleString("es-CO")}` : "—"}
-                      </span>
-                      <span className="w-24 font-black text-emerald-600 dark:text-emerald-400">
-                        {item.ingresos > 0 ? `${item.ingresos.toLocaleString("es-CO")}` : "—"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Métodos de pago */}
