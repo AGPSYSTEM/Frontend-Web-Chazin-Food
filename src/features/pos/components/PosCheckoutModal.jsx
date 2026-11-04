@@ -250,10 +250,10 @@ export function PosCheckoutModal({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* 1. Tarjeta Resumen Financiero */}
-          <div className="bg-[#f8fafc] dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-xs space-y-2">
+          <div className="bg-[#f8fafc] dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-xs space-y-2 font-mono">
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
               <span>Subtotal ({safeCart.reduce((a, b) => a + (Number(b.cantidad) || 1), 0)} items)</span>
-              <span className="font-bold text-gray-800 dark:text-gray-200">
+              <span className="font-bold text-gray-800 dark:text-gray-200 tabular-nums">
                 ${Number(subtotal || 0).toLocaleString("es-CO")}
               </span>
             </div>
@@ -270,7 +270,7 @@ export function PosCheckoutModal({
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
               <span className="text-base font-black text-gray-900 dark:text-gray-100">Total a Pagar</span>
-              <span className="text-2xl font-black text-[#f05454] dark:text-red-400">
+              <span className="text-2xl font-black text-[#f05454] dark:text-red-400 tabular-nums">
                 ${finalTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -922,18 +922,32 @@ export function PosCheckoutModal({
                 const itemLineTotal =
                   ((Number(item.precio) || 0) + itemAddsTotal) * (Number(item.cantidad) || 1);
 
+                const unitPrice = (Number(item.precio) || 0) + itemAddsTotal;
+
                 return (
                   <div
                     key={`${item.productoId || idx}-${idx}`}
                     className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#fbfcfd] dark:bg-gray-800/40 text-xs flex flex-col gap-1.5"
                   >
-                    <div className="flex items-center justify-between font-bold text-gray-900 dark:text-gray-100">
-                      <span className="truncate">
-                        {item.cantidad || 1}x {item.nombre || "Producto"}
-                      </span>
-                      <span className="shrink-0 text-gray-800 dark:text-gray-200 font-black">
-                        ${itemLineTotal.toLocaleString("es-CO")}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 font-bold text-gray-900 dark:text-gray-100">
+                        <span className="truncate block text-sm">
+                          {item.cantidad || 1}x {item.nombre || "Producto"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end text-right font-mono tabular-nums shrink-0">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                          Unit: ${unitPrice.toLocaleString("es-CO")}
+                        </span>
+                        {(item.cantidad || 1) > 1 && (
+                          <span className="text-[9.5px] text-gray-400">
+                            {item.cantidad} × ${unitPrice.toLocaleString("es-CO")}
+                          </span>
+                        )}
+                        <span className="text-sm font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                          ${itemLineTotal.toLocaleString("es-CO")}
+                        </span>
+                      </div>
                     </div>
 
                     {itemAdds.length > 0 && (
