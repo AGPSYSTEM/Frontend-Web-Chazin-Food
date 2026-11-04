@@ -15,6 +15,12 @@ class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
+    const isChunkError = /failed to fetch dynamically imported module|loading chunk/i.test(error?.message || '');
+    if (isChunkError && !sessionStorage.getItem('chunk_reload_attempted')) {
+      sessionStorage.setItem('chunk_reload_attempted', 'true');
+      window.location.reload();
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 
@@ -23,8 +29,8 @@ class ErrorBoundary extends Component {
   }
 
   handleReset = () => {
-    localStorage.removeItem("chazin_user");
-    window.location.href = "/";
+    sessionStorage.removeItem('chunk_reload_attempted');
+    window.location.reload();
   };
 
   render() {
