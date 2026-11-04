@@ -32,6 +32,14 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
+  const bringToFront = useCallback((id) => {
+    setToasts((prev) => {
+      const target = prev.find((toast) => toast.id === id);
+      if (!target) return prev;
+      return [...prev.filter((toast) => toast.id !== id), target];
+    });
+  }, []);
+
   const success = useCallback((title, message, duration) => {
     showToast("success", title, message, duration);
   }, [showToast]);
@@ -55,7 +63,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
+      <ToastContainer toasts={toasts} onClose={removeToast} onBringToFront={bringToFront} />
     </ToastContext.Provider>
   );
 }
