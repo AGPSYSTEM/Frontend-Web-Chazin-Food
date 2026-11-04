@@ -1727,6 +1727,14 @@ export function FastFoodProductModal({
 
   // Confirmar y agregar
   const handleConfirm = () => {
+    if (stockMax <= 0 || producto?.agotado || producto?.estado === "Inactivo" || producto?.estado === 0) {
+      warning(
+        "Producto agotado por el momento",
+        `Lo sentimos, "${producto?.nombre || "este producto"}" está agotado en este momento y no se encuentra disponible.`
+      );
+      return;
+    }
+
     if (isComboWithDrinks && !isComboDrinkComplete) {
       setActiveTab("bebidas");
       warning("Bebidas requeridas", `Por favor selecciona las ${requiredDrinkCount} bebidas incluidas de tu combo antes de agregar.`);
@@ -3401,14 +3409,18 @@ export function FastFoodProductModal({
             type="button"
             onClick={handleConfirm}
             className={`w-full sm:w-auto px-6 py-3.5 rounded-2xl text-white font-black text-sm transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] shrink-0 ${
-              eventInfo
+              stockMax <= 0 || producto?.agotado
+                ? "bg-gray-500 hover:bg-gray-600 dark:bg-gray-700"
+                : eventInfo
                 ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-[0_8px_20px_rgba(249,115,22,0.35)]"
                 : "bg-[#f05454] hover:bg-[#d94444] shadow-[0_8px_20px_rgba(240,84,84,0.35)]"
             }`}
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
             <span>
-              {mode === "pos" ? "Agregar al Pedido" : "Agregar al Carrito"} • ${grandTotal.toLocaleString("es-CO")}
+              {stockMax <= 0 || producto?.agotado
+                ? "Agotado por el momento"
+                : `${mode === "pos" ? "Agregar al Pedido" : "Agregar al Carrito"} • $${grandTotal.toLocaleString("es-CO")}`}
             </span>
           </button>
         </div>

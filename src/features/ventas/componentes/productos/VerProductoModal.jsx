@@ -1,4 +1,4 @@
-import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles, CheckCircle2, Edit, Clock, Thermometer, Award } from "lucide-react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles, CheckCircle2, Edit, Clock, Thermometer, Award, Info, UtensilsCrossed } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { normalizeFichaWithVersions, formatFechaHoraFicha } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
@@ -8,6 +8,7 @@ import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
+import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
 
 export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
@@ -25,20 +26,37 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const catName = String(producto?.categoria || producto?.categoriaNombre || "").toLowerCase();
+  const prodName = String(producto?.nombre || "").toLowerCase();
+  const isCombo = Boolean(
+    producto?.esCombo ||
+    producto?.tipo === "combo" ||
+    producto?.configuracionCombo?.esCombo ||
+    catName.includes("combo") ||
+    prodName.startsWith("combo ")
+  );
+
   useEffect(() => {
     if (isOpen && (producto?.id || producto?.idProducto)) {
       const pId = producto.id || producto.idProducto;
-      if (producto.fichaTecnica) {
-        setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
+
+      // Si es combo, no carga ni busca ficha técnica individual
+      if (isCombo) {
+        setFichaTecnica(null);
+        setLoadingFicha(false);
+      } else {
+        if (producto.fichaTecnica) {
+          setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
+        }
+        setLoadingFicha(true);
+        fichasTecnicasService.getFichaByProducto(pId)
+          .then(f => setFichaTecnica(f || (producto.fichaTecnica ? normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId) : null)))
+          .catch(err => {
+            console.error("Error cargando ficha", err);
+            if (producto.fichaTecnica) setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
+          })
+          .finally(() => setLoadingFicha(false));
       }
-      setLoadingFicha(true);
-      fichasTecnicasService.getFichaByProducto(pId)
-        .then(f => setFichaTecnica(f || (producto.fichaTecnica ? normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId) : null)))
-        .catch(err => {
-          console.error("Error cargando ficha", err);
-          if (producto.fichaTecnica) setFichaTecnica(normalizeFichaWithVersions(producto.fichaTecnica, "producto", pId));
-        })
-        .finally(() => setLoadingFicha(false));
 
       setLoadingResenas(true);
       apiClient.get(`/resenas/producto/${pId}`)
@@ -49,40 +67,39 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
       setFichaTecnica(null);
       setResenasData({ promedio: 0, total: 0, resenas: [] });
     }
-  }, [isOpen, producto]);
+  }, [isOpen, producto, isCombo]);
 
   if (!isOpen || !producto) return null;
 
   // Cálculos para datos del producto
   const precioVenta = Number(producto.precio || 0);
 
-  // Costo real calculado a partir de la suma de insumos de la ficha técnica
-  const costoRealCalculado = fichaTecnica?.detalles?.length > 0
-    ? fichaTecnica.detalles.reduce((acc, d) => {
-      const cant = Number(d.cantidad || 0);
-      const precioUnit = Number(d.precioUnitario || d.insumo?.precioUnitario || 0);
-      return acc + (cant * precioUnit);
-    }, 0)
-    : 0;
+  // Costo real calculado con conversión de unidades y prorrateo por porción
+  const recipeTotals = fichaTecnica?.detalles?.length > 0
+    ? calculateRecipeTotals(fichaTecnica.detalles, fichaTecnica.rendimiento)
+    : { costoTotalLote: 0, costoPorPorcion: 0, porciones: 1 };
 
-  const costoProduccion = Math.round(costoRealCalculado);
+  const costoProduccion = Math.round(recipeTotals.costoPorPorcion);
   const margenGanancia = precioVenta > costoProduccion ? precioVenta - costoProduccion : 0;
   const margenPorcentaje = precioVenta > 0 && costoProduccion > 0
     ? Math.round((margenGanancia / precioVenta) * 100)
     : 0;
 
   const totalVendidos = Number(producto.ventas ?? producto.totalVendidos ?? 0);
-  const totalIngresos = totalVendidos * precioVenta;
-
   const isDisponible = producto.estado !== "Inactivo" && producto.estado !== 0;
   const adiciones = producto.adiciones || [];
   const eventosActivos = producto.eventos || [];
 
-  const catName = String(producto.categoria || producto.categoriaNombre || "").toLowerCase();
-  const prodName = String(producto.nombre || "").toLowerCase();
   const variantes = Array.isArray(producto.variantes) ? producto.variantes : [];
   const sizeVariantes = variantes.filter((v) => isSizeVariantName(v.nombre));
   const flavorVariantes = variantes.filter((v) => !isSizeVariantName(v.nombre));
+
+  // Productos asociados si es un combo
+  const productosCombo = Array.isArray(producto.configuracionCombo?.productosAsociados)
+    ? producto.configuracionCombo.productosAsociados
+    : Array.isArray(producto.productosAsociados)
+    ? producto.productosAsociados
+    : [];
 
   const isDrink =
     catName.includes("bebida") ||
@@ -118,7 +135,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
         <div className="relative w-full bg-gradient-to-b from-gray-50/90 via-gray-100/40 to-white dark:from-gray-800/60 dark:via-gray-850 dark:to-gray-900 p-6 flex flex-col items-center justify-center border-b border-gray-100 dark:border-gray-800 shrink-0">
 
           {/* Badge Disponible */}
-          <div className="absolute top-4 left-4 z-20">
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-xs border ${isDisponible
               ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
               : "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
@@ -126,6 +143,13 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
               <span className={`w-2 h-2 rounded-full ${isDisponible ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
               {isDisponible ? "Disponible" : "Inactivo"}
             </span>
+
+            {isCombo && (
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-xs">
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                Combo Especial
+              </span>
+            )}
           </div>
 
           {/* Close Button 'X' */}
@@ -184,15 +208,15 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
             <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-200/80 dark:border-gray-700/50">
               <p className="text-[11px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 mb-1">Costo Estimado</p>
               <p className="text-lg font-black text-gray-900 dark:text-gray-100">
-                {costoProduccion > 0 ? `$${costoProduccion.toLocaleString("es-CO")}` : (loadingFicha ? "Calculando..." : "Sin costeo")}
+                {isCombo ? "Compuesto por combo" : costoProduccion > 0 ? `$${costoProduccion.toLocaleString("es-CO")}` : (loadingFicha ? "Calculando..." : "Sin costeo")}
               </p>
             </div>
 
-            {/* Rentabilidad Estimada (Ítem 108: Reemplazar Margen de Ganancia) */}
+            {/* Rentabilidad Estimada */}
             <div className="bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-900/30">
               <p className="text-[11px] uppercase tracking-wider font-bold text-blue-700 dark:text-blue-400 mb-1">Rentabilidad</p>
               <p className="text-lg font-black text-blue-600 dark:text-blue-400">
-                {costoProduccion > 0 ? `${margenPorcentaje}%` : "—"}
+                {!isCombo && costoProduccion > 0 ? `${margenPorcentaje}%` : "—"}
               </p>
             </div>
 
@@ -205,90 +229,147 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
             </div>
           </div>
 
-          {/* Insumos & Adiciones Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Insumos */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <ChefHat className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Insumos de la Ficha Técnica</h3>
-                </div>
-                {fichaTecnica && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Versión {fichaTecnica.versionActual || 1} (Vigente)
-                  </span>
-                )}
+          {/* Sección de Componentes del Combo (si aplica) */}
+          {isCombo && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-amber-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Productos Incluidos en este Combo ({productosCombo.length})
+                </h3>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px] space-y-2.5">
-                {fichaTecnica && (
-                  <div className="pb-2 border-b border-gray-200/70 dark:border-gray-700/60 text-[11px] text-gray-600 dark:text-gray-400">
-                    <span className="font-bold text-gray-700 dark:text-gray-300">Vigente desde:</span>{" "}
-                    {formatFechaHoraFicha(fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion)}
-                  </div>
-                )}
-                {loadingFicha ? (
-                  <p className="text-xs text-gray-400 text-center py-4">Cargando insumos...</p>
-                ) : fichaTecnica && fichaTecnica.detalles && fichaTecnica.detalles.length > 0 ? (
-                  <ul className="space-y-2">
-                    {fichaTecnica.detalles.map((d, i) => (
-                      <li key={i} className="flex justify-between items-center text-xs">
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">{d.nombreInsumo || d.insumo?.nombre}</span>
-                        <span className="text-gray-500 dark:text-gray-400 font-mono">{d.cantidad} {d.unidadMedida}</span>
-                      </li>
+              <div className="bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl p-4 border border-amber-200/70 dark:border-amber-900/40">
+                {productosCombo.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {productosCombo.map((p, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-800 border border-amber-200/80 dark:border-amber-900/50 shadow-2xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <FoodIconBadge name={p.nombre || "burger"} size="sm" />
+                          <div className="truncate">
+                            <span className="font-bold text-xs text-gray-800 dark:text-gray-200 block truncate">
+                              {p.nombre}
+                            </span>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                              Producto ya creado
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs font-black">
+                          x{p.cantidad || 1}
+                        </span>
+                      </div>
                     ))}
-                  </ul>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 py-3">
-                    <Package className="w-5 h-5 mb-1 opacity-50" />
-                    <p className="text-xs text-center">Sin ficha técnica configurada</p>
                   </div>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Combo configurado sin desglose de unidades asociadas.
+                  </p>
                 )}
               </div>
             </div>
+          )}
 
-            {/* Adiciones */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4 text-[#F05454]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Adiciones Disponibles
-                  </h3>
-                </div>
-                {adiciones.length > 0 && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-[#F05454]">
-                    {adiciones.length} activas
-                  </span>
-                )}
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-100 dark:border-gray-700/50 min-h-[100px]">
-                {adiciones.length > 0 ? (
-                  <ul className="space-y-2 max-h-48 overflow-y-auto pr-1 divide-y divide-gray-100 dark:divide-gray-800">
-                    {adiciones.map((a, i) => (
-                      <li key={a.idAdicion || a.id || i} className="flex justify-between items-center text-xs pt-1.5 first:pt-0">
-                        <span className="text-gray-800 dark:text-gray-200 font-medium truncate pr-2">
-                          {a.nombre}
-                        </span>
-                        <span className="text-[#F05454] font-bold shrink-0 font-mono">
-                          +${Number(a.precio || 0).toLocaleString("es-CO")}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 py-4">
-                    <PlusCircle className="w-5 h-5 mb-1 opacity-50" />
-                    <p className="text-xs text-center">No tiene adiciones configuradas</p>
+          {/* Insumos & Adiciones Section (solo para productos estándar, no para combos) */}
+          {!isCombo ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Insumos */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <ChefHat className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Insumos de la Ficha Técnica</h3>
                   </div>
-                )}
+                  {fichaTecnica && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Versión {fichaTecnica.versionActual || 1} (Vigente)
+                    </span>
+                  )}
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px] space-y-2.5">
+                  {fichaTecnica && (
+                    <div className="pb-2 border-b border-gray-200/70 dark:border-gray-700/60 text-[11px] text-gray-600 dark:text-gray-400">
+                      <span className="font-bold text-gray-700 dark:text-gray-300">Vigente desde:</span>{" "}
+                      {formatFechaHoraFicha(fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion)}
+                    </div>
+                  )}
+                  {loadingFicha ? (
+                    <p className="text-xs text-gray-400 text-center py-4">Cargando insumos...</p>
+                  ) : fichaTecnica && fichaTecnica.detalles && fichaTecnica.detalles.length > 0 ? (
+                    <ul className="space-y-2">
+                      {fichaTecnica.detalles.map((d, i) => (
+                        <li key={i} className="flex justify-between items-center text-xs">
+                          <span className="text-gray-800 dark:text-gray-200 font-medium">{d.nombreInsumo || d.insumo?.nombre}</span>
+                          <span className="text-gray-500 dark:text-gray-400 font-mono">{d.cantidad} {d.unidadMedida}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 py-3">
+                      <Package className="w-5 h-5 mb-1 opacity-50" />
+                      <p className="text-xs text-center">Sin ficha técnica configurada</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Adiciones */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PlusCircle className="w-4 h-4 text-[#F05454]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      Adiciones Disponibles
+                    </h3>
+                  </div>
+                  {adiciones.length > 0 && (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-[#F05454]">
+                      {adiciones.length} activas
+                    </span>
+                  )}
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-3.5 border border-gray-100 dark:border-gray-700/50 min-h-[100px]">
+                  {adiciones.length > 0 ? (
+                    <ul className="space-y-2 max-h-48 overflow-y-auto pr-1 divide-y divide-gray-100 dark:divide-gray-800">
+                      {adiciones.map((a, i) => (
+                        <li key={a.idAdicion || a.id || i} className="flex justify-between items-center text-xs pt-1.5 first:pt-0">
+                          <span className="text-gray-800 dark:text-gray-200 font-medium truncate pr-2">
+                            {a.nombre}
+                          </span>
+                          <span className="text-[#F05454] font-bold shrink-0 font-mono">
+                            +${Number(a.precio || 0).toLocaleString("es-CO")}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 py-4">
+                      <PlusCircle className="w-5 h-5 mb-1 opacity-50" />
+                      <p className="text-xs text-center">No tiene adiciones configuradas</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-amber-900 dark:text-amber-200">
+                  Combo sin ficha técnica individual
+                </p>
+                <p className="text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                  Los combos no llevan ficha técnica propia porque agrupan productos ya existentes del menú, cada uno con su respectivo proceso y ficha de preparación.
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* Detalles completos de Elaboración de la Ficha Técnica */}
-          {fichaTecnica && (
+          {/* Detalles completos de Elaboración de la Ficha Técnica (solo no combos) */}
+          {!isCombo && fichaTecnica && (
             <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
@@ -302,7 +383,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-[#F05454] text-xs font-bold transition cursor-pointer"
                   >
                     <Edit className="w-3.5 h-3.5" />
-                    <span>Editar Producto y Ficha Técnica</span>
+                    <span>Editar Ficha Técnica</span>
                   </button>
                 )}
               </div>
@@ -363,7 +444,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
           )}
 
           {/* Historial de Versiones de la Ficha Técnica del Producto */}
-          {fichaTecnica && (
+          {!isCombo && fichaTecnica && (
             <div className="pt-2">
               <FichaVersionesHistorial
                 versionActual={fichaTecnica.versionActual || 1}
@@ -384,7 +465,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
             </div>
           )}
 
-          {/* Variantes y Presentaciones: Separadas para bebidas o estándar para comidas */}
+          {/* Variantes y Presentaciones: SIN PRECIO para no confundir al usuario */}
           {variantes.length > 0 && (
             isDrink ? (
               <div className="space-y-3">
@@ -394,7 +475,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                     <div className="flex items-center gap-2">
                       <Layers className="w-4 h-4 text-amber-500" />
                       <h3 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                        Tamaños y Presentaciones de Bebida ({sizeVariantes.length})
+                        Tamaños y Presentaciones ({sizeVariantes.length})
                       </h3>
                     </div>
                     <div className="bg-amber-50/40 dark:bg-amber-950/20 rounded-2xl p-3 sm:p-4 border border-amber-200/70 dark:border-amber-900/40">
@@ -421,12 +502,12 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                                   {v.nombre}
                                 </span>
                                 <span className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                                  Tamaño adicional
+                                  Presentación
                                 </span>
                               </div>
                             </div>
-                            <span className="font-black text-amber-600 dark:text-amber-400 shrink-0 ml-2 font-mono">
-                              ${Number(v.precio || 0).toLocaleString("es-CO")}
+                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                              Opción
                             </span>
                           </div>
                         ))}
@@ -441,7 +522,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-purple-500" />
                       <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                        Variantes y Sabores de Bebida ({flavorVariantes.length})
+                        Variantes y Sabores ({flavorVariantes.length})
                       </h3>
                     </div>
                     <div className="bg-purple-50/40 dark:bg-purple-950/20 rounded-2xl p-3 sm:p-4 border border-purple-200/70 dark:border-purple-900/40">
@@ -468,12 +549,12 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                                   {v.nombre}
                                 </span>
                                 <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                                  Variante / Sabor
+                                  Sabor / Presentación
                                 </span>
                               </div>
                             </div>
-                            <span className="font-black text-purple-600 dark:text-purple-400 shrink-0 ml-2 font-mono">
-                              ${Number(v.precio || 0).toLocaleString("es-CO")}
+                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
+                              Opción
                             </span>
                           </div>
                         ))}
@@ -514,8 +595,8 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                             {v.nombre}
                           </span>
                         </div>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2 font-mono">
-                          ${Number(v.precio || 0).toLocaleString("es-CO")}
+                        <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md">
+                          Opción
                         </span>
                       </div>
                     ))}
@@ -636,7 +717,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                 className="px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
               >
                 <Edit className="w-4 h-4" />
-                <span>Editar Producto y Ficha Técnica</span>
+                <span>{isCombo ? "Editar Combo" : "Editar Producto y Ficha Técnica"}</span>
               </button>
             )}
             <button

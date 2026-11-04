@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf, Calculator, ArrowUp, ArrowDown, Sparkles, History, Calendar } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, FileText, Check, Package, X, Search, Minus, UtensilsCrossed, Leaf, Calculator, ArrowUp, ArrowDown, Sparkles, History, Calendar, Sliders } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
@@ -11,6 +11,11 @@ import {
   extractFichaVersionMeta,
   buildRestoredVersionState
 } from "../utils/fichaVersionUtils";
+import {
+  calculateInsumoCost,
+  calculateRecipeTotals,
+  parsePorciones
+} from "../utils/costoUtils";
 
 const FASES_DEFAULT = [
   { id: "p1", fase: "Alistamiento / Mise en place", descripcion: "" },
@@ -31,7 +36,6 @@ function desglosarProcedimiento(texto) {
     const match = l.match(/^(?:(?:\d+[\.\)-]|Paso\s*\d+:?))\s*(?:([^:]+):)?\s*(.*)$/i);
     if (match) {
       let faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
-      // #102: Evitar numeración redundante "1. 1."
       faseNombre = faseNombre.replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${parsed.length + 1}`;
       const desc = match[2] ? match[2].trim() : "";
       parsed.push({
@@ -60,7 +64,6 @@ function serializarPasos(pasos) {
   return pasos
     .filter(p => p && p.descripcion && String(p.descripcion).trim())
     .map((p, idx) => {
-      // #102: Limpiar prefijo numérico existente para evitar duplicados "1. 1."
       const cleanFase = (p.fase || `Paso ${idx + 1}`).replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${idx + 1}`;
       return `${idx + 1}. ${cleanFase}: ${String(p.descripcion).trim()}`;
     })
@@ -96,16 +99,18 @@ export function FichaTecnicaProducto({
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
-  // Requisito 102: Estructura de orden lógico de procesos de preparación
   const [pasosProceso, setPasosProceso] = useState(FASES_DEFAULT);
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
-  const [rendimiento, setRendimiento] = useState("");
+  const [rendimiento, setRendimiento] = useState("1 porción");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
   const [informacionNutricional, setInformacionNutricional] = useState("");
   const [condicionesAlmacenamiento, setCondicionesAlmacenamiento] = useState("");
   const [vidaUtil, setVidaUtil] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  
+  // Escalado dinámico de procesos (Requerimiento: procesos diseñados escalables)
+  const [factorEscala, setFactorEscala] = useState(1);
   
   const [searchInsumo, setSearchInsumo] = useState("");
   const [saving, setSaving] = useState(false);
@@ -128,8 +133,12 @@ export function FichaTecnicaProducto({
         if (val === undefined || val === null || String(val).trim() === "") return "El tiempo de preparación es obligatorio.";
         if (Number(val) < 1) return "Debe ser al menos 1 minuto.";
         return "";
-      case "rendimiento":
-        return !val || !val.trim() ? "El rendimiento o porciones es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "rendimiento": {
+        // Corrección: Permite "1", "1 porción", "4", etc. sin fallar por longitud < 2 al guardar versión 2
+        const str = String(val ?? "").trim();
+        if (!str) return "El rendimiento o porciones es obligatorio.";
+        return "";
+      }
       case "especificaciones":
         return !val || !val.trim() ? "Las especificaciones técnicas son obligatorias." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
       case "caracteristicas":
@@ -298,7 +307,8 @@ export function FichaTecnicaProducto({
     setProcedimiento(procText);
     setPasosProceso(desglosarProcedimiento(procText));
     setTiempoPreparacion(f.tiempoPreparacion ?? "");
-    setRendimiento(f.rendimiento || "");
+    // Default seguro para evitar error de validación en segunda versión
+    setRendimiento(f.rendimiento ? String(f.rendimiento) : "1 porción");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");
     setInformacionNutricional(f.informacionNutricional || "");
@@ -321,7 +331,7 @@ export function FichaTecnicaProducto({
       procedimiento,
       tiempoPreparacion: Number(tiempoPreparacion) || 0,
       rendimiento,
-      especificaciones,
+      especaciones: especificaciones,
       caracteristicas,
       informacionNutricional,
       condicionesAlmacenamiento,
@@ -457,7 +467,6 @@ export function FichaTecnicaProducto({
     handleBlur("tiempoPreparacion", finalVal);
   };
 
-  // Requisito 102: Manejadores de pasos de proceso lógico
   const actualizarPaso = (idx, campo, valor) => {
     clearRestoredCommitFlag();
     const nuevos = pasosProceso.map((p, i) => i === idx ? { ...p, [campo]: valor } : p);
@@ -528,6 +537,11 @@ export function FichaTecnicaProducto({
     setInsumos((prev) => prev.map((item, i) => (i === idx ? { ...item, unidadMedida } : item)));
   };
 
+  // Cálculo de totales gastronómicos precisos (Food Cost y Porciones)
+  const recipeTotals = useMemo(() => {
+    return calculateRecipeTotals(insumos, rendimiento);
+  }, [insumos, rendimiento]);
+
   const handleSave = async () => {
     const allTouched = {
       insumos: true,
@@ -572,6 +586,13 @@ export function FichaTecnicaProducto({
       return;
     }
 
+    // Requerimiento 3: Mensaje de confirmación antes de guardar para no guardar versiones innecesarias
+    const confirmed = await notify.confirmAction(
+      "¿Guardar versión de Ficha Técnica?",
+      `Estás a punto de guardar y activar una nueva versión de la ficha técnica para "${productName || 'este producto'}". Se registrará en el historial de versiones vigentes. ¿Deseas continuar?`
+    );
+    if (!confirmed) return;
+
     const payload = {
       idProducto: productId || null,
       procedimiento,
@@ -601,6 +622,7 @@ export function FichaTecnicaProducto({
         nombreInsumo: i.nombreInsumo || i.insumo?.nombre || i.nombre,
         cantidad: Number(i.cantidad || 1),
         unidadMedida: i.unidadMedida || 'und',
+        costoUnitario: Number(i.costoUnitario || i.precioUnitario || i.insumo?.precioUnitario || 0),
         precioUnitario: Number(i.costoUnitario || i.precioUnitario || i.insumo?.precioUnitario || 0)
       }))
     };
@@ -635,7 +657,7 @@ export function FichaTecnicaProducto({
     return (
       <div className="space-y-6">
         {/* Quick Stats header */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="p-4 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 rounded-2xl">
             <p className="text-xs font-bold text-[#F05454] uppercase tracking-wider">Tiempo Estimado</p>
             <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">
@@ -648,6 +670,13 @@ export function FichaTecnicaProducto({
             <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2">
               <UtensilsCrossed className="w-5 h-5 text-blue-500" />
               <span>{rendimiento || "1 porción"}</span>
+            </p>
+          </div>
+          <div className="p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 rounded-2xl">
+            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Costo por Porción</p>
+            <p className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1 flex items-center gap-2 font-mono">
+              <Calculator className="w-5 h-5 text-amber-500" />
+              <span>${recipeTotals.costoPorPorcion.toLocaleString("es-CO")}</span>
             </p>
           </div>
           <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl">
@@ -766,6 +795,7 @@ export function FichaTecnicaProducto({
 
       <div className={`transition-all duration-300 overflow-hidden ${expanded ? "max-h-[15000px] opacity-100" : "max-h-0 opacity-0"}`}>
         <div className="space-y-6 bg-gray-50/70 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800">
+          
           {/* Banner informativo de vigencia y versionamiento */}
           {productId && isConfigured && (
             <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
@@ -787,6 +817,41 @@ export function FichaTecnicaProducto({
               </div>
             </div>
           )}
+
+          {/* ESCALABILIDAD DINÁMICA DE LA RECETA Y PROCESO (Requerimiento: Procesos escalables) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white dark:bg-gray-850 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-[#F05454] shrink-0">
+                <Sliders className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                  Escalabilidad del Proceso Culinario
+                </span>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Escala los insumos y tiempos proporcionalmente para lotes grandes de producción.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 self-start sm:self-auto">
+              <span className="text-[11px] font-bold text-gray-400 mr-1">Factor:</span>
+              {[1, 2, 5, 10, 20].map((factor) => (
+                <button
+                  key={factor}
+                  type="button"
+                  onClick={() => setFactorEscala(factor)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                    factorEscala === factor
+                      ? "bg-[#F05454] text-white shadow-2xs"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+                  }`}
+                >
+                  {factor}x
+                </button>
+              ))}
+            </div>
+          </div>
           
           {/* Section 1: Insumos / Ingredientes */}
           <div>
@@ -834,25 +899,40 @@ export function FichaTecnicaProducto({
           {/* Selected Insumos Table */}
           {insumos.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-                Insumos seleccionados ({insumos.length})
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  Insumos seleccionados ({insumos.length})
+                  {factorEscala > 1 && (
+                    <span className="ml-2 font-bold text-[#F05454] bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-md text-[11px]">
+                      Escalado activo: {factorEscala}x
+                    </span>
+                  )}
+                </p>
+              </div>
               <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto bg-white dark:bg-gray-900">
                 <table className="w-full text-sm text-left">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-500 uppercase">
                       <th className="px-4 py-3">Insumo</th>
-                      <th className="px-4 py-3 text-center">Cantidad</th>
+                      <th className="px-4 py-3 text-center">Cantidad Base</th>
+                      {factorEscala > 1 && <th className="px-4 py-3 text-center text-[#F05454]">Escalado ({factorEscala}x)</th>}
                       <th className="px-4 py-3 text-center">Unidad</th>
-                      <th className="px-4 py-3 text-right">Costo Unit.</th>
-                      <th className="px-4 py-3 text-right">Subtotal</th>
+                      <th className="px-4 py-3 text-right">Costo Unit. Inv.</th>
+                      <th className="px-4 py-3 text-right">Subtotal Real</th>
                       <th className="px-4 py-3 text-right">Quitar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {insumos.map((item, idx) => {
                       const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
-                      const subtotal = unitCost * (Number(item.cantidad) || 0);
+                      // Corrección precisa: conversión de unidades para que no de precios desorbitados
+                      const subtotal = calculateInsumoCost(
+                        item.cantidad,
+                        item.unidadMedida || "und",
+                        unitCost,
+                        item.insumo?.unidadMedida
+                      );
+                      const cantEscalada = Math.round((Number(item.cantidad || 0) * factorEscala) * 100) / 100;
                       return (
                       <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40">
                         <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
@@ -863,7 +943,7 @@ export function FichaTecnicaProducto({
                             <button
                               type="button"
                               onClick={() => actualizarCantidad(idx, -1)}
-                              disabled={Number(item.cantidad) <= 1}
+                              disabled={Number(item.cantidad) <= 0.05}
                               className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                             >
                               <Minus className="w-3 h-3 text-gray-600 dark:text-gray-300" />
@@ -899,17 +979,22 @@ export function FichaTecnicaProducto({
                             </button>
                           </div>
                         </td>
+                        {factorEscala > 1 && (
+                          <td className="px-4 py-3 text-center font-extrabold text-[#F05454] bg-red-50/30 dark:bg-red-950/10">
+                            {cantEscalada} {item.unidadMedida || "und"}
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-center">
                           <select
                             value={item.unidadMedida || "und"}
                             onChange={(e) => actualizarUnidad(idx, e.target.value)}
                             className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-xs text-gray-700 dark:text-gray-200"
                           >
-                            <option value="kg">kg</option>
-                            <option value="und">und</option>
-                            <option value="lt">lt</option>
                             <option value="gr">gr</option>
+                            <option value="kg">kg</option>
                             <option value="ml">ml</option>
+                            <option value="lt">lt</option>
+                            <option value="und">und</option>
                             <option value="paq">paq</option>
                             <option value="porción">porción</option>
                           </select>
@@ -918,7 +1003,7 @@ export function FichaTecnicaProducto({
                           ${unitCost.toLocaleString("es-CO")}
                         </td>
                         <td className="px-4 py-3 text-right text-xs font-mono font-bold text-gray-900 dark:text-gray-100">
-                          ${subtotal.toLocaleString("es-CO")}
+                          ${Math.round(subtotal).toLocaleString("es-CO")}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button
@@ -936,34 +1021,35 @@ export function FichaTecnicaProducto({
                 </table>
               </div>
 
-              {/* Requisito 99: Costeo de Insumos y Precio de Referencia Sugerido */}
-              {(() => {
-                const totalCosto = insumos.reduce((acc, item) => {
-                  const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
-                  return acc + (unitCost * (Number(item.cantidad) || 0));
-                }, 0);
-                const precioSugerido = totalCosto > 0 ? Math.round((totalCosto * 2.5) / 500) * 500 : 0;
-                return (
-                  <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700/80 gap-3">
-                    <div className="flex items-center gap-2">
-                      <Calculator className="w-4 h-4 text-amber-500" />
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        Cálculo de Costos de Insumos:
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Costo Insumos: </span>
-                        <span className="font-bold font-mono text-gray-900 dark:text-gray-100">${totalCosto.toLocaleString("es-CO")} COP</span>
-                      </div>
-                      <div className="border-l border-gray-200 dark:border-gray-700 pl-4">
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">Precio Ref. Sugerido: </span>
-                        <span className="font-black font-mono text-amber-700 dark:text-amber-300">${precioSugerido.toLocaleString("es-CO")} COP</span>
-                      </div>
-                    </div>
+              {/* Costeo de Insumos y Precio de Referencia Corregido */}
+              <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700/80 gap-3">
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Cálculo Gastronómico Real:
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Costo Lote: </span>
+                    <span className="font-bold font-mono text-gray-900 dark:text-gray-100">
+                      ${(recipeTotals.costoTotalBatch * (factorEscala > 1 ? factorEscala : 1)).toLocaleString("es-CO")} COP
+                    </span>
                   </div>
-                );
-              })()}
+                  <div className="border-l border-gray-200 dark:border-gray-700 pl-3">
+                    <span className="text-gray-500 dark:text-gray-400">Costo / Porción: </span>
+                    <span className="font-bold font-mono text-blue-700 dark:text-blue-300">
+                      ${recipeTotals.costoPorPorcion.toLocaleString("es-CO")} COP
+                    </span>
+                  </div>
+                  <div className="border-l border-gray-200 dark:border-gray-700 pl-3">
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">Precio Venta Sugerido: </span>
+                    <span className="font-black font-mono text-amber-700 dark:text-amber-300">
+                      ${recipeTotals.precioSugerido.toLocaleString("es-CO")} COP
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div className={`border-2 border-dashed rounded-2xl py-6 text-center transition ${
@@ -975,7 +1061,7 @@ export function FichaTecnicaProducto({
           )}
           <FieldError msg={touched.insumos && errors.insumos} />
 
-          {/* Section 2: Requisito 102 - Orden Lógico de Procesos de Preparación */}
+          {/* Section 2: Orden Lógico de Procesos de Preparación */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
               <div>
@@ -1220,3 +1306,5 @@ export function FichaTecnicaProducto({
     </div>
   );
 }
+
+export default FichaTecnicaProducto;

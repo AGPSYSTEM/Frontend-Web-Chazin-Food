@@ -33,7 +33,7 @@ export function FichasTecnicas({ readOnly = false }) {
 
       if (prodRes.status === "fulfilled") {
         const rawList = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
-        // #103: Los combos no llevan ficha técnica ni deben aparecer en este catálogo
+        // Los combos no llevan ficha técnica ni deben aparecer en este catálogo
         const nonCombos = rawList.filter(
           (p) =>
             !p.esCombo &&
@@ -73,12 +73,41 @@ export function FichasTecnicas({ readOnly = false }) {
   }, []);
 
   const currentList = activeTab === "productos" ? productos : preparados;
+
+  // Buscador generalizado por todas las columnas y atributos
   const filtered = currentList.filter((item) => {
     const term = search.toLowerCase().trim();
     if (!term) return true;
+
+    const isProducto = activeTab === "productos";
+    const itemId = String(item.id || item.idProducto || item.idInsumo || "").toLowerCase();
+    const codigo = String(item.codigo || "").toLowerCase();
     const nombre = (item.nombre || "").toLowerCase();
-    const cat = (item.categoria || item.categoriaNombre || item.categoria?.nombre || (activeTab === "productos" ? "Producto" : "Insumo Preparado")).toLowerCase();
-    return nombre.includes(term) || cat.includes(term);
+    const cat = (item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado")).toLowerCase();
+    const estado = String(item.estado || (item.activo === false ? "Inactivo" : "Activo")).toLowerCase();
+    const precio = String(item.precio || "");
+
+    const fichaRaw = fichasMap[`${isProducto ? "producto" : "insumo"}:${itemId}`] || item.fichaTecnica || null;
+    const version = fichaRaw?.versionActual ? `v${fichaRaw.versionActual} version ${fichaRaw.versionActual}`.toLowerCase() : "";
+    const rendimiento = String(fichaRaw?.rendimiento || "").toLowerCase();
+    const tiempo = fichaRaw?.tiempoPreparacion ? `${fichaRaw.tiempoPreparacion} min`.toLowerCase() : "";
+    
+    const ingredientesText = Array.isArray(fichaRaw?.detalles || fichaRaw?.insumos)
+      ? (fichaRaw.detalles || fichaRaw.insumos).map(d => d.nombreInsumo || d.insumo?.nombre || d.nombre || "").join(" ").toLowerCase()
+      : "";
+
+    return (
+      nombre.includes(term) ||
+      cat.includes(term) ||
+      itemId.includes(term) ||
+      codigo.includes(term) ||
+      estado.includes(term) ||
+      precio.includes(term) ||
+      version.includes(term) ||
+      rendimiento.includes(term) ||
+      tiempo.includes(term) ||
+      ingredientesText.includes(term)
+    );
   });
 
   // ── View for Editing Ficha Técnica ──
@@ -220,7 +249,7 @@ export function FichasTecnicas({ readOnly = false }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Buscar ${activeTab === "productos" ? "producto" : "insumo preparado"} o categoría...`}
+          placeholder={`Buscar por nombre, código, ID, categoría, versión, inactivo...`}
           className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors outline-none"
         />
       </div>
@@ -337,7 +366,7 @@ export function FichasTecnicas({ readOnly = false }) {
 
           {filtered.length === 0 && (
             <div className="col-span-full text-center py-16 text-sm text-gray-500 dark:text-gray-400 font-medium">
-              No se encontraron {activeTab === "productos" ? "productos" : "insumos preparados"} en la base de datos.
+              No se encontraron {activeTab === "productos" ? "productos" : "insumos preparados"} con el criterio de búsqueda.
             </div>
           )}
         </div>

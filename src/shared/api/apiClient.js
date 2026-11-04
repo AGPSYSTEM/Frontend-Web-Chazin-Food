@@ -87,6 +87,28 @@ export async function apiFetch(endpoint, options = {}) {
       }
     }
 
+    // Traducción de errores técnicos de base de datos a mensajes entendibles por el usuario (Ítem 13)
+    const lower = String(errorMessage || '').toLowerCase();
+    if (lower.includes('foreign key constraint') || lower.includes('cannot delete or update a parent row')) {
+      if (lower.includes('categoriaproducto') || lower.includes('idcategoriaproducto')) {
+        errorMessage = 'No se puede eliminar la categoría porque tiene productos asociados en el menú.';
+      } else if (lower.includes('producto') || lower.includes('idproducto')) {
+        errorMessage = 'No se puede eliminar este producto porque está vinculado a ventas o pedidos registrados.';
+      } else if (lower.includes('insumo') || lower.includes('idinsumo')) {
+        errorMessage = 'No se puede eliminar este insumo porque forma parte de recetas o compras activas.';
+      } else {
+        errorMessage = 'No se puede realizar esta acción porque el registro está asociado a otros datos del sistema.';
+      }
+    } else if (lower.includes('duplicate entry') || lower.includes('unique constraint')) {
+      if (lower.includes('nombre') || lower.includes('name')) {
+        errorMessage = 'Ya existe un registro con este nombre. Por favor ingresa uno diferente.';
+      } else if (lower.includes('codigo') || lower.includes('code')) {
+        errorMessage = 'Ya existe un elemento con este código registrado.';
+      } else {
+        errorMessage = 'Ya existe un registro con estos datos en el sistema. Por favor verifica la información.';
+      }
+    }
+
     const error = new Error(errorMessage);
     error.status = response.status;
     if (parsedErrorData) error.data = parsedErrorData;

@@ -9,8 +9,8 @@ export const produccionService = {
     return await apiClient.post("/produccion", data);
   },
 
-  updateEstadoOrden: async (id, estado) => {
-    return await apiClient.put(`/produccion/${id}/estado`, { estado });
+  updateEstadoOrden: async (id, estado, extraData = {}) => {
+    return await apiClient.put(`/produccion/${id}/estado`, { estado, ...extraData });
   },
 
   deleteOrden: async (id) => {

@@ -20,10 +20,12 @@ import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 export default function PosVendedor() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { warning } = useNotifications();
 
   const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
   const userRol = String(rawRol || "").toLowerCase().trim();
@@ -187,6 +189,15 @@ export default function PosVendedor() {
 
   // Open FastFoodProductModal (el modal anterior completo)
   const handleOpenCustomize = async (producto) => {
+    const prodStock = Number(producto?.stock !== undefined ? producto.stock : 25);
+    const isAgotado = Boolean(producto?.agotado || prodStock <= 0 || producto?.estado === "Inactivo" || producto?.estado === 0);
+    if (isAgotado) {
+      warning(
+        "Producto agotado por el momento",
+        `El producto "${producto?.nombre || "seleccionado"}" está agotado en este momento y no está disponible.`
+      );
+      return;
+    }
     setCustomizingProduct(producto);
     const prodId = producto.id || producto.idProducto;
     if (fichasCache[prodId]) {

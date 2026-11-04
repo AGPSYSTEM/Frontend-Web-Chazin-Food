@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { productosService } from "../servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -57,19 +57,53 @@ export function useProductos() {
     fetchProductos();
   }, [fetchProductos]);
 
-  const filteredProductos = productos.filter((p) => {
-    if (!p) return false;
+  // Buscador generalizado por todas las columnas (unidades, inactivos, variantes, adiciones, combos, precio, etc.)
+  const filteredProductos = useMemo(() => {
+    return productos.filter((p) => {
+      if (!p) return false;
 
-    const matchSearch = matchesSmartSearch(
-      [p.nombre, p.codigo, p.categoria, p.descripcion, p.precio],
-      searchTerm
-    );
+      const variantesText = Array.isArray(p.variantes)
+        ? p.variantes.map((v) => v.nombre || "").join(" ")
+        : "";
+      const adicionesText = Array.isArray(p.adiciones)
+        ? p.adiciones.map((a) => (typeof a === "object" ? a.nombre : String(a))).join(" ")
+        : "";
+      
+      let comboItemsText = "";
+      if (p.configuracionCombo) {
+        try {
+          const cfg = typeof p.configuracionCombo === "string" ? JSON.parse(p.configuracionCombo) : p.configuracionCombo;
+          if (Array.isArray(cfg?.productosAsociados)) {
+            comboItemsText = cfg.productosAsociados.map(a => a.nombre || "").join(" ");
+          }
+        } catch (_) {}
+      }
 
-    const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
-    const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
+      const matchSearch = matchesSmartSearch(
+        [
+          p.nombre,
+          p.codigo,
+          p.id,
+          p.idProducto,
+          p.categoria,
+          p.descripcion,
+          p.precio,
+          p.estado,
+          p.stock !== undefined ? `${p.stock} unidades` : "",
+          p.ventas !== undefined ? `${p.ventas} ventas` : "",
+          variantesText,
+          adicionesText,
+          comboItemsText
+        ],
+        searchTerm
+      );
 
-    return matchSearch && matchCategoria && matchEstado;
-  });
+      const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
+      const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
+
+      return matchSearch && matchCategoria && matchEstado;
+    });
+  }, [productos, searchTerm, filterCategoria, filterEstado]);
 
   const createProducto = async (data) => {
     try {
@@ -139,11 +173,11 @@ export function useProductos() {
     if (!confirmed) return false;
     try {
       await productosService.deleteProducto(id);
-      notify.success("Producto eliminado", "El producto fue eliminado del menú");
+      notify.success("Producto eliminado", "El producto fue eliminado del sistema");
       await fetchProductos();
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "No se pudo eliminar el producto");
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar el producto");
       return false;
     }
   };

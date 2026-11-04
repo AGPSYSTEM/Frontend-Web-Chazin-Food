@@ -12,12 +12,17 @@ import {
   User, 
   Layers,
   MapPin,
-  Tag
+  Tag,
+  ClipboardCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Printer
 } from "lucide-react";
 import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { imprimirComanda } from "../utils/comandaUtils";
 
-export function VerOrdenModal({ isOpen, onClose, orden }) {
+export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
   if (!isOpen || !orden) return null;
 
   const productos = useMemo(() => {
@@ -120,9 +125,13 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                   {productos.length} {productos.length === 1 ? "platillo" : "platillos distintos"}
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium">
                 <span>
-                  Cliente: <strong className="text-gray-800 dark:text-gray-200">{orden.cliente || orden.responsable || "Cliente Mostrador"}</strong>
+                  Cliente: <strong className="text-gray-900 dark:text-gray-100">{orden.cliente || "Cliente Mostrador"}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Responsable / Cocina: <strong className="text-blue-700 dark:text-blue-300 font-bold">{orden.cocinero || orden.responsableCocina || orden.responsable || "En Cocina"}</strong>
                 </span>
                 {orden.mesa && (
                   <>
@@ -135,28 +144,50 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0 ml-2"
-            aria-label="Cerrar modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          
+          <div className="flex items-center gap-2 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => imprimirComanda(orden)}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 text-xs font-bold"
+              title="Imprimir comanda para cocina"
+            >
+              <Printer className="w-4 h-4 text-[#F05454]" />
+              <span className="hidden sm:inline">Imprimir Comanda</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              aria-label="Cerrar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Body */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm text-gray-900 dark:text-gray-100">
           
-          {/* Info Grid (4 columnas para aprovechar el ancho) */}
+          {/* Info Grid (Ajustado con hora de inicio y hora del estado) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Estado
+                Estado Actual
               </p>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 {orden.estado}
               </span>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
+                Hora del Estado
+              </p>
+              <p className="font-bold text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{orden.horaEstado || orden.horaEstadoCalculada || orden.horaCambioEstado || orden.horaInicio || "Reciente"}</span>
+              </p>
             </div>
 
             <div>
@@ -180,19 +211,10 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
 
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Fecha
+                Hora Inicio / Fecha
               </p>
               <p className="font-semibold text-gray-900 dark:text-gray-100 text-xs truncate">
-                {orden.fecha || "2026-08-18"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Hora de Inicio
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-gray-100 text-xs truncate">
-                {orden.horaInicio || "12:00 PM"}
+                {orden.horaInicio || "12:00 PM"} · {orden.fecha || "Hoy"}
               </p>
             </div>
           </div>
@@ -250,7 +272,7 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
                         ? "bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-300 dark:border-emerald-800"
                         : isExpanded
                         ? "bg-white dark:bg-gray-850 border-gray-300 dark:border-gray-700 shadow-xs"
-                        : "bg-[#fbfcfd] dark:bg-gray-800/60 border-gray-200 dark:border-gray-750 hover:border-gray-300"
+                        : "bg-[#fbfcfd] dark:bg-gray-800/60 border-gray-200 dark:border-gray-755 hover:border-gray-300"
                     }`}
                   >
                     {/* Fila Encabezado del Platillo (Clickable para abrir/cerrar) */}
@@ -424,6 +446,74 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
             </div>
           </div>
 
+          {/* REGISTRO DEL CHECKLIST DE VERIFICACIÓN DE COCINA */}
+          {Array.isArray(orden.checklistPreparacion) && orden.checklistPreparacion.length > 0 && (
+            <div
+              className={`rounded-2xl border p-4 space-y-3 ${
+                orden.pedidoCompleto
+                  ? "bg-emerald-50/70 dark:bg-emerald-950/25 border-emerald-200 dark:border-emerald-800/70"
+                  : "bg-amber-50/80 dark:bg-amber-950/25 border-amber-300 dark:border-amber-800/70"
+              }`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {orden.pedidoCompleto ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  )}
+                  <span className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                    Checklist de Verificación del Pedido
+                  </span>
+                </div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                    orden.pedidoCompleto
+                      ? "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+                      : "bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                  }`}
+                >
+                  {orden.pedidoCompleto ? "✅ Se pudo hacer todo el pedido" : "⚠️ Pedido con novedades / incompleto"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {orden.checklistPreparacion.map((chk, cIdx) => {
+                  const isOk = Boolean(chk.completado) && Number(chk.cantidadPreparada ?? chk.cantidad) >= Number(chk.cantidad || 1);
+                  return (
+                    <div
+                      key={cIdx}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 bg-white dark:bg-gray-900/80 px-3.5 py-2.5 rounded-xl border border-gray-200/80 dark:border-gray-700/80 text-xs"
+                    >
+                      <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100">
+                        <span>
+                          {chk.cantidad} {chk.nombre}
+                        </span>
+                        <span className="text-sm">{isOk ? "✅" : "❌"}</span>
+                        {!isOk && Number(chk.cantidadPreparada) > 0 && (
+                          <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                            Se prepararon {chk.cantidadPreparada} de {chk.cantidad}
+                          </span>
+                        )}
+                      </div>
+                      {!isOk && chk.motivo && (
+                        <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 italic">
+                          Motivo: {chk.motivo}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {orden.observacionCocina && (
+                <p className="text-xs text-gray-700 dark:text-gray-300 italic pt-1">
+                  <strong>Nota de cocina:</strong> "{orden.observacionCocina}"
+                </p>
+              )}
+            </div>
+          )}
+
           {/* OBSERVACIONES GENERALES DE LA ORDEN SI EXISTEN */}
           {parsedNotes.hasNotes && (
             <div className="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 p-3.5 rounded-2xl text-xs text-blue-900 dark:text-blue-200 space-y-2">
@@ -449,7 +539,7 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
+        <div className="p-4 px-6 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-900 shrink-0">
           <div className="text-xs text-gray-500 dark:text-gray-400">
             <span>Total a preparar: <strong>{totalUnidades} unidades</strong></span>
             {listosCount > 0 && (
@@ -458,13 +548,35 @@ export function VerOrdenModal({ isOpen, onClose, orden }) {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-xs sm:text-sm transition cursor-pointer"
-          >
-            Cerrar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => imprimirComanda(orden)}
+              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 border border-gray-200 dark:border-gray-700"
+            >
+              <Printer className="w-4 h-4 text-[#F05454]" />
+              <span>Imprimir Comanda</span>
+            </button>
+            {onOpenChecklist && (orden.estado === "En Preparación" || orden.estado === "Listo") && (
+              <button
+                type="button"
+                onClick={() => onOpenChecklist(orden)}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs sm:text-sm transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                <span>
+                  {orden.estado === "En Preparación" ? "Verificar Checklist y Pasar a Listo" : "Editar Checklist"}
+                </span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold rounded-2xl text-xs sm:text-sm transition cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     </div>

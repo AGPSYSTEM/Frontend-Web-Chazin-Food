@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { produccionService } from "../servicios/produccionService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 
 export function useGestionProduccion() {
+  const { user } = useAuth();
   const notify = useNotifications();
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,14 +36,35 @@ export function useGestionProduccion() {
     return () => clearInterval(interval);
   }, [fetchOrdenes]);
 
+  // Buscador generalizado que busca por TODAS las columnas y atributos (Ítems 8, 17, 20 y Comandas)
   const filteredOrdenes = ordenes.filter((o) => {
     const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return filterEstado === "Todos" || o.estado === filterEstado;
+    }
+
+    const prodsString = Array.isArray(o.productos)
+      ? o.productos.map(p => `${p.nombre || ''} ${p.observaciones || ''} ${(p.adiciones || []).map(a => typeof a === 'object' ? a.nombre : a).join(' ')}`).join(' ')
+      : '';
+
     const matchSearch =
-      !term ||
-      o.codigo?.toLowerCase().includes(term) ||
-      o.platilloNombre?.toLowerCase().includes(term) ||
-      o.responsable?.toLowerCase().includes(term) ||
-      o.cocinero?.toLowerCase().includes(term);
+      (o.codigo && o.codigo.toLowerCase().includes(term)) ||
+      (o.id && String(o.id).includes(term)) ||
+      (o.platilloNombre && o.platilloNombre.toLowerCase().includes(term)) ||
+      (o.cliente && o.cliente.toLowerCase().includes(term)) ||
+      (o.responsable && o.responsable.toLowerCase().includes(term)) ||
+      (o.cocinero && o.cocinero.toLowerCase().includes(term)) ||
+      (o.estado && o.estado.toLowerCase().includes(term)) ||
+      (o.horaInicio && o.horaInicio.toLowerCase().includes(term)) ||
+      (o.horaEstado && o.horaEstado.toLowerCase().includes(term)) ||
+      (o.fecha && o.fecha.toLowerCase().includes(term)) ||
+      (o.tiempo && o.tiempo.toLowerCase().includes(term)) ||
+      (o.mesa && o.mesa.toLowerCase().includes(term)) ||
+      (o.tipo && o.tipo.toLowerCase().includes(term)) ||
+      (o.cantidad && String(o.cantidad).includes(term)) ||
+      (o.prioridad && `turno #${o.prioridad}`.includes(term)) ||
+      (o.observaciones && o.observaciones.toLowerCase().includes(term)) ||
+      prodsString.toLowerCase().includes(term);
 
     const matchEstado = filterEstado === "Todos" || o.estado === filterEstado;
 
@@ -60,10 +83,28 @@ export function useGestionProduccion() {
     }
   };
 
-  const updateEstado = async (id, nuevoEstado) => {
+  const updateEstado = async (id, nuevoEstado, extraData = {}) => {
     try {
-      await produccionService.updateEstadoOrden(id, nuevoEstado);
-      notify.success("Estado Actualizado", `La orden pasó a estado "${nuevoEstado}"`);
+      const cookName = user?.nombre
+        ? `${user.nombre} ${user.apellidos || ''}`.trim()
+        : "Chef en Turno";
+
+      const payload = {
+        ...extraData,
+        cocinero: extraData?.cocinero || cookName,
+        responsableCocina: extraData?.cocinero || cookName
+      };
+
+      await produccionService.updateEstadoOrden(id, nuevoEstado, payload);
+      if (extraData?.checklistPreparacion) {
+        if (extraData.pedidoCompleto) {
+          notify.success("Pedido Completo (✅)", `La orden pasó a "${nuevoEstado}" con todos los productos verificados.`);
+        } else {
+          notify.warning("Pedido Incompleto Registrado", `La orden pasó a "${nuevoEstado}" registrando las novedades del checklist.`);
+        }
+      } else {
+        notify.success("Estado Actualizado", `La orden pasó a estado "${nuevoEstado}"`);
+      }
       await fetchOrdenes();
       return true;
     } catch (err) {
