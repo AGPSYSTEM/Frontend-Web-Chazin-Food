@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator, Lock } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -698,56 +698,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
     }
 
-    // Validar ficha técnica obligatoria (solo para productos, NO para combos)
-    if (!configCombo.esCombo) {
-      const ft = fichaTecnica || {};
-      const missingFichaFields = [];
-
-      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-      if (!ingredientes || ingredientes.length === 0) {
-        missingFichaFields.push("Ingredientes / Insumos necesarios (mínimo 1)");
-      }
-
-      if (!ft.procedimiento || !String(ft.procedimiento).trim()) {
-        missingFichaFields.push("Procedimiento de Preparación");
-      }
-
-      if (!ft.tiempoPreparacion || Number(ft.tiempoPreparacion) < 1) {
-        missingFichaFields.push("Tiempo de Preparación (mínimo 1 min)");
-      }
-
-      if (!ft.rendimiento || !String(ft.rendimiento).trim()) {
-        missingFichaFields.push("Rendimiento / Porciones");
-      }
-
-      if (!ft.condicionesAlmacenamiento || !String(ft.condicionesAlmacenamiento).trim()) {
-        missingFichaFields.push("Condiciones de Almacenamiento");
-      }
-
-      if (!ft.vidaUtil || !String(ft.vidaUtil).trim()) {
-        missingFichaFields.push("Vida Útil");
-      }
-
-      if (!ft.especificaciones || !String(ft.especificaciones).trim()) {
-        missingFichaFields.push("Especificaciones Técnicas / Calidad");
-      }
-
-      if (!ft.caracteristicas || !String(ft.caracteristicas).trim()) {
-        missingFichaFields.push("Características Organolépticas");
-      }
-
-      if (!ft.informacionNutricional || !String(ft.informacionNutricional).trim()) {
-        missingFichaFields.push("Información Nutricional");
-      }
-
-      if (missingFichaFields.length > 0) {
-        notify.error(
-          "Ficha Técnica Incompleta",
-          "Primero debes completar y guardar la ficha técnica"
-        );
-        return;
-      }
-    }
+    // Ficha técnica desacoplada del modal de producto (se gestiona independientemente)
 
     try {
       setUploading(true);
@@ -1621,18 +1572,26 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
           </div>
 
-          {/* Section: Ficha Técnica (solo para productos, NO para combos) */}
+          {/* Ficha Técnica: Edición Independiente */}
           {!configCombo.esCombo && (
-            <FichaTecnicaProducto
-              productId={producto?.id || producto?.idProducto}
-              productName={form.nombre}
-              initialData={producto?.fichaTecnica || null}
-              entityData={entityDataActual}
-              prevEntityData={prevEntityDataInicial}
-              onRestoreEntityData={handleRestoreEntityData}
-              onChange={(data) => setFichaTecnica(data)}
-              onSave={(data) => setFichaTecnica(data)}
-            />
+            <div className="p-4 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200/80 dark:border-purple-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                    Ficha Técnica (Receta, Ingredientes y Preparación)
+                  </h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    La ficha técnica se gestiona de forma independiente en su propio apartado para no condicionar los datos comerciales del producto.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100/80 dark:bg-purple-900/40 px-3 py-1.5 rounded-xl shrink-0 self-start sm:self-auto">
+                Edición Separada
+              </span>
+            </div>
           )}
 
           {/* Footer */}

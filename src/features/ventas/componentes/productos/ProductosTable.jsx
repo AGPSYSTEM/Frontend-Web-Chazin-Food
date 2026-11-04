@@ -11,7 +11,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Lock
+  Lock,
+  FileText
 } from "lucide-react";
 import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -44,6 +45,7 @@ export function ProductosTable({
   onDelete,
   onView,
   onCreateEvento,
+  onEditFicha,
   canEdit = true,
   canDelete = true
 }) {
@@ -286,7 +288,7 @@ export function ProductosTable({
                           </button>
                         );
                       })()}
-                      {/* Ver */}
+                      {/* Ver detalle */}
                       <button
                         onClick={() => onView && onView(p)}
                         title="Ver detalle del producto"
@@ -294,7 +296,19 @@ export function ProductosTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {/* Editar producto y su Ficha Técnica (con Candado de Identidad si tiene ventas asociadas) */}
+
+                      {/* Solo editar Ficha Técnica */}
+                      {canEdit && !p.esCombo && !p.configuracionCombo?.esCombo && (
+                        <button
+                          onClick={() => onEditFicha && onEditFicha(p)}
+                          title="Solo editar Ficha Técnica (receta, insumos y preparación)"
+                          className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {/* Solo editar producto (datos comerciales) */}
                       {canEdit && (() => {
                         const hasSalesLock = Boolean(p.tieneVentas || Number(p.ventas || 0) > 0);
                         return (
@@ -302,8 +316,8 @@ export function ProductosTable({
                             onClick={() => onEdit && onEdit(p)}
                             title={
                               hasSalesLock
-                                ? "Producto con ventas asociadas: Identidad protegida 🔒 • Permite actualizar y versionar Precio, Descripción y Ficha Técnica"
-                                : "Editar producto y ficha técnica"
+                                ? "Producto con ventas asociadas: Identidad protegida 🔒 • Editar datos del producto"
+                                : "Editar producto"
                             }
                             className={`p-1.5 rounded-lg transition-colors cursor-pointer relative ${
                               hasSalesLock

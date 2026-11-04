@@ -67,8 +67,8 @@ function serializarPasos(pasos) {
     .join("\n\n");
 }
 
-const inputCls = "w-full px-4 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#F05454] focus:border-transparent text-sm";
-const labelCls = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2";
+const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/30 focus:border-[#F05454] text-xs font-medium transition shadow-2xs outline-none";
+const labelCls = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide";
 const requiredMark = <span className="text-red-500"> *</span>;
 
 function FieldError({ msg }) {
@@ -1075,119 +1075,133 @@ export function FichaTecnicaProducto({
             <FieldError msg={touched.procedimiento && errors.procedimiento} />
           </div>
 
-          {/* Section 3: Tiempo & Rendimiento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Tiempo de Preparación (min){requiredMark}</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={tiempoPreparacion}
-                onKeyDown={(e) => {
-                  if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                onChange={handleTiempoChange}
-                onBlur={handleTiempoBlur}
-                placeholder="Ej. 15"
-                className={getInputClass("tiempoPreparacion")}
-              />
-              <FieldError msg={touched.tiempoPreparacion && errors.tiempoPreparacion} />
+          {/* Section 3: Parámetros Operativos de Preparación */}
+          <div className="space-y-3 bg-white dark:bg-gray-850 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200">
+                Parámetros de Preparación y Rendimiento
+              </h4>
             </div>
-            <div>
-              <label className={labelCls}>Rendimiento / Porciones{requiredMark}</label>
-              <input
-                type="text"
-                value={rendimiento}
-                onChange={(e) => handleFieldChange("rendimiento", setRendimiento, e.target.value)}
-                onBlur={() => handleBlur("rendimiento", rendimiento)}
-                className={getInputClass("rendimiento")}
-                placeholder="Ej: 1 porción"
-              />
-              <FieldError msg={touched.rendimiento && errors.rendimiento} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div>
+                <label className={labelCls}>Tiempo Preparación (min){requiredMark}</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={tiempoPreparacion}
+                  onKeyDown={(e) => {
+                    if (['.', ',', '-', '+', 'e', 'E'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={handleTiempoChange}
+                  onBlur={handleTiempoBlur}
+                  placeholder="Ej. 15"
+                  className={getInputClass("tiempoPreparacion")}
+                />
+                <FieldError msg={touched.tiempoPreparacion && errors.tiempoPreparacion} />
+              </div>
+              <div>
+                <label className={labelCls}>Rendimiento / Porciones{requiredMark}</label>
+                <input
+                  type="text"
+                  value={rendimiento}
+                  onChange={(e) => handleFieldChange("rendimiento", setRendimiento, e.target.value)}
+                  onBlur={() => handleBlur("rendimiento", rendimiento)}
+                  className={getInputClass("rendimiento")}
+                  placeholder="Ej: 1 porción"
+                />
+                <FieldError msg={touched.rendimiento && errors.rendimiento} />
+              </div>
+              <div>
+                <label className={labelCls}>Vida Útil{requiredMark}</label>
+                <input
+                  type="text"
+                  value={vidaUtil}
+                  onChange={(e) => handleFieldChange("vidaUtil", setVidaUtil, e.target.value)}
+                  onBlur={() => handleBlur("vidaUtil", vidaUtil)}
+                  className={getInputClass("vidaUtil")}
+                  placeholder="Ej: Consumo inmediato"
+                />
+                <FieldError msg={touched.vidaUtil && errors.vidaUtil} />
+              </div>
             </div>
           </div>
 
-          {/* Section 4: Especificaciones & Características */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Especificaciones Técnicas{requiredMark}</label>
-              <textarea
-                value={especificaciones}
-                onChange={(e) => handleFieldChange("especificaciones", setEspecificaciones, e.target.value)}
-                onBlur={() => handleBlur("especificaciones", especificaciones)}
-                className={`${getInputClass("especificaciones")} resize-none`}
-                rows={3}
-                placeholder="Gramaje, temperatura de cocción, estándares..."
-              />
-              <FieldError msg={touched.especificaciones && errors.especificaciones} />
+          {/* Section 4: Control de Calidad, Nutrición y Almacenamiento */}
+          <div className="space-y-3 bg-white dark:bg-gray-850 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <h4 className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200">
+                Especificaciones Técnicas, Calidad y Conservación
+              </h4>
             </div>
-            <div>
-              <label className={labelCls}>Características Organolépticas{requiredMark}</label>
-              <textarea
-                value={caracteristicas}
-                onChange={(e) => handleFieldChange("caracteristicas", setCaracteristicas, e.target.value)}
-                onBlur={() => handleBlur("caracteristicas", caracteristicas)}
-                className={`${getInputClass("caracteristicas")} resize-none`}
-                rows={3}
-                placeholder="Sabor, textura, aroma, apariencia..."
-              />
-              <FieldError msg={touched.caracteristicas && errors.caracteristicas} />
-            </div>
-          </div>
 
-          {/* Section 5: Información Nutricional & Condiciones Almacenamiento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Información Nutricional{requiredMark}</label>
-              <textarea
-                value={informacionNutricional}
-                onChange={(e) => handleFieldChange("informacionNutricional", setInformacionNutricional, e.target.value)}
-                onBlur={() => handleBlur("informacionNutricional", informacionNutricional)}
-                className={`${getInputClass("informacionNutricional")} resize-none`}
-                rows={3}
-                placeholder="Calorías, proteínas, carbohidratos..."
-              />
-              <FieldError msg={touched.informacionNutricional && errors.informacionNutricional} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className={labelCls}>Especificaciones Técnicas{requiredMark}</label>
+                <textarea
+                  value={especificaciones}
+                  onChange={(e) => handleFieldChange("especificaciones", setEspecificaciones, e.target.value)}
+                  onBlur={() => handleBlur("especificaciones", especificaciones)}
+                  className={`${getInputClass("especificaciones")} resize-none`}
+                  rows={2}
+                  placeholder="Gramaje, temperatura de cocción, estándares..."
+                />
+                <FieldError msg={touched.especificaciones && errors.especificaciones} />
+              </div>
+              <div>
+                <label className={labelCls}>Características Sensoriales{requiredMark}</label>
+                <textarea
+                  value={caracteristicas}
+                  onChange={(e) => handleFieldChange("caracteristicas", setCaracteristicas, e.target.value)}
+                  onBlur={() => handleBlur("caracteristicas", caracteristicas)}
+                  className={`${getInputClass("caracteristicas")} resize-none`}
+                  rows={2}
+                  placeholder="Sabor, textura, aroma, apariencia..."
+                />
+                <FieldError msg={touched.caracteristicas && errors.caracteristicas} />
+              </div>
             </div>
-            <div>
-              <label className={labelCls}>Condiciones de Almacenamiento{requiredMark}</label>
-              <textarea
-                value={condicionesAlmacenamiento}
-                onChange={(e) => handleFieldChange("condicionesAlmacenamiento", setCondicionesAlmacenamiento, e.target.value)}
-                onBlur={() => handleBlur("condicionesAlmacenamiento", condicionesAlmacenamiento)}
-                className={`${getInputClass("condicionesAlmacenamiento")} resize-none`}
-                rows={3}
-                placeholder="Refrigeración, temperatura ideal..."
-              />
-              <FieldError msg={touched.condicionesAlmacenamiento && errors.condicionesAlmacenamiento} />
-            </div>
-          </div>
 
-          {/* Section 6: Vida Útil & Observaciones */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Vida Útil{requiredMark}</label>
-              <input
-                type="text"
-                value={vidaUtil}
-                onChange={(e) => handleFieldChange("vidaUtil", setVidaUtil, e.target.value)}
-                onBlur={() => handleBlur("vidaUtil", vidaUtil)}
-                className={getInputClass("vidaUtil")}
-                placeholder="Ej: Consumo inmediato o 24h refrigerado"
-              />
-              <FieldError msg={touched.vidaUtil && errors.vidaUtil} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div>
+                <label className={labelCls}>Información Nutricional{requiredMark}</label>
+                <textarea
+                  value={informacionNutricional}
+                  onChange={(e) => handleFieldChange("informacionNutricional", setInformacionNutricional, e.target.value)}
+                  onBlur={() => handleBlur("informacionNutricional", informacionNutricional)}
+                  className={`${getInputClass("informacionNutricional")} resize-none`}
+                  rows={2}
+                  placeholder="Calorías, proteínas, carbohidratos..."
+                />
+                <FieldError msg={touched.informacionNutricional && errors.informacionNutricional} />
+              </div>
+              <div>
+                <label className={labelCls}>Condiciones de Almacenamiento{requiredMark}</label>
+                <textarea
+                  value={condicionesAlmacenamiento}
+                  onChange={(e) => handleFieldChange("condicionesAlmacenamiento", setCondicionesAlmacenamiento, e.target.value)}
+                  onBlur={() => handleBlur("condicionesAlmacenamiento", condicionesAlmacenamiento)}
+                  className={`${getInputClass("condicionesAlmacenamiento")} resize-none`}
+                  rows={2}
+                  placeholder="Refrigeración, temperatura ideal..."
+                />
+                <FieldError msg={touched.condicionesAlmacenamiento && errors.condicionesAlmacenamiento} />
+              </div>
             </div>
+
             <div>
-              <label className={labelCls}>Observaciones</label>
+              <label className={labelCls}>Observaciones y Alérgenos (Opcional)</label>
               <input
                 type="text"
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 className={inputCls}
-                placeholder="Notas adicionales, alérgenos..."
+                placeholder="Notas adicionales para cocina, advertencias de alérgenos..."
               />
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles, FileText, X } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useProductos } from "../hooks/useProductos";
@@ -10,6 +10,7 @@ import { EventosModal } from "../componentes/productos/EventosModal";
 import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
 import { eventosService } from "../servicios/eventosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
+import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 
 export function Productos() {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ export function Productos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [editingFichaProducto, setEditingFichaProducto] = useState(null);
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
@@ -243,6 +245,7 @@ export function Productos() {
           onDelete={deleteProducto}
           onView={handleOpenView}
           onCreateEvento={handleCreateEvento}
+          onEditFicha={(p) => setEditingFichaProducto(p)}
           canEdit={canEdit}
           canDelete={canDelete}
         />
@@ -305,6 +308,49 @@ export function Productos() {
         eventoToEdit={eventoParaEditar}
         onCreated={handleEventoCreated}
       />
+      {/* Modal Dedicado: Solo Editar Ficha Técnica */}
+      {editingFichaProducto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0 bg-gray-50/50 dark:bg-gray-800/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-gray-100">
+                    Ficha Técnica: {editingFichaProducto.nombre}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Edita únicamente la receta, proporciones, costos y pasos de preparación de este producto.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingFichaProducto(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 scrollbar-thin">
+              <FichaTecnicaProducto
+                productId={editingFichaProducto.id || editingFichaProducto.idProducto}
+                productName={editingFichaProducto.nombre}
+                initialData={editingFichaProducto.fichaTecnica || null}
+                onSave={() => {
+                  refetch();
+                  setEditingFichaProducto(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

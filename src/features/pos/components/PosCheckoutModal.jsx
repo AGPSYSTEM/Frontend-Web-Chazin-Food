@@ -47,6 +47,7 @@ export function PosCheckoutModal({
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [clienteNombre, setClienteNombre] = useState("");
   const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [tieneCuenta, setTieneCuenta] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
   const responsableNombre = user
@@ -117,12 +118,14 @@ export function PosCheckoutModal({
 
   const handleSelectClient = (c) => {
     setSelectedCliente(c);
+    setTieneCuenta(true);
     setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
     setIsSearchingClient(false);
   };
 
   const handleClearSelectedClient = () => {
     setSelectedCliente(null);
+    setTieneCuenta(false);
     setClienteNombre("");
   };
 
@@ -321,7 +324,7 @@ export function PosCheckoutModal({
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
                 <User className="w-4 h-4 text-[#f05454]" />
-                <span>Cliente y Fidelidad</span>
+                <span>Identificación del Cliente</span>
               </h4>
               {selectedCliente && (
                 <FidelidadBadge
@@ -330,6 +333,47 @@ export function PosCheckoutModal({
                   size="sm"
                 />
               )}
+            </div>
+
+            {/* Selector Inicial: Especificar al hacer la venta si tiene cuenta o no */}
+            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2 shadow-2xs">
+              <span className="text-[11px] font-black text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <span>¿El cliente tiene cuenta registrada en Chazin Food?</span>
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(true);
+                    setIsSearchingClient(true);
+                  }}
+                  className={`py-2 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    tieneCuenta || selectedCliente
+                      ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/40 text-[#f05454] shadow-2xs"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Sí, Con Cuenta</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(false);
+                    setIsSearchingClient(false);
+                    handleClearSelectedClient();
+                  }}
+                  className={`py-2 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    !tieneCuenta && !selectedCliente
+                      ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>No, Sin Cuenta (Ocasional)</span>
+                </button>
+              </div>
             </div>
 
             {/* CASO B: Buscador Interactivo de Clientes (Se muestra al presionar Buscar o Cambiar) */}

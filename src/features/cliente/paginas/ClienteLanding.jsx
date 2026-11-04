@@ -2736,7 +2736,7 @@ export function ClienteLanding() {
                     const lineTotalPrice = unitPriceWithAdds * (Number(item.cantidad) || 1);
 
                     return (
-                      <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 shadow-2xs">
+                      <div key={itemKey} className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-800 flex items-start justify-between gap-3 shadow-2xs hover:border-gray-200 dark:hover:border-gray-700 transition">
                         {(() => {
                           let displayImg = item.imagen;
                           if (!displayImg || typeof displayImg !== "string" || (!displayImg.startsWith("http") && !displayImg.startsWith("/") && !displayImg.startsWith("data:"))) {
@@ -2751,18 +2751,22 @@ export function ClienteLanding() {
                               width="48"
                               height="48"
                               style={{ aspectRatio: "1 / 1" }}
-                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700"
+                              className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-2xs border border-gray-100 dark:border-gray-700 mt-0.5"
                             />
                           ) : (
-                            <FoodIconBadge name={item.nombre} size="md" />
+                            <FoodIconBadge name={item.nombre} size="md" className="mt-0.5" />
                           );
                         })()}
+
+                        {/* Contenido Central: Título, Adiciones, Stepper */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 truncate">{item.nombre}</h4>
+                          <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate" title={item.nombre}>
+                            {item.nombre}
+                          </h4>
                           
                           {/* Resumen de Bebida o Acompañante de Combo */}
                           {item.observaciones && item.observaciones.toLowerCase().includes("bebida") && (
-                            <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-bold block mt-0.5">
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block mt-0.5">
                               🥤 {item.observaciones.split("•").find(s => s.toLowerCase().includes("bebida"))?.trim() || item.observaciones}
                             </span>
                           )}
@@ -2778,8 +2782,8 @@ export function ClienteLanding() {
                           {item.adiciones && item.adiciones.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {item.adiciones.map((a, aIdx) => (
-                                <span key={aIdx} className="text-[10.5px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
-                                  <img src={getAdicionImage(a)} alt="" aria-hidden="true" width="14" height="14" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
+                                <span key={aIdx} className="text-[10px] bg-rose-50 dark:bg-rose-950/40 text-[#F05454] dark:text-rose-300 px-1.5 py-0.5 rounded-md font-bold flex items-center gap-1">
+                                  <img src={getAdicionImage(a)} alt="" aria-hidden="true" width="13" height="13" className="w-3.5 h-3.5 rounded-full object-cover inline-block" />
                                   +{a.cantidad > 1 ? `${a.cantidad}x ` : ""}{a.nombre} (+${((Number(a.precio) || 0) * (Number(a.cantidad) || 1)).toLocaleString("es-CO")})
                                 </span>
                               ))}
@@ -2796,49 +2800,64 @@ export function ClienteLanding() {
                             </div>
                           )}
 
-                          {/* Precio dinámico del producto con adiciones */}
-                          <div className="flex items-baseline gap-1.5 mt-1">
-                            <span className="text-xs font-black text-red-600 dark:text-red-400">
-                              ${lineTotalPrice.toLocaleString("es-CO")}
-                            </span>
-                            {additionsUnit > 0 && (
-                              <span className="text-[10px] text-gray-400">
-                                (${unitPriceWithAdds.toLocaleString("es-CO")} c/u)
-                              </span>
-                            )}
+                          {/* Controles de cantidad (Stepper) */}
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
+                              aria-label={`Reducir cantidad de ${item.nombre}`}
+                              className="w-6 h-6 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                            >
+                              -
+                            </button>
+                            <span className="text-xs font-bold min-w-4 text-center font-mono">{item.cantidad}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (totalInCartForProd >= prodStock) {
+                                  error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
+                                } else {
+                                  updateQuantity(item.cartItemId || item.id, 1);
+                                }
+                              }}
+                              aria-label={`Aumentar cantidad de ${item.nombre}`}
+                              className="w-6 h-6 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
+                            >
+                              +
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* Columna Derecha: Precios Apilados & Organizados para Sumar Fácilmente */}
+                        <div className="flex flex-col items-end justify-between shrink-0 text-right min-w-[85px] self-stretch">
                           <button
-                            onClick={() => updateQuantity(item.cartItemId || item.id, -1)}
-                            aria-label={`Reducir cantidad de ${item.nombre}`}
-                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                          >
-                            -
-                          </button>
-                          <span className="text-xs font-bold w-4 text-center">{item.cantidad}</span>
-                          <button
-                            onClick={() => {
-                              if (totalInCartForProd >= prodStock) {
-                                error("Límite de stock", `Solo hay ${prodStock} unidades disponibles de ${item.nombre}.`);
-                              } else {
-                                updateQuantity(item.cartItemId || item.id, 1);
-                              }
-                            }}
-                            aria-label={`Aumentar cantidad de ${item.nombre}`}
-                            className="w-7 h-7 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer active:scale-95 transition"
-                          >
-                            +
-                          </button>
-                          <button
+                            type="button"
                             onClick={() => removeFromCart(item.cartItemId || item.id)}
                             aria-label={`Eliminar ${item.nombre} del carrito`}
-                            className="p-1 text-gray-400 hover:text-red-500 cursor-pointer transition"
+                            className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md cursor-pointer transition -mr-1"
                             title="Eliminar este producto"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
+
+                          <div className="flex flex-col items-end mt-auto space-y-0.5">
+                            {/* Precio Unitario explícito */}
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                              Unit: <span className="font-mono tabular-nums font-semibold text-gray-700 dark:text-gray-300">${unitPriceWithAdds.toLocaleString("es-CO")}</span>
+                            </div>
+
+                            {/* Desglose si cantidad > 1 */}
+                            {item.cantidad > 1 && (
+                              <div className="text-[9.5px] text-gray-400 font-mono tabular-nums">
+                                {item.cantidad} × ${unitPriceWithAdds.toLocaleString("es-CO")}
+                              </div>
+                            )}
+
+                            {/* Subtotal del producto alineado a la derecha */}
+                            <div className="text-sm font-black text-red-600 dark:text-red-400 font-mono tabular-nums tracking-tight">
+                              ${lineTotalPrice.toLocaleString("es-CO")}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -2939,7 +2958,7 @@ export function ClienteLanding() {
               <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2 shrink-0">
                 <div className="flex justify-between items-center text-xs font-semibold text-gray-500 dark:text-gray-400">
                   <span>Subtotal:</span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">${clientSubtotal.toLocaleString("es-CO")}</span>
+                  <span className="font-mono font-bold text-gray-900 dark:text-gray-100 tabular-nums text-sm">${clientSubtotal.toLocaleString("es-CO")}</span>
                 </div>
                 {discountPercent > 0 && (
                   <div className="flex justify-between items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
@@ -2947,12 +2966,12 @@ export function ClienteLanding() {
                       <Sparkles className="w-3.5 h-3.5" />
                       Descuento Fidelidad ({discountPercent}%):
                     </span>
-                    <span>-${clientDiscountMonto.toLocaleString("es-CO")}</span>
+                    <span className="font-mono font-bold tabular-nums">-${clientDiscountMonto.toLocaleString("es-CO")}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-base font-extrabold text-gray-900 dark:text-gray-100 pt-1 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex justify-between items-baseline text-base font-extrabold text-gray-900 dark:text-gray-100 pt-1.5 border-t border-gray-100 dark:border-gray-800">
                   <span>Total Pedido:</span>
-                  <span className="text-red-600 dark:text-red-400 text-xl font-black">${totalCheckout.toLocaleString("es-CO")}</span>
+                  <span className="text-red-600 dark:text-red-400 text-xl font-black font-mono tabular-nums">${totalCheckout.toLocaleString("es-CO")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <button
