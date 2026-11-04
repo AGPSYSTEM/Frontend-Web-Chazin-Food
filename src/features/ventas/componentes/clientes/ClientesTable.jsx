@@ -42,14 +42,14 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 tracking-wider uppercase">
-              <th className="px-5 py-3.5">CLIENTE</th>
-              <th className="px-5 py-3.5">TELÉFONO</th>
-              <th className="px-5 py-3.5">EMAIL</th>
-              <th className="px-5 py-3.5 text-center">COMPRAS</th>
-              <th className="px-5 py-3.5">TOTAL CONSUMIDO</th>
-              <th className="px-5 py-3.5">TIPO</th>
-              <th className="px-5 py-3.5">ESTADO</th>
-              <th className="px-5 py-3.5 text-center">ACCIONES</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">CLIENTE</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TELÉFONO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">EMAIL</th>
+              <th className="px-3.5 py-3 text-center whitespace-nowrap">COMPRAS</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TOTAL CONSUMIDO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TIPO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">ESTADO</th>
+              <th className="px-3.5 py-3 text-center whitespace-nowrap">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
@@ -68,9 +68,9 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
 
                 return (
                   <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${getAvatarBg(c.nombre)}`}>
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${getAvatarBg(c.nombre)}`}>
                           {c.nombre ? c.nombre.charAt(0).toUpperCase() : "C"}
                         </div>
                         <div>
@@ -91,11 +91,11 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-gray-600 dark:text-gray-300 font-medium">
+                    <td className="px-3.5 py-3 text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
                       {c.telefono || "Sin teléfono"}
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       {c.email ? (
                         <a href={`mailto:${c.email}`} className="text-blue-500 hover:underline font-medium">
                           {c.email}
@@ -105,7 +105,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center">
                         <span className="font-bold text-gray-800 dark:text-gray-200">{c.compras || 0}</span>
                         <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-0.5">
@@ -115,8 +115,8 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       </div>
                     </td>
 
-                    {/* Total Consumido (Ítem 118 e Ítem 111) */}
-                    <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                    {/* Total Consumido */}
+                    <td className="px-3.5 py-3 font-extrabold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                       {(() => {
                         const raw = c.totalConsumido || c.totalGastado || 0;
                         const num = typeof raw === "string" ? Number(raw.replace(/[^0-9]/g, "")) || 0 : Number(raw) || 0;
@@ -124,7 +124,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       })()}
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       <div className="flex flex-col items-start gap-0.5">
                         <FidelidadBadge
                           tipo={tipoCliente}
@@ -150,13 +150,13 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       {isPendiente ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800">
-                          Pendiente de activación
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800">
+                          Pendiente
                         </span>
                       ) : (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                           isActivo
                             ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
                             : "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
@@ -166,7 +166,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, c
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => onViewDetail && onViewDetail(c)}

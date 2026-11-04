@@ -3,6 +3,7 @@ import { Eye, TrendingUp, Calendar, Clock, ChevronLeft, ChevronRight, ChevronsLe
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import FoodIcon from "@/shared/components/ui/FoodIcon";
+import { isVentaFisicaOPos } from "../../servicios/ventasService";
 
 function formatDateSafe(dateVal, fallback = "Hoy") {
   if (!dateVal) return fallback;
@@ -46,23 +47,23 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
     const tipoNormalized = (tipo || "").toLowerCase();
     if (tipoNormalized.includes("mesa")) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <FoodIcon name="table" size={14} className="text-purple-600 dark:text-purple-400" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+          <FoodIcon name="table" size={13} className="text-purple-600 dark:text-purple-400" />
           <span>En Mesa</span>
         </span>
       );
     }
     if (tipoNormalized.includes("recoger") || tipoNormalized.includes("para llevar")) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <FoodIcon name="takeout" size={14} className="text-purple-600 dark:text-purple-400" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+          <FoodIcon name="takeout" size={13} className="text-purple-600 dark:text-purple-400" />
           <span>Recoger</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-        <FoodIcon name="delivery" size={14} className="text-purple-600 dark:text-purple-400" />
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+        <FoodIcon name="delivery" size={13} className="text-purple-600 dark:text-purple-400" />
         <span>Domicilio</span>
       </span>
     );
@@ -72,31 +73,31 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
     const metodoNormalized = (metodo || "").toLowerCase();
     if (metodoNormalized.includes("wompi") || metodoNormalized.includes("pasarela") || metodoNormalized.includes("pse")) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-900/60">
-          <FoodIcon name="card" size={14} className="text-indigo-600" />
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-900/60">
+          <FoodIcon name="card" size={13} className="text-indigo-600" />
           <span>Wompi (Online)</span>
         </span>
       );
     }
     if (metodoNormalized.includes("tarjeta")) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <FoodIcon name="card" size={14} className="text-gray-500" />
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <FoodIcon name="card" size={13} className="text-gray-500" />
           <span>Tarjeta</span>
         </span>
       );
     }
     if (metodoNormalized.includes("transfer") || metodoNormalized.includes("nequi") || metodoNormalized.includes("davi")) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <FoodIcon name="mobile" size={14} className="text-gray-500" />
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <FoodIcon name="mobile" size={13} className="text-gray-500" />
           <span>Transferencia</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-        <FoodIcon name="cash" size={14} className="text-emerald-600" />
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+        <FoodIcon name="cash" size={13} className="text-emerald-600" />
         <span>Efectivo (Punto Físico)</span>
       </span>
     );
@@ -104,21 +105,20 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
 
   return (
     <div className="space-y-4">
-      {/* Clean CRUD Table matching system standards */}
+      {/* Clean CRUD Table matching system standards - compact layout without horizontal scrollbar */}
       <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-5 py-3.5 whitespace-nowrap">ID</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">CLIENTE</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">ORIGEN</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">FECHA</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">HORA</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">ENTREGA</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">TIEMPO ESTIMADO</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">MÉTODO</th>
-              <th className="px-5 py-3.5 whitespace-nowrap">TOTAL</th>
-              <th className="px-5 py-3.5 whitespace-nowrap text-right">ACCIONES</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">ID</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">CLIENTE</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">ORIGEN</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">FECHA Y HORA</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">ENTREGA</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TIEMPO ESTIMADO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">MÉTODO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TOTAL</th>
+              <th className="px-3.5 py-3 whitespace-nowrap text-right">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -131,19 +131,22 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
               const origPrice = Number(v.subtotal || v.precioOriginal || (descPct > 0 && v.total ? Math.round(v.total / (1 - (descPct / 100))) : (v.subtotal > v.total ? v.subtotal : v.total)));
               const hasDiscount = (descPct > 0) || (origPrice > Number(v.total || 0)) || (Number(v.montoDescuento || 0) > 0);
 
+              const isVentaFisica = isVentaFisicaOPos(v);
+              const canAprobarPago = !isVentaFisica && (v.estado === "Pendiente" || v.estado === "PENDIENTE" || v.estadoPago === "PENDIENTE") && onAprobarPago;
+
               return (
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   {/* N° Factura / Pedido */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
                     <div className="font-bold text-gray-900 dark:text-gray-100">
                       {codigoPedido}
                     </div>
                   </td>
 
                   {/* Cliente con Avatar e Insignia */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
                         {initial}
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -159,70 +162,72 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                     </div>
                   </td>
 
-                  {/* Origen de la Venta (Ítem 123) */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                  {/* Origen de la Venta */}
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
                     {v.origen === "ONLINE" || v.tipoVenta === "DOMICILIO" || v.origenNombre === "Venta Online" ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60 shadow-2xs">
                         <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                         <span>Venta Online</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
                         <Store className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                         <span>Punto Físico</span>
                       </span>
                     )}
                   </td>
 
-                  {/* Fecha */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle text-gray-600 dark:text-gray-300 text-xs">
-                    {formatDateSafe(v.fecha || v.fechaVenta, "Hoy")}
-                  </td>
-
-                  {/* Hora */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle text-xs font-mono text-gray-600 dark:text-gray-300">
-                    {formatTimeSafe(v.fecha || v.fechaVenta, v.horario)}
+                  {/* Fecha y Hora juntas */}
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
+                    <div className="flex flex-col text-xs leading-snug">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {formatDateSafe(v.fecha || v.fechaVenta, "Hoy")}
+                      </span>
+                      <span className="text-[11px] font-mono text-gray-500 dark:text-gray-400">
+                        {formatTimeSafe(v.fecha || v.fechaVenta, v.horario)}
+                      </span>
+                    </div>
                   </td>
 
                   {/* Entrega */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">{getEntregaBadge(v.tipoEntrega)}</td>
 
-                  {/* Tiempo Estimado de Entrega/Recogida (Ítem 124) */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
-                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 px-2.5 py-1 rounded-xl border border-gray-200/80 dark:border-gray-700">
-                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  {/* Tiempo Estimado de Entrega/Recogida */}
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
+                    <div className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 px-2 py-0.5 rounded-xl border border-gray-200/80 dark:border-gray-700">
+                      <Clock className="w-3 h-3 text-amber-500 shrink-0" />
                       <span>{v.tiempoEstimadoEntrega || (v.tipoEntrega === 'Domicilio' ? '35 - 45 min' : '15 - 20 min')}</span>
                     </div>
                   </td>
 
                   {/* Método de Pago */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">{getMetodoIcon(v.metodoPago)}</td>
 
-                  {/* Monto Total con Descuento Trazado */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle">
+                  {/* Monto Total con Descuento */}
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle">
                     {hasDiscount ? (
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-xs">
                         <span className="line-through text-gray-400 font-normal">
                           ${origPrice.toLocaleString("es-CO")}
                         </span>
-                        <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                        <span className="font-extrabold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                           ${Number(v.total).toLocaleString("es-CO")} COP
                         </span>
-                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
-                          -{descPct || Math.round(((origPrice - v.total) / origPrice) * 100)}% desc.
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.5 rounded">
+                          -{descPct || Math.round(((origPrice - v.total) / origPrice) * 100)}%
                         </span>
                       </div>
                     ) : (
-                      <span className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                      <span className="font-extrabold text-gray-900 dark:text-gray-100 text-xs sm:text-sm">
                         ${Number(v.total || v.subtotal || 0).toLocaleString("es-CO")} COP
                       </span>
                     )}
                   </td>
 
                   {/* Acciones */}
-                  <td className="px-5 py-4 whitespace-nowrap align-middle text-right">
-                    <div className="inline-flex items-center gap-2">
-                      {(v.estado === "Pendiente" || v.estado === "PENDIENTE" || v.estadoPago === "PENDIENTE") && onAprobarPago && (
+                  <td className="px-3.5 py-3 whitespace-nowrap align-middle text-right">
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      {canAprobarPago && (
                         <button
                           type="button"
                           onClick={() => onAprobarPago(v.id)}
@@ -235,7 +240,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                       <button
                         onClick={() => onViewDetail && onViewDetail(v)}
                         title="Ver Detalle de la Venta"
-                        className="px-3 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 font-semibold text-xs"
+                        className="px-2.5 py-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 text-[#F05454] hover:text-red-600 transition-colors cursor-pointer inline-flex items-center gap-1 font-semibold text-xs"
                       >
                         <Eye className="w-4 h-4 text-[#F05454]" />
                         <span>Ver detalle</span>

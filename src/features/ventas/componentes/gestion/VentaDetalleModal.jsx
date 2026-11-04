@@ -25,7 +25,7 @@ import {
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { formatTime12h } from "@/shared/utils/dateUtils";
-import { ventasService } from "../../servicios/ventasService";
+import { ventasService, isVentaFisicaOPos } from "../../servicios/ventasService";
 
 /**
  * Validador en tiempo real de tiempo estimado (Control Exacto)
@@ -816,7 +816,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
               <span>Imprimir Comprobante</span>
             </button>
 
-            {(venta.estado === "Pendiente" || venta.estado === "PENDIENTE" || venta.estadoPago === "PENDIENTE") && onAprobarPago && (
+            {!isVentaFisicaOPos(venta) && (venta.estado === "Pendiente" || venta.estado === "PENDIENTE" || venta.estadoPago === "PENDIENTE") && onAprobarPago && (
               <button
                 type="button"
                 onClick={async () => {
