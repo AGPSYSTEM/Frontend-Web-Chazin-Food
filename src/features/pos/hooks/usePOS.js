@@ -222,8 +222,8 @@ export function usePOS({ initialClienteId = null } = {}) {
     try {
       const {
         idUsuario = authenticatedUserId,
-        tipoEntrega = "Recoger",
-        direccion = "Recoger en Local",
+        tipoEntrega = "En Mesa",
+        direccion = "Consumo en Mesa",
         clienteNombre = "",
         metodoPago = "Efectivo",
         datosPago = {},

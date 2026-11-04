@@ -557,6 +557,8 @@ export function Dashboard() {
                 <Tooltip
                   content={<CustomProductoTooltip />}
                   cursor={{ fill: "rgba(156, 163, 175, 0.12)" }}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }}
                 />
                 <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={20}>
                   {enrichedPopulares.map((_, index) => (

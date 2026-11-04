@@ -36,13 +36,9 @@ export default function KioskOrderReviewModal({
                 </Dialog.Title>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Modalidad:</span>
-                  <button
-                    type="button"
-                    onClick={() => onChangeOrderMode(orderMode === "Comer aquí" ? "Para llevar" : "Comer aquí")}
-                    className="text-xs font-black text-[#A91B2E] dark:text-red-400 hover:underline cursor-pointer bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-lg"
-                  >
-                    {orderMode} (Cambiar)
-                  </button>
+                  <span className="text-xs font-black text-[#A91B2E] dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-lg">
+                    Consumo en Mesa
+                  </span>
                 </div>
               </div>
             </div>

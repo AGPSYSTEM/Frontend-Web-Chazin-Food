@@ -340,8 +340,7 @@ export function VentasBuscadorMulticriterio({
               >
                 <option value="Todos">Todos los tipos</option>
                 <option value="En Mesa">En Mesa</option>
-                <option value="Para Llevar">Para Llevar / Recoger</option>
-                <option value="Domicilio">Domicilio</option>
+                                <option value="Domicilio">Domicilio</option>
               </select>
             </div>
 

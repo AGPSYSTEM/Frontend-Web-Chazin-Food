@@ -67,7 +67,7 @@ export function validateTiempoEstimado(text = "") {
     "listo",
     "listo para entrega",
     "listo para despacho",
-    "listo para recoger",
+    "listo para servir",
     "en camino",
     "despachado",
     "entregado",
@@ -223,7 +223,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
   }
 
   const metodoPago = obsMeta.metodoPago || venta.metodoPago || "Efectivo";
-  const tipoEntrega = obsMeta.tipoEntrega || venta.tipoEntrega || "Recoger";
+  const tipoEntrega = obsMeta.tipoEntrega || venta.tipoEntrega || "En Mesa";
   const total = Number(venta.total || 0);
   const descPct = Number(venta.descuentoPorcentaje || obsMeta.descuentoPorcentaje || 0);
   const subtotal = Number(
@@ -249,10 +249,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
   const getEntregaBadge = (tipo) => {
     const t = (tipo || "").toLowerCase();
-    if (t.includes("mesa")) return { slug: "table", label: "En Mesa" };
-    if (t.includes("recoger") || t.includes("llevar") || t.includes("local"))
-      return { slug: "takeout", label: "Recoger en Local" };
-    return { slug: "delivery", label: "Domicilio" };
+    if (t.includes("domicilio") || t.includes("delivery")) {
+      return { slug: "delivery", label: "Domicilio" };
+    }
+    return { slug: "table", label: "En Mesa" };
   };
 
   const entregaInfo = getEntregaBadge(tipoEntrega);

@@ -180,8 +180,8 @@ export function PosCheckoutModal({
     const payload = {
       idUsuario: user?.idUsuario || user?.id || null,
       idCliente: selectedCliente ? (selectedCliente.id || selectedCliente.idCliente) : null,
-      tipoEntrega: "Recoger",
-      direccion: "Recoger en Local",
+      tipoEntrega: "En Mesa",
+      direccion: "Consumo en Mesa",
       clienteNombre: clienteNombre.trim(),
       responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
@@ -311,8 +311,8 @@ export function PosCheckoutModal({
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#f05454]">
                     Entrega
                   </span>
-                  <p className="font-bold text-xs text-[#f05454] truncate">Recoger en Local</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Mostrador físico</p>
+                  <p className="font-bold text-xs text-[#f05454] truncate">Consumo en Mesa</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Servicio en salón / mesa</p>
                 </div>
               </div>
               <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0"><Check className="w-3 h-3 stroke-[3]" /></span>

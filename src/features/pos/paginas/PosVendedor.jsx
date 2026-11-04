@@ -280,8 +280,8 @@ export default function PosVendedor() {
     try {
       const res = await submitOrder({
         ...checkoutData,
-        tipoEntrega: orderMode === "Comer aquí" ? "En Mesa" : "Recoger",
-        empaqueParaLlevar: orderMode === "Para llevar"
+        tipoEntrega: "En Mesa",
+        empaqueParaLlevar: false
       });
       setLastCreatedOrder(res);
       setLastOrderData(checkoutData);

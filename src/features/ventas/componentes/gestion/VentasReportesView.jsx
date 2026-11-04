@@ -592,6 +592,8 @@ export function VentasReportesView({ ventas = [], selectedPeriod = "personalizad
               <Tooltip
                 content={<CustomChartTooltip unit="Unidades" isCurrency={false} />}
                 cursor={{ fill: "rgba(156, 163, 175, 0.15)" }}
+                allowEscapeViewBox={{ x: true, y: true }}
+                wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }}
               />
               <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} barSize={18}>
                 {reportData.productosMasVendidos.map((entry, index) => (

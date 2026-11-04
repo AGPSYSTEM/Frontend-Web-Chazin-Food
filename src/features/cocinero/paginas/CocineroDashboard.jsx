@@ -1125,15 +1125,9 @@ export function CocineroDashboard() {
               const isTakeaway =
                 rawTipo.includes("llevar") || rawTipo.includes("recoger") || rawMesa.includes("llevar") || rawMesa.includes("recoger");
 
-              let badgeLabel = "En Mesa";
-              if (isDelivery) {
-                badgeLabel = "Domicilio";
-              } else if (isTakeaway) {
-                badgeLabel = "Para Llevar";
-              } else if (ped.mesa && !["en local", "mesa", "en mesa", ""].includes(rawMesa)) {
+              let badgeLabel = isDelivery ? "Domicilio" : "En Mesa";
+              if (!isDelivery && ped.mesa && !["en local", "mesa", "en mesa", ""].includes(rawMesa)) {
                 badgeLabel = rawMesa.startsWith("mesa") ? ped.mesa : `Mesa ${ped.mesa}`;
-              } else {
-                badgeLabel = "En Mesa";
               }
 
               const isExpanded = expandedTickets[orderId] !== false;

@@ -670,7 +670,7 @@ export function ClientePerfil() {
       if (t.includes("llevar") || t.includes("recoger") || t.includes("mesa")) pickupCount++;
       else deliveryCount++;
     });
-    const preferredDelivery = deliveryCount >= pickupCount ? "A Domicilio" : "Recoger en Local";
+    const preferredDelivery = deliveryCount >= pickupCount ? "A Domicilio" : "En Mesa";
 
     // Last order date
     const lastOrderDate = completedPedidos.length > 0 ? completedPedidos[0].fecha : "Sin compras recientes";

@@ -45,26 +45,18 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
 
   const getEntregaBadge = (tipo) => {
     const tipoNormalized = (tipo || "").toLowerCase();
-    if (tipoNormalized.includes("mesa")) {
+    if (tipoNormalized.includes("domicilio") || tipoNormalized.includes("delivery")) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <FoodIcon name="table" size={13} className="text-purple-600 dark:text-purple-400" />
-          <span>En Mesa</span>
-        </span>
-      );
-    }
-    if (tipoNormalized.includes("recoger") || tipoNormalized.includes("para llevar")) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-          <FoodIcon name="takeout" size={13} className="text-purple-600 dark:text-purple-400" />
-          <span>Recoger</span>
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
+          <FoodIcon name="delivery" size={13} className="text-blue-600 dark:text-blue-400" />
+          <span>Domicilio</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-        <FoodIcon name="delivery" size={13} className="text-purple-600 dark:text-purple-400" />
-        <span>Domicilio</span>
+        <FoodIcon name="table" size={13} className="text-purple-600 dark:text-purple-400" />
+        <span>En Mesa</span>
       </span>
     );
   };

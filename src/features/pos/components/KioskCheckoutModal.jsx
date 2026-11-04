@@ -36,8 +36,8 @@ export default function KioskCheckoutModal({
     const payload = {
       idUsuario: user?.idUsuario || user?.id || null,
       idCliente: null,
-      tipoEntrega: orderMode === "Comer aquí" ? "En Mesa" : "Recoger",
-      direccion: orderMode === "Comer aquí" ? "Consumo en Mesa" : "Recoger en Mostrador",
+      tipoEntrega: "En Mesa",
+      direccion: "Consumo en Mesa",
       clienteNombre: finalClientName,
       responsable: user?.nombre ? `${user.nombre} ${user.apellidos || ''}`.trim() : "Kiosco Autoservicio",
       subtotal: Number(subtotal || 0),
@@ -46,9 +46,9 @@ export default function KioskCheckoutModal({
       total: Number(total || 0),
       origen: "PUNTO_FISICO",
       tiempoEstimadoEntrega: "15-20 min",
-      empaqueParaLlevar: orderMode === "Para llevar",
+      empaqueParaLlevar: false,
       metodoPago: metodoPago,
-      observacion: `Kiosco Autoservicio - ${orderMode}`,
+      observacion: "Kiosco Autoservicio - En Mesa",
       datosPago: {
         metodo: metodoPago,
         origen: "KIOSCO"
