@@ -26,6 +26,7 @@ export function ProveedorModal({ isOpen, onClose, onSave, proveedor = null, prov
     tipoPersona: "Jurídica", // "Jurídica" | "Natural"
     idTipoProveedor: 1, // 1: Mayorista, 2: Distribuidor, 3: Fabricante
     tipoProveedor: "Mayorista",
+    tiposProveedor: ["Mayorista"],
     idTipoDocumento: 3, // 3: NIT, 1: CC, 2: CE, 4: Pasaporte
     nombre: "",
     nit: "",
