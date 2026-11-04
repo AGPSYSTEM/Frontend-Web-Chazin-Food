@@ -1845,7 +1845,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 Edición Separada
               </span>
             </div>
-          )}}
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
