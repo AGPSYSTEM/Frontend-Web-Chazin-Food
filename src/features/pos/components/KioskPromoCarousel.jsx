@@ -47,17 +47,52 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
   const currentItem = promoItems[currentIndex] || promoItems[0];
   const activeEvent = Array.isArray(currentItem?.eventos) ? currentItem.eventos[0] : null;
 
-  const formatPrice = (val) => `$${Number(val || 0).toLocaleString("es-CO")}`;
+  const originalPrice = Number(currentItem?.precio || 0);
+  let promoPrice = originalPrice;
+  let discountPercent = 0;
+
+  if (activeEvent) {
+    if (activeEvent.nuevoPrecio && Number(activeEvent.nuevoPrecio) > 0) {
+      promoPrice = Number(activeEvent.nuevoPrecio);
+      if (originalPrice > promoPrice) {
+        discountPercent = Math.round(((originalPrice - promoPrice) / originalPrice) * 100);
+      }
+    } else {
+      const desc = Number(
+        activeEvent.descuento ??
+        activeEvent.descuentoPorcentaje ??
+        activeEvent.porcentajeDescuento ??
+        0
+      );
+      if (desc > 0) {
+        discountPercent = Math.round(desc);
+        promoPrice = Math.round(originalPrice * (1 - desc / 100));
+      }
+    }
+  }
+
+  const formatPrice = (val) => `${Number(val || 0).toLocaleString("es-CO")}`;
+
+  const handleSelectBanner = () => {
+    onSelectProduct({
+      ...currentItem,
+      precio: promoPrice,
+      precioOriginal: originalPrice,
+      precioPromo: promoPrice,
+      descuentoPorcentaje: discountPercent,
+      activeEvent: activeEvent || null
+    });
+  };
 
   return (
     <div className="w-full mb-4 select-none">
       <div
-        onClick={() => onSelectProduct(currentItem)}
+        onClick={handleSelectBanner}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
-            onSelectProduct(currentItem);
+            handleSelectBanner();
           }
         }}
         aria-label={`Promoción destacada: ${stripEmojis(currentItem?.nombre)}. Toca para ordenar.`}
@@ -82,10 +117,10 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
                 <Tag className="w-3.5 h-3.5 text-amber-950 stroke-[2.5]" />
                 {stripEmojis(activeEvent?.nombre || activeEvent?.nombreEvento || "OFERTA DESTACADA")}
               </span>
-              {activeEvent?.descuentoPorcentaje && (
+              {discountPercent > 0 && (
                 <span className="inline-flex items-center gap-1 bg-white/20 text-white px-2.5 py-0.5 rounded-full text-xs font-black backdrop-blur-xs">
                   <Tag className="w-3.5 h-3.5" />
-                  {activeEvent.descuentoPorcentaje}% OFF
+                  {discountPercent}% OFF
                 </span>
               )}
             </div>
@@ -102,9 +137,16 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
 
             {/* Price & CTA */}
             <div className="flex items-center gap-3">
-              <span className="text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-xs">
-                {formatPrice(currentItem?.precio)}
-              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-xs">
+                  {formatPrice(promoPrice)}
+                </span>
+                {discountPercent > 0 && (
+                  <span className="text-sm font-bold text-white/70 line-through">
+                    {formatPrice(originalPrice)}
+                  </span>
+                )}
+              </div>
               <span className="hidden sm:inline-flex items-center gap-1 bg-white text-[#A91B2E] px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md group-hover:bg-amber-300 group-hover:text-amber-950 transition-colors">
                 <span>Pedir ahora</span>
                 <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />

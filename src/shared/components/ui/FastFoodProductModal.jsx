@@ -1453,21 +1453,29 @@ export function FastFoodProductModal({
       final = eventInfo.eventPrice;
       discount = true;
       label = eventInfo.savings > 0 
-        ? `-${eventInfo.discountPercent}% OFF (Ahorro $${eventInfo.savings.toLocaleString()})`
+        ? `-${eventInfo.discountPercent}% OFF (Ahorro ${eventInfo.savings.toLocaleString()})`
         : "Edición Especial";
+    } else if (producto.precioPromo !== undefined && Number(producto.precioPromo) < original) {
+      final = Number(producto.precioPromo);
+      discount = true;
+      const pct = producto.descuentoPorcentaje || Math.round(((original - final) / original) * 100);
+      label = `-${pct}% OFF`;
     } else {
       const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
-      const evtPrecio = eventos.find((e) => e.tipoEvento === "Promoción Precio" || e.tipo === "Promoción Precio");
-      const evtDesc = eventos.find((e) => e.tipoEvento === "Descuento" || e.tipo === "Descuento");
+      const evtPrecio = eventos.find((e) => Number(e.nuevoPrecio) > 0);
+      const evtDesc = eventos.find((e) => Number(e.descuento || e.descuentoPorcentaje || e.porcentajeDescuento) > 0);
 
       if (evtPrecio && Number(evtPrecio.nuevoPrecio) > 0) {
         final = Number(evtPrecio.nuevoPrecio);
         discount = true;
         label = "Precio Promocional";
-      } else if (evtDesc && Number(evtDesc.descuento) > 0) {
-        final = original * (1 - Number(evtDesc.descuento) / 100);
-        discount = true;
-        label = `-${Number(evtDesc.descuento)}% OFF`;
+      } else if (evtDesc) {
+        const desc = Number(evtDesc.descuento || evtDesc.descuentoPorcentaje || evtDesc.porcentajeDescuento);
+        if (desc > 0) {
+          final = Math.round(original * (1 - desc / 100));
+          discount = true;
+          label = `-${Math.round(desc)}% OFF`;
+        }
       }
     }
 

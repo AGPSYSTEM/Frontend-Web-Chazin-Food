@@ -440,7 +440,7 @@ function FichaTecnicaProductoCliente({ ficha, producto }) {
 }
 
 export function ClienteLanding() {
-  const { user, logout, isAuthenticated, refreshUser } = useAuth();
+  const { user, logout, isAuthenticated, refreshUser, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart, getTotalItems, getSubtotal, getProductQuantityInCart } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
@@ -1742,7 +1742,7 @@ export function ClienteLanding() {
       return;
     }
 
-    if (user && updateProfile && (!user.numeroDocumento || user.numeroDocumento !== checkoutDocumento)) {
+    if (user && typeof updateProfile === "function" && (!user.numeroDocumento || user.numeroDocumento !== checkoutDocumento)) {
       updateProfile({
         tipoDocumento: checkoutTipoDoc,
         numeroDocumento: checkoutDocumento

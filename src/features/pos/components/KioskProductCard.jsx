@@ -17,30 +17,61 @@ export default function KioskProductCard({ producto, onSelect }) {
 
   const is2x1Promo = Boolean(
     activeEvent?.tipo === "2X1" ||
+    activeEvent?.tipoEvento === "2X1" ||
     activeEvent?.nombre?.toLowerCase().includes("2x1") ||
+    activeEvent?.nombreEvento?.toLowerCase().includes("2x1") ||
     producto.is2x1Promo ||
     producto.nombre?.toLowerCase().includes("2x1")
   );
 
-  const discountPercent = activeEvent?.descuentoPorcentaje ? Number(activeEvent.descuentoPorcentaje) : 0;
   const originalPrice = Number(producto.precio || 0);
-  const finalPrice = discountPercent > 0
-    ? Math.round(originalPrice * (1 - discountPercent / 100))
-    : originalPrice;
+  let finalPrice = originalPrice;
+  let discountPercent = 0;
 
-  const formatPrice = (val) => `$${Number(val || 0).toLocaleString("es-CO")}`;
+  if (activeEvent) {
+    if (activeEvent.nuevoPrecio && Number(activeEvent.nuevoPrecio) > 0) {
+      finalPrice = Number(activeEvent.nuevoPrecio);
+      if (originalPrice > finalPrice) {
+        discountPercent = Math.round(((originalPrice - finalPrice) / originalPrice) * 100);
+      }
+    } else {
+      const desc = Number(
+        activeEvent.descuento ??
+        activeEvent.descuentoPorcentaje ??
+        activeEvent.porcentajeDescuento ??
+        0
+      );
+      if (desc > 0) {
+        discountPercent = Math.round(desc);
+        finalPrice = Math.round(originalPrice * (1 - desc / 100));
+      }
+    }
+  }
+
+  const formatPrice = (val) => `${Number(val || 0).toLocaleString("es-CO")}`;
+
+  const handleCardClick = () => {
+    onSelect({
+      ...producto,
+      precio: finalPrice,
+      precioOriginal: originalPrice,
+      precioPromo: finalPrice,
+      descuentoPorcentaje: discountPercent,
+      activeEvent: activeEvent || null
+    });
+  };
 
   return (
     <motion.div
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.97 }}
-      onClick={() => onSelect(producto)}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onSelect(producto);
+          handleCardClick();
         }
       }}
       aria-label={`Seleccionar ${stripEmojis(producto.nombre)}, precio ${formatPrice(finalPrice)} COP`}
