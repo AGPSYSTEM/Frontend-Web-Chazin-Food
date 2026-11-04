@@ -151,6 +151,7 @@ export function AppRoutes() {
           <Route path="/activar-cuenta" element={<ActivarCuenta />} />
           <Route path="/tienda" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
           <Route path="/cliente" element={<Suspense fallback={null}><ClienteLanding /></Suspense>} />
+          <Route path="/perfil" element={<Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}><ClientePerfil /></Suspense>} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="compras/categoria-insumos" element={<CategoriaInsumos />} />

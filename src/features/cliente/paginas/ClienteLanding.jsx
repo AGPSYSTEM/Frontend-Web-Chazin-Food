@@ -1852,7 +1852,7 @@ export function ClienteLanding() {
           moneda: intencion.moneda,
           firma: intencion.firma,
           publicKey: intencion.publicKey,
-          redirectUrl: window.location.origin
+          redirectUrl: `${window.location.origin}/perfil?tab=pedidos`
         });
 
         let win = null;

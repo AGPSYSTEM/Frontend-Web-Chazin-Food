@@ -26,12 +26,23 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const filteredCategorias = categorias.filter((c) =>
-    matchesSmartSearch(
-      [c.nombre, c.descripcion, c.estado, c.id, c.idCategoriaInsumo],
+    const filteredCategorias = categorias.filter((c) => {
+    const count = c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0);
+    const estadoKeywords = c.estado === "Activo" ? "activo activa habilitado" : "inactivo inactiva deshabilitado";
+    return matchesSmartSearch(
+      [
+        c.nombre,
+        c.descripcion,
+        c.estado,
+        estadoKeywords,
+        String(count),
+        `${count} insumos`,
+        c.id,
+        c.idCategoriaInsumo
+      ],
       searchTerm
-    )
-  );
+    );
+  });
 
   const createCategoria = async (form) => {
     try {

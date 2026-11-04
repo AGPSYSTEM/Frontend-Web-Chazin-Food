@@ -216,7 +216,8 @@ export function useInsumos() {
       );
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "Error al crear");
+      const statusPfx = err?.status ? `[HTTP ${err.status}] ` : "";
+      notify.error("Error al registrar insumo", `${statusPfx}${err.message || "Error en el servidor"}`);
       return false;
     }
   };
@@ -271,7 +272,8 @@ export function useInsumos() {
       notify.success("Insumo actualizado", "Los datos fueron guardados exitosamente.");
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "Error al actualizar");
+      const statusPfx = err?.status ? `[HTTP ${err.status}] ` : "";
+      notify.error("Error al actualizar insumo", `${statusPfx}${err.message || "Error en el servidor"}`);
       return false;
     }
   };

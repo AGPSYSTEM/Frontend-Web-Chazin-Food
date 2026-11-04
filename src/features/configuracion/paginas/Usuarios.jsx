@@ -397,6 +397,7 @@ export function Usuarios() {
         onSave={handleSaveUsuario}
         usuario={editingUsuario}
         rolesList={rolesList}
+        usuariosList={usuarios}
       />
 
       <UsuarioPasswordModal

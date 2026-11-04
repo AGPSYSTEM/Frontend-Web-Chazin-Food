@@ -569,9 +569,7 @@ export function InsumoModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      /* Evitar cierre accidental al hacer clic fuera (#7) */
     >
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800">
         {/* Modal Header */}
@@ -730,7 +728,7 @@ export function InsumoModal({
                   {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
 
                   <div>
-                    <label className={labelCls}>Unidad de Medida / Presentación</label>
+                    <label className={labelCls}>Unidad de Medida / Presentación <span className="text-red-500">*</span></label>
                     <select
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
@@ -748,7 +746,7 @@ export function InsumoModal({
 
                   <div>
                     <label className={labelCls}>
-                      Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""})
+                      Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""}) <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">$</span>

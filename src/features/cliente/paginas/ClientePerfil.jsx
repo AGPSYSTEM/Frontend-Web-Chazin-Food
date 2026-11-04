@@ -59,6 +59,8 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { wompiService } from "@/features/ventas/servicios/wompiService";
+import { useCart } from "@/shared/context/CartContext";
 import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
@@ -151,6 +153,7 @@ function FieldError({ msg }) {
 export function ClientePerfil() {
   const navigate = useNavigate();
   const { user, updateProfile, logout, refreshUser } = useAuth();
+  const { clearCart } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
   const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
@@ -208,6 +211,36 @@ export function ClientePerfil() {
   useEffect(() => {
     refreshUser?.();
   }, [refreshUser]);
+
+  // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
+  useEffect(() => {
+    const wompiTxId = searchParams.get("id");
+    if (wompiTxId) {
+      setTab("pedidos");
+      (async () => {
+        try {
+          const verificacion = await wompiService.verificarTransaccion(wompiTxId);
+          if (verificacion && verificacion.aprobado) {
+            success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
+            if (typeof clearCart === "function") clearCart();
+          } else if (verificacion && verificacion.estado === 'PENDING') {
+            warning("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en esta pantalla.");
+            if (typeof clearCart === "function") clearCart();
+          } else {
+            notifyError("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}.`);
+          }
+        } catch (err) {
+          console.error("Error verificando Wompi en perfil:", err);
+        } finally {
+          fetchMyOrders();
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("id");
+          newParams.set("tab", "pedidos");
+          window.history.replaceState({}, document.title, `${window.location.pathname}?${newParams.toString()}`);
+        }
+      })();
+    }
+  }, [searchParams, fetchMyOrders, clearCart]);
 
   // Populate form with current user data
   useEffect(() => {

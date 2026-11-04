@@ -18,7 +18,7 @@ const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all durati
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/40 transition-colors text-xs placeholder:text-gray-400";
 const labelCls = "block text-xs font-bold text-gray-800 dark:text-gray-200 mb-1.5";
 
-export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesList = [] }) {
+export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesList = [], usuariosList = [] }) {
   const isEditing = !!usuario;
   const [form, setForm] = useState({
     nombre: "",
