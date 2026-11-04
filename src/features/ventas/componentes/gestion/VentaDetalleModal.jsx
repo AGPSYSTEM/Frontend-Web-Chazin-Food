@@ -682,6 +682,74 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
             </span>
           </div>
 
+          {/* Checklist de Verificación de Cocina si fue registrado en Producción */}
+          {(() => {
+            const chkList = Array.isArray(venta.checklistPreparacion)
+              ? venta.checklistPreparacion
+              : Array.isArray(obsMeta.checklistPreparacion)
+              ? obsMeta.checklistPreparacion
+              : null;
+            if (!chkList || chkList.length === 0) return null;
+            const isFull =
+              venta.pedidoCompleto !== undefined
+                ? Boolean(venta.pedidoCompleto)
+                : obsMeta.pedidoCompleto !== undefined
+                ? Boolean(obsMeta.pedidoCompleto)
+                : chkList.every((c) => Boolean(c.completado));
+            const obsCocina = venta.observacionCocina || obsMeta.observacionCocina || "";
+
+            return (
+              <div
+                className={`rounded-2xl border p-3.5 space-y-2 ${
+                  isFull
+                    ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
+                    : "bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-gray-100">
+                    Checklist de Cocina (Producción)
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      isFull
+                        ? "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200"
+                        : "bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    {isFull ? "✅ Pedido Completo" : "⚠️ Pedido Incompleto"}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {chkList.map((chk, cIdx) => {
+                    const ok = Boolean(chk.completado) && Number(chk.cantidadPreparada ?? chk.cantidad) >= Number(chk.cantidad || 1);
+                    return (
+                      <div
+                        key={cIdx}
+                        className="flex items-center justify-between text-xs bg-white dark:bg-gray-900/70 px-3 py-1.5 rounded-xl border border-gray-200/70 dark:border-gray-700/70"
+                      >
+                        <span className="font-bold text-gray-900 dark:text-gray-100">
+                          {chk.cantidad} {chk.nombre} {ok ? "✅" : "❌"}
+                          {!ok && Number(chk.cantidadPreparada) > 0 ? ` (${chk.cantidadPreparada}/${chk.cantidad} preparados)` : ""}
+                        </span>
+                        {!ok && chk.motivo && (
+                          <span className="text-[11px] text-red-600 dark:text-red-400 italic font-semibold">
+                            {chk.motivo}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {obsCocina && (
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 italic">
+                    Nota cocina: "{obsCocina}"
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Productos Section Title */}
           <div>
             <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">

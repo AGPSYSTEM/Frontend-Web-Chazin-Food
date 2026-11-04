@@ -578,6 +578,11 @@ export function ClienteLanding() {
   };
 
   const handleAddComplemento = (item) => {
+    const itemStock = Number(item.stock !== undefined ? item.stock : 30);
+    if (item.agotado || itemStock <= 0 || item.estado === "Inactivo" || item.estado === 0) {
+      warning("Producto agotado por el momento", `Lo sentimos, "${item.nombre}" está agotado en este momento y no está disponible.`);
+      return;
+    }
     const res = addToCart({
       id: item.idVariante || item.id || item.idProducto,
       idProducto: item.idProducto || item.id,
@@ -585,7 +590,7 @@ export function ClienteLanding() {
       nombre: item.nombre,
       precio: Number(item.precio),
       cantidad: 1,
-      stock: Number(item.stock !== undefined ? item.stock : 30),
+      stock: itemStock,
       imagen: item.imagen,
       adiciones: [],
       personalizaciones: []
@@ -662,20 +667,27 @@ export function ClienteLanding() {
 
         if (prodsRes.status === "fulfilled" && Array.isArray(prodsRes.value) && prodsRes.value.length > 0) {
           const apiProds = prodsRes.value
-            .filter(p => p.estado === 'Activo' || p.estado === 1 || p.estado === undefined)
-            .map(p => ({
-              id: p.id || p.idProducto,
-              idProducto: p.idProducto || p.id,
-              nombre: p.nombre,
-              precio: Number(p.precio) || 0,
-              stock: Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25)),
-              categoria: p.categoria || (p.categoriaProducto ? p.categoriaProducto.nombre : ''),
-              idCategoriaProducto: p.idCategoriaProducto,
-              descripcion: p.descripcion,
-              imagen: p.imagen,
-              variantes: p.variantes || [],
-              eventos: p.eventos || []
-            }));
+            .filter(p => p.id !== 0 && p.idProducto !== 0 && !p.nombre?.startsWith('__SISTEMA'))
+            .map(p => {
+              const isInactive = p.estado === 'Inactivo' || p.estado === 0;
+              const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25));
+              const finalStock = isInactive ? 0 : rawStock;
+              return {
+                id: p.id || p.idProducto,
+                idProducto: p.idProducto || p.id,
+                nombre: p.nombre,
+                precio: Number(p.precio) || 0,
+                stock: finalStock,
+                agotado: Boolean(p.agotado || isInactive || finalStock <= 0),
+                estado: p.estado,
+                categoria: p.categoria || (p.categoriaProducto ? p.categoriaProducto.nombre : ''),
+                idCategoriaProducto: p.idCategoriaProducto,
+                descripcion: p.descripcion,
+                imagen: p.imagen,
+                variantes: p.variantes || [],
+                eventos: p.eventos || []
+              };
+            });
           setProductosList(apiProds);
 
           // Fetch ratings
@@ -1236,12 +1248,30 @@ export function ClienteLanding() {
   }, [maxVisibleProducts, productosFiltrados.length]);
 
   const handleSelectEventoFromCarousel = (evento, targetProd) => {
+    if (evento?.esProductoAleatorio || String(evento?.idEvento).startsWith("showcase-prod-")) {
+      const prodToOpen = evento.producto || targetProd || activeProductos.find(p => String(p.id || p.idProducto) === String(evento?.idProducto));
+      if (prodToOpen) {
+        handleProductClick(prodToOpen);
+        return;
+      }
+    }
     setEventoParaPersonalizar(evento);
     setProductoParaEvento(targetProd || null);
     setShowPersonalizarEventoModal(true);
   };
 
-  const handleProductClick = async (producto) => {
+  const handleProductClick = async (producto, targetTab = "personalizar") => {
+    const prodStock = Number(producto?.stock !== undefined ? producto.stock : (producto?.stockActual !== undefined ? producto.stockActual : 25));
+    const isAgotado = Boolean(producto?.agotado || prodStock <= 0 || producto?.estado === "Inactivo" || producto?.estado === 0);
+
+    if (isAgotado && targetTab !== "resenas") {
+      warning(
+        "Producto agotado por el momento",
+        `Lo sentimos, "${producto.nombre}" se encuentra agotado en este momento y no está disponible para pedir.`
+      );
+      return;
+    }
+
     // Si el producto tiene un evento activo, abrir personalización individual de eventos
     if (producto.eventos && producto.eventos.length > 0) {
       const activeEvt = producto.eventos.find(e => e.estado === 1 || e.estado === "Activo") || producto.eventos[0];
@@ -2128,7 +2158,7 @@ export function ClienteLanding() {
       {/* Punto de referencia semántico principal para Accesibilidad */}
       <main id="main-content">
         {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones con altura fija para 0 CLS) */}
-        <div className="w-full min-h-[460px]">
+        <div className="w-full">
           <EventosCarousel
             eventos={eventosList}
             productos={activeProductos}
@@ -2439,16 +2469,20 @@ export function ClienteLanding() {
             const activeEvent = getActiveEvent(producto);
             const hasEvent = Boolean(activeEvent);
             const eventToDisplay = activeEvent;
+            const prodStock = Number(producto.stock !== undefined ? producto.stock : 25);
+            const isAgotado = Boolean(producto.agotado || prodStock <= 0 || producto.estado === "Inactivo" || producto.estado === 0);
 
             return (
               <div
                 key={producto.id || producto.idProducto}
                 onClick={() => {
                   setModalInitialTab("personalizar");
-                  handleProductClick(producto);
+                  handleProductClick(producto, "personalizar");
                 }}
                 className={`bg-white dark:bg-gray-900 cv-auto rounded-3xl shadow-md hover:shadow-2xl transition-all overflow-hidden flex flex-col justify-between cursor-pointer group hover:-translate-y-2 duration-300 relative ${
-                  hasEvent
+                  isAgotado
+                    ? "border-2 border-gray-300 dark:border-gray-700 opacity-85"
+                    : hasEvent
                     ? "border-2 border-orange-500/90 dark:border-orange-500 shadow-lg shadow-orange-500/15 dark:shadow-orange-950/40 ring-2 ring-orange-400/30"
                     : "border border-gray-200/90 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
                 }`}
@@ -2515,9 +2549,23 @@ export function ClienteLanding() {
                   )}
 
                 {/* ═══ BADGE STREAMLINE DE ALTO IMPACTO (BURGER FEST / 2X1 / FLASH / DESCUENTO) ═══ */}
-                {activeEvent && (
+                {activeEvent && !isAgotado && (
                   <EventBadge event={activeEvent} product={producto} variant="card" />
                 )}
+
+                {/* Badge de Producto Agotado o Últimas Unidades */}
+                {isAgotado ? (
+                  <div className="absolute inset-0 z-20 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-3">
+                    <span className="px-4 py-2 rounded-2xl bg-red-600/95 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-white/25 flex items-center gap-1.5">
+                      <Ban className="w-4 h-4 stroke-[2.5]" />
+                      <span>Agotado por el momento</span>
+                    </span>
+                  </div>
+                ) : prodStock > 0 && prodStock <= 5 ? (
+                  <span className="absolute bottom-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-amber-500/95 text-white font-black text-[10px] shadow-md border border-white/20">
+                    ¡Solo quedan {prodStock}!
+                  </span>
+                ) : null}
               </div>
 
               <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -2603,16 +2651,23 @@ export function ClienteLanding() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleProductClick(producto);
+                      handleProductClick(producto, "personalizar");
                     }}
-                    aria-label={`Agregar ${producto.nombre} al pedido`}
+                    aria-label={isAgotado ? `${producto.nombre} agotado por el momento` : `Agregar ${producto.nombre} al pedido`}
                     className={`w-full py-3 text-white rounded-2xl transition-all font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-[0.98] ${
-                      hasEvent
+                      isAgotado
+                        ? "bg-gray-500 hover:bg-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600 shadow-none"
+                        : hasEvent
                         ? "bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 shadow-orange-500/30"
                         : "bg-red-700 hover:bg-red-800 shadow-red-700/20"
                     }`}
                   >
-                    {hasEvent ? (
+                    {isAgotado ? (
+                      <>
+                        <Ban className="w-4 h-4" />
+                        <span>Agotado por el momento</span>
+                      </>
+                    ) : hasEvent ? (
                       <>
                         <Sparkles className="w-4 h-4 text-amber-200" />
                         <span>Agregar</span>

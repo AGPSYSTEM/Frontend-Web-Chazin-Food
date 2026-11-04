@@ -1,5 +1,7 @@
-import { User, Clock, AlertCircle, Eye, Check, X, Sparkles } from "lucide-react";
+import React from "react";
+import { User, Clock, AlertCircle, Eye, Check, X, Sparkles, Printer, ChefHat } from "lucide-react";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { imprimirComanda } from "../utils/comandaUtils";
 
 export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
   // Determine next status and button label
@@ -24,6 +26,22 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/80 shadow-sm transition-all hover:shadow-md space-y-4">
+      {/* Cliente encima del pedido (Requerimiento 9) */}
+      <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-750 text-xs">
+        <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-medium">
+          <User className="w-3.5 h-3.5 text-gray-400" />
+          <span>Cliente:</span>
+          <strong className="text-gray-900 dark:text-gray-100 font-bold truncate max-w-[150px]">
+            {orden.cliente || "Cliente Mostrador"}
+          </strong>
+        </div>
+        {orden.mesa && (
+          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-extrabold text-[11px] border border-blue-200 dark:border-blue-800">
+            {orden.mesa}
+          </span>
+        )}
+      </div>
+
       {/* Top Header Row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -71,7 +89,15 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
         </div>
 
         {/* Top Right Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => imprimirComanda(orden)}
+            title="Imprimir comanda térmica"
+            className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+          </button>
           {orden.alerta && (
             <button
               type="button"
@@ -92,21 +118,23 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
         </div>
       </div>
 
-      {/* Info Row: User & Time */}
-      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 font-medium">
-        <div className="flex items-center gap-1.5">
-          <User className="w-4 h-4 text-gray-400" />
-          <span>{orden.responsable || orden.cocinero || "Cliente"}</span>
+      {/* Info Row: Responsable (Cocinero) & Hora del Estado */}
+      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 font-medium">
+        <div className="flex items-center gap-1.5 min-w-0" title="Cocinero / Responsable de preparación">
+          <ChefHat className="w-4 h-4 text-gray-400 shrink-0" />
+          <span className="truncate">
+            Cocinero: <strong className="text-gray-700 dark:text-gray-300 font-bold">{orden.cocinero || orden.responsableCocina || orden.responsable || "En cocina"}</strong>
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <span>{orden.tiempo || "15min"}</span>
+        <div className="flex items-center gap-1.5 shrink-0 text-emerald-700 dark:text-emerald-400 font-bold" title="Hora del estado actual">
+          <Clock className="w-3.5 h-3.5" />
+          <span>{orden.horaEstado || orden.horaEstadoCalculada || orden.horaCambioEstado || orden.horaInicio || orden.tiempo || "Reciente"}</span>
         </div>
       </div>
 
       {/* Badges Row */}
       <div className="flex items-center gap-2">
-        {/* Priority Badge - Turno Secuencial (Ítem 117) */}
+        {/* Priority Badge - Turno Secuencial */}
         {orden.prioridad ? (
           <span
             className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black shadow-2xs ${
@@ -148,12 +176,14 @@ export function OrdenCard({ orden, onUpdateEstado, onViewDetails }) {
       {nextConfig && (
         <button
           type="button"
-          onClick={() => onUpdateEstado && onUpdateEstado(orden.id, nextConfig.next)}
+          onClick={() => onUpdateEstado && onUpdateEstado(orden.id, nextConfig.next, orden)}
           className="w-full py-2.5 bg-gray-50/80 hover:bg-gray-100 dark:bg-gray-900/60 dark:hover:bg-gray-700/80 border border-gray-200/80 dark:border-gray-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5 transition-all shadow-2xs hover:shadow-xs cursor-pointer active:scale-95"
         >
-          <span>{nextConfig.label}</span>
+          <span>{nextConfig.next === "Listo" ? "→ Verificar Checklist y Listo >" : nextConfig.label}</span>
         </button>
       )}
     </div>
   );
 }
+
+export default OrdenCard;

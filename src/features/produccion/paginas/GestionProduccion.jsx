@@ -5,6 +5,7 @@ import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useGestionProduccion } from "../hooks/useGestionProduccion";
 import { ProduccionTable } from "../componentes/ProduccionTable";
 import { VerOrdenModal } from "../componentes/VerOrdenModal";
+import { ChecklistPreparacionModal } from "../componentes/ChecklistPreparacionModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function GestionProduccion() {
@@ -25,6 +26,33 @@ export function GestionProduccion() {
   } = useGestionProduccion();
 
   const [selectedOrden, setSelectedOrden] = useState(null);
+  const [checklistOrden, setChecklistOrden] = useState(null);
+
+  const handleRequestUpdateEstado = (id, nuevoEstado, ordenObj = null) => {
+    const normNext = String(nuevoEstado || "").toLowerCase();
+    if (normNext === "listo" || normNext === "listos") {
+      const target = ordenObj || ordenes.find((o) => o.id === id);
+      if (target) {
+        setChecklistOrden(target);
+        return;
+      }
+    }
+    updateEstado(id, nuevoEstado);
+  };
+
+  const handleConfirmChecklist = async ({
+    ordenId,
+    nuevoEstado,
+    checklistPreparacion,
+    pedidoCompleto,
+    observacionCocina
+  }) => {
+    await updateEstado(ordenId, nuevoEstado, {
+      checklistPreparacion,
+      pedidoCompleto,
+      observacionCocina
+    });
+  };
 
   // Dynamic stat counts
   const stats = useMemo(() => {
@@ -164,9 +192,10 @@ export function GestionProduccion() {
       ) : (
         <ProduccionTable
           ordenes={filteredOrdenes}
-          onUpdateEstado={canEdit ? updateEstado : null}
+          onUpdateEstado={canEdit ? handleRequestUpdateEstado : null}
           onDelete={canDelete ? deleteOrden : null}
           onViewDetails={(orden) => setSelectedOrden(orden)}
+          onOpenChecklist={canEdit ? (orden) => setChecklistOrden(orden) : null}
           canEdit={canEdit}
           canDelete={canDelete}
         />
@@ -176,7 +205,23 @@ export function GestionProduccion() {
       <VerOrdenModal
         isOpen={Boolean(selectedOrden)}
         onClose={() => setSelectedOrden(null)}
-        orden={selectedOrden}
+        orden={selectedOrden ? (ordenes.find((o) => o.id === selectedOrden.id) || selectedOrden) : null}
+        onOpenChecklist={
+          canEdit
+            ? (orden) => {
+                setSelectedOrden(null);
+                setChecklistOrden(orden);
+              }
+            : null
+        }
+      />
+
+      {/* Modal Checklist de Verificación al pasar a Listo */}
+      <ChecklistPreparacionModal
+        isOpen={Boolean(checklistOrden)}
+        onClose={() => setChecklistOrden(null)}
+        orden={checklistOrden}
+        onConfirmChecklist={handleConfirmChecklist}
       />
     </div>
   );

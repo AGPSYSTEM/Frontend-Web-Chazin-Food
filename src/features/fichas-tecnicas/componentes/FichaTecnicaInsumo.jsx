@@ -42,7 +42,7 @@ export function FichaTecnicaInsumo({
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
-  const [rendimiento, setRendimiento] = useState("");
+  const [rendimiento, setRendimiento] = useState("1 receta base");
   const [especificaciones, setEspecificaciones] = useState("");
   const [caracteristicas, setCaracteristicas] = useState("");
   const [informacionNutricional, setInformacionNutricional] = useState("");
@@ -73,8 +73,11 @@ export function FichaTecnicaInsumo({
         if (val === undefined || val === null || String(val).trim() === "") return "El tiempo de preparación es obligatorio.";
         if (Number(val) < 1) return "Debe ser al menos 1 minuto.";
         return "";
-      case "rendimiento":
-        return !val || !val.trim() ? "El rendimiento o porciones es obligatorio." : val.trim().length < 2 ? "Mínimo 2 caracteres." : "";
+      case "rendimiento": {
+        const str = String(val ?? "").trim();
+        if (!str) return "El rendimiento o porciones es obligatorio.";
+        return "";
+      }
       case "especificaciones":
         return !val || !val.trim() ? "Las especificaciones técnicas son obligatorias." : val.trim().length < 3 ? "Mínimo 3 caracteres." : "";
       case "caracteristicas":
@@ -144,7 +147,7 @@ export function FichaTecnicaInsumo({
     setInsumos(f.detalles || f.insumos || f.ingredientes || []);
     setProcedimiento(f.procedimiento || f.descripcion || "");
     setTiempoPreparacion(f.tiempoPreparacion !== null && f.tiempoPreparacion !== undefined ? String(f.tiempoPreparacion) : "");
-    setRendimiento(f.rendimiento || "");
+    setRendimiento(f.rendimiento ? String(f.rendimiento) : "1 receta base");
     setEspecificaciones(f.especificaciones || "");
     setCaracteristicas(f.caracteristicas || "");
     setInformacionNutricional(f.informacionNutricional || "");
@@ -242,7 +245,7 @@ export function FichaTecnicaInsumo({
       setInsumos([]);
       setProcedimiento("");
       setTiempoPreparacion("");
-      setRendimiento("");
+      setRendimiento("1 receta base");
       setEspecificaciones("");
       setCaracteristicas("");
       setInformacionNutricional("");
@@ -433,6 +436,13 @@ export function FichaTecnicaInsumo({
       notify.error("Campos obligatorios", `Completa los siguientes campos obligatorios de la ficha técnica: ${missingLabels.join(", ")}.`);
       return;
     }
+
+    // Confirmación previa antes de registrar una nueva versión
+    const confirmed = await notify.confirmAction(
+      "¿Guardar versión de Ficha Técnica?",
+      `Estás a punto de guardar y activar una nueva versión de la ficha técnica para "${insumoName || 'este insumo preparado'}". ¿Deseas continuar?`
+    );
+    if (!confirmed) return;
 
     const payload = {
       idInsumo: insumoId || null,
@@ -909,3 +919,5 @@ export function FichaTecnicaInsumo({
     </div>
   );
 }
+
+export default FichaTecnicaInsumo;

@@ -8,6 +8,7 @@ import {
   ChevronsLeft,
   ChevronsRight
 } from "lucide-react";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export function CategoriaProductosTable({
   categorias = [],
@@ -89,58 +90,84 @@ export function CategoriaProductosTable({
                 </td>
               </tr>
             ) : (
-              paginatedCategorias.map((c) => (
-                <tr
-                  key={c.id}
-                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <UtensilsCrossed className="w-4 h-4 text-[#F05454]" />
-                    {c.nombre}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                    {c.descripcion || "Sin descripción"}
-                  </td>
-                  <td className="px-6 py-4 text-gray-900 dark:text-gray-100 font-medium">
-                    {c.cantidad || c.productosCount || 0} platillos
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        c.estado === "Activo" || c.estado === 1 || c.estado === true
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                      }`}
-                    >
-                      {typeof c.estado === "boolean"
-                        ? c.estado
+              paginatedCategorias.map((c) => {
+                const isCustomImg = Boolean(
+                  c.icon && typeof c.icon === "string" && (c.icon.startsWith("http") || c.icon.startsWith("/"))
+                );
+
+                return (
+                  <tr
+                    key={c.id}
+                    className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <td className="px-6 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/40 flex items-center justify-center shrink-0 overflow-hidden text-[#F05454] shadow-2xs">
+                          {isCustomImg ? (
+                            <img src={c.icon} alt={c.nombre} className="w-full h-full object-cover" />
+                          ) : (
+                            <FoodIcon name={c.icon || c.nombre || "burger"} category={c.nombre} size={20} stroke={1.75} />
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-bold text-gray-900 dark:text-gray-100 block">
+                            {c.nombre}
+                          </span>
+                          <span className="text-[11px] text-gray-400 font-normal">
+                            ID #{c.id}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5 text-gray-600 dark:text-gray-300">
+                      {c.descripcion || "Sin descripción"}
+                    </td>
+                    <td className="px-6 py-3.5 text-gray-900 dark:text-gray-100 font-bold">
+                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs">
+                        {c.cantidad || c.productosCount || 0} platillos
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          c.estado === "Activo" || c.estado === 1 || c.estado === true
+                            ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800"
+                            : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          c.estado === "Activo" || c.estado === 1 || c.estado === true ? "bg-green-500" : "bg-red-500"
+                        }`} />
+                        {typeof c.estado === "boolean"
+                          ? c.estado
+                            ? "Activo"
+                            : "Inactivo"
+                          : c.estado === 1
                           ? "Activo"
-                          : "Inactivo"
-                        : c.estado === 1
-                        ? "Activo"
-                        : c.estado || "Activo"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onEdit(c)}
-                        title="Editar categoría"
-                        className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(c.id, c.nombre)}
-                        title="Eliminar categoría"
-                        className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                          : c.estado || "Activo"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => onEdit(c)}
+                          title="Editar categoría"
+                          className="p-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(c.id, c.nombre)}
+                          title="Eliminar categoría"
+                          className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -250,3 +277,5 @@ export function CategoriaProductosTable({
     </div>
   );
 }
+
+export default CategoriaProductosTable;

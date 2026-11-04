@@ -358,6 +358,48 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
       };
     });
 
+    // Si no hay eventos activos registrados en la base de datos, mostramos productos aleatorios/destacados del menú
+    if (enrichedDb.length === 0 && Array.isArray(productos) && productos.length > 0) {
+      const activeMenuProds = productos.filter((p) => p.estado !== "Inactivo" && p.estado !== 0 && Number(p.precio) > 0);
+      if (activeMenuProds.length > 0) {
+        // Tomamos hasta 4 productos variados para la pasarela
+        const themeKeys = Object.keys(THEMES);
+        return activeMenuProds.slice(0, 4).map((p, idx) => {
+          const theme = themeKeys[idx % themeKeys.length];
+          const pId = p.id || p.idProducto;
+          const ratingInfo = getEventRating({ idProducto: pId }, p);
+          const price = Number(p.precio || 0);
+
+          return {
+            idEvento: `showcase-prod-${pId}`,
+            idProducto: pId,
+            nombreEvento: p.nombre,
+            descripcion: p.descripcion || `Disfruta de ${p.nombre}, elaborado al momento con los mejores ingredientes de la casa.`,
+            imagen: p.imagen,
+            tipoEvento: "Destacado de la Casa",
+            precioOriginal: price,
+            nuevoPrecio: price,
+            theme,
+            customTag: "RECOMENDADO DE LA CASA",
+            TagIcon: Sparkles,
+            TitleIcon: null,
+            perks: [
+              "Ingredientes 100% Frescos",
+              "Personalización a Tu Gusto",
+              "Preparación Artesanal Chazin",
+              "Garantía de Calidad"
+            ],
+            tiempoPrep: "10-15 min",
+            rating: ratingInfo.rating || 4.9,
+            totalResenas: ratingInfo.totalResenas || 10,
+            calorias: "~650 kcal",
+            esProductoAleatorio: true,
+            producto: p
+          };
+        });
+      }
+    }
+
     return enrichedDb;
   }, [eventos, productos, ratingsMap]);
 
@@ -497,7 +539,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
               </span>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
-              Desliza para descubrir nuestras promociones especiales y combos de la casa.
+              Desliza para descubrir nuestras promociones especiales y platos recomendados de la casa.
             </p>
           </div>
         </div>
@@ -594,7 +636,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         <span>{formatTipoEvento(evt.tipoEvento) || "Evento Activo"}</span>
                       </span>
 
-                      {/* Píldora de Calificación Real o Sin Reseñas (Ancho estable min-w-[88px] para 0 CLS) */}
+                      {/* Píldora de Calificación Real o Sin Reseñas */}
                       {evt.rating && Number(evt.rating) > 0 && evt.totalResenas > 0 ? (
                         <span
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20 shrink-0 min-w-[88px]"
@@ -607,7 +649,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       ) : (
                         <span
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0 min-w-[88px]"
-                          title="Este evento aún no tiene reseñas de usuarios"
+                          title="Este producto aún no tiene reseñas de usuarios"
                         >
                           <Star className="w-3 h-3 text-white/40" />
                           <span>Sin reseñas</span>
@@ -620,13 +662,12 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         <span>Preparación artesanal: {evt.tiempoPrep || "12 - 15 min"}</span>
                       </span>
 
-                      {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta de Promoción (Ítem #2) */}
+                      {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta */}
                       {(() => {
                         const evtTimeLeft = (() => {
                           if (evt.fechaFin) {
                             return calculateCountdown(evt.fechaFin, currentTick);
                           }
-                          // Descuento en vivo cíclico de 48 horas si el evento es genérico
                           const fallbackBase = Math.floor(currentTick / 1000);
                           const diffSec = Math.max(0, (48 * 3600) - (fallbackBase % (48 * 3600)));
                           return {
@@ -646,7 +687,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                           }`}>
                             <Clock className={`w-3.5 h-3.5 ${evtTimeLeft.expirado ? "text-rose-400" : "text-amber-400 animate-pulse"}`} />
                             <span className="text-[10.5px] font-bold text-gray-200">
-                              {evtTimeLeft.expirado ? "Estado:" : "Termina en:"}
+                              {evtTimeLeft.expirado ? "Estado:" : "Disponible:"}
                             </span>
                             <span className={`font-mono font-black ${evtTimeLeft.expirado ? "text-rose-300" : "text-amber-300"}`}>
                               {evtTimeLeft.expirado
@@ -688,7 +729,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       <p className="text-xs sm:text-sm text-gray-200/90 leading-relaxed font-normal max-w-xl line-clamp-2 sm:line-clamp-3">
                         {evt.descripcion && !/^(test|prueba|asdf)$/i.test(evt.descripcion.trim())
                           ? evt.descripcion
-                          : "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta de la casa."}
+                          : "Disfruta de este plato seleccionado preparado con los ingredientes más frescos de la casa."}
                       </p>
 
                       {/* Comparativa de precio */}
@@ -753,11 +794,11 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                       <button
                         type="button"
-                        onClick={() => onSelectEvento && onSelectEvento(evt, prod)}
+                        onClick={() => onSelectEvento && onSelectEvento(evt, prod || evt.producto)}
                         className={`w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 bg-gradient-to-r ${theme.btnGrad} transition-all duration-200 shadow-xl hover:scale-[1.02] active:scale-98 cursor-pointer group/cta`}
                       >
                         <Sparkles className="w-4 h-4 text-white" />
-                        <span>¡Aprovechar Oferta!</span>
+                        <span>{evt.esProductoAleatorio ? "¡Pedir Ahora!" : "¡Aprovechar Oferta!"}</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover/cta:translate-x-1" />
                       </button>
                     </div>
@@ -795,7 +836,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
             })}
           </div>
 
-          {/* BOTÓN NAVEGACIÓN IZQUIERDO (CENTRADO VERTICALMENTE EN EL EXTREMO IZQUIERDO) */}
+          {/* BOTÓN NAVEGACIÓN IZQUIERDO */}
           <button
             type="button"
             onClick={prevSlide}
@@ -805,7 +846,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
             <ChevronLeft className="w-6 h-6 transition-transform group-hover:-translate-x-0.5" />
           </button>
 
-          {/* BOTÓN NAVEGACIÓN DERECHO (CENTRADO VERTICALMENTE EN EL EXTREMO DERECHO) */}
+          {/* BOTÓN NAVEGACIÓN DERECHO */}
           <button
             type="button"
             onClick={nextSlide}

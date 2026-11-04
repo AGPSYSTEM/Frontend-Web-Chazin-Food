@@ -1,10 +1,13 @@
 import React from "react";
-import { Sparkles, Tag, Plus } from "lucide-react";
+import { Sparkles, Tag, Plus, Ban } from "lucide-react";
 import { motion } from "motion/react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 
 export default function KioskProductCard({ producto, onSelect }) {
   if (!producto) return null;
+
+  const prodStock = Number(producto.stock !== undefined ? producto.stock : 25);
+  const isAgotado = Boolean(producto.agotado || prodStock <= 0 || producto.estado === "Inactivo" || producto.estado === 0);
 
   const now = new Date();
   const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
@@ -125,6 +128,14 @@ export default function KioskProductCard({ producto, onSelect }) {
             <span className="text-[11px] font-bold text-gray-400 mt-1">Chazin Food</span>
           </div>
         )}
+        {isAgotado && (
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex items-center justify-center p-2">
+            <span className="px-3 py-1.5 rounded-xl bg-red-600 text-white font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+              <Ban className="w-3.5 h-3.5" />
+              <span>Agotado</span>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Product Details (Legible at 1 meter, max 2 lines title) */}
@@ -146,9 +157,24 @@ export default function KioskProductCard({ producto, onSelect }) {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs group-hover:scale-105 active:scale-95 transition-all">
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>Pedir</span>
+          <div
+            className={`flex items-center gap-1.5 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs transition-all ${
+              isAgotado
+                ? "bg-gray-500 dark:bg-gray-700"
+                : "bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 group-hover:scale-105 active:scale-95"
+            }`}
+          >
+            {isAgotado ? (
+              <>
+                <Ban className="w-3.5 h-3.5" />
+                <span>Agotado</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Pedir</span>
+              </>
+            )}
           </div>
         </div>
       </div>

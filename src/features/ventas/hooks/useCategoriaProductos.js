@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { categoriaProductosService } from "../servicios/categoriaProductosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
@@ -25,14 +25,36 @@ export function useCategoriaProductos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const filteredCategorias = categorias.filter((c) => {
-    if (!searchTerm || searchTerm.trim() === "") return true;
+  // Buscador generalizado por todas las columnas (nombre, descripción, ID, unidades/productos, estado inactivo/activo)
+  const filteredCategorias = useMemo(() => {
+    if (!searchTerm || !searchTerm.trim()) return categorias;
     const term = searchTerm.trim().toLowerCase();
-    const matchNombre = c.nombre?.toLowerCase().includes(term);
-    const matchDesc = c.descripcion?.toLowerCase().includes(term);
-    const matchId = String(c.id || c.idCategoriaProducto || "").includes(term);
-    return matchNombre || matchDesc || matchId;
-  });
+
+    return categorias.filter((c) => {
+      const id = String(c.id || c.idCategoriaProducto || "").toLowerCase();
+      const nombre = (c.nombre || "").toLowerCase();
+      const descripcion = (c.descripcion || "").toLowerCase();
+      const estado = (c.estado || (c.activo === false ? "Inactivo" : "Activo")).toLowerCase();
+      
+      const count = String(c.totalProductos ?? c.cantidadProductos ?? c.productosCount ?? c.productos?.length ?? 0);
+      const unidadesText = `${count} productos ${count} unidades ${count} platillos`.toLowerCase();
+
+      // Buscar también si coincide con nombres de productos contenidos en la categoría
+      const productosNombres = Array.isArray(c.productos)
+        ? c.productos.map((p) => (typeof p === "string" ? p : p.nombre || "")).join(" ").toLowerCase()
+        : "";
+
+      return (
+        id.includes(term) ||
+        nombre.includes(term) ||
+        descripcion.includes(term) ||
+        estado.includes(term) ||
+        count === term ||
+        unidadesText.includes(term) ||
+        productosNombres.includes(term)
+      );
+    });
+  }, [categorias, searchTerm]);
 
   const createCategoria = async (form) => {
     try {

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText } from "lucide-react";
+import { X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText, Search, Check, ChevronDown, Coffee, ShoppingBag } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { validateTexto, validateNumeroPositivo, validateRequerido } from "@/shared/utils/validationUtils";
+import { validateTexto, validateNumeroPositivo } from "@/shared/utils/validationUtils";
+import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
 
 export const isSizeVariantName = (name = "") => {
   const vn = String(name || "").toLowerCase();
@@ -79,17 +80,33 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [variantes, setVariantes] = useState([]);
   const [todasAdiciones, setTodasAdiciones] = useState([]);
   const [todasBebidas, setTodasBebidas] = useState([]);
+  const [todosProductosCatalogo, setTodosProductosCatalogo] = useState([]);
   const [configCombo, setConfigCombo] = useState({
     esCombo: false,
     cantidadBebidas: 1,
-    bebidasPermitidas: []
+    bebidasPermitidas: [],
+    productosAsociados: []
   });
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [fileToUpload, setFileToUpload] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [modoVariantesManual, setModoVariantesManual] = useState(null); // null = automático, "bebida", "comida"
+  const [modoVariantesManual, setModoVariantesManual] = useState(null);
   const fileInputRef = useRef(null);
+  const [busquedaComboProd, setBusquedaComboProd] = useState("");
+  const [filtroCatCombo, setFiltroCatCombo] = useState("todas");
+  const [comboDropdownOpen, setComboDropdownOpen] = useState(false);
+  const comboPickerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (comboPickerRef.current && !comboPickerRef.current.contains(e.target)) {
+        setComboDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -135,7 +152,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   };
 
   const handleCancelOrClose = () => {
-    // Limpiar archivo seleccionado y previsualización local sin haber subido nada a Cloudinary
     setFileToUpload(null);
     setPreviewUrl("");
     setErrors({});
@@ -162,9 +178,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
 
-    // Cargar catálogo de bebidas para asociar al combo
+    // Cargar productos del catálogo para poder asociarlos a combos (Requerimiento 4 y 1)
     productosService.getProductos().then((prods) => {
-      const bebidas = (prods || []).filter((p) => {
+      const all = prods || [];
+      const currentId = producto?.id || producto?.idProducto;
+      
+      // Productos regulares no-combos que pueden componer un combo (unidades mínimas)
+      const regularProducts = all.filter(p => {
+        const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+        const nom = String(p.nombre || "").toLowerCase();
+        const pId = p.id || p.idProducto;
+        return !cat.includes("combo") && !nom.includes("combo") && (currentId ? pId !== currentId : true);
+      });
+      setTodosProductosCatalogo(regularProducts);
+
+      const bebidas = all.filter((p) => {
         const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
         const nom = String(p.nombre || "").toLowerCase();
         return (
@@ -205,9 +233,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         pLower.includes("+gaseosa") ||
         pLower.includes("con gaseosa") ||
         dLower.includes("+ gaseosa") ||
-        dLower.includes("+ bebida") ||
-        dLower.includes("bebida a elección") ||
-        dLower.includes("gaseosa a elección");
+        dLower.includes("+ bebida");
 
       let defaultCant = 1;
       if (pLower.includes("familiar") || pLower.includes("4 personas")) defaultCant = 4;
@@ -221,10 +247,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       setConfigCombo(parsedConfig || {
         esCombo: isAutoCombo,
         cantidadBebidas: defaultCant,
-        bebidasPermitidas: []
+        bebidasPermitidas: [],
+        productosAsociados: []
       });
 
-      // Inicializar variantes existentes si tiene registradas
+      // Inicializar variantes existentes (heredan el precio base)
       const rawVars = Array.isArray(producto.variantes) && producto.variantes.length > 0
         ? producto.variantes
         : [];
@@ -235,7 +262,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           _key: v.idVariante ? `id-${v.idVariante}` : `var-${i}-${Date.now()}`,
           idVariante: v.idVariante || v.id || null,
           nombre: v.nombre || "",
-          precio: v.precio !== undefined ? v.precio : "",
           imagen: v.imagen || "",
           tipo: isSize ? "tamano" : "sabor",
           fileToUpload: null,
@@ -259,7 +285,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       setConfigCombo({
         esCombo: isFirstCombo,
         cantidadBebidas: 1,
-        bebidasPermitidas: []
+        bebidasPermitidas: [],
+        productosAsociados: []
       });
       setVariantes([]);
     }
@@ -276,57 +303,30 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       catName.includes("gaseos") ||
       catName.includes("refresco") ||
       catName.includes("jugo") ||
-      catName.includes("líquido") ||
-      catName.includes("liquido") ||
       catName.includes("cerveza") ||
-      catName.includes("licor") ||
-      catName.includes("coctel") ||
-      catName.includes("cóctel") ||
-      catName.includes("bar") ||
       prodName.includes("gaseosa") ||
       prodName.includes("bebida") ||
       prodName.includes("coca-cola") ||
-      prodName.includes("coca cola") ||
       prodName.includes("pepsi") ||
       prodName.includes("postobón") ||
       prodName.includes("postobon") ||
       prodName.includes("colombiana") ||
-      prodName.includes("manzana postobon") ||
-      prodName.includes("sprite") ||
-      prodName.includes("cuatro") ||
-      prodName.includes("quatro") ||
       prodName.includes("agua") ||
-      prodName.includes("jugo") ||
-      prodName.includes("cerveza") ||
-      prodName.includes("limonada") ||
-      prodName.includes("malteada") ||
-      prodName.includes("smoothie") ||
-      prodName.includes("mr tea") ||
-      prodName.includes("h2oh") ||
       desc.includes("refrescante") ||
-      desc.includes("bebida fría") ||
       variantes.some((v) => isSizeVariantName(v.nombre))
     );
   }, [form.categoria, form.idCategoriaProducto, form.nombre, form.descripcion, variantes]);
 
   const isDrink = modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink;
 
-  // Requisito 99: Precio de Referencia calculado a partir de los insumos asociados en la ficha técnica
-  const costoTotalInsumos = useMemo(() => {
+  // Cálculo de Precio de Referencia gastronómico preciso con conversión de unidades y porciones
+  const totalsFicha = useMemo(() => {
     const list = fichaTecnica?.detalles || fichaTecnica?.insumos || [];
-    if (!list || list.length === 0) return 0;
-    return list.reduce((acc, item) => {
-      const cant = Number(item.cantidad || 0);
-      const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
-      return acc + (cant * unitCost);
-    }, 0);
+    return calculateRecipeTotals(list, fichaTecnica?.rendimiento || 1);
   }, [fichaTecnica]);
 
-  const precioReferenciaSugerido = useMemo(() => {
-    if (costoTotalInsumos <= 0) return 0;
-    // Food Cost gastronómico estándar (~35-40% del precio de venta final)
-    return Math.round((costoTotalInsumos * 2.5) / 500) * 500;
-  }, [costoTotalInsumos]);
+  const costoTotalInsumos = totalsFicha.costoPorPorcion;
+  const precioReferenciaSugerido = totalsFicha.precioSugerido;
 
   const sizeVariantes = useMemo(() => {
     return variantes.filter((v) => {
@@ -364,22 +364,75 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     setForm({ ...form, adiciones: nuevasAdiciones });
   };
 
-  // Administradores de variantes
-  const handleAddTamano = (suggestedName = "", suggestedPrice = "", suggestedImg = "") => {
-    const isCoca = String(form.nombre || "").toLowerCase().includes("coca");
-    let defaultPrice = suggestedPrice;
-    let defaultImg = suggestedImg;
+  const categoriasProductosCatalogo = useMemo(() => {
+    const cats = new Set();
+    (todosProductosCatalogo || []).forEach(p => {
+      const c = p.categoria || p.categoriaNombre;
+      if (c) cats.add(c);
+    });
+    return ["todas", ...Array.from(cats)];
+  }, [todosProductosCatalogo]);
 
-    if (!defaultPrice) {
-      if (suggestedName.includes("1.5")) {
-        defaultPrice = isCoca ? 9500 : 8500;
-      } else if (suggestedName.includes("2.5")) {
-        defaultPrice = isCoca ? 13500 : 12000;
-      } else {
-        defaultPrice = "";
-      }
+  const productosComboFiltrados = useMemo(() => {
+    let list = todosProductosCatalogo || [];
+    if (filtroCatCombo && filtroCatCombo !== "todas") {
+      list = list.filter(p => (p.categoria || p.categoriaNombre) === filtroCatCombo);
     }
+    if (busquedaComboProd && busquedaComboProd.trim()) {
+      const q = busquedaComboProd.toLowerCase().trim();
+      list = list.filter(p => 
+        (p.nombre && p.nombre.toLowerCase().includes(q)) ||
+        (p.categoria && p.categoria.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [todosProductosCatalogo, filtroCatCombo, busquedaComboProd]);
 
+  const subtotalProductosCombo = useMemo(() => {
+    const items = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+    return items.reduce((acc, it) => acc + (Number(it.precio || 0) * Number(it.cantidad || 1)), 0);
+  }, [configCombo.productosAsociados]);
+
+  const totalUnidadesCombo = useMemo(() => {
+    const items = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+    return items.reduce((acc, it) => acc + Number(it.cantidad || 1), 0);
+  }, [configCombo.productosAsociados]);
+
+  const agregarProductoACombo = (prod) => {
+    if (!prod) return;
+    const prodId = prod.id || prod.idProducto;
+    const actuales = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+    const yaExiste = actuales.find(a => String(a.idProducto || a.id) === String(prodId));
+
+    if (yaExiste) {
+      setConfigCombo(prev => ({
+        ...prev,
+        productosAsociados: actuales.map(a => 
+          String(a.idProducto || a.id) === String(prodId) 
+            ? { ...a, cantidad: (a.cantidad || 1) + 1 } 
+            : a
+        )
+      }));
+    } else {
+      setConfigCombo(prev => ({
+        ...prev,
+        productosAsociados: [
+          ...actuales,
+          {
+            idProducto: prodId,
+            nombre: prod.nombre,
+            precio: Number(prod.precio || 0),
+            cantidad: 1,
+            imagen: prod.imagen || ""
+          }
+        ]
+      }));
+    }
+  };
+
+  // Administradores de variantes (sin campos de precio)
+  const handleAddTamano = (suggestedName = "", suggestedImg = "") => {
+    let defaultImg = suggestedImg;
     if (!defaultImg && suggestedName) {
       defaultImg = getDefaultDrinkImageForSize(suggestedName, form.nombre);
     }
@@ -390,7 +443,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         _key: `tamano-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         idVariante: null,
         nombre: suggestedName || "",
-        precio: defaultPrice,
         imagen: defaultImg || "",
         tipo: "tamano",
         fileToUpload: null,
@@ -399,10 +451,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     ]);
   };
 
-  const handleAddSabor = (suggestedName = "", suggestedPrice = "", suggestedImg = "") => {
-    let defaultPrice = suggestedPrice !== "" ? suggestedPrice : (form.precio || "");
+  const handleAddSabor = (suggestedName = "", suggestedImg = "") => {
     let defaultImg = suggestedImg;
-
     if (!defaultImg && suggestedName) {
       defaultImg = getDefaultDrinkImageForFlavor(suggestedName, form.nombre);
     }
@@ -413,7 +463,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         _key: `sabor-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         idVariante: null,
         nombre: suggestedName || "",
-        precio: defaultPrice,
         imagen: defaultImg || "",
         tipo: "sabor",
         fileToUpload: null,
@@ -429,7 +478,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         _key: `generic-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         idVariante: null,
         nombre: "",
-        precio: form.precio !== "" ? form.precio : "",
         imagen: "",
         tipo: "general",
         fileToUpload: null,
@@ -496,6 +544,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
   };
 
+  // Fila de variante simplificada SIN columna de precio
   const renderVariantRow = (v, idx, type) => {
     const isTamano = type === "tamano";
     const isSabor = type === "sabor";
@@ -520,7 +569,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     return (
       <div
         key={v._key}
-        className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700/80 shadow-2xs hover:shadow-xs transition-all"
+        className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700/80 shadow-2xs hover:shadow-xs transition-all"
       >
         {/* Index & Type Tag */}
         <div className="flex items-center gap-2 shrink-0">
@@ -543,12 +592,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         <div className="shrink-0 flex items-center gap-1.5">
           <label
             htmlFor={`variant-img-${v._key}`}
-            className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer relative group transition-all shrink-0 ${
+            className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer relative group transition-all shrink-0 ${
               v.previewUrl || v.imagen
                 ? "border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-850 shadow-2xs"
                 : "border-dashed border-gray-300 dark:border-gray-600 hover:border-[#F05454] bg-gray-50 dark:bg-gray-800/60"
             }`}
-            title={v.previewUrl || v.imagen ? "Cambiar foto" : "Subir foto"}
+            title={v.previewUrl || v.imagen ? "Cambiar foto" : "Subir foto opcional"}
           >
             {v.previewUrl || v.imagen ? (
               <>
@@ -563,8 +612,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </>
             ) : (
               <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#F05454] transition-colors">
-                <Camera className="w-4 h-4" />
-                <span className="text-[8px] font-bold mt-0.5 leading-none">Foto</span>
+                <Camera className="w-3.5 h-3.5" />
+                <span className="text-[7.5px] font-bold mt-0.5 leading-none">Foto</span>
               </div>
             )}
             <input
@@ -597,16 +646,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             placeholder={placeholderText}
             className={`w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs focus:ring-2 focus:border-transparent transition-colors ${borderFocusCls}`}
           />
-        </div>
-
-        {/* Requisito 100: Retirar precio independiente en variantes (heredan el precio base del producto) */}
-        <div className="w-full sm:w-48 shrink-0">
-          <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-lg text-xs" title="Las variantes heredan el precio base del producto">
-            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Precio base:</span>
-            <span className="font-bold text-gray-800 dark:text-gray-100 font-mono">
-              ${Number(form.precio || 0).toLocaleString("es-CO")} COP
-            </span>
-          </div>
         </div>
 
         {/* Delete row button */}
@@ -698,13 +737,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
     }
 
-    // Ficha técnica desacoplada del modal de producto (se gestiona independientemente)
+// Ficha técnica desacoplada del modal de producto (se gestiona independientemente en su módulo de Fichas Técnicas)
 
     try {
       setUploading(true);
       let finalImageUrl = form.imagen;
 
-      // SUBIDA DIFERIDA: Se sube a Cloudinary ÚNICAMENTE si el usuario confirma y guarda el formulario
       if (fileToUpload) {
         finalImageUrl = await uploadImageToCloudinary(fileToUpload);
       }
@@ -712,7 +750,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       const resolvedCat = (categorias || []).find(c => c.nombre === form.categoria);
       const basePrice = Number(form.precio) || 0;
 
-      // SUBIDA DIFERIDA DE IMÁGENES DE VARIANTES (Si se seleccionaron archivos locales)
+      // Subida de fotos de variantes si fueron seleccionadas localmente
       const processedVariants = await Promise.all(
         variantes.map(async (v) => {
           let varImg = v.imagen || "";
@@ -726,7 +764,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           return {
             idVariante: v.idVariante || null,
             nombre: v.nombre.trim(),
-            precio: basePrice, // Requisito 100: Retirado precio independiente; variante hereda precio base
+            precio: basePrice, // Las variantes heredan el precio base
             imagen: varImg || null
           };
         })
@@ -742,9 +780,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           ? {
               esCombo: true,
               cantidadBebidas: Math.max(1, Number(configCombo.cantidadBebidas) || 1),
-              bebidasPermitidas: configCombo.bebidasPermitidas || []
+              bebidasPermitidas: configCombo.bebidasPermitidas || [],
+              productosAsociados: configCombo.productosAsociados || []
             }
-          : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [] },
+          : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [], productosAsociados: [] },
+        // Los combos NO llevan ficha técnica
         fichaTecnica: configCombo.esCombo
           ? null
           : fichaTecnica
@@ -785,7 +825,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       return;
     }
 
-    // No se sube a Cloudinary todavía; se genera vista previa local instantánea
     setFileToUpload(file);
     const localBlobUrl = URL.createObjectURL(file);
     setPreviewUrl(localBlobUrl);
@@ -823,7 +862,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           <button
             type="button"
             onClick={handleCancelOrClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -841,7 +880,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   Candado de Identidad Activo (Producto con Ventas Asociadas)
                 </p>
                 <p className="text-amber-800 dark:text-amber-300 leading-relaxed">
-                  El <strong>Nombre del Producto</strong> y la <strong>Categoría</strong> están protegidos con candado para preservar la integridad histórica de las ventas pasadas. El <strong>Precio de Venta</strong>, <strong>Descripción</strong>, <strong>Imagen</strong> y <strong>Ficha Técnica</strong> se pueden actualizar libremente y guardarán la versión anterior (con su precio e ingredientes de esa época) en el historial.
+                  El <strong>Nombre del Producto</strong> y la <strong>Categoría</strong> están protegidos con candado para preservar la integridad histórica de las ventas pasadas. El <strong>Precio de Venta</strong>, <strong>Descripción</strong>, <strong>Imagen</strong> y <strong>Ficha Técnica</strong> se pueden actualizar libremente.
                 </p>
               </div>
             </div>
@@ -873,7 +912,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                     : ""
                 }`}
-                placeholder="Ej. Hamburguesa Especial"
+                placeholder="Ej. Hamburguesa Especial, Combo Doble"
               />
               {(touched.nombre || submitted) && errors.nombre && (
                 <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
@@ -946,8 +985,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </p>
               )}
 
-              {/* Requisito 99: Precio de referencia basado en el costo de los insumos */}
-              {costoTotalInsumos > 0 ? (
+              {/* Precio de referencia corregido con costo de insumos real */}
+              {!configCombo.esCombo && costoTotalInsumos > 0 ? (
                 <div className="mt-2.5 p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-xl flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0">
@@ -955,7 +994,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-amber-900 dark:text-amber-200 truncate">
-                        Precio de Referencia (Costo Insumos):
+                        Precio de Referencia Gastronómico:
                       </p>
                       <p className="text-[11px] text-amber-700 dark:text-amber-400">
                         Costo Insumos: <span className="font-semibold font-mono">${costoTotalInsumos.toLocaleString("es-CO")} COP</span> &bull; Sugerido: <span className="font-bold font-mono text-amber-900 dark:text-amber-100">${precioReferenciaSugerido.toLocaleString("es-CO")} COP</span>
@@ -971,11 +1010,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     Usar Sugerido
                   </button>
                 </div>
-              ) : (
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  * El precio de referencia se calcula automáticamente con los insumos asignados en la ficha técnica.
-                </p>
-              )}
+              ) : null}
             </div>
 
             <div>
@@ -990,7 +1025,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </select>
             </div>
 
-            {/* ═══ CONTROL DE ESTRUCTURA DE VARIANTES (MODO MANUAL O AUTOMÁTICO) ═══ */}
+            {/* CONTROL DE ESTRUCTURA DE VARIANTES (MODO MANUAL O AUTOMÁTICO) */}
             <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-gray-50/90 dark:bg-gray-800/60 rounded-2xl border border-gray-200/80 dark:border-gray-700/80">
               <div>
                 <div className="flex items-center gap-2">
@@ -1003,17 +1038,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       : "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800"
                   }`}>
                     <FoodIcon name={isDrink ? "drink" : "burger"} size={13} className="shrink-0" />
-                    <span>{isDrink ? "Modo Bebidas (Tamaños y Sabores separados)" : "Modo Comidas (Presentaciones unificadas)"}</span>
+                    <span>{isDrink ? "Modo Bebidas (Tamaños y Sabores)" : "Modo Comidas (Presentaciones)"}</span>
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  {isDrink
-                    ? "Organiza botellas/tamaños (1.5L, 2.5L) y variantes/sabores (Light, Zero, Frutales) por separado."
-                    : "Organiza presentaciones generales (ej. Doble Carne, Tamaño Grande, Porción Extra)."}
+                  Las variantes representan atributos (como sabores o tamaños) y comparten el precio base del producto.
                 </p>
               </div>
 
-              {/* Botones de conmutación manual para máxima flexibilidad */}
               <div className="inline-flex p-1 bg-white dark:bg-gray-850 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold shrink-0 shadow-2xs self-start sm:self-auto">
                 <button
                   type="button"
@@ -1023,7 +1055,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       ? "bg-[#F05454] text-white shadow-xs"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   }`}
-                  title="Activar vista de variantes estándar para comidas"
                 >
                   <FoodIcon name="burger" size={14} />
                   <span>Comida</span>
@@ -1036,7 +1067,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       ? "bg-purple-600 text-white shadow-xs"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   }`}
-                  title="Activar vista separada de Tamaños y Sabores para bebidas"
                 >
                   <FoodIcon name="drink" size={14} />
                   <span>Bebida</span>
@@ -1044,10 +1074,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </div>
             </div>
 
-            {/* ═══ SECCIÓN DE VARIANTES: SEPARADA PARA BEBIDAS O GENERAL PARA COMIDAS ═══ */}
+            {/* SECCIÓN DE VARIANTES (SIN PRECIOS) */}
             {isDrink ? (
               <>
-                {/* ── 1. TAMAÑOS & PRESENTACIONES DE BEBIDA (1.5L, 2.5L, etc.) ── */}
+                {/* 1. TAMAÑOS & PRESENTACIONES DE BEBIDA */}
                 <div className="sm:col-span-2 border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/15 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-2.5">
@@ -1064,7 +1094,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Configura las botellas y tamaños adicionales (ej. Botella 1.5 Litros, Mega 2.5 Litros) con sus precios y fotos individuales.
+                          Configura las botellas y tamaños adicionales (ej. Botella 1.5 Litros, Mega 2.5 Litros).
                         </p>
                       </div>
                     </div>
@@ -1079,58 +1109,20 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </button>
                   </div>
 
-                  {/* Sugerencias Rápidas de Tamaños */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
-                      Sugerencias de tamaño:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleAddTamano("Botella 1.5 Litros")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-amber-600" />
-                      Botella 1.5 Litros
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddTamano("Mega Botella 2.5 Litros")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-amber-600" />
-                      Mega Botella 2.5 Litros
-                    </button>
-                  </div>
-
                   {sizeVariantes.length === 0 ? (
                     <div className="text-center py-4 px-4 rounded-xl border border-dashed border-amber-200/90 dark:border-amber-900/40 bg-white/50 dark:bg-gray-800/30">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        No hay tamaños adicionales registrados. La bebida se venderá únicamente en su tamaño personal estándar (400 ml).
+                        No hay tamaños adicionales registrados. La bebida se venderá en su tamaño estándar.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => handleAddTamano("Botella 1.5 Litros")}
-                        className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Añadir Botella 1.5 Litros
-                      </button>
                     </div>
                   ) : (
                     <div className="space-y-2.5 pt-1">
                       {sizeVariantes.map((v, idx) => renderVariantRow(v, idx, "tamano"))}
                     </div>
                   )}
-
-                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-amber-100 dark:border-amber-950">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>
-                      Estos tamaños aparecerán en el selector de <strong>"TAMAÑO & PRESENTACIÓN"</strong> del modal del comensal.
-                    </span>
-                  </div>
                 </div>
 
-                {/* ── 2. SABORES & VARIANTES DE BEBIDA (Sin Azúcar, Light, Zero, Frutales) ── */}
+                {/* 2. SABORES & VARIANTES DE BEBIDA */}
                 <div className="sm:col-span-2 border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/40 dark:bg-purple-950/15 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-2xs">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center gap-2.5">
@@ -1147,7 +1139,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Agrega variantes alternativas (ej. Sin Azúcar / Light, Zero, Sabor Uva, Naranja, etc.) que el cliente puede conmutar.
+                          Agrega variantes alternativas (ej. Sin Azúcar / Light, Zero, Sabor Uva, Naranja, etc.).
                         </p>
                       </div>
                     </div>
@@ -1162,83 +1154,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </button>
                   </div>
 
-                  {/* Sugerencias Rápidas de Sabores / Variantes */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1">
-                      Sugerencias de sabor:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSabor("Sin Azúcar / Light 400ml")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-purple-600" />
-                      Sin Azúcar / Light
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSabor("Zero Calorías 400ml")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-purple-600" />
-                      Zero Calorías
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSabor("Sabor Uva 400ml")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-purple-600" />
-                      Sabor Uva
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSabor("Sabor Naranja 400ml")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-purple-600" />
-                      Sabor Naranja
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddSabor("Sabor Manzana 400ml")}
-                      className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/80 text-purple-800 dark:text-purple-200 hover:bg-purple-100/60 dark:hover:bg-purple-900/40 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 text-purple-600" />
-                      Sabor Manzana
-                    </button>
-                  </div>
-
                   {flavorVariantes.length === 0 ? (
                     <div className="text-center py-4 px-4 rounded-xl border border-dashed border-purple-200/90 dark:border-purple-900/40 bg-white/50 dark:bg-gray-800/30">
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        No hay variantes alternativas registradas. La bebida se venderá en su sabor tradicional original.
+                        No hay variantes alternativas registradas. La bebida se venderá en su sabor tradicional.
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => handleAddSabor("Sin Azúcar / Light 400ml")}
-                        className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Añadir opción Sin Azúcar / Light
-                      </button>
                     </div>
                   ) : (
                     <div className="space-y-2.5 pt-1">
                       {flavorVariantes.map((v, idx) => renderVariantRow(v, idx, "sabor"))}
                     </div>
                   )}
-
-                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-purple-100 dark:border-purple-950">
-                    <Lightbulb className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                    <span>
-                      Estos sabores aparecerán en la sección <strong>"VARIANTE"</strong> del modal del comensal.
-                    </span>
-                  </div>
                 </div>
               </>
             ) : (
-              /* ── SECCIÓN GENERAL PARA COMIDAS (Hamburguesas, Perros, Salchipapas, etc.) ── */
+              /* SECCIÓN GENERAL PARA COMIDAS */
               <div className="sm:col-span-2 border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10 rounded-2xl p-4 sm:p-5 space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-2.5">
@@ -1255,7 +1185,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Personaliza opciones de presentación (ej. Doble Carne, Tamaño Grande, Porción Extra) y sus precios.
+                        Personaliza opciones de presentación (ej. Doble Carne, Tamaño Grande, Con Queso Extra).
                       </p>
                     </div>
                   </div>
@@ -1273,29 +1203,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 {variantes.length === 0 ? (
                   <div className="text-center py-5 px-4 rounded-xl border border-dashed border-orange-200/90 dark:border-orange-900/40 bg-white/50 dark:bg-gray-800/30">
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      No hay variantes adicionales registradas. El producto se venderá con su presentación estándar y precio base.
+                      No hay variantes adicionales registradas. El producto se venderá con su presentación estándar.
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleAddVariante}
-                      className="mt-2 text-xs font-bold text-[#F05454] hover:underline cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Añadir variante
-                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2.5 pt-1">
                     {variantes.map((v, idx) => renderVariantRow(v, idx, "general"))}
                   </div>
                 )}
-
-                <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/40 p-2 rounded-lg border border-orange-100 dark:border-orange-950">
-                  <Lightbulb className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                  <span>
-                    Tus clientes podrán seleccionar estas opciones con sus propios precios y fotos al ordenar.
-                  </span>
-                </div>
               </div>
             )}
 
@@ -1303,7 +1218,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <label className={labelCls}>Imagen del Producto</label>
               
               <div className="flex items-start gap-4">
-                {/* Preview Thumbnail */}
                 <div className="w-24 h-24 shrink-0 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800">
                   {previewUrl ? (
                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -1312,7 +1226,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   )}
                 </div>
                 
-                {/* Upload Action */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <button
@@ -1375,98 +1288,418 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               )}
             </div>
 
-            {/* Configuración de Combo y Bebidas Incluidas */}
-            <div className="sm:col-span-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FoodIconBadge name="drink" size="sm" />
+            {/* Configuración de Combo: Armador Visual e Interactivo */}
+            <div className={`sm:col-span-2 border transition-all duration-200 rounded-3xl p-5 space-y-5 ${
+              configCombo.esCombo 
+                ? "border-blue-300 dark:border-blue-800 bg-gradient-to-b from-blue-50/70 via-white to-blue-50/40 dark:from-blue-950/40 dark:via-gray-900 dark:to-blue-950/20 shadow-sm"
+                : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20"
+            }`}>
+              {/* Header con Switch Moderno */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+                    configCombo.esCombo 
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/30" 
+                      : "bg-gray-200 dark:bg-gray-800 text-gray-500"
+                  }`}>
+                    <FoodIcon name="combo" size={22} />
+                  </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                      Configuración de Combo: Bebidas Incluidas
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Permite que el cliente elija bebidas incluidas sin costo extra al ordenar este producto.
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-extrabold text-gray-900 dark:text-gray-100">
+                        Armador de Combo Especial
+                      </h4>
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                        configCombo.esCombo
+                          ? "bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                      }`}>
+                        {configCombo.esCombo ? "Activo como Combo" : "Producto Simple"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {configCombo.esCombo 
+                        ? "Agrupa productos del menú (hamburguesas, perros, papas, etc.) sin tener que repetir fichas técnicas."
+                        : "Activa esta opción si este producto es un paquete/combo compuesto por varios productos ya existentes."}
                     </p>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+
+                <div className="flex items-center gap-2.5 self-end sm:self-center">
+                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300 select-none">
                     {configCombo.esCombo ? "Es Combo" : "No es Combo"}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={configCombo.esCombo}
-                    onChange={(e) => setConfigCombo({ ...configCombo, esCombo: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={configCombo.esCombo}
+                    onClick={() => setConfigCombo(prev => ({ ...prev, esCombo: !prev.esCombo }))}
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer focus:outline-none ${
+                      configCombo.esCombo ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
+                        configCombo.esCombo ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {configCombo.esCombo && (
-                <div className="space-y-3 pt-3 border-t border-blue-150 dark:border-blue-900/40">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                      Cantidad de Bebidas Incluidas en el Combo:
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => setConfigCombo(prev => ({ ...prev, cantidadBebidas: Math.max(1, (prev.cantidadBebidas || 1) - 1) }))}
-                          className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition cursor-pointer active:scale-95"
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center font-black text-sm text-gray-900 dark:text-gray-100">
-                          {configCombo.cantidadBebidas || 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setConfigCombo(prev => ({ ...prev, cantidadBebidas: Math.min(10, (prev.cantidadBebidas || 1) + 1) }))}
-                          className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center transition cursor-pointer active:scale-95"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <span className="text-xs text-blue-700 dark:text-blue-300 font-semibold">
-                        {configCombo.cantidadBebidas === 1
-                          ? "✓ El cliente podrá elegir 1 bebida incluida en el precio ($0 COP)."
-                          : `✓ El cliente podrá elegir ${configCombo.cantidadBebidas} bebidas incluidas en el precio ($0 COP).`}
+                <div className="space-y-5 pt-3 border-t border-blue-150 dark:border-blue-900/40">
+                  
+                  {/* 1. SELECCIÓN DE PRODUCTOS CON BUSCADOR INTUITIVO (NO SELECT NATIVO) */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-extrabold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                        1. Productos del Menú que componen el Combo:
+                      </label>
+                      <span className="text-[11px] font-black text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-full">
+                        {totalUnidadesCombo} {totalUnidadesCombo === 1 ? "unidad" : "unidades"} en total
                       </span>
                     </div>
+
+                    {/* Buscador inteligente y catálogo desplegable */}
+                    <div className="relative" ref={comboPickerRef}>
+                      <div className="relative flex items-center">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3.5 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={busquedaComboProd}
+                          onChange={(e) => {
+                            setBusquedaComboProd(e.target.value);
+                            setComboDropdownOpen(true);
+                          }}
+                          onFocus={() => setComboDropdownOpen(true)}
+                          placeholder="Buscar producto para añadir (ej. Hamburguesa, Perro, Papas, Salchipapa)..."
+                          className="w-full pl-10 pr-24 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition shadow-xs"
+                        />
+                        <div className="absolute right-2 flex items-center gap-1.5">
+                          {busquedaComboProd && (
+                            <button
+                              type="button"
+                              onClick={() => setBusquedaComboProd("")}
+                              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                              title="Limpiar búsqueda"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setComboDropdownOpen(prev => !prev)}
+                            className="px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <span>{comboDropdownOpen ? "Cerrar" : "Explorar"}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${comboDropdownOpen ? "rotate-180" : ""}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Dropdown flotante estilizado */}
+                      {comboDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-2 z-40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                          {/* Filtro por Categorías */}
+                          {categoriasProductosCatalogo.length > 2 && (
+                            <div className="p-2 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/40 flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
+                              {categoriasProductosCatalogo.map(cat => (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={() => setFiltroCatCombo(cat)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize transition shrink-0 cursor-pointer ${
+                                    filtroCatCombo === cat
+                                      ? "bg-blue-600 text-white shadow-xs"
+                                      : "bg-white dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-600/50"
+                                  }`}
+                                >
+                                  {cat === "todas" ? "Todos los productos" : cat}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Lista de Resultados */}
+                          <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800/60 p-1.5 space-y-1">
+                            {productosComboFiltrados.length === 0 ? (
+                              <div className="p-6 text-center text-gray-400 dark:text-gray-500">
+                                <Utensils className="w-7 h-7 mx-auto mb-2 opacity-40" />
+                                <p className="text-xs font-semibold">No se encontraron productos con ese filtro.</p>
+                                <p className="text-[11px] mt-0.5">Escribe otro término o selecciona otra categoría.</p>
+                              </div>
+                            ) : (
+                              productosComboFiltrados.map((prod) => {
+                                const pId = prod.id || prod.idProducto;
+                                const itemEnCombo = (configCombo.productosAsociados || []).find(
+                                  (a) => String(a.idProducto || a.id) === String(pId)
+                                );
+                                return (
+                                  <div
+                                    key={pId}
+                                    onClick={() => agregarProductoACombo(prod)}
+                                    className={`flex items-center justify-between gap-3 p-2 rounded-xl cursor-pointer transition select-none ${
+                                      itemEnCombo
+                                        ? "bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 border border-blue-200/60 dark:border-blue-800/50"
+                                        : "hover:bg-gray-50 dark:hover:bg-gray-800/80"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 overflow-hidden border border-gray-200/50 dark:border-gray-700">
+                                        {prod.imagen && (prod.imagen.startsWith("http") || prod.imagen.startsWith("/")) ? (
+                                          <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <FoodIcon name={prod.categoria || prod.nombre} size={16} />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                                          {prod.nombre}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                          <span className="capitalize">{prod.categoria || prod.categoriaNombre || "Menú"}</span>
+                                          <span>•</span>
+                                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                            ${Number(prod.precio || 0).toLocaleString("es-CO")} COP
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {itemEnCombo ? (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded-lg">
+                                          <Check className="w-3 h-3" />
+                                          {itemEnCombo.cantidad} en combo
+                                        </span>
+                                      ) : null}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          agregarProductoACombo(prod);
+                                        }}
+                                        className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition cursor-pointer shadow-2xs"
+                                        title="Añadir al combo"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Componentes Agregados al Combo */}
+                    {Array.isArray(configCombo.productosAsociados) && configCombo.productosAsociados.length > 0 ? (
+                      <div className="space-y-2 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {configCombo.productosAsociados.map((item, idx) => {
+                            const itemSubtotal = (Number(item.precio || 0) * (item.cantidad || 1));
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between gap-2.5 p-2.5 bg-white dark:bg-gray-900 rounded-2xl border border-blue-200 dark:border-blue-900/60 text-xs shadow-xs hover:border-blue-300 transition"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center shrink-0 overflow-hidden border border-blue-150 dark:border-blue-800/40">
+                                    {item.imagen && (item.imagen.startsWith("http") || item.imagen.startsWith("/")) ? (
+                                      <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <FoodIcon name={item.nombre} size={18} />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-gray-900 dark:text-gray-100 block truncate" title={item.nombre}>
+                                      {item.nombre}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                                      <span>${Number(item.precio || 0).toLocaleString("es-CO")} c/u</span>
+                                      <span>=</span>
+                                      <span className="font-bold text-blue-600 dark:text-blue-400 font-mono">
+                                        ${itemSubtotal.toLocaleString("es-CO")}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5 border border-gray-200 dark:border-gray-700">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = configCombo.productosAsociados.map((a, i) => i === idx ? { ...a, cantidad: Math.max(1, (a.cantidad || 1) - 1) } : a);
+                                        setConfigCombo(prev => ({ ...prev, productosAsociados: next }));
+                                      }}
+                                      className="w-5 h-5 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 font-bold cursor-pointer text-gray-700 dark:text-gray-200 text-xs"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-5 text-center font-bold text-xs text-gray-900 dark:text-gray-100">
+                                      {item.cantidad || 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = configCombo.productosAsociados.map((a, i) => i === idx ? { ...a, cantidad: (a.cantidad || 1) + 1 } : a);
+                                        setConfigCombo(prev => ({ ...prev, productosAsociados: next }));
+                                      }}
+                                      className="w-5 h-5 rounded-lg flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 font-bold cursor-pointer text-gray-700 dark:text-gray-200 text-xs"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const next = configCombo.productosAsociados.filter((_, i) => i !== idx);
+                                      setConfigCombo(prev => ({ ...prev, productosAsociados: next }));
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
+                                    title="Quitar del combo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Barra de Resumen Financiero del Combo */}
+                        <div className="p-3 bg-white dark:bg-gray-900 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0 font-bold text-xs">
+                              {configCombo.productosAsociados.length}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900 dark:text-gray-100">
+                                Suma individual: <span className="font-mono text-blue-700 dark:text-blue-300 font-extrabold text-sm">${subtotalProductosCombo.toLocaleString("es-CO")} COP</span>
+                              </p>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                {Number(form.precio) > 0 ? (
+                                  Number(form.precio) < subtotalProductosCombo ? (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                      ✓ Cliente ahorra ${(subtotalProductosCombo - Number(form.precio)).toLocaleString("es-CO")} COP ({Math.round(((subtotalProductosCombo - Number(form.precio)) / subtotalProductosCombo) * 100)}% de descuento).
+                                    </span>
+                                  ) : (
+                                    <span>Precio de venta configurado: ${Number(form.precio).toLocaleString("es-CO")} COP</span>
+                                  )
+                                ) : (
+                                  "Configura el precio de venta arriba o aplica la suma de partes."
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          {subtotalProductosCombo > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm(prev => ({ ...prev, precio: subtotalProductosCombo }));
+                                notify.success("Precio Aplicado", `Se estableció $${subtotalProductosCombo.toLocaleString("es-CO")} COP como precio del combo.`);
+                              }}
+                              className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-[11px] rounded-xl border border-blue-200 dark:border-blue-800 transition cursor-pointer shadow-2xs whitespace-nowrap"
+                            >
+                              Usar suma como precio
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-2xl border border-dashed border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 text-center">
+                        <Utensils className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          Aún no has agregado productos al combo
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          Escribe en el buscador para añadir los platillos y acompañamientos que integran este combo.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {todasBebidas.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                          Bebidas disponibles para elegir ({todasBebidas.length} en catálogo):
+                  {/* 2. BEBIDAS INCLUIDAS EN EL COMBO (COMPACTO Y ELEGANTE) */}
+                  <div className="pt-4 border-t border-blue-150 dark:border-blue-900/40 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="block text-xs font-extrabold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+                          2. Bebidas Incluidas en el Combo (A elección del cliente):
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => setConfigCombo(prev => ({ ...prev, bebidasPermitidas: [] }))}
-                          className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-                        >
-                          Habilitar todas
-                        </button>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {configCombo.cantidadBebidas === 0
+                            ? "✓ Este combo no incluye bebidas (solo comida)."
+                            : configCombo.cantidadBebidas === 1
+                            ? "✓ El cliente podrá elegir 1 bebida incluida en el precio ($0 COP)."
+                            : `✓ El cliente podrá elegir ${configCombo.cantidadBebidas} bebidas incluidas en el precio ($0 COP).`}
+                        </p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
-                        {todasBebidas.map((bebida) => {
-                          const bId = bebida.id || bebida.idProducto;
-                          const isAllowed = configCombo.bebidasPermitidas.length === 0 || configCombo.bebidasPermitidas.includes(bId);
-                          return (
-                            <label
-                              key={bId}
-                              className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer transition select-none ${
-                                isAllowed
-                                  ? "bg-white dark:bg-gray-900 border-blue-200 dark:border-blue-900/60 text-gray-900 dark:text-gray-100 shadow-2xs"
-                                  : "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400 opacity-60"
-                              }`}
+
+                      {/* Selector rápido de cantidad de bebidas */}
+                      <div className="flex items-center gap-1.5">
+                        {[0, 1, 2, 3].map((num) => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setConfigCombo(prev => ({ ...prev, cantidadBebidas: num }))}
+                            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                              (configCombo.cantidadBebidas ?? 1) === num
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {num === 0 ? "0 (Sin bebida)" : num === 1 ? "1 Bebida" : `${num} Bebidas`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Chips de Bebidas Disponibles */}
+                    {Number(configCombo.cantidadBebidas) > 0 && todasBebidas.length > 0 && (
+                      <div className="bg-white dark:bg-gray-900 p-3 rounded-2xl border border-blue-150 dark:border-blue-900/60 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                            Bebidas permitidas ({todasBebidas.length} en catálogo):
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setConfigCombo(prev => ({ ...prev, bebidasPermitidas: [] }))}
+                              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                             >
-                              <input
-                                type="checkbox"
-                                checked={isAllowed}
-                                onChange={() => {
+                              Permitir todas
+                            </button>
+                            <span className="text-gray-300 dark:text-gray-700">•</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Seleccionar solo las más comunes
+                                const comunes = todasBebidas.filter(b => {
+                                  const n = b.nombre.toLowerCase();
+                                  return n.includes("coca") || n.includes("manzana") || n.includes("agua");
+                                }).map(b => b.id || b.idProducto);
+                                setConfigCombo(prev => ({ ...prev, bebidasPermitidas: comunes }));
+                              }}
+                              className="text-[11px] font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:underline cursor-pointer"
+                            >
+                              Solo clásicas
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {todasBebidas.map((bebida) => {
+                            const bId = bebida.id || bebida.idProducto;
+                            const isAllowed = configCombo.bebidasPermitidas.length === 0 || configCombo.bebidasPermitidas.includes(bId);
+                            return (
+                              <button
+                                key={bId}
+                                type="button"
+                                onClick={() => {
                                   const current = configCombo.bebidasPermitidas.length === 0
                                     ? todasBebidas.map(b => b.id || b.idProducto)
                                     : [...configCombo.bebidasPermitidas];
@@ -1481,15 +1714,25 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                                     bebidasPermitidas: updated.length === todasBebidas.length ? [] : updated
                                   }));
                                 }}
-                                className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-                              />
-                              <span className="truncate font-medium flex-1">{bebida.nombre}</span>
-                            </label>
-                          );
-                        })}
+                                className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer select-none ${
+                                  isAllowed
+                                    ? "bg-blue-50/80 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-100 shadow-2xs"
+                                    : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-400 opacity-60 hover:opacity-80"
+                                }`}
+                              >
+                                <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  isAllowed ? "bg-blue-600 text-white" : "border border-gray-300 dark:border-gray-600"
+                                }`}>
+                                  {isAllowed && "✓"}
+                                </span>
+                                <span>{bebida.nombre}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1547,13 +1790,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         onChange={() => toggleAdicion(adicion)}
                         className="rounded text-[#F05454] focus:ring-[#F05454] cursor-pointer"
                       />
-                        <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
-                          {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
-                            <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <FoodIcon name={adicion.nombre} size={18} stroke={1.75} />
-                          )}
-                        </span>
+                      <span className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-base shrink-0 border border-gray-200/60 dark:border-gray-700 overflow-hidden shadow-2xs">
+                        {adicion.imagen && (adicion.imagen.startsWith("http") || adicion.imagen.startsWith("/")) ? (
+                          <img src={adicion.imagen} alt={adicion.nombre} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <FoodIcon name={adicion.nombre} size={18} stroke={1.75} />
+                        )}
+                      </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {adicion.nombre}
@@ -1565,15 +1808,25 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </label>
                   );
                 })}
-                {todasAdiciones.length === 0 && (
-                  <p className="text-sm text-gray-500 col-span-full">No hay adiciones registradas en el sistema.</p>
-                )}
               </div>
             </div>
           </div>
 
-          {/* Ficha Técnica: Edición Independiente */}
-          {!configCombo.esCombo && (
+{configCombo.esCombo ? (
+            <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3 text-xs">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <Utensils className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                  El combo no lleva ficha técnica individual
+                </p>
+                <p className="text-amber-800 dark:text-amber-300 leading-relaxed">
+                  Los combos son agrupaciones de productos ya existentes (unidades mínimas). No requieren una ficha técnica individual repetida, ya que cada producto seleccionado cuenta con su propia ficha técnica, receta e insumos registrados en el sistema.
+                </p>
+              </div>
+            </div>
+          ) : (
             <div className="p-4 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200/80 dark:border-purple-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0">
@@ -1592,7 +1845,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 Edición Separada
               </span>
             </div>
-          )}
+          )}}
 
           {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800 shrink-0">
@@ -1605,7 +1858,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-sm font-medium text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition-colors shadow-md"
+              className="px-5 py-2 text-sm font-medium text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition-colors shadow-md cursor-pointer"
             >
               {isEditing ? "Guardar Cambios" : "Crear Producto"}
             </button>
@@ -1615,3 +1868,5 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     </div>
   );
 }
+
+export default ProductoModal;
