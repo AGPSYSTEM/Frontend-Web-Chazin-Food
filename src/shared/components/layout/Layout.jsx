@@ -762,7 +762,7 @@ export function Layout() {
         )}
 
         {/* Main scrollable body */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-gray-950">
           <Outlet />
         </main>
       </div>

@@ -235,7 +235,7 @@ export function GestionVentas() {
   };
 
   return (
-    <div className="p-4 sm:p-5 lg:p-6 xl:p-7 w-full max-w-full space-y-6">
+    <div className="p-3 sm:p-4 lg:p-5 xl:p-6 w-full max-w-full space-y-5">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -259,10 +259,10 @@ export function GestionVentas() {
       <VentasStatsCards ventas={ventas} stats={stats} selectedPeriod={selectedPeriod} />
 
       {/* Main Navigation Container */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 lg:p-6 border border-gray-100 dark:border-gray-800 shadow-xs space-y-6">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-3 sm:p-4 lg:p-5 border border-gray-100 dark:border-gray-800 shadow-xs space-y-5">
         {/* Tabs Header con Selector de Período Integrado */}
         <div className="border-b border-gray-100 dark:border-gray-800 pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-6 sm:gap-8 -mb-px overflow-x-auto">
+          <div className="flex items-center gap-6 sm:gap-8 -mb-px overflow-x-auto no-scrollbar">
 
             <button
               onClick={() => setActiveTab("pedidos_pagados")}

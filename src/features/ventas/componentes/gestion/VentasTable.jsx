@@ -98,7 +98,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
   return (
     <div className="space-y-4">
       {/* Clean CRUD Table matching system standards - compact layout without horizontal scrollbar */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
+      <div className="w-full overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xs">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/70 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider">
