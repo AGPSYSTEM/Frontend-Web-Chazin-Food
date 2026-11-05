@@ -14,7 +14,8 @@ import {
   Zap,
   CheckCircle2,
   Calendar,
-  Layers
+  Layers,
+  Clock
 } from "lucide-react";
 import {
   AreaChart,
@@ -657,14 +658,34 @@ export function Dashboard() {
                   ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50"
                   : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50";
 
-                const formatHoraDynamic = (dateStr, fallback) => {
-                  if (fallback) return formatTime12h(fallback);
-                  if (!dateStr) return "Reciente";
-                  const d = new Date(dateStr);
-                  return isNaN(d.getTime()) ? formatTime12h(dateStr) : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const getHoraCambioEstado = (v) => {
+                  if (v.horaCambioEstado && v.horaCambioEstado !== "12:30 PM") {
+                    return formatTime12h(v.horaCambioEstado);
+                  }
+                  if (v.horaEstado && v.horaEstado !== "12:30 PM") {
+                    return formatTime12h(v.horaEstado);
+                  }
+                  if (Array.isArray(v.historialEstados) && v.historialEstados.length > 0) {
+                    const ultimo = v.historialEstados[v.historialEstados.length - 1];
+                    if (ultimo?.hora) return formatTime12h(ultimo.hora);
+                    if (ultimo?.fecha) return formatTime12h(ultimo.fecha);
+                  }
+                  if (v.fechaCambioEstado) {
+                    return formatTime12h(v.fechaCambioEstado);
+                  }
+                  if (v.updatedAt) {
+                    return formatTime12h(v.updatedAt);
+                  }
+                  if (v.fechaVenta || v.fecha) {
+                    return formatTime12h(v.fechaVenta || v.fecha);
+                  }
+                  if (v.horario) {
+                    return formatTime12h(v.horario);
+                  }
+                  return formatTime12h(new Date());
                 };
 
-                const horaEstado = formatTime12h(venta.horaEstado || formatHoraDynamic(venta.fechaVenta || venta.fecha, venta.horario));
+                const horaEstado = getHoraCambioEstado(venta);
 
                 return (
                   <div
@@ -676,11 +697,20 @@ export function Dashboard() {
                         <p className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
                           {venta.codigoPedido || venta.numeroVenta || `#${String(venta.id).padStart(4, '0')}`}
                         </p>
-                        {/* Estado con Hora del estado dinámica (Ítem 36) */}
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
-                          <span>{venta.estado || "Pendiente"}</span>
-                          <span className="opacity-75 font-mono text-[11px] font-normal">• {horaEstado}</span>
-                        </span>
+                        {/* Estado y Hora del cambio de estado (Ítems 36 y 85) */}
+                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                            <span>{venta.estado || "Pendiente"}</span>
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full border border-gray-200/60 dark:border-gray-700/60"
+                            title="Hora del cambio de estado"
+                          >
+                            <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                            <span>{horaEstado}</span>
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {venta.clienteNombre || venta.cliente || "Cliente General"} · {venta.origenNombre || (venta.tipoEntrega === 'Domicilio' ? 'Venta Online' : 'Punto Físico')}
