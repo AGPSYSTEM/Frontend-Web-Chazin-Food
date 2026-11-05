@@ -334,7 +334,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     );
   }, [form.categoria, form.idCategoriaProducto, form.nombre, form.descripcion, variantes]);
 
-  const isDrink = modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink;
+  const isDrink = configCombo.esCombo
+    ? false
+    : (modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink);
 
   // Cálculo de Precio de Referencia gastronómico
   const totalsFicha = useMemo(() => {
@@ -729,7 +731,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       return;
     }
 
-    if (variantes.length > 0) {
+    if (configCombo.esCombo) {
+      if (!Array.isArray(configCombo.productosAsociados) || configCombo.productosAsociados.length === 0) {
+        setActiveStep(3);
+        notify.warning("Combo Vacío", "Por favor agrega al menos un plato o bebida al combo en el Paso 3 (Armador de Combo).");
+        return;
+      }
+    } else if (variantes.length > 0) {
       for (let i = 0; i < variantes.length; i++) {
         const v = variantes[i];
         if (!v.nombre || !v.nombre.trim()) {
@@ -871,7 +879,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Paso {activeStep} de 3 • {activeStep === 1 ? "Información Principal & Tipo" : activeStep === 2 ? "Presentaciones & Variantes" : configCombo.esCombo ? "Armador de Combo" : "Adiciones Disponibles"}
+                {configCombo.esCombo
+                  ? `Paso ${activeStep === 3 ? "2 de 2" : "1 de 2"} • ${activeStep === 1 ? "Información Principal & Precio" : "Armador de Combo Gastronómico"}`
+                  : `Paso ${activeStep} de 3 • ${activeStep === 1 ? "Información Principal & Tipo" : activeStep === 2 ? "Presentaciones & Variantes" : "Complementos & Adiciones"}`}
               </p>
             </div>
           </div>
@@ -920,26 +930,43 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           {/* Paso 2 */}
           <button
             type="button"
-            onClick={() => setActiveStep(2)}
+            onClick={() => {
+              if (configCombo.esCombo) {
+                setActiveStep(3);
+                notify.info("Modo Combo", "Los combos no requieren variantes individuales. Pasa directamente al Armador de Combo.");
+                return;
+              }
+              setActiveStep(2);
+            }}
             className={`p-3.5 flex items-center gap-3 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
-              activeStep === 2
+              configCombo.esCombo
+                ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
+                : activeStep === 2
                 ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
                 : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
             }`}
           >
             <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-              variantes.length > 0
+              configCombo.esCombo
+                ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                : variantes.length > 0
                 ? "bg-purple-600 text-white shadow-xs"
                 : activeStep === 2
                 ? "bg-[#F05454] text-white shadow-xs"
                 : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
             }`}>
-              {variantes.length > 0 ? variantes.length : "2"}
+              {configCombo.esCombo ? "—" : (variantes.length > 0 ? variantes.length : "2")}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-black truncate leading-tight">2. Presentaciones</p>
+              <p className="text-xs font-black truncate leading-tight">
+                {configCombo.esCombo ? "2. Variantes (N/A)" : isDrink ? "2. Presentaciones" : "2. Variantes"}
+              </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {isDrink ? "Tamaños y sabores de bebida" : "Opciones o variantes del plato"}
+                {configCombo.esCombo
+                  ? "No requerido en Combos"
+                  : isDrink
+                  ? "Tamaños y sabores de bebida"
+                  : "Opciones o variantes del plato"}
               </p>
             </div>
             {activeStep === 2 && (
@@ -1017,6 +1044,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     onClick={() => {
                       setModoVariantesManual("comida");
                       setConfigCombo(prev => ({ ...prev, esCombo: false }));
+                      if (form.categoria && form.categoria.toLowerCase().includes("combo")) {
+                        const comidaCat = (categorias || []).find(c => !c.nombre.toLowerCase().includes("combo") && !c.nombre.toLowerCase().includes("bebida"));
+                        if (comidaCat) {
+                          setForm(prev => ({
+                            ...prev,
+                            categoria: comidaCat.nombre,
+                            idCategoriaProducto: comidaCat.id || comidaCat.idCategoriaProducto
+                          }));
+                        }
+                      }
                     }}
                     className={`flex items-center gap-3 p-3 rounded-xl transition text-left cursor-pointer ${
                       !isDrink && !configCombo.esCombo
@@ -1098,14 +1135,18 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   <label className={labelCls}>Fotografía y Vista en Menú</label>
                   
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-                    <div className="relative aspect-video rounded-2xl bg-white dark:bg-gray-900 overflow-hidden border border-gray-200/80 dark:border-gray-700 flex items-center justify-center group shadow-2xs">
+                    <div 
+                      onClick={() => !uploading && fileInputRef.current?.click()}
+                      className="relative aspect-video rounded-2xl bg-white dark:bg-gray-900 overflow-hidden border-2 border-dashed border-gray-200 hover:border-[#F05454]/60 dark:border-gray-700 dark:hover:border-[#F05454]/60 flex items-center justify-center group shadow-2xs cursor-pointer transition-all"
+                      title="Haz clic para seleccionar o cambiar imagen"
+                    >
                       {previewUrl ? (
                         <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex flex-col items-center justify-center text-gray-400 p-4 text-center">
                           <FoodIcon name={configCombo.esCombo ? "combo" : isDrink ? "drink" : "burger"} size={42} />
-                          <span className="text-xs font-semibold mt-2 text-gray-500">Sin fotografía</span>
-                          <span className="text-[10px] text-gray-400">Haz clic abajo para subir</span>
+                          <span className="text-xs font-bold mt-2 text-gray-700 dark:text-gray-200">Sin fotografía</span>
+                          <span className="text-[11px] text-[#F05454] font-medium mt-0.5">Haz clic aquí para cargar imagen</span>
                         </div>
                       )}
 
@@ -2103,7 +2144,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               {activeStep > 1 && (
                 <button
                   type="button"
-                  onClick={() => setActiveStep(prev => prev - 1)}
+                  onClick={() => {
+                    // Si estamos en Paso 3 y es un combo, volver directamente al Paso 1
+                    if (activeStep === 3 && configCombo.esCombo) {
+                      setActiveStep(1);
+                      return;
+                    }
+                    setActiveStep(prev => prev - 1);
+                  }}
                   className="px-3.5 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -2124,12 +2172,17 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         notify.warning("Datos Incompletos", "Por favor ingresa el nombre y precio del producto.");
                         return;
                       }
+                      // Para combos, avanzar directamente al Armador de Combo (Paso 3)
+                      if (configCombo.esCombo) {
+                        setActiveStep(3);
+                        return;
+                      }
                     }
                     setActiveStep(prev => prev + 1);
                   }}
                   className="px-4 py-2 text-xs font-bold text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1"
                 >
-                  <span>Siguiente</span>
+                  <span>{configCombo.esCombo && activeStep === 1 ? "Ir a Armador de Combo" : "Siguiente"}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
