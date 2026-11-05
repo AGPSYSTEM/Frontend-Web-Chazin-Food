@@ -262,11 +262,29 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         try { parsedConfig = JSON.parse(parsedConfig); } catch (e) { parsedConfig = null; }
       }
 
-      setConfigCombo(parsedConfig || {
-        esCombo: isAutoCombo,
-        cantidadBebidas: defaultCant,
-        bebidasPermitidas: [],
-        productosAsociados: []
+      let itemsDeCombo = [];
+      if (Array.isArray(producto.itemsCombo) && producto.itemsCombo.length > 0) {
+        itemsDeCombo = producto.itemsCombo.map(it => ({
+          idProducto: it.idProducto || it.producto?.idProducto || it.producto?.id,
+          id: it.idProducto || it.producto?.idProducto || it.producto?.id,
+          nombre: it.producto?.nombre || it.nombre || "Plato",
+          precio: Number(it.producto?.precio || it.precio || 0),
+          imagen: it.producto?.imagen || it.imagen || "",
+          cantidad: Number(it.cantidad || 1)
+        }));
+      }
+
+      const rawAsociados = (Array.isArray(parsedConfig?.productosAsociados) && parsedConfig.productosAsociados.length > 0)
+        ? parsedConfig.productosAsociados
+        : (Array.isArray(parsedConfig?.itemsCombo) && parsedConfig.itemsCombo.length > 0)
+        ? parsedConfig.itemsCombo
+        : itemsDeCombo;
+
+      setConfigCombo({
+        esCombo: parsedConfig?.esCombo !== undefined ? parsedConfig.esCombo : isAutoCombo,
+        cantidadBebidas: parsedConfig?.cantidadBebidas !== undefined ? parsedConfig.cantidadBebidas : defaultCant,
+        bebidasPermitidas: parsedConfig?.bebidasPermitidas || [],
+        productosAsociados: rawAsociados
       });
 
       const rawVars = Array.isArray(producto.variantes) && producto.variantes.length > 0
@@ -820,12 +838,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
         precio: basePrice,
         variantes: processedVariants,
+        itemsCombo: configCombo.esCombo ? (configCombo.productosAsociados || []) : [],
         configuracionCombo: configCombo.esCombo
           ? {
               esCombo: true,
               cantidadBebidas: Math.max(0, Number(configCombo.cantidadBebidas) || 0),
               bebidasPermitidas: configCombo.bebidasPermitidas || [],
-              productosAsociados: configCombo.productosAsociados || []
+              productosAsociados: configCombo.productosAsociados || [],
+              itemsCombo: configCombo.productosAsociados || []
             }
           : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [], productosAsociados: [] },
         fichaTecnica: configCombo.esCombo
