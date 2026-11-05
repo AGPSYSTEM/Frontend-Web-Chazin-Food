@@ -4,7 +4,7 @@ import {
   Utensils, Plus, Minus, Check, Flame, Crown, ChevronRight, ChevronLeft,
   Image as ImageIcon, Clock, Gift, CheckCircle2, Percent, Rocket, Link,
   AlertCircle, Calendar, ArrowRight, ExternalLink, Eye, HelpCircle, Layers,
-  ChevronDown, Info
+  ChevronDown, Info, ShieldCheck
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
