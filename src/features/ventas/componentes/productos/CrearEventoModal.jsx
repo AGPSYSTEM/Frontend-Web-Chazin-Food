@@ -128,6 +128,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [prodFichaTecnica, setProdFichaTecnica] = useState(null);
   const [prodVariantes, setProdVariantes] = useState([]);
   const [todasAdiciones, setTodasAdiciones] = useState([]);
+  const [adicionSearch, setAdicionSearch] = useState("");
+  const [comboModoBebidas, setComboModoBebidas] = useState("todas"); // 'todas' | 'especificas'
   const [adicionesSeleccionadas, setAdicionesSeleccionadas] = useState([]);
   const [adicionesSearch, setAdicionesSearch] = useState("");
   const [todasBebidas, setTodasBebidas] = useState([]);
@@ -918,25 +920,74 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           </div>
 
                           {insumosSeleccionados.length > 0 && (
-                            <div className="mt-3 p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Gift className="w-4 h-4 text-purple-600" />
-                                <div>
-                                  <p className="text-xs font-black text-purple-950 dark:text-purple-200">
-                                    {insumosSeleccionados[0].nombre} (Topping de Cortesía)
+                            <div className="mt-3 p-3.5 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center shrink-0">
+                                  <Gift className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black text-purple-950 dark:text-purple-200 truncate">
+                                    {insumosSeleccionados[0].nombre}
                                   </p>
-                                  <p className="text-[10px] text-purple-700 dark:text-purple-300">
-                                    Cantidad: {insumosSeleccionados[0].cantidad} {insumosSeleccionados[0].unidad}
+                                  <p className="text-[10.5px] text-purple-700 dark:text-purple-300 font-medium">
+                                    Topping adicional incluido sin costo con el platillo
                                   </p>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setInsumosSeleccionados([])}
-                                className="text-xs text-red-500 hover:text-red-700 font-bold cursor-pointer"
-                              >
-                                Cambiar
-                              </button>
+
+                              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Cantidad:</span>
+                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-xl border border-purple-300 dark:border-purple-700 p-0.5 shadow-2xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInsumosSeleccionados(prev => [{
+                                        ...prev[0],
+                                        cantidad: Math.max(1, (Number(prev[0].cantidad) || 1) - 1)
+                                      }]);
+                                    }}
+                                    className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    value={insumosSeleccionados[0].cantidad || 1}
+                                    onChange={(e) => {
+                                      const val = Math.max(1, Number(e.target.value) || 1);
+                                      setInsumosSeleccionados(prev => [{
+                                        ...prev[0],
+                                        cantidad: val
+                                      }]);
+                                    }}
+                                    className="w-9 text-center text-xs font-black bg-transparent border-0 p-0 text-purple-950 dark:text-purple-200 focus:ring-0"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setInsumosSeleccionados(prev => [{
+                                        ...prev[0],
+                                        cantidad: (Number(prev[0].cantidad) || 1) + 1
+                                      }]);
+                                    }}
+                                    className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                <span className="text-xs font-bold text-purple-800 dark:text-purple-300">
+                                  {insumosSeleccionados[0].unidad || "porción"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setInsumosSeleccionados([])}
+                                  className="ml-2 text-xs text-red-500 hover:text-red-700 font-bold underline cursor-pointer"
+                                >
+                                  Cambiar
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -950,6 +1001,108 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <p className="text-[11px] text-rose-800 dark:text-rose-300 leading-tight">
                               El sistema calculará automáticamente 2 unidades al precio de 1 tanto en el Punto de Venta (POS) como en el Menú Web del Comensal.
                             </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Campos Dinámicos para Edición Especial en Menú Existente */}
+                      {tipoEvento === "Edición Especial" && (
+                        <div className="space-y-3">
+                          <div className="p-3 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 flex items-start gap-2.5">
+                            <Crown className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-black text-orange-900 dark:text-orange-200">Campaña de Festival / Edición Especial</p>
+                              <p className="text-[11px] text-orange-800/80 dark:text-orange-300/80 leading-relaxed">
+                                Asigna este platillo existente a una campaña oficial (ej. Burger Fest) con precio conmemorativo o descuento exclusivo.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                                Precio Especial de Festival ($ COP)
+                              </label>
+                              <input
+                                type="number"
+                                value={nuevoPrecio}
+                                onChange={(e) => setNuevoPrecio(e.target.value)}
+                                placeholder="Ej. 24000"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-amber-600 focus:ring-2 focus:ring-orange-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                                O Descuento de Campaña (%)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={descuento}
+                                onChange={(e) => setDescuento(e.target.value)}
+                                placeholder="Ej. 15"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Campos Dinámicos para Oferta Relámpago en Menú Existente */}
+                      {tipoEvento === "Hora Feliz / Oferta Relámpago" && (
+                        <div className="space-y-3">
+                          <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5">
+                            <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-black text-amber-900 dark:text-amber-200">Oferta Relámpago / Venta Flash</p>
+                              <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                                Define un precio relámpago con descuento agresivo por tiempo muy limitado para acelerar ventas.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                                Precio Flash Relámpago ($ COP)
+                              </label>
+                              <input
+                                type="number"
+                                value={nuevoPrecio}
+                                onChange={(e) => setNuevoPrecio(e.target.value)}
+                                placeholder="Ej. 17500"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                                O Descuento Flash (%)
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={descuento}
+                                onChange={(e) => setDescuento(e.target.value)}
+                                placeholder="Ej. 25"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Descuentos Flash:</span>
+                            {[20, 25, 30, 40, 50].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => setDescuento(String(pct))}
+                                className="px-2.5 py-1 rounded-lg text-xs font-black bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-300 transition cursor-pointer"
+                              >
+                                -{pct}% FLASH
+                              </button>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -1655,54 +1808,117 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         )}
                       </div>
 
-                      {/* Configuración Dinámica de Bebidas / Composición si es COMBO_ESPECIAL */}
+                      {/* Configuración Dinámica y Elegible de Bebidas si es COMBO_ESPECIAL */}
                       {prodTipoEvento === "COMBO_ESPECIAL" && (
-                        <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800/60 space-y-3.5 shadow-2xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-800/40 pb-2.5">
+                            <span className="text-xs font-black text-amber-950 dark:text-amber-200 flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-amber-600" />
                               <span>Bebidas Incluidas en el Combo Festivo</span>
                             </span>
-                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
-                              {configCombo.cantidadBebidas} {configCombo.cantidadBebidas === 1 ? "bebida" : "bebidas"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600 dark:text-gray-300">Cantidad de bebidas:</span>
-                            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
-                              <button
-                                type="button"
-                                onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: Math.max(1, (c.cantidadBebidas || 1) - 1) }))}
-                                className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                              >
-                                -
-                              </button>
-                              <span className="px-2 text-xs font-black">{configCombo.cantidadBebidas || 1}</span>
-                              <button
-                                type="button"
-                                onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: (c.cantidadBebidas || 1) + 1 }))}
-                                className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          {todasBebidas.length > 0 && (
-                            <div className="space-y-1.5 pt-1">
-                              <p className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">
-                                Opciones de bebidas disponibles para elegir al ordenar:
-                              </p>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {todasBebidas.map(b => (
-                                  <span key={b.id || b.idProducto} className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                                    {b.nombre}
-                                  </span>
-                                ))}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">¿Cuántas bebidas incluye?</span>
+                              <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-xl border border-amber-300 dark:border-amber-700 p-0.5 shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: Math.max(1, (c.cantidadBebidas || 1) - 1) }))}
+                                  className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-200 font-black cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="px-2 text-xs font-black text-amber-950 dark:text-amber-100">{configCombo.cantidadBebidas || 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: (c.cantidadBebidas || 1) + 1 }))}
+                                  className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-200 font-black cursor-pointer"
+                                >
+                                  +
+                                </button>
                               </div>
+                              <span className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                                {configCombo.cantidadBebidas === 1 ? "bebida" : "bebidas"}
+                              </span>
                             </div>
-                          )}
+                          </div>
+
+                          {/* Modo de Selección de Bebidas */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                              Opciones elegibles para el comensal:
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setComboModoBebidas("todas");
+                                  setConfigCombo(c => ({ ...c, bebidasPermitidas: [] }));
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                  comboModoBebidas === "todas"
+                                    ? "bg-amber-600 text-white shadow-2xs"
+                                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                                }`}
+                              >
+                                Todas las Bebidas ({todasBebidas.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setComboModoBebidas("especificas");
+                                  if (!configCombo.bebidasPermitidas || configCombo.bebidasPermitidas.length === 0) {
+                                    setConfigCombo(c => ({ ...c, bebidasPermitidas: todasBebidas.slice(0, 4).map(b => b.id || b.idProducto) }));
+                                  }
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                  comboModoBebidas === "especificas"
+                                    ? "bg-amber-600 text-white shadow-2xs"
+                                    : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                                }`}
+                              >
+                                Personalizar Lista
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Cuadrícula interactiva de bebidas */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto p-1 scrollbar-thin">
+                            {todasBebidas.map(b => {
+                              const bId = b.id || b.idProducto;
+                              const isPermitida = comboModoBebidas === "todas" || (configCombo.bebidasPermitidas || []).includes(bId);
+                              return (
+                                <button
+                                  key={bId}
+                                  type="button"
+                                  onClick={() => {
+                                    if (comboModoBebidas === "todas") {
+                                      setComboModoBebidas("especificas");
+                                      setConfigCombo(c => ({
+                                        ...c,
+                                        bebidasPermitidas: todasBebidas.filter(x => (x.id || x.idProducto) !== bId).map(x => x.id || x.idProducto)
+                                      }));
+                                    } else {
+                                      const currentList = configCombo.bebidasPermitidas || [];
+                                      const newList = currentList.includes(bId)
+                                        ? currentList.filter(id => id !== bId)
+                                        : [...currentList, bId];
+                                      setConfigCombo(c => ({ ...c, bebidasPermitidas: newList }));
+                                    }
+                                  }}
+                                  className={`p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
+                                    isPermitida
+                                      ? "bg-white dark:bg-gray-800 border-amber-500 shadow-2xs ring-1 ring-amber-400/40 text-gray-900 dark:text-gray-100"
+                                      : "bg-gray-100/60 dark:bg-gray-900/60 border-gray-200 dark:border-gray-800 opacity-55 text-gray-500"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 flex items-center justify-center text-[10px] shrink-0">🥤</span>
+                                    <span className="text-[11px] font-bold truncate leading-tight">{b.nombre}</span>
+                                  </div>
+                                  {isPermitida && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
@@ -1867,54 +2083,98 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                       )}
                     </div>
 
-                    {/* Adiciones Disponibles */}
-                    <div className="bg-white dark:bg-gray-850 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-3 shadow-xs">
-                      <div className="flex items-center justify-between">
+                    {/* Adiciones Disponibles (Con buscador, tarjetas gastronómicas, precios e iconos) */}
+                    <div className="bg-white dark:bg-gray-850 p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 space-y-3.5 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                            <Layers className="w-4 h-4 text-orange-600" />
-                            <span>Adiciones Disponibles para el Platillo</span>
-                          </label>
-                          <p className="text-[11px] text-gray-500">Toppings y complementos que el comensal puede agregar</p>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                              <Layers className="w-4 h-4 text-orange-600" />
+                              <span>Adiciones Disponibles para el Platillo</span>
+                            </label>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300">
+                              {adicionesSeleccionadas.length} de {todasAdiciones.length}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            Toppings, salsas y extras que el comensal puede añadir al ordenar
+                          </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (adicionesSeleccionadas.length === todasAdiciones.length) {
-                              setAdicionesSeleccionadas([]);
-                            } else {
-                              setAdicionesSeleccionadas(todasAdiciones.map(a => ({ idAdicion: a.idAdicion || a.id, nombre: a.nombre, precio: Number(a.precio || 0) })));
-                            }
-                          }}
-                          className="text-xs text-orange-600 hover:underline font-bold cursor-pointer"
-                        >
-                          {adicionesSeleccionadas.length === todasAdiciones.length ? "Deseleccionar todas" : "Seleccionar todas"}
-                        </button>
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (adicionesSeleccionadas.length === todasAdiciones.length) {
+                                setAdicionesSeleccionadas([]);
+                              } else {
+                                setAdicionesSeleccionadas(todasAdiciones.map(a => ({ idAdicion: a.idAdicion || a.id, nombre: a.nombre, precio: Number(a.precio || 0) })));
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 transition cursor-pointer border border-orange-200 dark:border-orange-800"
+                          >
+                            {adicionesSeleccionadas.length === todasAdiciones.length ? "Limpiar todas" : "Seleccionar todas"}
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
-                        {todasAdiciones.map(ad => {
-                          const adId = ad.idAdicion || ad.id;
-                          const isSel = adicionesSeleccionadas.some(s => (s.idAdicion || s.id) === adId);
-                          return (
-                            <button
-                              key={adId}
-                              type="button"
-                              onClick={() => {
-                                setAdicionesSeleccionadas(prev =>
-                                  isSel ? prev.filter(s => (s.idAdicion || s.id) !== adId) : [...prev, { idAdicion: adId, nombre: ad.nombre, precio: Number(ad.precio || 0) }]
-                                );
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                                isSel
-                                  ? "bg-orange-600 text-white border-orange-600 shadow-xs"
-                                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200"
-                              }`}
-                            >
-                              + {ad.nombre} (${Number(ad.precio || 0).toLocaleString("es-CO")})
-                            </button>
-                          );
-                        })}
+                      {/* Buscador de adiciones */}
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={adicionSearch}
+                          onChange={(e) => setAdicionSearch(e.target.value)}
+                          placeholder="Buscar adición (ej. tocineta, cheddar, papas, salsa)..."
+                          className="w-full pl-8 pr-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
+
+                      {/* Cuadrícula de tarjetas de adiciones */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 scrollbar-thin">
+                        {todasAdiciones
+                          .filter(a => !adicionSearch.trim() || a.nombre.toLowerCase().includes(adicionSearch.toLowerCase().trim()))
+                          .map(ad => {
+                            const adId = ad.idAdicion || ad.id;
+                            const isSel = adicionesSeleccionadas.some(s => (s.idAdicion || s.id) === adId);
+                            const emoji = getAdditionEmoji(ad.nombre);
+                            return (
+                              <button
+                                key={adId}
+                                type="button"
+                                onClick={() => {
+                                  setAdicionesSeleccionadas(prev =>
+                                    isSel
+                                      ? prev.filter(s => (s.idAdicion || s.id) !== adId)
+                                      : [...prev, { idAdicion: adId, nombre: ad.nombre, precio: Number(ad.precio || 0) }]
+                                  );
+                                }}
+                                className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                                  isSel
+                                    ? "bg-orange-50/80 dark:bg-orange-950/40 border-orange-500 shadow-2xs ring-1 ring-orange-400/50 text-orange-950 dark:text-orange-100"
+                                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 text-gray-700 dark:text-gray-300"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-6 h-6 rounded-lg bg-orange-100/70 dark:bg-orange-900/40 text-xs flex items-center justify-center shrink-0">
+                                    {emoji}
+                                  </span>
+                                  <span className="text-xs font-bold truncate">{ad.nombre}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                                    +${Number(ad.precio || 0).toLocaleString("es-CO")}
+                                  </span>
+                                  {isSel ? (
+                                    <div className="w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center">
+                                      <Check className="w-3 h-3 stroke-[3]" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" />
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>
