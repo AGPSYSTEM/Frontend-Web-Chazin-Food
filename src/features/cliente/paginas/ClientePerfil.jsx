@@ -212,181 +212,6 @@ export function ClientePerfil() {
     refreshUser?.();
   }, [refreshUser]);
 
-  // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
-  useEffect(() => {
-    const wompiTxId = searchParams.get("id");
-    if (wompiTxId) {
-      setTab("pedidos");
-      (async () => {
-        try {
-          const verificacion = await wompiService.verificarTransaccion(wompiTxId);
-          if (verificacion && verificacion.aprobado) {
-            success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
-            if (typeof clearCart === "function") clearCart();
-          } else if (verificacion && verificacion.estado === 'PENDING') {
-            warning("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en esta pantalla.");
-            if (typeof clearCart === "function") clearCart();
-          } else {
-            notifyError("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}.`);
-          }
-        } catch (err) {
-          console.error("Error verificando Wompi en perfil:", err);
-        } finally {
-          fetchMyOrders();
-          const newParams = new URLSearchParams(window.location.search);
-          newParams.delete("id");
-          newParams.set("tab", "pedidos");
-          window.history.replaceState({}, document.title, `${window.location.pathname}?${newParams.toString()}`);
-        }
-      })();
-    }
-  }, [searchParams, fetchMyOrders, clearCart]);
-
-  // Populate form with current user data
-  useEffect(() => {
-    if (user) {
-      let cleanDir = user.direccion || "";
-      if (typeof cleanDir === "string" && cleanDir.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(cleanDir);
-          cleanDir = parsed.direccion || cleanDir;
-        } catch (e) {
-          /* keep */
-        }
-      }
-
-      const rawDocVal = user.numeroDocumento || user.documento || "";
-      const validDocVal = (rawDocVal && String(rawDocVal).trim().length >= 6) ? String(rawDocVal).trim() : "";
-      setForm({
-        nombre: user.nombre || "",
-        apellidos: user.apellidos || user.apellido || "",
-        email: user.email || "",
-        telefono: user.telefono || "",
-        direccion: cleanDir,
-        tipoDocumento: user.tipoDocumento || "C.C.",
-        numeroDocumento: validDocVal,
-      });
-
-      const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
-      setAvatarUrl(userAvatar);
-      setErrors({});
-      setTouched({});
-    }
-  }, [user]);
-
-  const isGoogleUser = useMemo(() => {
-    return Boolean(
-      user?.esUsuarioGoogle ||
-      (user?.foto && user?.foto.includes("googleusercontent.com")) ||
-      (user?.avatar && user?.avatar.includes("googleusercontent.com"))
-    );
-  }, [user]);
-
-  const rawDocUser = user?.numeroDocumento || user?.documento || "";
-  const tieneCedulaRegistrada = Boolean(rawDocUser && String(rawDocUser).trim().length >= 6);
-
-  // Estados de seguridad y contraseña
-  const [passForm, setPassForm] = useState({
-    passwordActual: "",
-    passwordNueva: "",
-    passwordConfirm: "",
-  });
-  const [passErrors, setPassErrors] = useState({});
-  const [passTouched, setPassTouched] = useState({});
-  const [savingPass, setSavingPass] = useState(false);
-  const [showPasswords, setShowPasswords] = useState(false);
-  const [showPassActual, setShowPassActual] = useState(false);
-  const [showPassNueva, setShowPassNueva] = useState(false);
-  const [showPassConfirm, setShowPassConfirm] = useState(false);
-
-  const toggleAllPasswords = () => {
-    const next = !showPasswords;
-    setShowPasswords(next);
-    setShowPassActual(next);
-    setShowPassNueva(next);
-    setShowPassConfirm(next);
-  };
-
-// Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
-
-  const handlePassSubmit = async (e) => {
-    e.preventDefault();
-    const errs = {};
-    if (!isGoogleUser && !passForm.passwordActual) {
-      errs.passwordActual = "Ingresa tu contraseña actual.";
-    }
-    if (!passForm.passwordNueva) {
-      errs.passwordNueva = "Ingresa la nueva contraseña.";
-    } else if (passForm.passwordNueva.length < 6) {
-      errs.passwordNueva = "La contraseña debe tener al menos 6 caracteres.";
-    }
-    if (!passForm.passwordConfirm) {
-      errs.passwordConfirm = "Confirma la nueva contraseña.";
-    } else if (passForm.passwordNueva !== passForm.passwordConfirm) {
-      errs.passwordConfirm = "Las contraseñas no coinciden.";
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setPassErrors(errs);
-      setPassTouched({ passwordActual: true, passwordNueva: true, passwordConfirm: true });
-      return;
-    }
-
-    setSavingPass(true);
-    try {
-      const payload = {
-        passwordNueva: passForm.passwordNueva,
-        crearPasswordDirecta: isGoogleUser,
-      };
-      if (!isGoogleUser && passForm.passwordActual) {
-        payload.passwordActual = passForm.passwordActual;
-      }
-      const res = await updateProfile(payload);
-      if (res && res.success !== false) {
-        success(
-          isGoogleUser ? "¡Contraseña creada con éxito!" : "¡Contraseña actualizada!",
-          isGoogleUser
-            ? "Ahora puedes iniciar sesión ingresando tu correo y tu nueva contraseña."
-            : "Tu contraseña ha sido actualizada correctamente."
-        );
-        setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
-        setPassErrors({});
-        setPassTouched({});
-      } else {
-        notifyError("Error", res?.message || "No se pudo actualizar la contraseña.");
-      }
-    } catch (err) {
-      notifyError("Error", err.message || "No se pudo actualizar la contraseña.");
-    } finally {
-      setSavingPass(false);
-    }
-  };
-
-  // Detect client device and browser for Active Sessions
-  const deviceInfo = useMemo(() => {
-    const ua = navigator.userAgent;
-    let browser = "Google Chrome";
-    if (ua.includes("Edg")) browser = "Microsoft Edge";
-    else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
-    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
-
-    let os = "Windows PC";
-    let isMobile = false;
-    if (ua.includes("Android")) {
-      os = "Android Mobile";
-      isMobile = true;
-    } else if (ua.includes("iPhone") || ua.includes("iPad")) {
-      os = "iOS Device";
-      isMobile = true;
-    } else if (ua.includes("Mac")) {
-      os = "macOS";
-    } else if (ua.includes("Linux")) {
-      os = "Linux PC";
-    }
-
-    return { browser, os, isMobile };
-  }, []);
-
   // Fetch client orders (backend + localStorage)
   const fetchMyOrders = useCallback(async () => {
     if (!user) {
@@ -590,6 +415,183 @@ export function ClientePerfil() {
       setLoadingPedidos(false);
     }
   }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
+
+  // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
+  useEffect(() => {
+    const wompiTxId = searchParams.get("id");
+    if (wompiTxId) {
+      setTab("pedidos");
+      (async () => {
+        try {
+          const verificacion = await wompiService.verificarTransaccion(wompiTxId);
+          if (verificacion && verificacion.aprobado) {
+            success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
+            if (typeof clearCart === "function") clearCart();
+          } else if (verificacion && verificacion.estado === 'PENDING') {
+            warning("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en esta pantalla.");
+            if (typeof clearCart === "function") clearCart();
+          } else {
+            notifyError("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}.`);
+          }
+        } catch (err) {
+          console.error("Error verificando Wompi en perfil:", err);
+        } finally {
+          fetchMyOrders();
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("id");
+          newParams.set("tab", "pedidos");
+          window.history.replaceState({}, document.title, `${window.location.pathname}?${newParams.toString()}`);
+        }
+      })();
+    }
+  }, [searchParams, fetchMyOrders, clearCart]);
+
+  // Populate form with current user data
+  useEffect(() => {
+    if (user) {
+      let cleanDir = user.direccion || "";
+      if (typeof cleanDir === "string" && cleanDir.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(cleanDir);
+          cleanDir = parsed.direccion || cleanDir;
+        } catch (e) {
+          /* keep */
+        }
+      }
+
+      const rawDocVal = user.numeroDocumento || user.documento || "";
+      const validDocVal = (rawDocVal && String(rawDocVal).trim().length >= 6) ? String(rawDocVal).trim() : "";
+      setForm({
+        nombre: user.nombre || "",
+        apellidos: user.apellidos || user.apellido || "",
+        email: user.email || "",
+        telefono: user.telefono || "",
+        direccion: cleanDir,
+        tipoDocumento: user.tipoDocumento || "C.C.",
+        numeroDocumento: validDocVal,
+      });
+
+      const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+      setAvatarUrl(userAvatar);
+      setErrors({});
+      setTouched({});
+    }
+  }, [user]);
+
+  const isGoogleUser = useMemo(() => {
+    return Boolean(
+      user?.esUsuarioGoogle ||
+      (user?.foto && user?.foto.includes("googleusercontent.com")) ||
+      (user?.avatar && user?.avatar.includes("googleusercontent.com"))
+    );
+  }, [user]);
+
+  const rawDocUser = user?.numeroDocumento || user?.documento || "";
+  const tieneCedulaRegistrada = Boolean(rawDocUser && String(rawDocUser).trim().length >= 6);
+
+  // Estados de seguridad y contraseña
+  const [passForm, setPassForm] = useState({
+    passwordActual: "",
+    passwordNueva: "",
+    passwordConfirm: "",
+  });
+  const [passErrors, setPassErrors] = useState({});
+  const [passTouched, setPassTouched] = useState({});
+  const [savingPass, setSavingPass] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [showPassActual, setShowPassActual] = useState(false);
+  const [showPassNueva, setShowPassNueva] = useState(false);
+  const [showPassConfirm, setShowPassConfirm] = useState(false);
+
+  const toggleAllPasswords = () => {
+    const next = !showPasswords;
+    setShowPasswords(next);
+    setShowPassActual(next);
+    setShowPassNueva(next);
+    setShowPassConfirm(next);
+  };
+
+// Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
+
+  const handlePassSubmit = async (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!isGoogleUser && !passForm.passwordActual) {
+      errs.passwordActual = "Ingresa tu contraseña actual.";
+    }
+    if (!passForm.passwordNueva) {
+      errs.passwordNueva = "Ingresa la nueva contraseña.";
+    } else if (passForm.passwordNueva.length < 6) {
+      errs.passwordNueva = "La contraseña debe tener al menos 6 caracteres.";
+    }
+    if (!passForm.passwordConfirm) {
+      errs.passwordConfirm = "Confirma la nueva contraseña.";
+    } else if (passForm.passwordNueva !== passForm.passwordConfirm) {
+      errs.passwordConfirm = "Las contraseñas no coinciden.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setPassErrors(errs);
+      setPassTouched({ passwordActual: true, passwordNueva: true, passwordConfirm: true });
+      return;
+    }
+
+    setSavingPass(true);
+    try {
+      const payload = {
+        passwordNueva: passForm.passwordNueva,
+        crearPasswordDirecta: isGoogleUser,
+      };
+      if (!isGoogleUser && passForm.passwordActual) {
+        payload.passwordActual = passForm.passwordActual;
+      }
+      const res = await updateProfile(payload);
+      if (res && res.success !== false) {
+        success(
+          isGoogleUser ? "¡Contraseña creada con éxito!" : "¡Contraseña actualizada!",
+          isGoogleUser
+            ? "Ahora puedes iniciar sesión ingresando tu correo y tu nueva contraseña."
+            : "Tu contraseña ha sido actualizada correctamente."
+        );
+        setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
+        setPassErrors({});
+        setPassTouched({});
+      } else {
+        notifyError("Error", res?.message || "No se pudo actualizar la contraseña.");
+      }
+    } catch (err) {
+      notifyError("Error", err.message || "No se pudo actualizar la contraseña.");
+    } finally {
+      setSavingPass(false);
+    }
+  };
+
+  // Detect client device and browser for Active Sessions
+  const deviceInfo = useMemo(() => {
+    const ua = navigator.userAgent;
+    let browser = "Google Chrome";
+    if (ua.includes("Edg")) browser = "Microsoft Edge";
+    else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
+
+    let os = "Windows PC";
+    let isMobile = false;
+    if (ua.includes("Android")) {
+      os = "Android Mobile";
+      isMobile = true;
+    } else if (ua.includes("iPhone") || ua.includes("iPad")) {
+      os = "iOS Device";
+      isMobile = true;
+    } else if (ua.includes("Mac")) {
+      os = "macOS";
+    } else if (ua.includes("Linux")) {
+      os = "Linux PC";
+    }
+
+    return { browser, os, isMobile };
+  }, []);
+
+
 
   useEffect(() => {
     if (refreshUser) {

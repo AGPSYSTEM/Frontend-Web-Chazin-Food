@@ -180,54 +180,58 @@ export function FichaVersionesHistorial({
               </h5>
 
               {listaVersiones.length > 1 && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-gray-400 mr-0.5">Seleccionar versión:</span>
-                  <button
-                    type="button"
-                    disabled={activeIdx <= 0}
-                    onClick={() => {
-                      if (activeIdx > 0) {
-                        const prevV = listaVersiones[activeIdx - 1];
-                        setSelectedTabVersion(prevV.version || listaVersiones.length - (activeIdx - 1));
-                      }
-                    }}
-                    className="p-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
-                    title="Versión más reciente"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  {listaVersiones.map((v, idx) => {
-                    const vNum = v.version || listaVersiones.length - idx;
-                    const isSelectedPill = Number(activeVerNum) === Number(vNum);
-                    return (
-                      <button
-                        key={`pill-v-${vNum}-${idx}`}
-                        type="button"
-                        onClick={() => setSelectedTabVersion(vNum)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                          isSelectedPill
-                            ? "bg-[#F05454] text-white shadow-2xs"
-                            : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                        }`}
-                      >
-                        Versión {vNum}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    disabled={activeIdx < 0 || activeIdx >= listaVersiones.length - 1}
-                    onClick={() => {
-                      if (activeIdx >= 0 && activeIdx < listaVersiones.length - 1) {
-                        const nextV = listaVersiones[activeIdx + 1];
-                        setSelectedTabVersion(nextV.version || listaVersiones.length - (activeIdx + 1));
-                      }
-                    }}
-                    className="p-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-35 disabled:cursor-not-allowed transition cursor-pointer"
-                    title="Versión anterior"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex items-center gap-2 flex-nowrap shrink-0">
+                  <span className="text-[11px] font-bold text-gray-400 hidden md:inline">Seleccionar versión:</span>
+                  <div className="inline-flex items-center gap-1 p-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs flex-nowrap">
+                    <button
+                      type="button"
+                      disabled={activeIdx <= 0}
+                      onClick={() => {
+                        if (activeIdx > 0) {
+                          const prevV = listaVersiones[activeIdx - 1];
+                          setSelectedTabVersion(prevV.version || listaVersiones.length - (activeIdx - 1));
+                        }
+                      }}
+                      className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer shrink-0"
+                      title="Versión más reciente"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] sm:max-w-xs scrollbar-none flex-nowrap">
+                      {listaVersiones.map((v, idx) => {
+                        const vNum = v.version || listaVersiones.length - idx;
+                        const isSelectedPill = Number(activeVerNum) === Number(vNum);
+                        return (
+                          <button
+                            key={`pill-v-${vNum}-${idx}`}
+                            type="button"
+                            onClick={() => setSelectedTabVersion(vNum)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                              isSelectedPill
+                                ? "bg-[#F05454] text-white shadow-2xs"
+                                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60"
+                            }`}
+                          >
+                            Versión {vNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={activeIdx < 0 || activeIdx >= listaVersiones.length - 1}
+                      onClick={() => {
+                        if (activeIdx >= 0 && activeIdx < listaVersiones.length - 1) {
+                          const nextV = listaVersiones[activeIdx + 1];
+                          setSelectedTabVersion(nextV.version || listaVersiones.length - (activeIdx + 1));
+                        }
+                      }}
+                      className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer shrink-0"
+                      title="Versión anterior"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

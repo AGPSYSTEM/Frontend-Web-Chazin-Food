@@ -987,13 +987,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
                   {/* Columna Derecha: Live Preview de la Tarjeta Promocional (5 columnas) */}
                   <div className="lg:col-span-5 space-y-4">
-                    <div className="bg-linear-to-br from-gray-900 to-gray-950 p-5 rounded-3xl text-white shadow-xl border border-gray-800 sticky top-2">
+                    <div className="bg-slate-50 dark:bg-linear-to-br dark:from-gray-900 dark:to-gray-950 p-5 rounded-3xl text-gray-900 dark:text-white shadow-xl border border-gray-200 dark:border-gray-800 sticky top-2">
                       <div className="flex items-center justify-between mb-3.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                           <Eye className="w-3.5 h-3.5" />
                           <span>Vista Previa en Vivo (Menú & POS)</span>
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-orange-600/80 text-white">
+                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-orange-600 text-white shadow-xs">
                           Campaña Activa
                         </span>
                       </div>
@@ -1060,8 +1060,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         </div>
                       </div>
 
-                      <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-2.5 text-xs text-gray-300">
-                        <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div className="mt-4 p-3 bg-amber-50/80 dark:bg-white/5 rounded-xl border border-amber-200/70 dark:border-white/10 flex items-center gap-2.5 text-xs text-amber-950 dark:text-gray-300">
+                        <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                         <span>En el siguiente paso podrás revisar y asignar los platillos participantes.</span>
                       </div>
                     </div>
@@ -1359,52 +1359,52 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     </div>
                   </div>
 
-                  {/* Columna Derecha: Resumen Final y Banner Hero (5 columnas) */}
+                  {/* Columna Derecha: Resumen Final y Banner Hero (5 columnas) - Adaptable Modo Claro/Oscuro */}
                   <div className="lg:col-span-5 space-y-4">
-                    <div className="bg-linear-to-br from-gray-900 to-gray-950 p-5 rounded-3xl text-white shadow-xl border border-gray-800 sticky top-2">
+                    <div className="bg-white dark:bg-linear-to-br dark:from-gray-900 dark:to-gray-950 p-5 rounded-3xl text-gray-900 dark:text-white shadow-xl border border-gray-200 dark:border-gray-800 sticky top-2">
                       <div className="flex items-center justify-between mb-3.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Resumen Final de Publicación</span>
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-600/80 text-white">
+                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
                           Listo para Crear
                         </span>
                       </div>
 
                       <div className="space-y-3 text-xs">
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 space-y-1">
-                          <p className="text-[10px] text-gray-400 uppercase font-black">Campaña</p>
-                          <p className="text-sm font-black text-amber-300">{nombreEvento || "Sin título"}</p>
-                          <p className="text-gray-300 text-[11px] line-clamp-2">{descripcion || "Sin descripción"}</p>
+                        <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 space-y-1">
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black">Campaña</p>
+                          <p className="text-sm font-black text-amber-600 dark:text-amber-300">{nombreEvento || "Sin título"}</p>
+                          <p className="text-gray-600 dark:text-gray-300 text-[11px] line-clamp-2">{descripcion || "Sin descripción"}</p>
                         </div>
 
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
+                        <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-black">Dinámica</p>
-                            <p className="font-bold text-white">{tipoEvento}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black">Dinámica</p>
+                            <p className="font-bold text-gray-900 dark:text-white">{tipoEvento}</p>
                           </div>
-                          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-red-600 text-white">
+                          <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-red-600 text-white shadow-xs">
                             {tipoEvento === "Descuento" ? `${descuento || 15}% OFF` : tipoEvento === "2x1 / Combo Especial" ? "2X1" : "OFERTA"}
                           </span>
                         </div>
 
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
+                        <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-black">Productos Participantes</p>
-                            <p className="font-bold text-white">{productosSeleccionados.length} platillos asignados</p>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black">Productos Participantes</p>
+                            <p className="font-bold text-gray-900 dark:text-white">{productosSeleccionados.length} platillos asignados</p>
                           </div>
-                          <Utensils className="w-4 h-4 text-orange-400" />
+                          <Utensils className="w-4 h-4 text-orange-500" />
                         </div>
 
-                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
+                        <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase font-black">Vigencia</p>
-                            <p className="font-bold text-white">
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black">Vigencia</p>
+                            <p className="font-bold text-gray-900 dark:text-white">
                               {isTemporal ? `${diasVigenciaCampaña || 0} días (${fechaInicio} a ${fechaFin})` : "Permanente"}
                             </p>
                           </div>
-                          <CalendarClock className="w-4 h-4 text-amber-400" />
+                          <CalendarClock className="w-4 h-4 text-amber-500" />
                         </div>
                       </div>
                     </div>
@@ -1436,11 +1436,27 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <button
                               key={t.value}
                               type="button"
-                              onClick={() => setProdTipoEvento(t.value)}
+                              onClick={() => {
+                                setProdTipoEvento(t.value);
+                                if (t.value === "COMBO_ESPECIAL") {
+                                  setConfigCombo(prev => ({ ...prev, esCombo: true }));
+                                  setProdCategoria(2); // Auto-asignar a Combos
+                                  if (!nombreEvento) setNombreEvento("Combo Festivo Especial");
+                                } else {
+                                  setConfigCombo(prev => ({ ...prev, esCombo: false }));
+                                  if (t.value === "2X1" && prodPrecioRegular && !prodPrecioEvento) {
+                                    setProdPrecioEvento(prodPrecioRegular);
+                                  } else if (t.value === "DESCUENTO" && prodPrecioRegular && !prodPrecioEvento) {
+                                    setProdPrecioEvento(String(Math.round(Number(prodPrecioRegular) * 0.85)));
+                                  } else if (t.value === "EDICION_LIMITADA" && prodCategoria === 2) {
+                                    setProdCategoria(3); // Reset a Hamburguesas
+                                  }
+                                }
+                              }}
                               className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                                 isSel
                                   ? t.activeCls
-                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1">
@@ -1455,6 +1471,55 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           );
                         })}
                       </div>
+
+                      {/* Banner Explicativo Dinámico según Formato */}
+                      {prodTipoEvento === "COMBO_ESPECIAL" && (
+                        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start gap-2.5">
+                          <StreamlineDoubleBurger className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-black text-amber-900 dark:text-amber-200">Formato Combo Festivo Activo</p>
+                            <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
+                              Este platillo se registrará en la categoría <strong>Combos</strong>. Abajo podrás seleccionar las bebidas acompañantes y armar el paquete gastronómico completo.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {prodTipoEvento === "2X1" && (
+                        <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-start gap-2.5">
+                          <Tag className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-black text-rose-900 dark:text-rose-200">Dinámica 2x1 Culinaria Activa</p>
+                            <p className="text-[11px] text-rose-800/80 dark:text-rose-300/80 leading-relaxed">
+                              El comensal lleva <strong>2 unidades</strong> por el precio fijado. El sistema calculará el valor equivalente por porción y aplicará la insignia 2X1.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {prodTipoEvento === "DESCUENTO" && (
+                        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-start gap-2.5">
+                          <Percent className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">Descuento Directo sobre Carta</p>
+                            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 leading-relaxed">
+                              Define el precio regular de carta y el precio rebajado exclusivo para este festival. Puedes usar los botones de descuento rápido abajo.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {prodTipoEvento === "EDICION_LIMITADA" && (
+                        <div className="p-3.5 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 flex items-start gap-2.5">
+                          <Crown className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-black text-orange-900 dark:text-orange-200">Platillo Conmemorativo de Festival</p>
+                            <p className="text-[11px] text-orange-800/80 dark:text-orange-300/80 leading-relaxed">
+                              Receta de autor creada para el festival conmemorativo (Burger Fest, Salchipapa Fest, etc.). Se publicará con su sello de Edición Especial.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Datos Principales */}
@@ -1504,34 +1569,142 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         </div>
                       </div>
 
-                      {/* Precios (Regular vs Promocional) */}
-                      <div className="grid grid-cols-2 gap-3.5 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <div>
-                          <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
-                            Precio de Carta Regular ($ COP) *
-                          </label>
-                          <input
-                            type="number"
-                            value={prodPrecioRegular}
-                            onChange={(e) => setProdPrecioRegular(e.target.value)}
-                            placeholder="Ej. 28000"
-                            className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
-                          />
+                      {/* Precios (Regular vs Promocional con cálculo dinámico según formato) */}
+                      <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                        <div className="grid grid-cols-2 gap-3.5">
+                          <div>
+                            <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
+                              {prodTipoEvento === "COMBO_ESPECIAL" ? "Precio Combo Regular ($ COP) *" : "Precio Carta Regular ($ COP) *"}
+                            </label>
+                            <input
+                              type="number"
+                              value={prodPrecioRegular}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setProdPrecioRegular(val);
+                                if (prodTipoEvento === "2X1" && !prodPrecioEvento) {
+                                  setProdPrecioEvento(val);
+                                }
+                              }}
+                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 38000" : "Ej. 28000"}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
+                              {prodTipoEvento === "COMBO_ESPECIAL"
+                                ? "Precio Combo Festivo ($ COP) *"
+                                : prodTipoEvento === "2X1"
+                                ? "Precio Promoción 2x1 ($ COP) *"
+                                : "Precio Especial Evento ($ COP) *"}
+                            </label>
+                            <input
+                              type="number"
+                              value={prodPrecioEvento}
+                              onChange={(e) => setProdPrecioEvento(e.target.value)}
+                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 34000" : prodTipoEvento === "2X1" ? "Ej. 20000" : "Ej. 22000"}
+                              className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
+                            />
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
-                            Precio Especial de Evento ($ COP) *
-                          </label>
-                          <input
-                            type="number"
-                            value={prodPrecioEvento}
-                            onChange={(e) => setProdPrecioEvento(e.target.value)}
-                            placeholder="Ej. 22000"
-                            className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
-                          />
-                        </div>
+                        {/* Botones de descuento rápido si es formato Descuento */}
+                        {prodTipoEvento === "DESCUENTO" && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">Descuento rápido:</span>
+                            {[10, 15, 20, 25, 30].map(pct => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => {
+                                  const reg = Number(prodPrecioRegular) || 0;
+                                  if (reg > 0) {
+                                    setProdPrecioEvento(String(Math.round(reg * (1 - pct / 100))));
+                                  }
+                                }}
+                                className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 transition cursor-pointer"
+                              >
+                                -{pct}%
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Cálculo dinámico en tiempo real */}
+                        {prodPrecioRegular && prodPrecioEvento && (
+                          <div className="p-2.5 rounded-xl bg-orange-50/70 dark:bg-gray-800 border border-orange-200/80 dark:border-gray-700 flex items-center justify-between text-xs">
+                            {prodTipoEvento === "2X1" ? (
+                              <span className="font-bold text-orange-950 dark:text-orange-200">
+                                🔥 <strong>Lleva 2 por ${Number(prodPrecioEvento).toLocaleString("es-CO")} COP</strong> (Valor equiv. por unidad: ${Math.round(Number(prodPrecioEvento) / 2).toLocaleString("es-CO")} COP)
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-gray-600 dark:text-gray-300">
+                                  Ahorro para el comensal:
+                                  <strong className="text-emerald-600 dark:text-emerald-400 ml-1">
+                                    ${Math.max(0, Number(prodPrecioRegular) - Number(prodPrecioEvento)).toLocaleString("es-CO")} COP
+                                  </strong>
+                                </span>
+                                <span className="font-black text-rose-600 dark:text-rose-400">
+                                  {Math.round(((Number(prodPrecioRegular) - Number(prodPrecioEvento)) / Number(prodPrecioRegular)) * 100)}% OFF
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
+
+                      {/* Configuración Dinámica de Bebidas / Composición si es COMBO_ESPECIAL */}
+                      {prodTipoEvento === "COMBO_ESPECIAL" && (
+                        <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                              <Sparkles className="w-4 h-4 text-amber-600" />
+                              <span>Bebidas Incluidas en el Combo Festivo</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                              {configCombo.cantidadBebidas} {configCombo.cantidadBebidas === 1 ? "bebida" : "bebidas"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600 dark:text-gray-300">Cantidad de bebidas:</span>
+                            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: Math.max(1, (c.cantidadBebidas || 1) - 1) }))}
+                                className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                              >
+                                -
+                              </button>
+                              <span className="px-2 text-xs font-black">{configCombo.cantidadBebidas || 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => setConfigCombo(c => ({ ...c, cantidadBebidas: (c.cantidadBebidas || 1) + 1 }))}
+                                className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {todasBebidas.length > 0 && (
+                            <div className="space-y-1.5 pt-1">
+                              <p className="text-[10.5px] font-bold text-gray-500 dark:text-gray-400">
+                                Opciones de bebidas disponibles para elegir al ordenar:
+                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {todasBebidas.map(b => (
+                                  <span key={b.id || b.idProducto} className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                                    {b.nombre}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
@@ -1793,19 +1966,24 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                       </label>
                     </div>
 
-                    {/* Resumen del Platillo */}
-                    <div className="bg-linear-to-br from-gray-900 to-gray-950 p-4 sm:p-5 rounded-3xl text-white shadow-xl border border-gray-800 space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Resumen del Platillo</p>
-                      <p className="text-base font-black">{prodNombre || "Nombre del platillo"}</p>
-                      <div className="flex items-center justify-between text-xs pt-2 border-t border-white/10">
-                        <span className="text-gray-400">Precio Festival:</span>
-                        <span className="text-base font-black text-amber-300">
+                    {/* Resumen del Platillo (Adaptativo a Modo Claro y Modo Oscuro) */}
+                    <div className="bg-white dark:bg-linear-to-br dark:from-gray-900 dark:to-gray-950 p-4 sm:p-5 rounded-3xl text-gray-900 dark:text-white shadow-xl border border-gray-200 dark:border-gray-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Resumen del Platillo</p>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800/50">
+                          {prodTipoEvento === "COMBO_ESPECIAL" ? "Combo" : prodTipoEvento === "2X1" ? "2x1" : prodTipoEvento === "DESCUENTO" ? "Rebajado" : "Especial"}
+                        </span>
+                      </div>
+                      <p className="text-base font-black text-gray-900 dark:text-white truncate">{prodNombre || "Nombre del platillo"}</p>
+                      <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-100 dark:border-white/10">
+                        <span className="text-gray-500 dark:text-gray-400">Precio Festival:</span>
+                        <span className="text-base font-black text-amber-600 dark:text-amber-300">
                           ${prodPrecioEvento ? Number(prodPrecioEvento).toLocaleString("es-CO") : "0"} COP
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-400">Insumos en Receta:</span>
-                        <span className="font-bold text-white">
+                        <span className="text-gray-500 dark:text-gray-400">Insumos en Receta:</span>
+                        <span className="font-bold text-gray-800 dark:text-white">
                           {prodFichaTecnica?.detalles?.length || prodFichaTecnica?.insumos?.length || 0} ingredientes
                         </span>
                       </div>
