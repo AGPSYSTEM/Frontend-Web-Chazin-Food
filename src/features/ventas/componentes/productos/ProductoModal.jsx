@@ -737,17 +737,32 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         notify.warning("Combo Vacío", "Por favor agrega al menos un plato o bebida al combo en el Paso 3 (Armador de Combo).");
         return;
       }
-    } else if (variantes.length > 0) {
-      for (let i = 0; i < variantes.length; i++) {
-        const v = variantes[i];
-        if (!v.nombre || !v.nombre.trim()) {
-          setActiveStep(2);
-          const typeLabel = isDrink 
-            ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
-            : "de variante";
-          notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
-          return;
+    } else {
+      // 1. Validar variantes si existen
+      if (variantes.length > 0) {
+        for (let i = 0; i < variantes.length; i++) {
+          const v = variantes[i];
+          if (!v.nombre || !v.nombre.trim()) {
+            setActiveStep(2);
+            const typeLabel = isDrink 
+              ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
+              : "de variante";
+            notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
+            return;
+          }
         }
+      }
+
+      // 2. Validar Ficha Técnica obligatoria ("Sin la ficha técnica no puede existir un producto")
+      const ft = fichaTecnica || producto?.fichaTecnica || {};
+      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+      if (!ingredientes || ingredientes.length === 0) {
+        setActiveStep(4);
+        notify.warning(
+          "Ficha Técnica Obligatoria",
+          "Sin la ficha técnica no puede existir un producto. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
+        );
+        return;
       }
     }
 
@@ -881,7 +896,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {configCombo.esCombo
                   ? `Paso ${activeStep === 3 ? "2 de 2" : "1 de 2"} • ${activeStep === 1 ? "Información Principal & Precio" : "Armador de Combo Gastronómico"}`
-                  : `Paso ${activeStep} de 3 • ${activeStep === 1 ? "Información Principal & Tipo" : activeStep === 2 ? "Presentaciones & Variantes" : "Complementos & Adiciones"}`}
+                  : `Paso ${activeStep} de 4 • ${
+                      activeStep === 1
+                        ? "Información Principal & Tipo"
+                        : activeStep === 2
+                        ? "Presentaciones & Variantes"
+                        : activeStep === 3
+                        ? "Adiciones Disponibles"
+                        : "Ficha Técnica & Receta Culinaria"
+                    }`}
               </p>
             </div>
           </div>
@@ -897,13 +920,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         </div>
 
         {/* STEPPER NAVEGADOR DE PASOS (Aprovecha el espacio y explica el proceso claramente) */}
-        <div className="grid grid-cols-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0">
           
           {/* Paso 1 */}
           <button
             type="button"
             onClick={() => setActiveStep(1)}
-            className={`p-3.5 flex items-center gap-3 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
+            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-b md:border-b-0 border-gray-100 dark:border-gray-800 relative ${
               activeStep === 1
                 ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
                 : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
@@ -920,7 +943,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black truncate leading-tight">1. Datos & Tipo</p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Nombre, categoría, precio y foto</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Nombre, precio y foto</p>
             </div>
             {activeStep === 1 && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
@@ -938,7 +961,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               }
               setActiveStep(2);
             }}
-            className={`p-3.5 flex items-center gap-3 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
+            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-b md:border-b-0 border-gray-100 dark:border-gray-800 relative ${
               configCombo.esCombo
                 ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
                 : activeStep === 2
@@ -963,10 +986,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
                 {configCombo.esCombo
-                  ? "No requerido en Combos"
+                  ? "No aplica para Combos"
                   : isDrink
-                  ? "Tamaños y sabores de bebida"
-                  : "Opciones o variantes del plato"}
+                  ? "Tamaños y sabores"
+                  : "Opciones o tamaños"}
               </p>
             </div>
             {activeStep === 2 && (
@@ -978,7 +1001,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           <button
             type="button"
             onClick={() => setActiveStep(3)}
-            className={`p-3.5 flex items-center gap-3 transition text-left cursor-pointer relative ${
+            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
               activeStep === 3
                 ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
                 : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
@@ -997,13 +1020,59 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black truncate leading-tight">
-                {configCombo.esCombo ? "3. Armador de Combo" : "3. Adiciones & Extras"}
+                {configCombo.esCombo ? "3. Armador de Combo" : "3. Adiciones"}
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {configCombo.esCombo ? "Platos y bebidas que incluye" : "Adiciones permitidas al cliente"}
+                {configCombo.esCombo ? "Platos incluidos" : "Extras permitidos"}
               </p>
             </div>
             {activeStep === 3 && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
+            )}
+          </button>
+
+          {/* Paso 4: Ficha Técnica */}
+          <button
+            type="button"
+            onClick={() => {
+              if (configCombo.esCombo) {
+                notify.info("Modo Combo", "Los combos no requieren una Ficha Técnica propia porque cada producto incluido ya cuenta con su receta.");
+                return;
+              }
+              setActiveStep(4);
+            }}
+            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
+              configCombo.esCombo
+                ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
+                : activeStep === 4
+                ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
+                : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
+            }`}
+          >
+            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+              configCombo.esCombo
+                ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
+                ? "bg-emerald-600 text-white shadow-xs"
+                : activeStep === 4
+                ? "bg-[#F05454] text-white shadow-xs"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+            }`}>
+              {configCombo.esCombo
+                ? "—"
+                : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
+                ? <Check className="w-4 h-4 stroke-[3]" />
+                : "4"}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black truncate leading-tight">
+                {configCombo.esCombo ? "4. Ficha Técnica (N/A)" : "4. Ficha Técnica"}
+              </p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
+                {configCombo.esCombo ? "Heredada de los platos" : "Receta, insumos y proceso"}
+              </p>
+            </div>
+            {activeStep === 4 && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
             )}
           </button>
@@ -2087,25 +2156,81 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     )}
                   </div>
 
-                  {/* Ficha técnica aviso desacoplado */}
-                  <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200/80 dark:border-purple-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 dark:text-gray-100 text-xs">
-                          Ficha Técnica (Receta & Procedimiento)
-                        </h4>
-                        <p className="text-[11px] text-gray-500">
-                          Se gestiona de forma independiente en su propio apartado para no alterar los datos comerciales.
-                        </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PASO 4: FICHA TÉCNICA OBLIGATORIA DEL PRODUCTO */}
+          {activeStep === 4 && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              {configCombo.esCombo ? (
+                /* Combos: Composición y explicación de fichas técnicas heredadas */
+                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-3xl border border-blue-200/80 dark:border-blue-900/40 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto shadow-xs">
+                    <FoodIcon name="combo" size={32} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <h4 className="font-extrabold text-base text-gray-900 dark:text-gray-100">
+                      Ficha Técnica Heredada de los Platillos
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                      Los combos no requieren una Ficha Técnica propia porque cada uno de los productos individuales incluidos ya cuenta con su respectiva Ficha Técnica y receta culinaria. El inventario de insumos se descontará automáticamente de cada platillo al momento de la venta.
+                    </p>
+                  </div>
+
+                  {Array.isArray(configCombo.productosAsociados) && configCombo.productosAsociados.length > 0 && (
+                    <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-2xl p-4 border border-blue-150 dark:border-blue-900/50 text-left space-y-2">
+                      <p className="text-[11px] font-black uppercase text-gray-400 tracking-wider">
+                        Platos vinculados en el combo:
+                      </p>
+                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {configCombo.productosAsociados.map((item, idx) => (
+                          <div key={idx} className="py-1.5 flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-800 dark:text-gray-200">
+                              {item.cantidad}x {item.nombre}
+                            </span>
+                            <span className="text-[11px] font-mono text-gray-500">
+                              ${(Number(item.precio || 0) * (item.cantidad || 1)).toLocaleString("es-CO")} COP
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-purple-700 bg-purple-100 dark:bg-purple-900/50 px-2.5 py-1 rounded-lg shrink-0">
-                      Edición Independiente
-                    </span>
+                  )}
+                </div>
+              ) : (
+                /* Producto (Comida o Bebida): Editor completo de Ficha Técnica */
+                <div className="space-y-4">
+                  <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5 text-xs">
+                      <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                        Ficha Técnica Oficial del Producto (Paso 4 de 4)
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Configura los ingredientes / insumos necesarios con sus cantidades, las fases de preparación, tiempo, porciones y costos reales.
+                      </p>
+                    </div>
                   </div>
+
+                  <FichaTecnicaProducto
+                    productId={producto?.id || producto?.idProducto}
+                    productName={form.nombre}
+                    initialData={fichaTecnica || producto?.fichaTecnica || null}
+                    entityData={entityDataActual}
+                    prevEntityData={prevEntityDataInicial}
+                    onRestoreEntityData={handleRestoreEntityData}
+                    onChange={(data) => {
+                      setFichaTecnica(data);
+                    }}
+                    onSave={(data) => {
+                      setFichaTecnica(data);
+                      notify.success("Ficha Técnica Actualizada", "Los datos de la receta fueron sincronizados con el producto.");
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -2127,7 +2252,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <span className="font-semibold text-gray-600 dark:text-gray-300">
                 {configCombo.esCombo
                   ? `Combo (${configCombo.productosAsociados?.length || 0} platos)`
-                  : `${variantes.length} var. • ${form.adiciones?.length || 0} adic.`}
+                  : `${variantes.length} var. • ${form.adiciones?.length || 0} adic. • ${fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length || 0} insumos`}
               </span>
             </div>
 
@@ -2145,7 +2270,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 <button
                   type="button"
                   onClick={() => {
-                    // Si estamos en Paso 3 y es un combo, volver directamente al Paso 1
+                    if (activeStep === 4) {
+                      setActiveStep(3);
+                      return;
+                    }
                     if (activeStep === 3 && configCombo.esCombo) {
                       setActiveStep(1);
                       return;
@@ -2159,7 +2287,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </button>
               )}
 
-              {activeStep < 3 && (
+              {((configCombo.esCombo && activeStep < 3) || (!configCombo.esCombo && activeStep < 4)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2172,27 +2300,36 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         notify.warning("Datos Incompletos", "Por favor ingresa el nombre y precio del producto.");
                         return;
                       }
-                      // Para combos, avanzar directamente al Armador de Combo (Paso 3)
                       if (configCombo.esCombo) {
                         setActiveStep(3);
                         return;
                       }
                     }
+                    if (activeStep === 3 && !configCombo.esCombo) {
+                      setActiveStep(4);
+                      return;
+                    }
                     setActiveStep(prev => prev + 1);
                   }}
                   className="px-4 py-2 text-xs font-bold text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1"
                 >
-                  <span>{configCombo.esCombo && activeStep === 1 ? "Ir a Armador de Combo" : "Siguiente"}</span>
+                  <span>
+                    {configCombo.esCombo && activeStep === 1
+                      ? "Ir a Armador de Combo"
+                      : !configCombo.esCombo && activeStep === 3
+                      ? "Ir a Ficha Técnica"
+                      : "Siguiente"}
+                  </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
 
-              {/* Botón Guardar / Crear: Visible en el último paso O disponible directamente si ya completó datos básicos */}
+              {/* Botón Guardar / Crear: Destacado en el paso final */}
               <button
                 type="submit"
                 disabled={uploading}
                 className={`px-5 py-2 text-xs font-bold text-white rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50 ${
-                  activeStep === 3
+                  (configCombo.esCombo && activeStep === 3) || (!configCombo.esCombo && activeStep === 4)
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : isStep1Valid
                     ? "bg-gray-900 hover:bg-black dark:bg-gray-100 dark:text-gray-900"
