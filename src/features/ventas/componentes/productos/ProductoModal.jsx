@@ -710,6 +710,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       }
     : null;
 
+  const handleRestoreEntityData = (restoredEnt) => {
+    if (!restoredEnt || typeof restoredEnt !== "object") return;
+    setForm((prev) => ({
+      ...prev,
+      nombre: tieneVentasProtegido ? prev.nombre : (restoredEnt.nombre ?? prev.nombre),
+      categoria: tieneVentasProtegido ? prev.categoria : (restoredEnt.categoria ?? prev.categoria),
+      idCategoriaProducto: tieneVentasProtegido
+        ? prev.idCategoriaProducto
+        : (restoredEnt.idCategoriaProducto ?? prev.idCategoriaProducto),
+      precio: restoredEnt.precio !== undefined ? String(restoredEnt.precio) : prev.precio,
+      descripcion: restoredEnt.descripcion !== undefined ? restoredEnt.descripcion : prev.descripcion,
+      estado: restoredEnt.estado || prev.estado
+    }));
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setSubmitted(true);
