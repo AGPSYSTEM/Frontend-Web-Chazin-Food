@@ -17,18 +17,9 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
       });
     });
 
-    if (withEvents.length > 0) return withEvents;
-
-    // Fallback: combos or first 3 products with images to keep kiosk vibrant
-    const withCombos = (productos || []).filter((p) => {
-      let cfg = p.configuracionCombo;
-      if (typeof cfg === "string") {
-        try { cfg = JSON.parse(cfg); } catch (e) { cfg = null; }
-      }
-      return Boolean(cfg?.esCombo || p.nombre?.toLowerCase().includes("combo") || p.nombre?.toLowerCase().includes("promo"));
-    });
-
-    return withCombos.length > 0 ? withCombos : (productos || []).slice(0, 3);
+        if (withEvents.length > 0) return withEvents;
+    // Si no hay eventos activos vigentes, no mostrar carrusel promocional ficticio
+    return [];
   }, [productos]);
 
   const [currentIndex, setCurrentIndex] = useState(0);

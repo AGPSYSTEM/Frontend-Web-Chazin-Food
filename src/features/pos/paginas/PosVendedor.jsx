@@ -144,26 +144,18 @@ export default function PosVendedor() {
       const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
       const prodName = (p.nombre || "").toLowerCase().trim();
 
-      const matchCatId =
-        p.idCategoriaProducto === categoriaActiva ||
-        p.categoriaId === categoriaActiva ||
-        p.id === categoriaActiva;
-      const matchCatName =
+      const pCatId = Number(p.idCategoriaProducto || p.categoriaId || (typeof p.categoria === "number" ? p.categoria : 0));
+      const targetCatId = Number(categoriaActiva);
+      const matchCatId = categoriaActiva !== null && pCatId > 0 && pCatId === targetCatId;
+      const matchCatName = Boolean(
         catName &&
+        prodCatName &&
         (prodCatName === catName ||
           prodCatName.includes(catName) ||
-          catName.includes(prodCatName));
+          catName.includes(prodCatName))
+      );
 
-      const singularCatName = catName.endsWith("es")
-        ? catName.slice(0, -2)
-        : catName.endsWith("s")
-        ? catName.slice(0, -1)
-        : catName;
-      const matchSubcategory =
-        singularCatName.length >= 3 &&
-        (prodCatName.includes(singularCatName) || prodName.includes(singularCatName));
-
-      return matchCatId || matchCatName || matchSubcategory;
+      return matchCatId || matchCatName;
     });
 
     const now = new Date();

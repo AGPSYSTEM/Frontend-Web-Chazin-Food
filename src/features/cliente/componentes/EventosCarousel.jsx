@@ -358,46 +358,9 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
       };
     });
 
-    // Si no hay eventos activos registrados en la base de datos, mostramos productos aleatorios/destacados del menú
-    if (enrichedDb.length === 0 && Array.isArray(productos) && productos.length > 0) {
-      const activeMenuProds = productos.filter((p) => p.estado !== "Inactivo" && p.estado !== 0 && Number(p.precio) > 0);
-      if (activeMenuProds.length > 0) {
-        // Tomamos hasta 4 productos variados para la pasarela
-        const themeKeys = Object.keys(THEMES);
-        return activeMenuProds.slice(0, 4).map((p, idx) => {
-          const theme = themeKeys[idx % themeKeys.length];
-          const pId = p.id || p.idProducto;
-          const ratingInfo = getEventRating({ idProducto: pId }, p);
-          const price = Number(p.precio || 0);
-
-          return {
-            idEvento: `showcase-prod-${pId}`,
-            idProducto: pId,
-            nombreEvento: p.nombre,
-            descripcion: p.descripcion || `Disfruta de ${p.nombre}, elaborado al momento con los mejores ingredientes de la casa.`,
-            imagen: p.imagen,
-            tipoEvento: "Destacado de la Casa",
-            precioOriginal: price,
-            nuevoPrecio: price,
-            theme,
-            customTag: "RECOMENDADO DE LA CASA",
-            TagIcon: Sparkles,
-            TitleIcon: null,
-            perks: [
-              "Ingredientes 100% Frescos",
-              "Personalización a Tu Gusto",
-              "Preparación Artesanal Chazin",
-              "Garantía de Calidad"
-            ],
-            tiempoPrep: "10-15 min",
-            rating: ratingInfo.rating || 4.9,
-            totalResenas: ratingInfo.totalResenas || 10,
-            calorias: "~650 kcal",
-            esProductoAleatorio: true,
-            producto: p
-          };
-        });
-      }
+    // Si no hay eventos activos registrados en la base de datos, no generamos simulaciones
+    if (enrichedDb.length === 0) {
+      return [];
     }
 
     return enrichedDb;

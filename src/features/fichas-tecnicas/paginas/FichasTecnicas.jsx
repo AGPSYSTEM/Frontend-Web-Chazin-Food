@@ -33,13 +33,35 @@ export function FichasTecnicas({ readOnly = false }) {
 
       if (prodRes.status === "fulfilled") {
         const rawList = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
-        // Los combos no llevan ficha técnica ni deben aparecer en este catálogo
+        const esBebidaComprada = (p) => {
+          const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+          const nom = String(p.nombre || "").toLowerCase();
+          return (
+            cat.includes("bebida") ||
+            cat.includes("gaseos") ||
+            cat.includes("refresco") ||
+            nom.includes("gaseosa") ||
+            nom.includes("agua cristal") ||
+            nom.includes("agua ") ||
+            nom.includes("postobón") ||
+            nom.includes("postobon") ||
+            nom.includes("coca-cola") ||
+            nom.includes("pepsi") ||
+            nom.includes("sprite") ||
+            nom.includes("quatro") ||
+            nom.includes("cuatro") ||
+            nom.includes("jugo hit")
+          );
+        };
+
+        // Los combos y las bebidas comerciales compradas no llevan ficha técnica culinaria
         const nonCombos = rawList.filter(
           (p) =>
             !p.esCombo &&
             !p.configuracionCombo?.esCombo &&
             (p.categoria || "").toLowerCase() !== "combos" &&
-            (p.categoriaNombre || "").toLowerCase() !== "combos"
+            (p.categoriaNombre || "").toLowerCase() !== "combos" &&
+            !esBebidaComprada(p)
         );
         setProductos(nonCombos);
       }

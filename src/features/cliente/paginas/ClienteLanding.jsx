@@ -17,6 +17,7 @@ import { adicionesService } from "@/features/compras/servicios/adicionesService"
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel, THEMES } from "../componentes/EventosCarousel";
+import { BrandHeroBanner } from "../componentes/BrandHeroBanner";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
@@ -1202,15 +1203,18 @@ export function ClienteLanding() {
       const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
       const prodCatName = (p.categoriaNombre || p.categoria || "").toLowerCase().trim();
 
-      const matchCatId = (p.categoria === selectedCategoria) || (p.idCategoriaProducto === selectedCategoria) || (String(p.categoria) === String(selectedCategoria));
-      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
-
-      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
-      const matchSubcategory = singularCatName.length >= 3 && (
-        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      const pCatId = Number(p.idCategoriaProducto || p.categoriaId || (typeof p.categoria === "number" ? p.categoria : 0));
+      const targetCatId = Number(selectedCategoria);
+      const matchCatId = selectedCategoria !== null && pCatId > 0 && pCatId === targetCatId;
+      const matchCatName = Boolean(
+        catName &&
+        prodCatName &&
+        (prodCatName === catName ||
+          prodCatName.includes(catName) ||
+          catName.includes(prodCatName))
       );
 
-      return matchCatId || matchCatName || matchSubcategory;
+      return matchCatId || matchCatName;
     });
 
     // Ordenar de primero los productos que forman parte de eventos activos
@@ -2158,15 +2162,26 @@ export function ClienteLanding() {
       {/* Punto de referencia semántico principal para Accesibilidad */}
       <main id="main-content">
         {/* Carrusel con Eventos Activos en Vista de Cliente (Hero Superior de Promociones con altura fija para 0 CLS) */}
-        <div className="w-full">
-          <EventosCarousel
-            eventos={eventosList}
-            productos={activeProductos}
-            ratingsMap={ratingsMap}
-            onSelectEvento={handleSelectEventoFromCarousel}
-            onThemeChange={setCurrentCarouselTheme}
+        {hasActiveEvents ? (
+          <div className="w-full">
+            <EventosCarousel
+              eventos={eventosList}
+              productos={activeProductos}
+              ratingsMap={ratingsMap}
+              onSelectEvento={handleSelectEventoFromCarousel}
+              onThemeChange={setCurrentCarouselTheme}
+            />
+          </div>
+        ) : (
+          <BrandHeroBanner
+            onExplorarMenu={() => {
+              const el = document.getElementById("menu-categorias") || document.getElementById("search-menu-input");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }}
+            onSelectCategoria={(catId) => setSelectedCategoria(catId)}
+            categorias={activeCategorias}
           />
-        </div>
+        )}
 
       {/* Hero Section con integración cromática dinámica */}
       <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">

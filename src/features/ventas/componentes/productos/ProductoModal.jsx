@@ -768,16 +768,19 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         }
       }
 
-      // 2. Validar Ficha Técnica obligatoria ("Sin la ficha técnica no puede existir un producto")
-      const ft = fichaTecnica || producto?.fichaTecnica || {};
-      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-      if (!ingredientes || ingredientes.length === 0) {
-        setActiveStep(4);
-        notify.warning(
-          "Ficha Técnica Obligatoria",
-          "Sin la ficha técnica no puede existir un producto. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
-        );
-        return;
+      // 2. Validar Ficha Técnica obligatoria solo para platos/comidas preparadas
+      // Las bebidas y refrescos comerciales son productos terminados de compra directa y no requieren ficha técnica
+      if (!isDrink) {
+        const ft = fichaTecnica || producto?.fichaTecnica || {};
+        const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+        if (!ingredientes || ingredientes.length === 0) {
+          setActiveStep(4);
+          notify.warning(
+            "Ficha Técnica Obligatoria",
+            "Sin la ficha técnica no puede existir un producto preparado. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
+          );
+          return;
+        }
       }
     }
 
@@ -911,6 +914,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {configCombo.esCombo
                   ? `Paso ${activeStep === 3 ? "2 de 2" : "1 de 2"} • ${activeStep === 1 ? "Información Principal & Precio" : "Armador de Combo Gastronómico"}`
+                  : isDrink
+                  ? `Paso ${activeStep} de 3 • ${
+                      activeStep === 1
+                        ? "Información Principal & Tipo"
+                        : activeStep === 2
+                        ? "Presentaciones & Tamaños"
+                        : "Adiciones / Extras"
+                    }`
                   : `Paso ${activeStep} de 4 • ${
                       activeStep === 1
                         ? "Información Principal & Tipo"
@@ -1046,7 +1057,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             )}
           </button>
 
-          {/* Paso 4: Ficha Técnica */}
+          {/* Paso 4: Ficha Técnica (Obligatoria para platos, no requerida para combos ni bebidas compradas) */}
           <button
             type="button"
             onClick={() => {
@@ -1054,10 +1065,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 notify.info("Modo Combo", "Los combos no requieren una Ficha Técnica propia porque cada producto incluido ya cuenta con su receta.");
                 return;
               }
+              if (isDrink) {
+                notify.info("Bebida Comercial", "Las bebidas comerciales y aguas compradas no requieren ficha técnica de preparación.");
+                return;
+              }
               setActiveStep(4);
             }}
             className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
-              configCombo.esCombo
+              configCombo.esCombo || isDrink
                 ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
                 : activeStep === 4
                 ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
@@ -1065,7 +1080,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             }`}
           >
             <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-              configCombo.esCombo
+              configCombo.esCombo || isDrink
                 ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
                 : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
                 ? "bg-emerald-600 text-white shadow-xs"
@@ -1073,7 +1088,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 ? "bg-[#F05454] text-white shadow-xs"
                 : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
             }`}>
-              {configCombo.esCombo
+              {configCombo.esCombo || isDrink
                 ? "—"
                 : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
                 ? <Check className="w-4 h-4 stroke-[3]" />
@@ -1081,10 +1096,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black truncate leading-tight">
-                {configCombo.esCombo ? "4. Ficha Técnica (N/A)" : "4. Ficha Técnica"}
+                {configCombo.esCombo ? "4. Ficha Técnica (N/A)" : isDrink ? "4. Ficha Técnica (N/A)" : "4. Ficha Técnica"}
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {configCombo.esCombo ? "Heredada de los platos" : "Receta, insumos y proceso"}
+                {configCombo.esCombo ? "Heredada de los platos" : isDrink ? "Bebida directa de proveedor" : "Receta, insumos y proceso"}
               </p>
             </div>
             {activeStep === 4 && (
@@ -2214,8 +2229,26 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                   )}
                 </div>
+              ) : isDrink ? (
+                /* Bebida o Refresco Comercial: No requiere Ficha Técnica */
+                <div className="p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-3xl border border-purple-200/80 dark:border-purple-900/40 space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-xs">
+                    <FoodIcon name="drink" size={34} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <h3 className="text-base font-black text-gray-900 dark:text-gray-100">
+                      Bebida Comercial / Insumo Terminado
+                    </h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                      Las gaseosas, aguas embotelladas, jugos industriales y refrescos comprados a proveedores no requieren receta culinaria ni mise-en-place.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-100/80 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-bold">
+                    <span>✓ Ficha técnica no requerida para este producto</span>
+                  </div>
+                </div>
               ) : (
-                /* Producto (Comida o Bebida): Editor completo de Ficha Técnica */
+                /* Producto (Comida o Plato): Editor completo de Ficha Técnica */
                 <div className="space-y-4">
                   <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -2267,7 +2300,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <span className="font-semibold text-gray-600 dark:text-gray-300">
                 {configCombo.esCombo
                   ? `Combo (${configCombo.productosAsociados?.length || 0} platos)`
-                  : `${variantes.length} var. • ${form.adiciones?.length || 0} adic. • ${fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length || 0} insumos`}
+                  : isDrink ? `${variantes.length} opciones • ${form.adiciones?.length || 0} adic.` : `${variantes.length} var. • ${form.adiciones?.length || 0} adic. • ${fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length || 0} insumos`}
               </span>
             </div>
 
@@ -2302,7 +2335,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </button>
               )}
 
-              {((configCombo.esCombo && activeStep < 3) || (!configCombo.esCombo && activeStep < 4)) && (
+              {((configCombo.esCombo && activeStep < 3) || (isDrink && activeStep < 3) || (!configCombo.esCombo && !isDrink && activeStep < 4)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2320,7 +2353,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         return;
                       }
                     }
-                    if (activeStep === 3 && !configCombo.esCombo) {
+                    if (activeStep === 3 && !configCombo.esCombo && !isDrink) {
                       setActiveStep(4);
                       return;
                     }
@@ -2331,7 +2364,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   <span>
                     {configCombo.esCombo && activeStep === 1
                       ? "Ir a Armador de Combo"
-                      : !configCombo.esCombo && activeStep === 3
+                      : !configCombo.esCombo && !isDrink && activeStep === 3
                       ? "Ir a Ficha Técnica"
                       : "Siguiente"}
                   </span>
@@ -2344,7 +2377,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 type="submit"
                 disabled={uploading}
                 className={`px-5 py-2 text-xs font-bold text-white rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50 ${
-                  (configCombo.esCombo && activeStep === 3) || (!configCombo.esCombo && activeStep === 4)
+                  (configCombo.esCombo && activeStep === 3) || (isDrink && activeStep === 3) || (!configCombo.esCombo && !isDrink && activeStep === 4)
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : isStep1Valid
                     ? "bg-gray-900 hover:bg-black dark:bg-gray-100 dark:text-gray-900"
