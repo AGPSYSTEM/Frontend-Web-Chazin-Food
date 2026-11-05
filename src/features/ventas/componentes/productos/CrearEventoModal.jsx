@@ -187,6 +187,16 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       } catch (e) {
         parsedProds = [];
       }
+      if (Array.isArray(parsedProds) && parsedProds.length === 0 && (eventoToEdit.idProducto || eventoToEdit.producto)) {
+        const pObj = eventoToEdit.producto;
+        parsedProds = [{
+          id: eventoToEdit.idProducto || pObj?.id || pObj?.idProducto,
+          nombre: pObj?.nombre || 'Producto Principal',
+          precioBase: pObj?.precio || 0,
+          nuevoPrecio: eventoToEdit.nuevoPrecio != null ? String(eventoToEdit.nuevoPrecio) : '',
+          descuento: eventoToEdit.descuento != null ? String(eventoToEdit.descuento) : ''
+        }];
+      }
       setProductosSeleccionados(Array.isArray(parsedProds) ? parsedProds : []);
 
       const existingImg = eventoToEdit.imagen || eventoToEdit.producto?.imagen || "";
@@ -547,8 +557,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
     setSaving(true);
     try {
+      const primaryProdId = producto?.id || producto?.idProducto || (productosSeleccionados.length > 0 ? (productosSeleccionados[0].id || productosSeleccionados[0].idProducto) : null) || eventoToEdit?.idProducto || null;
+
       const payload = {
-        productoId: producto?.id || producto?.idProducto,
+        productoId: primaryProdId,
+        idProducto: primaryProdId,
         tipoEvento,
         icono: icono || "fire",
         imagen: (eventoImagen || "").trim() || null,
@@ -567,19 +580,28 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       }
 
       if (tipoEvento === "Añadir Insumos") {
-        payload.accion = accion;
+        payload.accion = accion || "Añadir";
         payload.insumos = insumosSeleccionados;
         if (nuevoPrecio) payload.nuevoPrecio = Number(nuevoPrecio);
-      } else if (!producto) {
-        payload.productos = productosSeleccionados.map(p => ({
-          idProducto: p.id,
-          nuevoPrecio: tipoEvento === "Promoción Precio" ? Number(p.nuevoPrecio || nuevoPrecio) : null,
-          descuento: tipoEvento === "Descuento" ? Number(p.descuento || descuento) : null
-        }));
-      } else if (tipoEvento === "Descuento") {
+      }
+
+      if (tipoEvento === "Descuento") {
         payload.descuento = Number(descuento);
       } else if (tipoEvento === "Promoción Precio") {
         payload.nuevoPrecio = Number(nuevoPrecio);
+      } else if (tipoEvento === "2x1 / Combo Especial") {
+        payload.descuento = 50;
+        if (nuevoPrecio) payload.nuevoPrecio = Number(nuevoPrecio);
+      }
+
+      if (productosSeleccionados.length > 0) {
+        payload.productos = productosSeleccionados.map(p => ({
+          idProducto: p.id || p.idProducto,
+          nombre: p.nombre,
+          precioBase: p.precioBase || p.precio,
+          nuevoPrecio: tipoEvento === "Promoción Precio" ? Number(p.nuevoPrecio || nuevoPrecio) : null,
+          descuento: tipoEvento === "Descuento" ? Number(p.descuento || descuento) : (tipoEvento === "2x1 / Combo Especial" ? 50 : null)
+        }));
       }
 
       if (isEditing) {
