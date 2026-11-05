@@ -7,7 +7,7 @@ import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
+import { formatTipoEvento, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
 
 export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
@@ -90,7 +90,8 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
   const adiciones = producto.adiciones || [];
   const eventosActivos = producto.eventos || [];
 
-  const variantes = Array.isArray(producto.variantes) ? producto.variantes : [];
+  const rawVars = Array.isArray(producto.variantes) ? producto.variantes : [];
+  const variantes = rawVars.filter((v) => !isDummyOrBaseVariant(v.nombre, producto.nombre));
   const sizeVariantes = variantes.filter((v) => isSizeVariantName(v.nombre));
   const flavorVariantes = variantes.filter((v) => !isSizeVariantName(v.nombre));
 

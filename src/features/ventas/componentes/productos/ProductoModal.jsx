@@ -9,7 +9,7 @@ import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
-import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
+import { getAdditionEmoji, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -291,7 +291,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         ? producto.variantes
         : [];
       
-      setVariantes(rawVars.map((v, i) => {
+      const isProductCombo = Boolean(parsedConfig?.esCombo || isAutoCombo || (producto.categoria && producto.categoria.toLowerCase().includes("combo")));
+      const filteredVars = (isProductCombo || (rawVars.length === 1 && isDummyOrBaseVariant(rawVars[0]?.nombre, producto.nombre)))
+        ? []
+        : rawVars.filter((v) => !isDummyOrBaseVariant(v.nombre, producto.nombre));
+      
+      setVariantes(filteredVars.map((v, i) => {
         const isSize = isSizeVariantName(v.nombre);
         return {
           _key: v.idVariante ? `id-${v.idVariante}` : `var-${i}-${Date.now()}`,
@@ -781,6 +786,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
               : "de variante";
             notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
+            return;
+          }
+          if (v.nombre.trim().toLowerCase() === form.nombre.trim().toLowerCase()) {
+            setActiveStep(2);
+            notify.warning(
+              "Variante Inválida",
+              `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar presentaciones distintas (ej. Doble Carne, Familiar, 1.5 Litros).`
+            );
             return;
           }
         }
