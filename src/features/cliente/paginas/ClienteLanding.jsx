@@ -1746,6 +1746,13 @@ export function ClienteLanding() {
   const clientDiscountMonto = discountPercent > 0 ? Math.round(clientSubtotal * (discountPercent / 100)) : 0;
   const totalCheckout = Math.max(0, clientSubtotal - clientDiscountMonto);
   const handleConfirmarPedido = async () => {
+    if (user && (user.estado === 'INACTIVO' || user.estado === 0 || user.estado === '0' || user.clienteEstado === 'Inactivo' || user.estadoCuenta === 'INACTIVO')) {
+      error(
+        "Cuenta Inactiva",
+        "Tu cuenta se encuentra inactiva y no tienes permitido realizar pedidos. Por favor comunícate con la administración de Chazin Food para reactivarla."
+      );
+      return;
+    }
     // Ítem #20: Validación estricta de nombres para personas
     const valNom = validateNombre(checkoutNombre, "nombre del destinatario");
     if (!valNom.isValid) {

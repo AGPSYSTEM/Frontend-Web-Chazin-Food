@@ -25,7 +25,7 @@ import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 export default function PosVendedor() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { warning } = useNotifications();
+  const { warning, error: notifyError } = useNotifications();
 
   const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
   const userRol = String(rawRol || "").toLowerCase().trim();
@@ -293,6 +293,8 @@ export default function PosVendedor() {
       setKioskStep("confirmation");
     } catch (err) {
       console.error("Error al registrar venta en POS:", err);
+      const msg = err?.response?.data?.message || err?.message || "No se pudo registrar la venta.";
+      notifyError("No se pudo procesar la venta", msg);
     }
   };
 
