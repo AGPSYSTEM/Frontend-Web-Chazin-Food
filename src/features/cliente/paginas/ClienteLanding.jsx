@@ -2183,54 +2183,44 @@ export function ClienteLanding() {
           />
         )}
 
-      {/* Hero Section con integración cromática dinámica */}
-      <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
-        {/* Capa 0: Fondo predeterminado (cuando NO hay eventos) */}
-        <div
-          className={`absolute inset-0 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 transition-opacity duration-700 ease-in-out ${
-            !hasActiveEvents ? "opacity-100" : "opacity-0"
-          }`}
-        />
-
-        {/* Capas temáticas integradas con los colores del carrusel de eventos (cuando SÍ hay eventos) */}
-        {hasActiveEvents &&
-          Object.entries(THEMES).map(([tKey, tVal]) => {
-            const isThemeActive = (currentCarouselTheme?.themeKey || "fire") === tKey;
-            return (
-              <div
-                key={tKey}
-                className={`absolute inset-0 bg-gradient-to-r ${tVal.heroGradient} transition-opacity duration-700 ease-in-out ${
-                  isThemeActive ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            );
-          })}
-
-        {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
+        {/* Hero Section con integración cromática dinámica (Solo cuando hay eventos activos en el carrusel) */}
         {hasActiveEvents && (
-          <div
-            className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-opacity duration-700"
-            style={{
-              backgroundColor: currentCarouselTheme?.theme?.glow || "rgba(239, 68, 68, 0.4)",
-              opacity: 0.35
-            }}
-          />
-        )}
+          <div className="relative overflow-hidden text-white py-10 md:py-14 shadow-inner">
+            {/* Capas temáticas integradas con los colores del carrusel de eventos */}
+            {Object.entries(THEMES).map(([tKey, tVal]) => {
+              const isThemeActive = (currentCarouselTheme?.themeKey || "fire") === tKey;
+              return (
+                <div
+                  key={tKey}
+                  className={`absolute inset-0 bg-gradient-to-r ${tVal.heroGradient} transition-opacity duration-700 ease-in-out ${
+                    isThemeActive ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              );
+            })}
 
-        {/* Contenido del Hero */}
-        <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 text-center space-y-2">
-          <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight drop-shadow-xs">¡El sabor auténtico de Chazin Food!</h2>
-          <p
-            className={`text-sm sm:text-lg font-medium transition-colors duration-500 ${
-              !hasActiveEvents
-                ? "text-red-100"
-                : currentCarouselTheme?.theme?.heroSubtext || "text-red-100"
-            }`}
-          >
-            Haz tu pedido online y recíbelo fresco en tu puerta
-          </p>
-        </div>
-      </div>
+            {/* Halo de luz superior difusa ambiental conectado con el carrusel */}
+            <div
+              className="absolute -top-10 inset-x-0 h-20 blur-xl pointer-events-none transition-opacity duration-700"
+              style={{
+                backgroundColor: currentCarouselTheme?.theme?.glow || "rgba(239, 68, 68, 0.4)",
+                opacity: 0.35
+              }}
+            />
+
+            {/* Contenido del Hero */}
+            <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 text-center space-y-2">
+              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight drop-shadow-xs">¡El sabor auténtico de Chazin Food!</h2>
+              <p
+                className={`text-sm sm:text-lg font-medium transition-colors duration-500 ${
+                  currentCarouselTheme?.theme?.heroSubtext || "text-red-100"
+                }`}
+              >
+                Haz tu pedido online y recíbelo fresco en tu puerta
+              </p>
+            </div>
+          </div>
+        )}
 
       {/* Search Bar */}
       <div className="w-full px-4 sm:px-6 lg:px-8 -mt-6">
