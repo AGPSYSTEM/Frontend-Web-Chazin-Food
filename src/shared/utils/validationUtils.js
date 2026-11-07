@@ -106,6 +106,38 @@ export function validateNombre(val = "", campo = "nombre") {
 }
 
 /**
+ * Valida nombre de rol institucional:
+ * - Solo letras y espacios (con acentos españoles y ñ)
+ * - Prohíbe terminantemente puntos (.), arrobas (@), guiones (-), números y caracteres especiales
+ * - Mínimo 3 caracteres, máximo 50
+ */
+export function validateNombreRol(val = "") {
+  const str = String(val || "").trim();
+  if (!str) return { isValid: false, error: "El nombre del rol es obligatorio." };
+  if (str.length < 3) return { isValid: false, error: "El nombre del rol debe tener al menos 3 caracteres." };
+  if (str.length > 50) return { isValid: false, error: "El nombre del rol no puede superar los 50 caracteres." };
+  if (/[0-9]/.test(str)) {
+    return { isValid: false, error: "El nombre del rol no puede contener números." };
+  }
+  if (str.includes(".")) {
+    return { isValid: false, error: "El nombre del rol no puede contener puntos (.)." };
+  }
+  if (str.includes("@")) {
+    return { isValid: false, error: "El nombre del rol no puede contener el símbolo '@'." };
+  }
+  if (str.includes("-") || str.includes("_")) {
+    return { isValid: false, error: "El nombre del rol no puede contener guiones (- o _)." };
+  }
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(str)) {
+    return {
+      isValid: false,
+      error: "El nombre del rol solo puede contener letras y espacios (sin caracteres especiales ni símbolos)."
+    };
+  }
+  return { isValid: true, error: "" };
+}
+
+/**
  * Valida correo electrónico en tiempo real:
  * - Debe incluir '@'
  * - Debe tener texto antes y después del '@'
