@@ -5,6 +5,7 @@ import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { validateTexto, validateMoneda, validateRequerido } from "@/shared/utils/validationUtils";
 
@@ -354,13 +355,13 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Precio ($) *
+                    Precio ($ COP) *
                   </label>
-                  <input
-                    type="number"
+                  <NumberInput
                     required
                     min="0"
-                    step="50"
+                    step={500}
+                    formatThousands={true}
                     value={formData.precio}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -374,12 +375,12 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                       const err = validateField("precio", formData.precio);
                       setErrors((prev) => ({ ...prev, precio: err }));
                     }}
-                    className={`w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none ${
+                    className={`w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none font-bold ${
                       touched.precio && errors.precio
                         ? "border border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                         : "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
                     }`}
-                    placeholder="Ej. 3500"
+                    placeholder="Ej. 3.500"
                   />
                   {touched.precio && errors.precio && (
                     <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">

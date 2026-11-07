@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
@@ -884,12 +885,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                               : "Define el precio promocional que se aplicará a los productos asignados."}
                           </p>
                           <div className="relative max-w-xs">
-                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-                            <input
-                              type="number"
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold z-10">$</span>
+                            <NumberInput
+                              formatThousands={true}
+                              step={1000}
                               value={nuevoPrecio}
                               onChange={(e) => setNuevoPrecio(e.target.value)}
-                              placeholder="Ej. 18000"
+                              placeholder="Ej. 18.000"
                               className="w-full pl-8 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
@@ -1744,8 +1746,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
                               {prodTipoEvento === "COMBO_ESPECIAL" ? "Precio Combo Regular ($ COP) *" : "Precio Carta Regular ($ COP) *"}
                             </label>
-                            <input
-                              type="number"
+                            <NumberInput
+                              formatThousands={true}
+                              step={1000}
                               value={prodPrecioRegular}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -1754,7 +1757,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                   setProdPrecioEvento(val);
                                 }
                               }}
-                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 38000" : "Ej. 28000"}
+                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 38.000" : "Ej. 28.000"}
                               className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
@@ -1767,11 +1770,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 ? "Precio Promoción 2x1 ($ COP) *"
                                 : "Precio Especial Evento ($ COP) *"}
                             </label>
-                            <input
-                              type="number"
+                            <NumberInput
+                              formatThousands={true}
+                              step={1000}
                               value={prodPrecioEvento}
                               onChange={(e) => setProdPrecioEvento(e.target.value)}
-                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 34000" : prodTipoEvento === "2X1" ? "Ej. 20000" : "Ej. 22000"}
+                              placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 34.000" : prodTipoEvento === "2X1" ? "Ej. 20.000" : "Ej. 22.000"}
                               className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
@@ -2150,52 +2154,65 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         />
                       </div>
 
-                      {/* Cuadrícula de tarjetas de adiciones */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 scrollbar-thin">
-                        {todasAdiciones
-                          .filter(a => !adicionSearch.trim() || a.nombre.toLowerCase().includes(adicionSearch.toLowerCase().trim()))
-                          .map(ad => {
-                            const adId = ad.idAdicion || ad.id;
-                            const isSel = adicionesSeleccionadas.some(s => (s.idAdicion || s.id) === adId);
-                            const emoji = getAdditionEmoji(ad.nombre);
-                            return (
-                              <button
-                                key={adId}
-                                type="button"
-                                onClick={() => {
-                                  setAdicionesSeleccionadas(prev =>
+                      {/* Cuadrícula de tarjetas de adiciones organizadas y nítidas */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 sm:max-h-72 overflow-y-auto p-1 scrollbar-thin">
+                        {todasAdiciones.filter(a => !adicionSearch.trim() || a.nombre.toLowerCase().includes(adicionSearch.toLowerCase().trim())).length === 0 ? (
+                          <div className="col-span-full py-6 text-center text-xs text-gray-400 bg-gray-50/60 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-800">
+                            No se encontraron adiciones que coincidan con la búsqueda.
+                          </div>
+                        ) : (
+                          todasAdiciones
+                            .filter(a => !adicionSearch.trim() || a.nombre.toLowerCase().includes(adicionSearch.toLowerCase().trim()))
+                            .map(ad => {
+                              const adId = ad.idAdicion || ad.id;
+                              const isSel = adicionesSeleccionadas.some(s => (s.idAdicion || s.id) === adId);
+                              return (
+                                <button
+                                  key={adId}
+                                  type="button"
+                                  onClick={() => {
+                                    setAdicionesSeleccionadas(prev =>
+                                      isSel
+                                        ? prev.filter(s => (s.idAdicion || s.id) !== adId)
+                                        : [...prev, { idAdicion: adId, nombre: ad.nombre, precio: Number(ad.precio || 0) }]
+                                    );
+                                  }}
+                                  className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
                                     isSel
-                                      ? prev.filter(s => (s.idAdicion || s.id) !== adId)
-                                      : [...prev, { idAdicion: adId, nombre: ad.nombre, precio: Number(ad.precio || 0) }]
-                                  );
-                                }}
-                                className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                                  isSel
-                                    ? "bg-orange-50/80 dark:bg-orange-950/40 border-orange-500 shadow-2xs ring-1 ring-orange-400/50 text-orange-950 dark:text-orange-100"
-                                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:border-gray-300 text-gray-700 dark:text-gray-300"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="w-6 h-6 rounded-lg bg-orange-100/70 dark:bg-orange-900/40 text-xs flex items-center justify-center shrink-0">
-                                    {emoji}
-                                  </span>
-                                  <span className="text-xs font-bold truncate">{ad.nombre}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
-                                    +${Number(ad.precio || 0).toLocaleString("es-CO")}
-                                  </span>
-                                  {isSel ? (
-                                    <div className="w-4 h-4 rounded-full bg-orange-600 text-white flex items-center justify-center">
-                                      <Check className="w-3 h-3 stroke-[3]" />
+                                      ? "bg-orange-50/90 dark:bg-orange-950/40 border-orange-500 shadow-xs ring-1 ring-orange-500/40 text-orange-950 dark:text-orange-100"
+                                      : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700/80 hover:border-gray-300 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 text-gray-700 dark:text-gray-300 shadow-2xs"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="w-9 h-9 rounded-xl bg-orange-100/80 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 border border-orange-200/60 dark:border-orange-800/40 overflow-hidden shadow-2xs">
+                                      {ad.imagen && (ad.imagen.startsWith("http") || ad.imagen.startsWith("/")) ? (
+                                        <img src={ad.imagen} alt={ad.nombre} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <FoodIcon name={ad.nombre} size={18} />
+                                      )}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate leading-snug" title={ad.nombre}>
+                                        {ad.nombre}
+                                      </p>
+                                      <p className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        +${Number(ad.precio || 0).toLocaleString("es-CO")} COP
+                                      </p>
                                     </div>
-                                  ) : (
-                                    <div className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600" />
-                                  )}
-                                </div>
-                              </button>
-                            );
-                          })}
+                                  </div>
+                                  <div className="shrink-0 pl-1">
+                                    {isSel ? (
+                                      <div className="w-5 h-5 rounded-full bg-orange-600 text-white flex items-center justify-center shadow-xs">
+                                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-orange-400 transition" />
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                        )}
                       </div>
                     </div>
                   </div>
