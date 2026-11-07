@@ -54,6 +54,9 @@ export function PosCheckoutModal({
   subtotal = 0,
   descuento = 0,
   total = 0,
+  initialCliente = null,
+  initialClienteNombre = "",
+  initialTieneCuenta = false,
   onConfirm,
   loading = false
 }) {
@@ -61,11 +64,29 @@ export function PosCheckoutModal({
   const { warning, error, info } = useNotifications();
   const safeCart = Array.isArray(cart) ? cart : [];
   const [clientesList, setClientesList] = useState([]);
-  const [selectedCliente, setSelectedCliente] = useState(null);
-  const [clienteNombre, setClienteNombre] = useState("");
+  const [selectedCliente, setSelectedCliente] = useState(initialCliente || null);
+  const [clienteNombre, setClienteNombre] = useState(
+    initialClienteNombre ||
+      (initialCliente ? `${initialCliente.nombre} ${initialCliente.apellidos || ''}`.trim() : "Cliente Mostrador")
+  );
+  const [tieneCuenta, setTieneCuenta] = useState(initialTieneCuenta || Boolean(initialCliente));
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [tieneCuenta, setTieneCuenta] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
+
+  // Sincronizar selección inicial proveniente del apartado superior del POS
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedCliente(initialCliente || null);
+      setClienteNombre(
+        initialClienteNombre ||
+          (initialCliente ? `${initialCliente.nombre} ${initialCliente.apellidos || ''}`.trim() : "Cliente Mostrador")
+      );
+      setTieneCuenta(initialTieneCuenta || Boolean(initialCliente));
+      setIsSearchingClient(false);
+      setClientSearchTerm("");
+    }
+  }, [isOpen, initialCliente, initialClienteNombre, initialTieneCuenta]);
 
   const responsableNombre = user
     ? `${user.nombre || ''} ${user.apellidos || ''}`.trim() || user.nombre || "Vendedor"
@@ -354,20 +375,17 @@ export function PosCheckoutModal({
             </div>
           </div>
 
-          {/* 3. Panel Interactivo de Gestión y Asociación de Clientes */}
+          {/* 3. Panel de Identificación y Fidelidad del Cliente (Definido al inicio del pedido) */}
           <div className="space-y-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
                 <User className="w-4 h-4 text-[#f05454]" />
                 <span>Identificación del Cliente</span>
               </h4>
-              {selectedCliente && (
-                <FidelidadBadge
-                  tipo={selectedCliente.tipo || "Nuevo"}
-                  descuento={selectedCliente.descuentoPorcentaje}
-                  size="sm"
-                />
-              )}
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
+                <Check className="w-3 h-3" />
+                <span>Identificado al inicio</span>
+              </span>
             </div>
 
             {/* Selector Inicial: Especificar al hacer la venta si tiene cuenta o no */}
@@ -665,34 +683,34 @@ export function PosCheckoutModal({
                 </div>
               </div>
             ) : (
-              /* CASO D: Modo Mostrador / Venta Rápida (Cliente sin Cuenta) */
+              /* CASO D: Modo Mostrador (Cliente sin Cuenta seleccionado al inicio) */
               <div className="space-y-2.5">
                 <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                      <FoodIcon name="sprout" size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <Store className="w-4 h-4 text-[#f05454] shrink-0" />
                       <div>
                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 block">
-                          Cliente Mostrador (Venta Rápida / Sin Cuenta)
+                          Cliente Mostrador (Sin Cuenta)
                         </span>
                         <span className="text-[10px] text-gray-400">
-                          Para clientes presenciales sin registro de fidelidad
+                          Seleccionado al inicio del pedido
                         </span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsSearchingClient(true)}
-                      className="px-3 py-1.5 bg-[#f05454] hover:bg-[#e04545] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                      className="px-2.5 py-1 text-xs text-[#f05454] font-bold hover:underline cursor-pointer flex items-center gap-1 shrink-0"
                     >
-                      <Search className="w-3.5 h-3.5" />
-                      <span>Buscar Cliente con Cuenta</span>
+                      <Search className="w-3 h-3" />
+                      <span>Cambiar / Asociar cuenta</span>
                     </button>
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                      Nombre del Cliente (Mostrador / Mesa / Comanda) <span className="text-red-500 font-extrabold">* (Obligatorio)</span>:
+                      Nombre en Recibo y Comanda <span className="text-red-500 font-extrabold">* (Obligatorio)</span>:
                     </label>
                     <input
                       type="text"
@@ -717,14 +735,10 @@ export function PosCheckoutModal({
                         <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
                         <span>El nombre del cliente es obligatorio para registrar la venta.</span>
                       </p>
-                    ) : clienteNombre.trim() ? (
+                    ) : (
                       <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
                         <Check className="w-3.5 h-3.5 text-emerald-500" />
                         <span>Nombre registrado correctamente para recibo y cocina.</span>
-                      </p>
-                    ) : (
-                      <p className="text-[10.5px] text-gray-400 mt-1">
-                        Nombre que saldrá en la comanda de preparación y recibo.
                       </p>
                     )}
                   </div>

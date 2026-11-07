@@ -62,22 +62,12 @@ export function usePOS({ initialClienteId = null } = {}) {
           ? resProductos
           : (Array.isArray(resProductos?.data) ? resProductos.data : (resProductos?.data?.data || resProductos?.data?.productos || []));
 
-        const activeProductos = rawList
-          .filter(p =>
-            p.id !== 0 &&
-            p.idProducto !== 0 &&
-            !p.nombre?.startsWith('__SISTEMA')
-          )
-          .map(p => {
-            const isInactive = p.estado === 'Inactivo' || p.estado === 0;
-            const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25));
-            const finalStock = isInactive ? 0 : rawStock;
-            return {
-              ...p,
-              stock: finalStock,
-              agotado: Boolean(p.agotado || isInactive || finalStock <= 0)
-            };
-          });
+        const activeProductos = rawList.filter(p =>
+          (p.estado === 'Activo' || p.estado === 1) &&
+          p.id !== 0 &&
+          p.idProducto !== 0 &&
+          !p.nombre?.startsWith('__SISTEMA')
+        );
 
         setProductos(activeProductos);
       } catch (e) {
@@ -173,18 +163,6 @@ export function usePOS({ initialClienteId = null } = {}) {
     });
   }
 
-  function removeItem(index) {
-    setCart((prev) => {
-      const next = [...prev];
-      next.splice(index, 1);
-      return next;
-    });
-  }
-
-  function clearCart() {
-    setCart([]);
-  }
-
   function decrement(index) {
     setCart((prev) => {
       const next = [...prev];
@@ -232,8 +210,8 @@ export function usePOS({ initialClienteId = null } = {}) {
     try {
       const {
         idUsuario = authenticatedUserId,
-        tipoEntrega = "En Mesa",
-        direccion = "Consumo en Mesa",
+        tipoEntrega = "Recoger",
+        direccion = "Recoger en Local",
         clienteNombre = "",
         metodoPago = "Efectivo",
         datosPago = {},
@@ -242,27 +220,19 @@ export function usePOS({ initialClienteId = null } = {}) {
 
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
-        idCliente: checkoutData.idCliente || clienteId,
+        idCliente: checkoutData.idCliente !== undefined ? checkoutData.idCliente : clienteId,
         clienteNombre,
         tipoVenta: "PUNTO_DE_VENTA",
         tipoEntrega,
         direccion,
         metodoPago,
-        origen: "PUNTO_FISICO",
-        tiempoEstimadoEntrega: checkoutData.tiempoEstimadoEntrega || (tipoEntrega === "Domicilio" ? "35-45 min" : "15-20 min"),
-        empaqueParaLlevar: Boolean(checkoutData.empaqueParaLlevar),
-        subtotal: subtotal,
-        descuentoAplicado: checkoutData.descuento || descuento,
+        subtotal: checkoutData.subtotal !== undefined ? checkoutData.subtotal : subtotal,
+        descuentoAplicado: checkoutData.descuentoAplicado !== undefined ? checkoutData.descuentoAplicado : descuento,
         total: checkoutData.total !== undefined ? checkoutData.total : total,
         observacion: observacion || observacionOrden,
         observaciones: {
           tipoEntrega,
           direccion,
-          metodoPago,
-          clienteNombre,
-          origen: "PUNTO_FISICO",
-          tiempoEstimadoEntrega: checkoutData.tiempoEstimadoEntrega || (tipoEntrega === "Domicilio" ? "35-45 min" : "15-20 min"),
-          empaqueParaLlevar: Boolean(checkoutData.empaqueParaLlevar),
           metodoPago,
           clienteNombre,
           efectivoConCuanto: datosPago.efectivoConCuanto || null,
@@ -336,8 +306,6 @@ export function usePOS({ initialClienteId = null } = {}) {
     addProduct,
     increment,
     decrement,
-    removeItem,
-    clearCart,
     toggleAdicion,
     setItemObservacion,
     subtotal,
