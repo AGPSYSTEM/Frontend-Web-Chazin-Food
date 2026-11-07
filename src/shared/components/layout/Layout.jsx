@@ -147,19 +147,19 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-      {/* ── Overlay backdrop (solo para drawer móvil < lg) ── */}
+      {/* ── Overlay backdrop (solo para drawer móvil < md) ── */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
+          className="md:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-         DESKTOP SIDEBAR  (lg+) — totalmente fijo y visible en PC
+         DESKTOP SIDEBAR  (md+) — totalmente fijo y visible en PC
          ═══════════════════════════════════════════════════════════ */}
-      <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-white dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800 h-screen transition-all duration-300 overflow-x-hidden">
+      <aside className="hidden md:flex flex-col w-64 shrink-0 bg-white dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800 h-screen transition-all duration-300 overflow-x-hidden">
         {/* Brand */}
         <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
           <div className="flex items-center gap-2.5 mb-4">
@@ -188,7 +188,7 @@ export function Layout() {
                 <li>
                   <Link to="/" title="Dashboard" className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${isActive("/") ? "bg-red-600 text-white shadow-md" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                     <Home className="w-5 h-5 shrink-0" />
-                    {sidebarOpen && <span className="font-medium">Dashboard</span>}
+                    <span className="font-medium">Dashboard</span>
                   </Link>
                 </li>
               )}
@@ -197,10 +197,10 @@ export function Layout() {
               {showConfig && (
                 <li>
                   <button onClick={() => handleSectionClick("config", configExpanded)} title="Configuración" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion") && !isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Configuración</span>}</div>
-                    {sidebarOpen && (configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                    <div className="flex items-center gap-3"><Settings className="w-5 h-5 shrink-0" /><span className="font-medium">Configuración</span></div>
+                    {configExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
-                  {sidebarOpen && configExpanded && (
+                  {configExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {configItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
@@ -212,10 +212,10 @@ export function Layout() {
               {showUsuarios && (
                 <li>
                   <button onClick={() => handleSectionClick("usuarios", usuariosExpanded)} title="Usuarios" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Usuarios</span>}</div>
-                    {sidebarOpen && (usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                    <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
+                    {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
-                  {sidebarOpen && usuariosExpanded && (
+                  {usuariosExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {usuariosItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
@@ -227,10 +227,10 @@ export function Layout() {
               {showCompras && (
                 <li>
                   <button onClick={() => handleSectionClick("compras", comprasExpanded)} title="Compras" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/compras") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Compras</span>}</div>
-                    {sidebarOpen && (comprasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                    <div className="flex items-center gap-3"><ShoppingCart className="w-5 h-5 shrink-0" /><span className="font-medium">Compras</span></div>
+                    {comprasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
-                  {sidebarOpen && comprasExpanded && (
+                  {comprasExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {comprasItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
@@ -242,10 +242,10 @@ export function Layout() {
               {showProduccion && (
                 <li>
                   <button onClick={() => handleSectionClick("produccion", produccionExpanded)} title="Producción" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/produccion") || produccionPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Producción</span>}</div>
-                    {sidebarOpen && (produccionExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                    <div className="flex items-center gap-3"><ChefHat className="w-5 h-5 shrink-0" /><span className="font-medium">Producción</span></div>
+                    {produccionExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
-                  {sidebarOpen && produccionExpanded && (
+                  {produccionExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {produccionItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
@@ -257,10 +257,10 @@ export function Layout() {
               {showVentas && (
                 <li>
                   <button onClick={() => handleSectionClick("ventas", ventasExpanded)} title="Ventas" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${ventasPaths.includes(location.pathname) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                    <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" />{sidebarOpen && <span className="font-medium">Ventas</span>}</div>
-                    {sidebarOpen && (ventasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                    <div className="flex items-center gap-3"><TrendingUp className="w-5 h-5 shrink-0" /><span className="font-medium">Ventas</span></div>
+                    {ventasExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
-                  {sidebarOpen && ventasExpanded && (
+                  {ventasExpanded && (
                     <ul className="ml-8 mt-1 space-y-1">
                       {ventasItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                     </ul>
@@ -302,11 +302,11 @@ export function Layout() {
       </aside>
 
       {/* ═══════════════════════════════════════════════════════════
-         MOBILE LEFT DRAWER  (< lg)  — slides in from left
+         MOBILE LEFT DRAWER  (< md)  — slides in from left
          ═══════════════════════════════════════════════════════════ */}
       <aside
         className={`
-          lg:hidden fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
+          md:hidden fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
           bg-white dark:bg-gray-900
           shadow-2xl flex flex-col overflow-x-hidden
           transition-transform duration-300 ease-out
@@ -529,8 +529,8 @@ export function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 pb-4">
-        {/* Mobile top header (solo móvil < lg) */}
-        <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-sm">
+        {/* Mobile top header (solo móvil < md) */}
+        <div className="md:hidden sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95"

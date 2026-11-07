@@ -6,16 +6,19 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
   const [editingPermisos, setEditingPermisos] = useState([]);
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (rol) {
       setEditingPermisos([...(rol.permisos || [])]);
       setError("");
       setTouched(false);
+      setIsSubmitting(false);
     } else {
       setEditingPermisos([]);
       setError("");
       setTouched(false);
+      setIsSubmitting(false);
     }
   }, [rol, isOpen]);
 
@@ -31,14 +34,20 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
 
   if (!isOpen || !rol) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setTouched(true);
     if (!editingPermisos || editingPermisos.length === 0) {
       setError("Debes seleccionar al menos un permiso o privilegio para el rol");
       return;
     }
-    onSave(editingPermisos);
+    try {
+      setIsSubmitting(true);
+      await onSave(editingPermisos);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -108,15 +117,24 @@ export function PermisosModal({ isOpen, onClose, onSave, rol }) {
               </button>
               <button
                 type="submit"
-                disabled={Boolean(error) || editingPermisos.length === 0}
+                disabled={isSubmitting || Boolean(error) || editingPermisos.length === 0}
                 className={`px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
-                  editingPermisos.length === 0
+                  isSubmitting || editingPermisos.length === 0 || Boolean(error)
                     ? "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed shadow-none"
                     : "bg-[#F05454] hover:bg-[#d94444] text-white"
                 }`}
               >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Guardar Permisos y Privilegios</span>
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Guardar Permisos y Privilegios</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -68,6 +68,7 @@ export function Roles() {
       setRolModalOpen(false);
       setEditingRol(null);
     }
+    return ok;
   };
 
   const handleOpenPermisos = (rol) => {
@@ -82,7 +83,9 @@ export function Roles() {
         setPermisosModalOpen(false);
         setPermisosRol(null);
       }
+      return ok;
     }
+    return false;
   };
 
   const statCards = [

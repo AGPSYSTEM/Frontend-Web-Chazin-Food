@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Shield, Check, AlertCircle } from "lucide-react";
 import { PermisosSelector } from "./PermisosSelector";
-import { validateTexto } from "@/shared/utils/validationUtils";
+import { validateNombreRol } from "@/shared/utils/validationUtils";
 
 export function RolModal({ isOpen, onClose, onSave, rol = null }) {
   const isEditing = !!rol;
@@ -11,6 +11,7 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [validationError, setValidationError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (rol) {
@@ -25,20 +26,21 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
     setErrors({});
     setTouched({});
     setValidationError("");
+    setIsSubmitting(false);
   }, [rol, isOpen]);
 
   if (!isOpen) return null;
 
   const handleNombreChange = (val) => {
     setNombre(val);
-    const res = validateTexto(val, "nombre del rol", { min: 3, max: 50, required: true });
+    const res = validateNombreRol(val);
     setErrors((prev) => ({ ...prev, nombre: res.isValid ? "" : res.error }));
     if (validationError) setValidationError("");
   };
 
   const handleNombreBlur = () => {
     setTouched((prev) => ({ ...prev, nombre: true }));
-    const res = validateTexto(nombre, "nombre del rol", { min: 3, max: 50, required: true });
+    const res = validateNombreRol(nombre);
     setErrors((prev) => ({ ...prev, nombre: res.isValid ? "" : res.error }));
   };
 
@@ -53,11 +55,12 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
     if (validationError) setValidationError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setValidationError("");
 
-    const nombreRes = validateTexto(nombre, "nombre del rol", { min: 3, max: 50, required: true });
+    const nombreRes = validateNombreRol(nombre);
     const hasPermisos = permisos && permisos.length > 0;
 
     const newErrors = {};
@@ -71,7 +74,14 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
       return;
     }
 
-    onSave(nombre.trim(), descripcion.trim(), permisos);
+    try {
+      setIsSubmitting(true);
+      await onSave(nombre.trim(), descripcion.trim(), permisos);
+    } catch (err) {
+      setValidationError(err?.message || "Ocurrió un error al procesar el rol.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -202,10 +212,24 @@ export function RolModal({ isOpen, onClose, onSave, rol = null }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-2xl bg-[#F05454] hover:bg-[#d94444] text-white text-xs sm:text-sm font-bold transition-colors shadow-md flex items-center gap-2 cursor-pointer"
+              disabled={isSubmitting || (touched.nombre && Boolean(errors.nombre))}
+              className={`px-6 py-2.5 rounded-2xl text-white text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer ${
+                isSubmitting || (touched.nombre && Boolean(errors.nombre))
+                  ? "bg-[#F05454]/60 cursor-not-allowed shadow-none"
+                  : "bg-[#F05454] hover:bg-[#d94444]"
+              }`}
             >
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>{isEditing ? "Guardar Cambios" : "Crear Rol"}</span>
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{isEditing ? "Guardar Cambios" : "Crear Rol"}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

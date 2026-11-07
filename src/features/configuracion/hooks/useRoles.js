@@ -3,6 +3,7 @@ import { rolesService } from "../servicios/rolesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { validateNombreRol } from "@/shared/utils/validationUtils";
 import { AlertTriangle, AlertCircle } from "lucide-react";
 
 export function useRoles() {
@@ -35,22 +36,26 @@ export function useRoles() {
 
   const createRol = async (nombre, descripcion, permisos = []) => {
     try {
-      if (!nombre || !nombre.trim()) {
-        notifError("Campo obligatorio", "El nombre del rol es requerido.");
+      const nombreRes = validateNombreRol(nombre);
+      if (!nombreRes.isValid) {
+        notifError("Nombre de rol inválido", nombreRes.error);
         return false;
       }
       if (!permisos || permisos.length === 0) {
         notifError("Permisos requeridos", "Debes asignar al menos un permiso o módulo al rol.");
         return false;
       }
-      await rolesService.createRol({
+      const created = await rolesService.createRol({
         nombre: nombre.trim(),
         descripcion: (descripcion || "").trim(),
         permisos,
         estado: "Activo"
       });
       success("Éxito", "Rol creado correctamente con sus permisos y privilegios");
-      await fetchRoles();
+      if (created && created.id) {
+        setRoles((prev) => [...prev, created]);
+      }
+      fetchRoles();
       return true;
     } catch (err) {
       notifError("Error", err.message || "Error al crear el rol");
@@ -60,8 +65,9 @@ export function useRoles() {
 
   const updateRol = async (id, nombre, descripcion, permisos = null) => {
     try {
-      if (!nombre || !nombre.trim()) {
-        notifError("Campo obligatorio", "El nombre del rol es requerido.");
+      const nombreRes = validateNombreRol(nombre);
+      if (!nombreRes.isValid) {
+        notifError("Nombre de rol inválido", nombreRes.error);
         return false;
       }
       if (permisos !== null && (!permisos || permisos.length === 0)) {
@@ -75,9 +81,13 @@ export function useRoles() {
       if (permisos !== null) {
         payload.permisos = permisos;
       }
-      await rolesService.updateRol(id, payload);
+      const updated = await rolesService.updateRol(id, payload);
       success("Éxito", "Rol actualizado correctamente");
-      await fetchRoles();
+      // Actualización optimista instantánea en el estado
+      if (updated && updated.id) {
+        setRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      }
+      fetchRoles();
       return true;
     } catch (err) {
       notifError("Error", err.message || "Error al actualizar el rol");
@@ -91,9 +101,12 @@ export function useRoles() {
         notifError("Permisos requeridos", "Debes asignar al menos un permiso o módulo al rol.");
         return false;
       }
-      await rolesService.updatePermisos(id, permisos);
+      const updated = await rolesService.updatePermisos(id, permisos);
       success("Éxito", "Permisos actualizados correctamente");
-      await fetchRoles();
+      if (updated && updated.id) {
+        setRoles((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      }
+      fetchRoles();
       return true;
     } catch (err) {
       notifError("Error", err.message || "Error al actualizar permisos");
