@@ -71,7 +71,6 @@ export function PosCheckoutModal({
   );
   const [tieneCuenta, setTieneCuenta] = useState(initialTieneCuenta || Boolean(initialCliente));
   const [isSearchingClient, setIsSearchingClient] = useState(false);
-  const [tieneCuenta, setTieneCuenta] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
   // Sincronizar selección inicial proveniente del apartado superior del POS
