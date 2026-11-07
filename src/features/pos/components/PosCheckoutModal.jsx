@@ -31,6 +31,22 @@ import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import NumberInput from "@/shared/components/ui/NumberInput";
 
+export const isClientInactive = (c) => {
+  if (!c) return false;
+  return Boolean(
+    c.estado === 'Inactivo' ||
+    c.estado === 'INACTIVO' ||
+    c.estado === 0 ||
+    c.estado === false ||
+    c.estadoCuenta === 'INACTIVO' ||
+    c.cuentaActiva === false ||
+    c.usuario?.estado === 'Inactivo' ||
+    c.usuario?.estado === 'INACTIVO' ||
+    c.usuario?.estado === 0 ||
+    c.usuario?.estado === false
+  );
+};
+
 export function PosCheckoutModal({
   isOpen,
   onClose,
@@ -119,6 +135,14 @@ export function PosCheckoutModal({
     : [];
 
   const handleSelectClient = (c) => {
+    if (!c) return;
+    if (isClientInactive(c)) {
+      warning(
+        "Cliente Inactivo",
+        `El cliente "${(`${c.nombre || ''} ${c.apellidos || ''}`).trim()}" se encuentra inactivo y no tiene permitido realizar compras ni asociarse a pedidos.`
+      );
+      return;
+    }
     setSelectedCliente(c);
     setTieneCuenta(true);
     setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
@@ -139,6 +163,15 @@ export function PosCheckoutModal({
       warning(
         "Nombre de cliente obligatorio",
         "Por favor ingresa el nombre del cliente para registrar la orden."
+      );
+      return;
+    }
+
+    // Validación de Cliente Inactivo
+    if (selectedCliente && isClientInactive(selectedCliente)) {
+      warning(
+        "Cliente Inactivo",
+        `El cliente asociado "${selectedCliente.nombre || 'seleccionado'}" se encuentra inactivo y no tiene permitido realizar compras.`
       );
       return;
     }
@@ -530,16 +563,8 @@ export function PosCheckoutModal({
                         <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
                           {selectedCliente.nombre} {selectedCliente.apellidos || ''}
                         </h5>
-                        {(() => {
-                          const isSelInactive =
-                            selectedCliente.estado === 'Inactivo' ||
-                            selectedCliente.estado === 'INACTIVO' ||
-                            selectedCliente.estado === 0 ||
-                            selectedCliente.estado === false ||
-                            selectedCliente.usuario?.estado === 'Inactivo' ||
-                            selectedCliente.usuario?.estado === 'INACTIVO' ||
-                            selectedCliente.usuario?.estado === 0 ||
-                            selectedCliente.usuario?.estado === false;
+                                                {(() => {
+                          const isSelInactive = isClientInactive(selectedCliente);
 
                           const selHasAccount = Boolean(selectedCliente.idUsuario || selectedCliente.usuario || selectedCliente.tieneCuenta);
                           const selHasActive = selHasAccount && !isSelInactive;
