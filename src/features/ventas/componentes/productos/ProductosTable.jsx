@@ -39,6 +39,45 @@ export const getActiveProductEvent = (producto) => {
 
 export const getActiveEvent = getActiveProductEvent;
 
+export const isSpecialPreparedDrink = (p) => {
+  if (!p) return false;
+  const nom = String(p.nombre || "").toLowerCase();
+  const desc = String(p.descripcion || "").toLowerCase();
+  return (
+    /batido|smoothie|malteada|jugo natural|frapp|limonada|shake|artesanal|preparad|coctel|cóctel|capuchino|café|cafe/i.test(nom) ||
+    /batido|smoothie|malteada|preparad|artesanal/i.test(desc)
+  );
+};
+
+export const isProductCommercialDrink = (p) => {
+  if (!p) return false;
+  if (isSpecialPreparedDrink(p)) return false;
+  if (p.fichaTecnica && (p.fichaTecnica.detalles?.length > 0 || p.fichaTecnica.insumos?.length > 0)) {
+    return false;
+  }
+  const cat = String(p.categoria || p.categoriaProducto?.nombre || "").toLowerCase();
+  const nom = String(p.nombre || "").toLowerCase();
+  return (
+    p.idCategoriaProducto === 4 ||
+    cat.includes("bebida") ||
+    cat.includes("gaseos") ||
+    cat.includes("refresco") ||
+    cat.includes("cerveza") ||
+    nom.includes("agua") ||
+    nom.includes("gaseosa") ||
+    nom.includes("coca") ||
+    nom.includes("pepsi") ||
+    nom.includes("postob") ||
+    nom.includes("colombiana") ||
+    nom.includes("sprite") ||
+    nom.includes("quatro") ||
+    nom.includes("cuatro") ||
+    nom.includes("hit")
+  );
+};
+
+export const isProductDrink = isProductCommercialDrink;
+
 export function ProductosTable({
   productos = [],
   onEdit,
@@ -297,8 +336,8 @@ export function ProductosTable({
                         <Eye className="w-4 h-4" />
                       </button>
 
-                      {/* Solo editar Ficha Técnica */}
-                      {canEdit && !p.esCombo && !p.configuracionCombo?.esCombo && (
+                      {/* Solo editar Ficha Técnica (solo aplica a platos cocinados, nunca a combos ni bebidas comerciales) */}
+                      {canEdit && !p.esCombo && !p.configuracionCombo?.esCombo && !isProductDrink(p) && (
                         <button
                           onClick={() => onEditFicha && onEditFicha(p)}
                           title="Solo editar Ficha Técnica (receta, insumos y preparación)"

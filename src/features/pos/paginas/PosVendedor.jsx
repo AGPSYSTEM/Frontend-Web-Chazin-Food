@@ -1,47 +1,33 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ChefHat,
-  ArrowLeft,
-  Sparkles,
-  Utensils,
-  ShoppingBag
-} from "lucide-react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft, User, UserCheck, Store, Check, Phone, Mail } from "lucide-react";
+import { clientesService } from "@/features/ventas/servicios/clientesService";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import usePOS from "../hooks/usePOS";
-import KioskPromoCarousel from "../components/KioskPromoCarousel";
-import KioskCategoryRail from "../components/KioskCategoryRail";
-import KioskProductCard from "../components/KioskProductCard";
-import KioskBottomBar from "../components/KioskBottomBar";
-import KioskOrderReviewModal from "../components/KioskOrderReviewModal";
+import ProductCard from "../components/ProductCard";
+import Cart from "../components/Cart";
 import PosCheckoutModal from "../components/PosCheckoutModal";
-import KioskConfirmation from "../components/KioskConfirmation";
-import KioskCancelConfirmModal from "../components/KioskCancelConfirmModal";
 import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
-import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import { useNotifications } from "@/shared/hooks/useNotifications";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { useToast } from "@/shared/context/ToastContext";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+
 export default function PosVendedor() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { warning, error: notifyError } = useNotifications();
-
-  const rawRol = typeof user?.rol === "object" ? user?.rol?.nombre : user?.rol;
-  const userRol = String(rawRol || "").toLowerCase().trim();
-  const isAdmin = userRol === "administrador" || userRol === "admin" || user?.idRol === 1;
-
+  const toast = useToast();
   const {
     categorias,
     productos,
     categoriaActiva,
     setCategoriaActiva,
+    searchTerm,
+    setSearchTerm,
     cart,
     addProduct,
     increment,
     decrement,
-    removeItem,
-    clearCart,
+    setItemObservacion,
     subtotal,
     descuento,
     total,
@@ -49,29 +35,73 @@ export default function PosVendedor() {
     loading
   } = usePOS();
 
-  // Kiosk State: Inicia directamente en "catalog" (sección de crear venta)
-  const [kioskStep, setKioskStep] = useState("catalog");
-  const [orderMode, setOrderMode] = useState("Comer aquí"); // "Comer aquí" | "Para llevar"
-
-  // Product Customization Modal (FastFoodProductModal anterior con mise en place, adiciones, gaseosas y reseñas)
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [customizingProduct, setCustomizingProduct] = useState(null);
   const [customizingFicha, setCustomizingFicha] = useState(null);
   const [allAdiciones, setAllAdiciones] = useState([]);
   const [fichasCache, setFichasCache] = useState({});
 
-  // Review & Checkout Modals
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  // ── Identificación del Cliente al Inicio del Pedido ──
+  const [tieneCuenta, setTieneCuenta] = useState(false);
+  const [clientesList, setClientesList] = useState([]);
+  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
 
-  // Animation bounce feedback
-  const [isCartBouncing, setIsCartBouncing] = useState(false);
+  useEffect(() => {
+    clientesService
+      .getClientes()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          const validClients = res.filter(
+            (c) =>
+              c.idCliente !== 26 &&
+              !c.nombre?.toLowerCase().includes("cliente mostrador")
+          );
+          setClientesList(validClients);
+        }
+      })
+      .catch((err) => console.warn("Error cargando clientes en POS:", err));
+  }, []);
 
-  // Result of completed order
-  const [lastCreatedOrder, setLastCreatedOrder] = useState(null);
-  const [lastOrderData, setLastOrderData] = useState(null);
+  const discountPercent = (tieneCuenta && selectedCliente)
+    ? Number(
+        selectedCliente.descuentoPorcentaje ||
+          (selectedCliente.tipo === "VIP"
+            ? 15
+            : selectedCliente.tipo === "Frecuente"
+            ? 10
+            : selectedCliente.tipo === "Regular"
+            ? 5
+            : 0)
+      )
+    : 0;
 
-  // Load additions
+  const calculatedDescuento =
+    discountPercent > 0
+      ? Math.round(Number(subtotal || 0) * (discountPercent / 100))
+      : 0;
+
+  const finalTotal = Math.max(0, Number(subtotal || 0) - calculatedDescuento);
+
+  const filteredClientes = clientSearchTerm.trim()
+    ? clientesList.filter((c) => {
+        const search = clientSearchTerm.toLowerCase().trim();
+        const fullName = `${c.nombre || ""} ${c.apellidos || ""}`.toLowerCase();
+        const phone = String(c.telefono || "").toLowerCase();
+        const email = String(c.email || "").toLowerCase();
+        const doc = String(c.documento || c.cedula || c.identificacion || "").toLowerCase();
+        return (
+          fullName.includes(search) ||
+          phone.includes(search) ||
+          email.includes(search) ||
+          doc.includes(search)
+        );
+      })
+    : [];
+
   useEffect(() => {
     adicionesService
       .getAdiciones()
@@ -87,7 +117,6 @@ export default function PosVendedor() {
       .catch((err) => console.warn("Error cargando adiciones en POS:", err));
   }, []);
 
-  // Bebidas para combos y acompañantes
   const allBebidas = useMemo(() => {
     return (productos || []).filter((p) => {
       const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
@@ -102,94 +131,7 @@ export default function PosVendedor() {
     });
   }, [productos]);
 
-  // Total items in cart
-  const totalCartItems = useMemo(() => {
-    return cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
-  }, [cart]);
-
-  // Count active event products
-  const eventProductsCount = useMemo(() => {
-    const now = new Date();
-    return (productos || []).filter((p) => {
-      const evts = Array.isArray(p.eventos) ? p.eventos : [];
-      return evts.some((e) => {
-        if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
-        if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
-        if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
-        return true;
-      });
-    }).length;
-  }, [productos]);
-
-  // Filter products by selected category
-  const visibleProducts = useMemo(() => {
-    const list = (productos || []).filter((p) => {
-      if (categoriaActiva === null) return true;
-
-      if (categoriaActiva === "eventos") {
-        const evts = Array.isArray(p.eventos) ? p.eventos : [];
-        const now = new Date();
-        return evts.some((e) => {
-          if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
-          if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
-          if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
-          return true;
-        });
-      }
-
-      const selectedCatObj = (categorias || []).find(
-        (c) => (c.id || c.idCategoriaProducto) === categoriaActiva
-      );
-      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
-      const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
-      const prodName = (p.nombre || "").toLowerCase().trim();
-
-      const pCatId = Number(p.idCategoriaProducto || p.categoriaId || (typeof p.categoria === "number" ? p.categoria : 0));
-      const targetCatId = Number(categoriaActiva);
-      const matchCatId = categoriaActiva !== null && pCatId > 0 && pCatId === targetCatId;
-      const matchCatName = Boolean(
-        catName &&
-        prodCatName &&
-        (prodCatName === catName ||
-          prodCatName.includes(catName) ||
-          catName.includes(prodCatName))
-      );
-
-      return matchCatId || matchCatName;
-    });
-
-    const now = new Date();
-    // Priorizar productos con eventos de primero
-    return [...list].sort((a, b) => {
-      const aEvts = Array.isArray(a.eventos) ? a.eventos : [];
-      const bEvts = Array.isArray(b.eventos) ? b.eventos : [];
-      const aHasEvent = aEvts.some(
-        (e) =>
-          (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) &&
-          (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`))
-      );
-      const bHasEvent = bEvts.some(
-        (e) =>
-          (e.estado === 1 || e.estado === "Activo" || e.estado === undefined) &&
-          (!e.fechaFin || now <= new Date(`${e.fechaFin}T23:59:59`))
-      );
-      if (aHasEvent && !bHasEvent) return -1;
-      if (!aHasEvent && bHasEvent) return 1;
-      return 0;
-    });
-  }, [productos, categoriaActiva, categorias]);
-
-  // Open FastFoodProductModal (el modal anterior completo)
   const handleOpenCustomize = async (producto) => {
-    const prodStock = Number(producto?.stock !== undefined ? producto.stock : 25);
-    const isAgotado = Boolean(producto?.agotado || prodStock <= 0 || producto?.estado === "Inactivo" || producto?.estado === 0);
-    if (isAgotado) {
-      warning(
-        "Producto agotado por el momento",
-        `El producto "${producto?.nombre || "seleccionado"}" está agotado en este momento y no está disponible.`
-      );
-      return;
-    }
     setCustomizingProduct(producto);
     const prodId = producto.id || producto.idProducto;
     if (fichasCache[prodId]) {
@@ -211,7 +153,6 @@ export default function PosVendedor() {
     }
   };
 
-  // Confirm product customization from FastFoodProductModal
   const handleModalConfirm = ({
     producto,
     cantidad,
@@ -240,12 +181,8 @@ export default function PosVendedor() {
       cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1))
     });
 
-    let comboCfg = producto.configuracionCombo;
-    if (typeof comboCfg === "string") {
-      try { comboCfg = JSON.parse(comboCfg); } catch (e) { comboCfg = null; }
-    }
-    const isComboProd = Boolean(comboCfg?.esCombo);
-    const requiredDrinks = isComboProd ? (Number(comboCfg.cantidadBebidas) || 1) : 0;
+    const isComboProd = Boolean(producto.configuracionCombo?.esCombo);
+    const requiredDrinks = isComboProd ? (Number(producto.configuracionCombo.cantidadBebidas) || 1) : 0;
     let includedQuotaRemaining = requiredDrinks;
 
     if (Array.isArray(bebidas) && bebidas.length > 0) {
@@ -255,6 +192,7 @@ export default function PosVendedor() {
         const extraQty = qty - covered;
         if (isComboProd) includedQuotaRemaining -= covered;
 
+        // Solo agregar al carrito como ítem con costo si es un producto normal O es bebida extra por encima del combo
         if (!isComboProd || extraQty > 0) {
           addProduct({
             productoId: b.id || b.idProducto,
@@ -272,134 +210,590 @@ export default function PosVendedor() {
 
     setCustomizingProduct(null);
     setCustomizingFicha(null);
-
-    // Bouncing animation on cart
-    setIsCartBouncing(true);
-    setTimeout(() => setIsCartBouncing(false), 600);
+    toast.success(
+      "¡Producto configurado!",
+      `${displayName} agregado al pedido con éxito.`
+    );
   };
 
-  // Complete checkout via PosCheckoutModal (modal de pago anterior)
+  const totalCartItems = cart.reduce((acc, it) => acc + (it.cantidad || 1), 0);
+
   const handleConfirmCheckout = async (checkoutData) => {
     try {
-      const res = await submitOrder({
-        ...checkoutData,
-        tipoEntrega: "En Mesa",
-        empaqueParaLlevar: false
-      });
-      setLastCreatedOrder(res);
-      setLastOrderData(checkoutData);
-      setIsCheckoutOpen(false);
-      setIsReviewOpen(false);
-      setKioskStep("confirmation");
+      await submitOrder(checkoutData);
+      setIsCheckoutModalOpen(false);
+      setIsMobileCartOpen(false);
+      toast.success("¡Venta completada!", "El pedido fue registrado exitosamente.");
     } catch (err) {
-      console.error("Error al registrar venta en POS:", err);
-      const msg = err?.response?.data?.message || err?.message || "No se pudo registrar la venta.";
-      notifyError("No se pudo procesar la venta", msg);
+      toast.error("Error al registrar venta", err.message || "No se pudo procesar la venta.");
     }
   };
 
-  // Reset after order completion
-  const handleResetKiosk = useCallback(() => {
-    clearCart();
-    setOrderMode("Comer aquí");
-    setKioskStep("catalog");
-    setLastCreatedOrder(null);
-    setLastOrderData(null);
-    setIsReviewOpen(false);
-    setIsCheckoutOpen(false);
-    setIsCancelConfirmOpen(false);
-  }, [clearCart]);
+  const eventProductsCount = useMemo(() => {
+    const now = new Date();
+    return (productos || []).filter((p) => {
+      const evts = Array.isArray(p.eventos) ? p.eventos : [];
+      return evts.some((e) => {
+        if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+        if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+        if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+        return true;
+      });
+    }).length;
+  }, [productos]);
 
-  // Staff discrete exit handler (volver a gestión de ventas)
-  const handleStaffExit = () => {
-    navigate("/ventas/gestion-ventas");
-  };
+  const visibleProducts = useMemo(() => {
+    return (productos || []).filter((p) => {
+      const matchSearch = !searchTerm || p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || p.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchSearch) return false;
+      if (categoriaActiva === null) return true;
 
-  // Step 2: Confirmation Screen
-  if (kioskStep === "confirmation") {
-    const orderNumber =
-      lastCreatedOrder?.idVenta ||
-      lastCreatedOrder?.id ||
-      lastCreatedOrder?.data?.idVenta ||
-      "042";
+      if (categoriaActiva === "eventos") {
+        const evts = Array.isArray(p.eventos) ? p.eventos : [];
+        const now = new Date();
+        return evts.some((e) => {
+          if (e.estado !== 1 && e.estado !== "Activo" && e.estado !== undefined) return false;
+          if (e.fechaFin && now > new Date(`${e.fechaFin}T23:59:59`)) return false;
+          if (e.fechaInicio && now < new Date(`${e.fechaInicio}T00:00:00`)) return false;
+          return true;
+        });
+      }
 
-    return (
-      <KioskConfirmation
-        orderId={orderNumber}
-        orderData={lastOrderData}
-        onReset={handleResetKiosk}
-      />
-    );
-  }
+      const selectedCatObj = (categorias || []).find(c => (c.id || c.idCategoriaProducto) === categoriaActiva);
+      const catName = (selectedCatObj?.nombre || "").toLowerCase().trim();
+      const prodCatName = (p.categoria || p.categoriaNombre || "").toLowerCase().trim();
+      const prodName = (p.nombre || "").toLowerCase().trim();
 
-  // Step 1: Catalog & Ordering Screen (Entra de una vez a crear venta)
+      const matchCatId = (p.idCategoriaProducto === categoriaActiva) || (p.categoriaId === categoriaActiva) || (p.id === categoriaActiva);
+      const matchCatName = catName && (prodCatName === catName || prodCatName.includes(catName) || catName.includes(prodCatName));
+
+      const singularCatName = catName.endsWith("es") ? catName.slice(0, -2) : (catName.endsWith("s") ? catName.slice(0, -1) : catName);
+      const matchSubcategory = singularCatName.length >= 3 && (
+        prodCatName.includes(singularCatName) || prodName.includes(singularCatName)
+      );
+
+      return matchCatId || matchCatName || matchSubcategory;
+    });
+  }, [productos, categoriaActiva, searchTerm, categorias]);
+
   return (
-    <div className="relative min-h-full w-full bg-[#FAFAFA] dark:bg-gray-950 flex flex-col justify-between select-none pb-28">
-      {/* Main Kiosk Area: Vertical Category Rail (Left) + Products Grid (Center) */}
-      <div className="w-full flex-1 flex gap-3 sm:gap-4 p-3 sm:p-5 items-start">
-        {/* Left Category Rail */}
-        <KioskCategoryRail
-          categorias={categorias}
-          categoriaActiva={categoriaActiva}
-          onSelectCategoria={setCategoriaActiva}
-          eventCount={eventProductsCount}
-        />
+    <div className="w-full min-h-screen bg-[#f4f4f4] dark:bg-gray-950 p-3 sm:p-4 lg:p-5 pb-24 lg:pb-5 transition-colors">
+      <div className="w-full">
+        {/* Header */}
+        <header className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1 py-1">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f05454] text-xl shadow-[0_8px_20px_rgba(240,84,84,0.35)] text-white shrink-0">
+                <ShoppingCart className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#7a8394] dark:text-gray-400">Ventas</p>
+                <h1 className="text-[1.6rem] sm:text-[1.9rem] font-black leading-none text-[#1f2d3d] dark:text-gray-100">Punto de Venta</h1>
+              </div>
+            </div>
 
-        {/* Right / Center Products Content Area */}
-        <section className="flex-1 min-w-0 flex flex-col">
-          {/* Top Promo Carousel */}
-          <KioskPromoCarousel
-            productos={productos}
-            onSelectProduct={handleOpenCustomize}
-          />
+            {/* Mobile quick cart badge */}
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="lg:hidden relative flex h-10 w-10 items-center justify-center rounded-2xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 border border-red-200 dark:border-red-800 shrink-0"
+              aria-label="Ver carrito"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {totalCartItems > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#f05454] text-[10px] font-black text-white">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {/* Products Grid */}
-          <div className="flex-1">
+          <div className="flex items-center gap-2.5 flex-1 sm:flex-initial">
+            <button
+              type="button"
+              onClick={() => navigate("/ventas/gestion-ventas")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Volver a Gestión de Ventas"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#F05454]" />
+              <span className="hidden sm:inline">Gestión de Ventas</span>
+            </button>
+
+            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe5ec] dark:border-gray-700 bg-white dark:bg-gray-900 px-3.5 py-2 shadow-sm flex-1 sm:flex-initial">
+            <Search className="h-4 w-4 text-[#75859a] dark:text-gray-400 shrink-0" />
+            <input
+              aria-label="Buscar producto"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-64 border-0 bg-transparent text-sm text-[#25364a] dark:text-gray-100 outline-none placeholder:text-[#8aa0b4] dark:placeholder:text-gray-500"
+              placeholder="Buscar producto..."
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                aria-label="Limpiar búsqueda"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            </div>
+          </div>
+        </header>
+
+        {/* Apartado Inicial: Selección / Identificación del Cliente (Con cuenta / Sin cuenta) */}
+        <section className="mb-4 bg-white dark:bg-gray-900 rounded-[22px] border border-[#e2e8f0] dark:border-gray-800 p-3.5 sm:p-4 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Título y Selector de Modo de Cliente */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/40 text-[#f05454] flex items-center justify-center font-bold text-xs shrink-0">
+                  1
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    Paso Inicial
+                  </span>
+                  <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 leading-tight">
+                    ¿El cliente tiene cuenta?
+                  </h3>
+                </div>
+              </div>
+
+              {/* Botones Toggle: Sin Cuenta vs Con Cuenta */}
+              <div className="inline-flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(false);
+                    setSelectedCliente(null);
+                    setClienteNombre("Cliente Mostrador");
+                    setIsSearchingClient(false);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    !tieneCuenta
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Sin Cuenta (Mostrador)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(true);
+                    if (!selectedCliente) {
+                      setIsSearchingClient(true);
+                      setClienteNombre("");
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    tieneCuenta
+                      ? "bg-[#f05454] text-white shadow-xs"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Con Cuenta (Registrado)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido / Detalle del cliente según la opción seleccionada */}
+            <div className="flex-1 max-w-xl">
+              {!tieneCuenta ? (
+                /* MODO SIN CUENTA */
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/60 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <User className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={clienteNombre}
+                    onChange={(e) => setClienteNombre(e.target.value)}
+                    placeholder="Nombre del cliente o mesa (ej: Cliente Mostrador)..."
+                    className="w-full bg-transparent text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none"
+                  />
+                  <span className="text-[10px] font-medium text-gray-400 shrink-0 whitespace-nowrap">
+                    Venta Rápida
+                  </span>
+                </div>
+              ) : selectedCliente ? (
+                /* MODO CON CUENTA: CLIENTE SELECCIONADO */
+                <div className="flex items-center justify-between gap-2.5 bg-red-50/60 dark:bg-red-950/20 px-3 py-2 rounded-xl border border-red-200 dark:border-red-900/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FidelidadBadge tipo={selectedCliente.tipo || "Nuevo"} size="sm" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">
+                          {selectedCliente.nombre} {selectedCliente.apellidos || ""}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-black shrink-0">
+                          Cuenta Activa
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
+                        {selectedCliente.telefono || selectedCliente.email || "Cliente registrado"} • Descuento aplicado: {discountPercent}% OFF
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {discountPercent > 0 && (
+                      <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-lg">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSearchingClient(true);
+                        setClientSearchTerm("");
+                      }}
+                      className="text-xs font-bold text-[#f05454] hover:underline cursor-pointer"
+                    >
+                      Cambiar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCliente(null);
+                        setTieneCuenta(false);
+                        setClienteNombre("Cliente Mostrador");
+                      }}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5 cursor-pointer"
+                      title="Quitar cliente"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* MODO CON CUENTA: BUSCAR CLIENTE */
+                <div className="relative">
+                  <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-xl border border-red-300 dark:border-red-800/60 focus-within:ring-2 focus-within:ring-[#f05454]/30">
+                    <Search className="w-4 h-4 text-[#f05454] shrink-0" />
+                    <input
+                      type="text"
+                      value={clientSearchTerm}
+                      onChange={(e) => setClientSearchTerm(e.target.value)}
+                      placeholder="Buscar por cédula, teléfono o nombre de cliente..."
+                      className="w-full bg-transparent text-xs font-semibold text-gray-800 dark:text-gray-100 outline-none placeholder:text-gray-400"
+                      autoFocus
+                    />
+                    {clientSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setClientSearchTerm("")}
+                        className="text-gray-400 hover:text-gray-600 p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Resultados desplegables de búsqueda rápida */}
+                  {filteredClientes.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 max-h-56 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-1.5 space-y-1">
+                      {filteredClientes.map((c) => {
+                        const cDesc = c.descuentoPorcentaje || (c.tipo === "VIP" ? 15 : c.tipo === "Frecuente" ? 10 : c.tipo === "Regular" ? 5 : 0);
+                        return (
+                          <div
+                            key={c.id || c.idCliente}
+                            onClick={() => {
+                              setSelectedCliente(c);
+                              setClienteNombre(`${c.nombre} ${c.apellidos || ""}`.trim());
+                              setIsSearchingClient(false);
+                              setClientSearchTerm("");
+                            }}
+                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-between gap-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FidelidadBadge tipo={c.tipo || "Nuevo"} size="sm" />
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate block">
+                                  {c.nombre} {c.apellidos || ""}
+                                </span>
+                                <span className="text-[10px] text-gray-400 block truncate">
+                                  {c.telefono || c.email || c.documento || "Cliente registrado"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {cDesc > 0 && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                                  {cDesc}% OFF
+                                </span>
+                              )}
+                              <span className="text-[10px] font-bold text-[#f05454]">Seleccionar</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {clientSearchTerm.trim() && filteredClientes.length === 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-center text-xs text-gray-400">
+                      No se encontraron clientes registrados con "{clientSearchTerm}".
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Mobile Horizontal Categories (Visible only on < lg) */}
+        <div className="lg:hidden mb-3.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCategoriaActiva(null)}
+              aria-label="Mostrar todos los productos"
+              className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                categoriaActiva === null
+                  ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                  : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+              }`}
+            >
+              <FoodIcon name="plate" size={16} />
+              <span>Todos</span>
+            </button>
+
+            {eventProductsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setCategoriaActiva("eventos")}
+                aria-label="Filtrar por eventos"
+                className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-black transition-all ${
+                  categoriaActiva === "eventos"
+                    ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
+                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60"
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300 animate-pulse" />
+                <span>Eventos ({eventProductsCount})</span>
+              </button>
+            )}
+
+            {categorias.map((c) => {
+              const active = categoriaActiva === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoriaActiva(c.id)}
+                  aria-label={`Filtrar por categoría ${c.nombre}`}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all ${
+                    active
+                      ? "bg-[#f05454] text-white shadow-[0_4px_12px_rgba(240,84,84,0.3)]"
+                      : "bg-white dark:bg-gray-900 text-[#2a3747] dark:text-gray-200 border border-gray-200 dark:border-gray-800"
+                  }`}
+                >
+                  <FoodIcon name={c.nombre} size={16} />
+                  <span>{c.nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3 Column Flex Layout */}
+        <div className="flex flex-col lg:flex-row gap-4 w-full items-start">
+          {/* Categorías (Left Column - Desktop only) */}
+          <aside className="hidden lg:block lg:w-[180px] shrink-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-white dark:bg-gray-900 p-3.5 shadow-sm sticky top-4 self-start">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
-                {categoriaActiva === null
-                  ? "Todos los Productos"
-                  : categoriaActiva === "eventos"
-                  ? "Promociones y Ofertas"
-                  : stripEmojis(categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
-              </h2>
-              <span className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
-                {visibleProducts.length} {visibleProducts.length === 1 ? "producto" : "productos"}
-              </span>
+              <h2 className="text-lg font-black text-[#1f2d3d] dark:text-gray-100">Categorías</h2>
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400">
+                <Sparkles className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setCategoriaActiva(null)}
+                className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-bold transition-all ${
+                  categoriaActiva === null
+                    ? "bg-[#f05454] text-white shadow-[0_8px_16px_rgba(240,84,84,0.25)]"
+                    : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
+                }`}
+              >
+                <FoodIcon name="plate" size={16} />
+                <span className="truncate">Todos</span>
+              </button>
+
+              {eventProductsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCategoriaActiva("eventos")}
+                  className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-black transition-all ${
+                    categoriaActiva === "eventos"
+                      ? "bg-gradient-to-r from-amber-500 to-rose-600 text-white shadow-[0_8px_16px_rgba(245,158,11,0.3)]"
+                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 border border-amber-200/80 dark:border-amber-800/60"
+                  }`}
+                >
+                  <Flame className="w-4 h-4 text-amber-500 dark:text-amber-300 animate-pulse shrink-0" />
+                  <span className="truncate">Eventos ({eventProductsCount})</span>
+                </button>
+              )}
+
+              {categorias.map((c) => {
+                const active = categoriaActiva === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategoriaActiva(c.id)}
+                    className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-bold transition-all ${
+                      active
+                        ? "bg-[#f05454] text-white shadow-[0_8px_16px_rgba(240,84,84,0.25)]"
+                        : "bg-[#f5f6f8] dark:bg-gray-800 text-[#2a3747] dark:text-gray-200 hover:bg-[#eef2f7] dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    <FoodIcon name={c.nombre} size={16} />
+                    <span className="truncate">{c.nombre}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Productos (Center Main Grid) */}
+          <main className="flex-1 min-w-0 rounded-[24px] border border-[#e7eaee] dark:border-gray-800 bg-[#f8f8f8] dark:bg-gray-900/60 p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-black text-[#1f2d3d] dark:text-gray-100">Productos</h2>
+              <div className="rounded-full bg-[#edf2f7] dark:bg-gray-800 px-3 py-1 text-xs font-semibold uppercase tracking-[0.15em] text-[#5f7285] dark:text-gray-300">
+                {visibleProducts.length} items
+              </div>
             </div>
 
             {visibleProducts.length === 0 ? (
-              <div className="w-full py-16 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white text-center p-6">
-                <Utensils className="w-12 h-12 text-gray-300 mb-2" />
-                <p className="text-lg font-black text-gray-700">No hay productos en esta categoría</p>
-                <p className="text-sm font-semibold text-gray-400 mt-1">Selecciona otra categoría a la izquierda</p>
+              <div className="flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed border-[#dbe3ed] dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-14 text-center text-[#75859a] dark:text-gray-400">
+                <p className="text-lg font-bold text-[#445366] dark:text-gray-200">No se encontraron productos</p>
+                <p className="mt-1 text-xs text-[#7a8698] dark:text-gray-400">Intenta seleccionando otra categoría o cambiando la búsqueda.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+              <div className="grid gap-3.5 sm:gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {visibleProducts.map((p) => (
-                  <KioskProductCard
-                    key={p.id || p.idProducto}
+                  <ProductCard
+                    key={p.id}
                     producto={p}
-                    onSelect={handleOpenCustomize}
+                    onAdd={({ productoId, varianteId, nombre, precio, adiciones, cantidad }) =>
+                      addProduct({ productoId, varianteId, nombre, precio, adiciones, cantidad })
+                    }
+                    onCustomize={handleOpenCustomize}
                   />
                 ))}
               </div>
             )}
-          </div>
-        </section>
+          </main>
+
+          {/* Carrito (Right Column Panel - Desktop only) */}
+          <section className="hidden lg:block lg:w-[285px] shrink-0 sticky top-4 self-start">
+            <Cart
+              cart={cart}
+              increment={increment}
+              decrement={decrement}
+              setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => setIsCheckoutModalOpen(true)}
+              submitOrder={() => submitOrder()}
+              loading={loading}
+              subtotal={subtotal}
+              descuento={calculatedDescuento}
+              discountPercent={discountPercent}
+              total={finalTotal}
+              selectedCliente={selectedCliente}
+              clienteNombre={clienteNombre}
+              tieneCuenta={tieneCuenta}
+            />
+          </section>
+        </div>
       </div>
 
-      {/* Fixed Bottom Bar: Cart item count, total, "Ver mi pedido" and "Cancelar pedido" */}
-      <KioskBottomBar
-        totalItems={totalCartItems}
-        total={total}
-        orderMode={orderMode}
-        onOpenReview={() => setIsReviewOpen(true)}
-        onCancelOrder={() => setIsCancelConfirmOpen(true)}
-        isBouncing={isCartBouncing}
+      {/* Mobile Floating Cart Action Bar (< lg) */}
+      {totalCartItems > 0 && (
+        <div className="lg:hidden fixed bottom-3 inset-x-3 z-40">
+          <div className="bg-gray-900/95 dark:bg-gray-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl border border-gray-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f05454] text-white shrink-0">
+                <ShoppingBag className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[#f05454] text-[10px] font-black">
+                  {totalCartItems}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  Total
+                </p>
+                <p className="text-base font-black text-white truncate">
+                  ${Number(finalTotal || 0).toLocaleString("es-CO")}
+                  {discountPercent > 0 && <span className="text-[10px] text-emerald-400 font-bold ml-1.5">({discountPercent}% OFF)</span>}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCheckoutModalOpen(true)}
+              className="px-4 py-2.5 bg-[#f05454] hover:bg-[#e04545] text-white font-black text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
+            >
+              <span>Finalizar Pedido</span>
+              <ChevronRight className="h-4 w-4 stroke-[3]" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Slide-up Modal Drawer */}
+      {isMobileCartOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileCartOpen(false)}
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 w-full sm:max-w-md max-h-[85vh] bg-[#f8f8f8] dark:bg-gray-900 rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-800">
+            <Cart
+              cart={cart}
+              increment={increment}
+              decrement={decrement}
+              setItemObservacion={setItemObservacion}
+              onOpenCheckout={() => {
+                setIsMobileCartOpen(false);
+                setIsCheckoutModalOpen(true);
+              }}
+              submitOrder={() => submitOrder()}
+              loading={loading}
+              subtotal={subtotal}
+              descuento={calculatedDescuento}
+              discountPercent={discountPercent}
+              total={finalTotal}
+              selectedCliente={selectedCliente}
+              clienteNombre={clienteNombre}
+              tieneCuenta={tieneCuenta}
+              onClose={() => setIsMobileCartOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Pos Checkout Modal */}
+      <PosCheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        cart={cart}
+        subtotal={subtotal}
+        descuento={calculatedDescuento}
+        total={finalTotal}
+        initialCliente={selectedCliente}
+        initialClienteNombre={clienteNombre}
+        initialTieneCuenta={tieneCuenta}
+        onConfirm={handleConfirmCheckout}
+        loading={loading}
       />
 
-      {/* Modal anterior completo: FastFoodProductModal (mise en place, adiciones, gaseosas y reseñas) */}
+      {/* Fast Food Product Customization Modal (Mise en place, Adiciones, Ficha Técnica) */}
       <FastFoodProductModal
         isOpen={Boolean(customizingProduct)}
         onClose={() => {
@@ -413,47 +807,7 @@ export default function PosVendedor() {
         onConfirm={handleModalConfirm}
         mode="pos"
       />
-
-      {/* Order Review Modal "Mi Pedido" */}
-      <KioskOrderReviewModal
-        isOpen={isReviewOpen}
-        onClose={() => setIsReviewOpen(false)}
-        cart={cart}
-        orderMode={orderMode}
-        onChangeOrderMode={setOrderMode}
-        onIncrement={increment}
-        onDecrement={decrement}
-        onRemoveItem={removeItem}
-        subtotal={subtotal}
-        descuento={descuento}
-        total={total}
-        onProceedToCheckout={() => {
-          setIsReviewOpen(false);
-          setIsCheckoutOpen(true);
-        }}
-      />
-
-      {/* Modal de Pago Anterior: PosCheckoutModal (clientes, fidelidad, cálculo de vuelto, 16 dígitos de tarjeta) */}
-      <PosCheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cart={cart}
-        subtotal={subtotal}
-        descuento={descuento}
-        total={total}
-        onConfirm={handleConfirmCheckout}
-        loading={loading}
-      />
-
-      {/* Cancel Confirmation Modal */}
-      <KioskCancelConfirmModal
-        isOpen={isCancelConfirmOpen}
-        onClose={() => setIsCancelConfirmOpen(false)}
-        onConfirmCancel={() => {
-          setIsCancelConfirmOpen(false);
-          handleResetKiosk();
-        }}
-      />
     </div>
   );
 }
+

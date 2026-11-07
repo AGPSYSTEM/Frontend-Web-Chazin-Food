@@ -33,28 +33,44 @@ export function FichasTecnicas({ readOnly = false }) {
 
       if (prodRes.status === "fulfilled") {
         const rawList = Array.isArray(prodRes.value) ? prodRes.value : prodRes.value?.data || [];
+        const isSpecialPreparedDrink = (p) => {
+          const nom = String(p?.nombre || "").toLowerCase();
+          const desc = String(p?.descripcion || "").toLowerCase();
+          return (
+            /batido|smoothie|malteada|jugo natural|frapp|limonada|shake|artesanal|preparad|coctel|cóctel|capuchino|café|cafe/i.test(nom) ||
+            /batido|smoothie|malteada|preparad|artesanal/i.test(desc)
+          );
+        };
+
         const esBebidaComprada = (p) => {
-          const cat = String(p.categoria || p.categoriaNombre || "").toLowerCase();
+          if (!p) return false;
+          if (isSpecialPreparedDrink(p)) return false;
+          if (p.fichaTecnica && (p.fichaTecnica.detalles?.length > 0 || p.fichaTecnica.insumos?.length > 0)) {
+            return false;
+          }
+          const cat = String(p.categoria || p.categoriaNombre || p.categoriaProducto?.nombre || "").toLowerCase();
           const nom = String(p.nombre || "").toLowerCase();
           return (
+            p.idCategoriaProducto === 4 ||
             cat.includes("bebida") ||
             cat.includes("gaseos") ||
             cat.includes("refresco") ||
+            cat.includes("cerveza") ||
             nom.includes("gaseosa") ||
-            nom.includes("agua cristal") ||
-            nom.includes("agua ") ||
+            nom.includes("agua") ||
             nom.includes("postobón") ||
             nom.includes("postobon") ||
             nom.includes("coca-cola") ||
+            nom.includes("coca cola") ||
             nom.includes("pepsi") ||
             nom.includes("sprite") ||
             nom.includes("quatro") ||
             nom.includes("cuatro") ||
-            nom.includes("jugo hit")
+            nom.includes("hit")
           );
         };
 
-        // Los combos y las bebidas comerciales compradas no llevan ficha técnica culinaria
+        // Los combos y las bebidas comerciales compradas no llevan ficha técnica culinaria (pero bebidas especiales sí)
         const nonCombos = rawList.filter(
           (p) =>
             !p.esCombo &&
