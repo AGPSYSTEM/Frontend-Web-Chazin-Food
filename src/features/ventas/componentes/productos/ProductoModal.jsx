@@ -1510,6 +1510,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     <NumberInput
                       required
                       min="0"
+                      step={1000}
+                      formatThousands={true}
                       value={form.precio}
                       onBlur={() => handleBlur("precio")}
                       onChange={(e) => handleMainPriceChange(e.target.value)}
@@ -1518,7 +1520,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-400"
                           : ""
                       }`}
-                      placeholder="Ej. 18000"
+                      placeholder="Ej. 18.000"
                     />
                     {(touched.precio || submitted) && errors.precio && (
                       <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
