@@ -89,15 +89,10 @@ export function Layout() {
   };
 
   const handleSectionClick = (section, cur) => {
-    if (!sidebarOpen) {
-      setSidebarOpen(true);
-      openSection(section);
+    if (cur) {
+      closeAllSections();
     } else {
-      if (cur) {
-        closeAllSections();
-      } else {
-        openSection(section);
-      }
+      openSection(section);
     }
   };
 
@@ -152,43 +147,37 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
-      {/* ── Overlay backdrop (both mobile drawer & desktop collapsed) ── */}
+      {/* ── Overlay backdrop (solo para drawer móvil < lg) ── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
+          className="lg:hidden fixed inset-0 z-40 bg-black/45 backdrop-blur-md transition-all duration-300"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-         DESKTOP SIDEBAR  (lg+) — only visible when `sidebarOpen` is true
+         DESKTOP SIDEBAR  (lg+) — totalmente fijo y visible en PC
          ═══════════════════════════════════════════════════════════ */}
-      {sidebarOpen && (
-        <aside className="hidden flex-col w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-800 transition-all duration-300 overflow-x-hidden">
-          {/* Brand */}
-          <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 shrink-0">
-                  <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
-                </div>
-                <span className="font-bold text-white text-sm">Chazin Food</span>
-              </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
-                <X className="w-5 h-5 text-white" />
-              </button>
+      <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-white dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800 h-screen transition-all duration-300 overflow-x-hidden">
+        {/* Brand */}
+        <div className="bg-gradient-to-br from-[#30475E] to-[#1e3347] px-5 pt-5 pb-4 shrink-0">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-white/20 shrink-0">
+              <img src={logoImg} alt="Chazin Food" className="w-full h-full object-cover" style={{ objectPosition: "50% 56%" }} />
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0 ring-2 ring-white/30">
-                {user?.nombre?.charAt(0).toUpperCase() ?? "A"}
-              </div>
-              <div>
-                <p className="font-semibold text-white leading-tight">{user?.nombre ?? "Administrador"}</p>
-                <p className="text-xs text-blue-200 capitalize mt-0.5">{user?.rol ?? "administrador"}</p>
-              </div>
+            <span className="font-bold text-white text-sm">Chazin Food</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md shrink-0 ring-2 ring-white/30">
+              {user?.nombre?.charAt(0).toUpperCase() ?? "A"}
+            </div>
+            <div>
+              <p className="font-semibold text-white leading-tight">{user?.nombre ?? "Administrador"}</p>
+              <p className="text-xs text-blue-200 capitalize mt-0.5">{user?.rol ?? "administrador"}</p>
             </div>
           </div>
+        </div>
 
           {/* Nav */}
           <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden sidebar-scroll-container" style={{ overflowX: "hidden" }}>
@@ -310,15 +299,14 @@ export function Layout() {
               </button>
             </div>
           </nav>
-        </aside>
-      )}
+      </aside>
 
       {/* ═══════════════════════════════════════════════════════════
          MOBILE LEFT DRAWER  (< lg)  — slides in from left
          ═══════════════════════════════════════════════════════════ */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
+          lg:hidden fixed inset-y-0 left-0 z-50 w-[75vw] max-w-[360px] min-w-[260px]
           bg-white dark:bg-gray-900
           shadow-2xl flex flex-col overflow-x-hidden
           transition-transform duration-300 ease-out
@@ -541,8 +529,8 @@ export function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 pb-4">
-        {/* Mobile top header */}
-        <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-sm">
+        {/* Mobile top header (solo móvil < lg) */}
+        <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 h-14 flex items-center justify-between shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300 active:scale-95"
