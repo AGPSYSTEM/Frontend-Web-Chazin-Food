@@ -16,6 +16,7 @@ import {
   Edit
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 import { eventosService } from "../../servicios/eventosService";
 
 export function EventosModal({
@@ -31,12 +32,31 @@ export function EventosModal({
   const [togglingId, setTogglingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Live timer for real-time countdown
+  // Live timer for real-time countdown (1 segundo de precisión)
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30000); // 30s tick
+    const timer = setInterval(() => setNow(new Date()), 1000); // 1s tick
     return () => clearInterval(timer);
   }, []);
+
+  // Sincronizar automáticamente con la API cualquier evento expirado para que su estado en BD pase a inactivo
+  useEffect(() => {
+    if (!isOpen || !Array.isArray(eventos) || eventos.length === 0) return;
+    const expActivos = eventos.filter((e) => {
+      const isDbActivo = e.estado === "Activo" || e.estado === 1;
+      if (!isDbActivo || !e.fechaFin) return false;
+      const finDate = new Date(`${e.fechaFin}T23:59:59`);
+      return new Date() > finDate;
+    });
+
+    if (expActivos.length > 0) {
+      Promise.allSettled(
+        expActivos.map((e) => eventosService.updateEvento(e.id || e.idEvento, { estado: 0 }))
+      ).then(() => {
+        if (onRefresh) onRefresh();
+      });
+    }
+  }, [isOpen, eventos, onRefresh]);
 
   if (!isOpen) return null;
 
@@ -47,6 +67,9 @@ export function EventosModal({
         estadoVigencia: "PERMANENTE",
         estaVigente: evt.estado === "Activo" || evt.estado === 1,
         diasRestantes: null,
+        horasRestantes: null,
+        minutosRestantes: null,
+        segundosRestantes: null,
         label: "Vigencia Permanente",
         urgente: false
       };
@@ -58,6 +81,8 @@ export function EventosModal({
     const ms = finDate.getTime() - now.getTime();
     const diasRestantes = Math.ceil(ms / (1000 * 60 * 60 * 24));
     const horasRestantes = Math.max(0, Math.floor(ms / (1000 * 60 * 60)));
+    const minutosRestantes = Math.max(0, Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60)));
+    const segundosRestantes = Math.max(0, Math.floor((ms % (1000 * 60)) / 1000));
 
     if (inicioDate && now < inicioDate) {
       const msInicio = inicioDate.getTime() - now.getTime();
@@ -66,6 +91,9 @@ export function EventosModal({
         estadoVigencia: "PROGRAMADO",
         estaVigente: false,
         diasRestantes,
+        horasRestantes,
+        minutosRestantes,
+        segundosRestantes,
         label: `Inicia en ${diasInicio} día${diasInicio !== 1 ? "s" : ""}`,
         urgente: false
       };
@@ -77,6 +105,9 @@ export function EventosModal({
         estadoVigencia: "EXPIRADO",
         estaVigente: false,
         diasRestantes: 0,
+        horasRestantes: 0,
+        minutosRestantes: 0,
+        segundosRestantes: 0,
         label: `Finalizado hace ${diasExpirado} día${diasExpirado !== 1 ? "s" : ""}`,
         urgente: false
       };
@@ -84,10 +115,14 @@ export function EventosModal({
 
     const urgente = diasRestantes <= 3;
     let label = `Quedan ${diasRestantes} días`;
-    if (diasRestantes === 1) {
+    if (horasRestantes < 24) {
+      if (horasRestantes === 0) {
+        label = `¡Termina pronto! (${minutosRestantes}m ${segundosRestantes}s restantes)`;
+      } else {
+        label = `¡Termina hoy! (${horasRestantes}h ${minutosRestantes}m restantes)`;
+      }
+    } else if (diasRestantes === 1) {
       label = `¡Último día! (${horasRestantes}h restantes)`;
-    } else if (diasRestantes === 0) {
-      label = `¡Termina hoy! (${horasRestantes}h restantes)`;
     }
 
     return {
@@ -95,6 +130,8 @@ export function EventosModal({
       estaVigente: evt.estado === "Activo" || evt.estado === 1,
       diasRestantes,
       horasRestantes,
+      minutosRestantes,
+      segundosRestantes,
       label,
       urgente
     };
@@ -173,17 +210,17 @@ export function EventosModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-5 sm:p-6 pb-4 flex items-start justify-between gap-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-purple-50/50 via-rose-50/30 to-amber-50/40 dark:from-purple-950/20 dark:via-rose-950/10 dark:to-amber-950/20">
+        <div className="p-5 sm:p-6 pb-4 flex items-start justify-between gap-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-orange-50/70 via-amber-50/50 to-red-50/50 dark:from-orange-950/30 dark:via-amber-950/20 dark:to-red-950/20">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
-              <Sparkles className="w-6 h-6 text-amber-300" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-red-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+              <Sparkles className="w-6 h-6 text-amber-200" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100">
                   Gestión de Eventos & Ediciones Especiales
                 </h2>
-                <span className="bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full">
+                <span className="bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 text-[10px] font-black px-2 py-0.5 rounded-full border border-orange-200/80 dark:border-orange-900/60">
                   LTO Fast Food
                 </span>
               </div>
@@ -210,7 +247,7 @@ export function EventosModal({
               onClick={() => setActiveTab("todos")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "todos"
-                  ? "bg-purple-600 text-white shadow-2xs"
+                  ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-2xs"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900"
               }`}
             >
@@ -242,7 +279,7 @@ export function EventosModal({
           {onOpenCrearEvento && (
             <button
               onClick={onOpenCrearEvento}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-700 hover:to-rose-700 text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 hover:from-orange-700 hover:via-amber-700 hover:to-red-700 text-white text-xs font-black rounded-xl shadow-md shadow-orange-500/25 transition-all active:scale-95 cursor-pointer ring-2 ring-orange-400/30"
             >
               <Plus className="w-4 h-4" />
               <span>Crear Nuevo Evento</span>
@@ -254,7 +291,7 @@ export function EventosModal({
         <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {filteredEventos.length === 0 ? (
             <div className="py-14 text-center space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-500 flex items-center justify-center mx-auto shadow-2xs">
+              <div className="w-16 h-16 rounded-2xl bg-orange-50 dark:bg-orange-950/40 text-orange-500 flex items-center justify-center mx-auto shadow-2xs">
                 <Calendar className="w-8 h-8" />
               </div>
               <h3 className="font-extrabold text-gray-800 dark:text-gray-200 text-base">
@@ -268,7 +305,7 @@ export function EventosModal({
               {onOpenCrearEvento && (
                 <button
                   onClick={onOpenCrearEvento}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-purple-700 transition"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold rounded-xl shadow-sm hover:from-orange-600 hover:to-amber-600 transition"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Crear Evento Ahora</span>
@@ -279,14 +316,15 @@ export function EventosModal({
             filteredEventos.map((evt) => {
               const vig = evt.vigenciaEvaluada;
               const hasProduct = Boolean(evt.producto || evt.idProducto);
-              const isActivo = evt.estado === "Activo" || evt.estado === 1;
+              const isExpirado = vig.estadoVigencia === "EXPIRADO";
+              const isRealmenteActivo = evt.isActivo;
 
               return (
                 <div
                   key={evt.id || evt.idEvento}
                   className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                     evt.isActivo
-                      ? "bg-white dark:bg-gray-850/90 border-purple-200 dark:border-purple-800/60 shadow-sm ring-1 ring-purple-400/20"
+                      ? "bg-white dark:bg-gray-850/90 border-2 border-orange-400/80 dark:border-orange-500/80 shadow-md shadow-orange-500/10 ring-2 ring-orange-400/20"
                       : "bg-gray-50/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/60 opacity-85"
                   }`}
                 >
@@ -301,7 +339,7 @@ export function EventosModal({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Sparkles className="w-6 h-6 text-purple-500" />
+                        <Sparkles className="w-6 h-6 text-orange-500" />
                       )}
                       {evt.isActivo && (
                         <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-900" />
@@ -313,20 +351,22 @@ export function EventosModal({
                         <h4 className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-gray-100 leading-tight">
                           {evt.nombre || evt.nombreEvento}
                         </h4>
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                          {evt.tipoEvento || "EDICION_LIMITADA"}
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200/80 dark:border-orange-900/50 font-black">
+                          {formatTipoEvento(evt.tipoEvento) || "EDICION_LIMITADA"}
                         </span>
                       </div>
 
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {evt.descripcion || "Promoción gastronómica especial de tiempo limitado."}
+                        {evt.descripcion && !/^(test|prueba|asdf)$/i.test(evt.descripcion.trim())
+                          ? evt.descripcion
+                          : "Promoción gastronómica especial de tiempo limitado."}
                       </p>
 
                       {/* Product & Price details */}
                       <div className="flex flex-wrap items-center gap-2.5 text-xs pt-1">
                         {evt.producto && (
                           <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1 bg-gray-100 dark:bg-gray-700/60 px-2 py-0.5 rounded-md text-[11px]">
-                            <Package className="w-3 h-3 text-purple-500" />
+                            <Package className="w-3 h-3 text-orange-500" />
                             {evt.producto.nombre}
                           </span>
                         )}
@@ -352,7 +392,7 @@ export function EventosModal({
                               ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50"
                               : vig.urgente
                               ? "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse"
-                              : "bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50"
+                              : "bg-orange-100 text-orange-900 dark:bg-orange-950/60 dark:text-orange-200 border border-orange-200 dark:border-orange-800/60 font-black"
                           }`}
                         >
                           <Clock className="w-3.5 h-3.5" />
@@ -370,24 +410,41 @@ export function EventosModal({
 
                   {/* Right: Actions */}
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 dark:border-gray-800">
-                    <button
-                      onClick={() => handleToggleEstado(evt)}
-                      disabled={togglingId === (evt.id || evt.idEvento)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                        isActivo
-                          ? "bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                          : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      }`}
-                      title={isActivo ? "Pausar evento" : "Activar evento"}
-                    >
-                      <Power className="w-3.5 h-3.5" />
-                      <span>{isActivo ? "Pausar" : "Reanudar"}</span>
-                    </button>
+                    {isRealmenteActivo ? (
+                      <button
+                        onClick={() => handleToggleEstado(evt)}
+                        disabled={togglingId === (evt.id || evt.idEvento)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                        title="Pausar evento"
+                      >
+                        <Power className="w-3.5 h-3.5" />
+                        <span>Pausar</span>
+                      </button>
+                    ) : isExpirado ? (
+                      <button
+                        onClick={() => onEditEvento && onEditEvento(evt)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                        title="Promoción finalizada. Haz clic para renovar fecha y reactivar"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Renovar Fecha</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleEstado(evt)}
+                        disabled={togglingId === (evt.id || evt.idEvento)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                        title="Activar evento"
+                      >
+                        <Power className="w-3.5 h-3.5" />
+                        <span>Reanudar</span>
+                      </button>
+                    )}
 
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => onEditEvento && onEditEvento(evt)}
-                        className="p-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl transition cursor-pointer"
+                        className="p-2 text-orange-600 dark:text-orange-400 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/40 rounded-xl transition cursor-pointer"
                         title="Editar evento"
                       >
                         <Edit className="w-4 h-4" />
@@ -412,7 +469,7 @@ export function EventosModal({
         {/* Footer */}
         <div className="p-4 px-6 flex items-center justify-between border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-purple-500" />
+            <Clock className="w-3.5 h-3.5 text-orange-500" />
             <span>Los días y horas restantes se descuentan en vivo en todo el sistema.</span>
           </div>
           <button

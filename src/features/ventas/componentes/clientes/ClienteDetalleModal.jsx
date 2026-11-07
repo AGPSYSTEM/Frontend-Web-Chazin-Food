@@ -50,7 +50,9 @@ export function ClienteDetalleModal({ isOpen, onClose, cliente }) {
   const transacciones = Array.isArray(cliente.transacciones) ? cliente.transacciones : [];
 
   const totalComprasCount = cliente.compras || transacciones.length;
-  const totalConsumidoStr = cliente.totalConsumido || cliente.totalGastado || "$0";
+  const rawConsumido = cliente.totalConsumido || cliente.totalGastado || 0;
+  const totalConsumidoNum = typeof rawConsumido === "string" ? Number(rawConsumido.replace(/[^0-9]/g, "")) || 0 : Number(rawConsumido) || 0;
+  const totalConsumidoStr = `$${totalConsumidoNum.toLocaleString("es-CO")} COP`;
   const ticketPromedioStr = cliente.ticketPromedio || "$0";
   const comprasMes = cliente.comprasMes || (totalComprasCount > 0 ? (totalComprasCount / 3).toFixed(1) : "0.0");
   const frecuenciaTipo = cliente.frecuenciaTipo || (totalComprasCount > 10 ? "Frecuente" : totalComprasCount > 2 ? "Mensual" : "Esporádico");

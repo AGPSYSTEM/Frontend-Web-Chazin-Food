@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   User,
   Package,
@@ -45,7 +45,11 @@ import {
   Laptop,
   Key,
   CheckCircle2,
-  Globe
+  Globe,
+  Eye,
+  EyeOff,
+  Lock,
+  X
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -55,6 +59,9 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { wompiService } from "@/features/ventas/servicios/wompiService";
+import { useCart } from "@/shared/context/CartContext";
+import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
@@ -146,10 +153,23 @@ function FieldError({ msg }) {
 export function ClientePerfil() {
   const navigate = useNavigate();
   const { user, updateProfile, logout, refreshUser } = useAuth();
+  const { clearCart } = useCart();
   const [darkMode, toggleDarkMode] = useDarkMode();
   const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
-  const [tab, setTab] = useState("fidelidad"); // "fidelidad" | "pedidos" | "editar"
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const initialTab = searchParams.get("tab") || location.state?.tab || "fidelidad";
+  const [tab, setTab] = useState(initialTab); // "fidelidad" | "pedidos" | "editar"
+  const [selectedPedidoDetalle, setSelectedPedidoDetalle] = useState(null);
+
+  useEffect(() => {
+    const urlTab = searchParams.get("tab") || location.state?.tab;
+    if (urlTab && ["fidelidad", "pedidos", "editar"].includes(urlTab)) {
+      setTab(urlTab);
+    }
+  }, [searchParams, location.state]);
+
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -185,65 +205,12 @@ export function ClientePerfil() {
     numeroDocumento: "",
   });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Sync user profile on mount
   useEffect(() => {
     refreshUser?.();
   }, [refreshUser]);
-
-  // Populate form with current user data
-  useEffect(() => {
-    if (user) {
-      let cleanDir = user.direccion || "";
-      if (typeof cleanDir === "string" && cleanDir.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(cleanDir);
-          cleanDir = parsed.direccion || cleanDir;
-        } catch (e) {
-          /* keep */
-        }
-      }
-
-      setForm({
-        nombre: user.nombre || "",
-        apellidos: user.apellidos || user.apellido || "",
-        email: user.email || "",
-        telefono: user.telefono || "",
-        direccion: cleanDir,
-        tipoDocumento: user.tipoDocumento || "C.C.",
-        numeroDocumento: user.numeroDocumento || user.documento || "",
-      });
-
-      const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
-      setAvatarUrl(userAvatar);
-      setErrors({});
-    }
-  }, [user]);
-
-  // Detect client device and browser for Active Sessions
-  const deviceInfo = useMemo(() => {
-    const ua = navigator.userAgent;
-    let browser = "Google Chrome";
-    if (ua.includes("Edg")) browser = "Microsoft Edge";
-    else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
-    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
-
-    let os = "Windows PC";
-    let isMobile = false;
-    if (ua.includes("Android")) {
-      os = "Android Mobile";
-      isMobile = true;
-    } else if (ua.includes("iPhone") || ua.includes("iPad")) {
-      os = "iOS Device";
-      isMobile = true;
-    } else if (ua.includes("Mac")) {
-      os = "macOS";
-    } else if (ua.includes("Linux")) {
-      os = "Linux PC";
-    }
-
-    return { browser, os, isMobile };
-  }, []);
 
   // Fetch client orders (backend + localStorage)
   const fetchMyOrders = useCallback(async () => {
@@ -307,21 +274,43 @@ export function ClientePerfil() {
             currentEstado = "Completada";
           }
 
+          let matchedObs = {};
+          if (matched.observaciones) {
+            if (typeof matched.observaciones === "object" && matched.observaciones !== null) {
+              matchedObs = matched.observaciones;
+            } else if (typeof matched.observaciones === "string" && matched.observaciones.startsWith("{")) {
+              try { matchedObs = JSON.parse(matched.observaciones); } catch (e) {}
+            }
+          }
+
           let items = localOrd.items || [];
           if ((!items || items.length === 0) && matched.productos && Array.isArray(matched.productos)) {
             items = matched.productos;
+          } else if ((!items || items.length === 0) && matchedObs.productos && Array.isArray(matchedObs.productos)) {
+            items = matchedObs.productos;
           }
+
+          const cleanObserv = extractCleanSpecifications(
+            matched.especificaciones ||
+            matchedObs.especificaciones ||
+            matchedObs.nota ||
+            localOrd.especificaciones ||
+            ""
+          );
 
           localOrd.estado = currentEstado;
           mergedPedidos.push({
             id: matched.idVenta || matched.id || localOrd.id,
-            numeroVenta: matched.numeroVenta || localOrd.numeroVenta,
+            numeroVenta: matched.numeroVenta || matchedObs.codigoPedido || localOrd.numeroVenta,
             fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString("es-CO") : localOrd.fecha,
             items,
+            subtotal: matched.subtotal || localOrd.subtotal || localOrd.total,
             total: matched.total || localOrd.total,
-            descuentoAplicado: matched.descuentoAplicado || 0,
-            metodoPago: matched.metodoPago || "Efectivo",
-            tipoEntrega: matched.tipoEntrega || "Domicilio",
+            descuentoAplicado: matched.descuentoAplicado || localOrd.descuentoAplicado || 0,
+            metodoPago: matchedObs.metodoPago || matched.metodoPago || localOrd.metodoPago || "Wompi",
+            tipoEntrega: matchedObs.tipoEntrega || matched.tipoEntrega || localOrd.tipoEntrega || "Domicilio",
+            direccion: matchedObs.direccion || matched.direccion || localOrd.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: cleanObserv,
             estado: currentEstado,
           });
         } else {
@@ -330,10 +319,13 @@ export function ClientePerfil() {
             numeroVenta: localOrd.numeroVenta,
             fecha: localOrd.fecha,
             items: localOrd.items || [],
+            subtotal: localOrd.subtotal || localOrd.total,
             total: localOrd.total,
             descuentoAplicado: localOrd.descuentoAplicado || 0,
-            metodoPago: localOrd.metodoPago || "Efectivo",
+            metodoPago: localOrd.metodoPago || "Wompi",
             tipoEntrega: localOrd.tipoEntrega || "Domicilio",
+            direccion: localOrd.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: extractCleanSpecifications(localOrd.especificaciones || ""),
             estado: localOrd.estado || "Completada",
           });
         }
@@ -356,30 +348,61 @@ export function ClientePerfil() {
             currentEstado = "Completada";
           }
 
+          let oObs = {};
+          if (o.observaciones) {
+            if (typeof o.observaciones === "object" && o.observaciones !== null) {
+              oObs = o.observaciones;
+            } else if (typeof o.observaciones === "string" && o.observaciones.startsWith("{")) {
+              try { oObs = JSON.parse(o.observaciones); } catch (e) {}
+            }
+          }
+
           let items = [];
           if (o.productos && Array.isArray(o.productos) && o.productos.length > 0) {
             items = o.productos.map((p) => ({
               nombre: p.nombre || "Producto",
               cantidad: Number(p.cantidad) || 1,
               precio: Number(p.precioUnitario || p.total) || 0,
+              adiciones: p.adiciones || [],
+              personalizaciones: p.personalizaciones || [],
+            }));
+          } else if (oObs.productos && Array.isArray(oObs.productos) && oObs.productos.length > 0) {
+            items = oObs.productos.map((p) => ({
+              nombre: p.nombre || "Producto",
+              cantidad: Number(p.cantidad) || 1,
+              precio: Number(p.precioUnitario || p.total) || 0,
+              adiciones: p.adiciones || [],
+              personalizaciones: p.personalizaciones || [],
             }));
           } else if (o.detalles && Array.isArray(o.detalles)) {
             items = o.detalles.map((d) => ({
               nombre: d.producto?.nombre || d.nombreProducto || "Producto",
               cantidad: Number(d.cantidad) || 1,
               precio: Number(d.precioUnitario) || 0,
+              adiciones: d.adiciones || [],
+              personalizaciones: d.personalizaciones || [],
             }));
           }
 
+          const cleanObserv = extractCleanSpecifications(
+            o.especificaciones ||
+            oObs.especificaciones ||
+            oObs.nota ||
+            ""
+          );
+
           mergedPedidos.push({
             id: o.idVenta || o.id,
-            numeroVenta: o.numeroVenta || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
+            numeroVenta: o.numeroVenta || oObs.codigoPedido || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
             fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString("es-CO") : "Reciente",
             items,
+            subtotal: Number(o.subtotal) || Number(o.total) || 0,
             total: Number(o.total) || 0,
             descuentoAplicado: Number(o.descuentoAplicado) || 0,
-            metodoPago: o.metodoPago || "Efectivo",
-            tipoEntrega: o.tipoEntrega || "Domicilio",
+            metodoPago: oObs.metodoPago || o.metodoPago || "Wompi",
+            tipoEntrega: oObs.tipoEntrega || o.tipoEntrega || "Domicilio",
+            direccion: oObs.direccion || o.direccion || user?.direccion || "Dirección de entrega",
+            especificaciones: cleanObserv,
             estado: currentEstado,
           });
         }
@@ -392,6 +415,183 @@ export function ClientePerfil() {
       setLoadingPedidos(false);
     }
   }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
+
+  // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
+  useEffect(() => {
+    const wompiTxId = searchParams.get("id");
+    if (wompiTxId) {
+      setTab("pedidos");
+      (async () => {
+        try {
+          const verificacion = await wompiService.verificarTransaccion(wompiTxId);
+          if (verificacion && verificacion.aprobado) {
+            success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
+            if (typeof clearCart === "function") clearCart();
+          } else if (verificacion && verificacion.estado === 'PENDING') {
+            warning("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en esta pantalla.");
+            if (typeof clearCart === "function") clearCart();
+          } else {
+            notifyError("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}.`);
+          }
+        } catch (err) {
+          console.error("Error verificando Wompi en perfil:", err);
+        } finally {
+          fetchMyOrders();
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.delete("id");
+          newParams.set("tab", "pedidos");
+          window.history.replaceState({}, document.title, `${window.location.pathname}?${newParams.toString()}`);
+        }
+      })();
+    }
+  }, [searchParams, fetchMyOrders, clearCart]);
+
+  // Populate form with current user data
+  useEffect(() => {
+    if (user) {
+      let cleanDir = user.direccion || "";
+      if (typeof cleanDir === "string" && cleanDir.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(cleanDir);
+          cleanDir = parsed.direccion || cleanDir;
+        } catch (e) {
+          /* keep */
+        }
+      }
+
+      const rawDocVal = user.numeroDocumento || user.documento || "";
+      const validDocVal = (rawDocVal && String(rawDocVal).trim().length >= 6) ? String(rawDocVal).trim() : "";
+      setForm({
+        nombre: user.nombre || "",
+        apellidos: user.apellidos || user.apellido || "",
+        email: user.email || "",
+        telefono: user.telefono || "",
+        direccion: cleanDir,
+        tipoDocumento: user.tipoDocumento || "C.C.",
+        numeroDocumento: validDocVal,
+      });
+
+      const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+      setAvatarUrl(userAvatar);
+      setErrors({});
+      setTouched({});
+    }
+  }, [user]);
+
+  const isGoogleUser = useMemo(() => {
+    return Boolean(
+      user?.esUsuarioGoogle ||
+      (user?.foto && user?.foto.includes("googleusercontent.com")) ||
+      (user?.avatar && user?.avatar.includes("googleusercontent.com"))
+    );
+  }, [user]);
+
+  const rawDocUser = user?.numeroDocumento || user?.documento || "";
+  const tieneCedulaRegistrada = Boolean(rawDocUser && String(rawDocUser).trim().length >= 6);
+
+  // Estados de seguridad y contraseña
+  const [passForm, setPassForm] = useState({
+    passwordActual: "",
+    passwordNueva: "",
+    passwordConfirm: "",
+  });
+  const [passErrors, setPassErrors] = useState({});
+  const [passTouched, setPassTouched] = useState({});
+  const [savingPass, setSavingPass] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [showPassActual, setShowPassActual] = useState(false);
+  const [showPassNueva, setShowPassNueva] = useState(false);
+  const [showPassConfirm, setShowPassConfirm] = useState(false);
+
+  const toggleAllPasswords = () => {
+    const next = !showPasswords;
+    setShowPasswords(next);
+    setShowPassActual(next);
+    setShowPassNueva(next);
+    setShowPassConfirm(next);
+  };
+
+// Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
+
+  const handlePassSubmit = async (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!isGoogleUser && !passForm.passwordActual) {
+      errs.passwordActual = "Ingresa tu contraseña actual.";
+    }
+    if (!passForm.passwordNueva) {
+      errs.passwordNueva = "Ingresa la nueva contraseña.";
+    } else if (passForm.passwordNueva.length < 6) {
+      errs.passwordNueva = "La contraseña debe tener al menos 6 caracteres.";
+    }
+    if (!passForm.passwordConfirm) {
+      errs.passwordConfirm = "Confirma la nueva contraseña.";
+    } else if (passForm.passwordNueva !== passForm.passwordConfirm) {
+      errs.passwordConfirm = "Las contraseñas no coinciden.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setPassErrors(errs);
+      setPassTouched({ passwordActual: true, passwordNueva: true, passwordConfirm: true });
+      return;
+    }
+
+    setSavingPass(true);
+    try {
+      const payload = {
+        passwordNueva: passForm.passwordNueva,
+        crearPasswordDirecta: isGoogleUser,
+      };
+      if (!isGoogleUser && passForm.passwordActual) {
+        payload.passwordActual = passForm.passwordActual;
+      }
+      const res = await updateProfile(payload);
+      if (res && res.success !== false) {
+        success(
+          isGoogleUser ? "¡Contraseña creada con éxito!" : "¡Contraseña actualizada!",
+          isGoogleUser
+            ? "Ahora puedes iniciar sesión ingresando tu correo y tu nueva contraseña."
+            : "Tu contraseña ha sido actualizada correctamente."
+        );
+        setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
+        setPassErrors({});
+        setPassTouched({});
+      } else {
+        notifyError("Error", res?.message || "No se pudo actualizar la contraseña.");
+      }
+    } catch (err) {
+      notifyError("Error", err.message || "No se pudo actualizar la contraseña.");
+    } finally {
+      setSavingPass(false);
+    }
+  };
+
+  // Detect client device and browser for Active Sessions
+  const deviceInfo = useMemo(() => {
+    const ua = navigator.userAgent;
+    let browser = "Google Chrome";
+    if (ua.includes("Edg")) browser = "Microsoft Edge";
+    else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
+    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
+
+    let os = "Windows PC";
+    let isMobile = false;
+    if (ua.includes("Android")) {
+      os = "Android Mobile";
+      isMobile = true;
+    } else if (ua.includes("iPhone") || ua.includes("iPad")) {
+      os = "iOS Device";
+      isMobile = true;
+    } else if (ua.includes("Mac")) {
+      os = "macOS";
+    } else if (ua.includes("Linux")) {
+      os = "Linux PC";
+    }
+
+    return { browser, os, isMobile };
+  }, []);
+
+
 
   useEffect(() => {
     if (refreshUser) {
@@ -472,7 +672,7 @@ export function ClientePerfil() {
       if (t.includes("llevar") || t.includes("recoger") || t.includes("mesa")) pickupCount++;
       else deliveryCount++;
     });
-    const preferredDelivery = deliveryCount >= pickupCount ? "A Domicilio" : "Recoger en Local";
+    const preferredDelivery = deliveryCount >= pickupCount ? "A Domicilio" : "En Mesa";
 
     // Last order date
     const lastOrderDate = completedPedidos.length > 0 ? completedPedidos[0].fecha : "Sin compras recientes";
@@ -733,7 +933,42 @@ export function ClientePerfil() {
     }
   };
 
+  const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
+
   // ── Edit form handlers ──
+  const validateSingleField = (name, val, extra = {}) => {
+    switch (name) {
+      case "nombre":
+        if (!val.trim()) return "El nombre es obligatorio.";
+        if (val.includes("@")) return "El nombre no puede contener el carácter '@'.";
+        if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+        return "";
+      case "apellidos":
+        if (!val.trim()) return "Los apellidos son obligatorios.";
+        if (val.includes("@")) return "Los apellidos no pueden contener el carácter '@'.";
+        if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+        return "";
+      case "email":
+        if (!val.trim()) return "El correo es obligatorio.";
+        if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val.trim())) return "Ingresa un correo electrónico válido (ej: usuario@correo.com).";
+        return "";
+      case "numeroDocumento":
+        if (!val || !val.trim()) return "El número de documento es obligatorio para facturación y compras.";
+        return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+      case "telefono":
+        if (!val) return "";
+        return val.length < 7 ? "Mínimo 7 dígitos." : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (name) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const err = validateSingleField(name, form[name] || "");
+    setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     let v = value;
@@ -745,40 +980,54 @@ export function ClientePerfil() {
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    // Validación inline inmediata en tiempo real (Item 23)
+    const err = validateSingleField(name, v);
+    setErrors((prev) => ({ ...prev, [name]: err }));
   };
 
   const handleTipoDocChange = (e) => {
     const nuevoTipo = e.target.value;
+    const sanitizedDoc = sanitizeDocumento(form.numeroDocumento, nuevoTipo);
     setForm((prev) => ({
       ...prev,
       tipoDocumento: nuevoTipo,
-      numeroDocumento: sanitizeDocumento(prev.numeroDocumento, nuevoTipo),
+      numeroDocumento: sanitizedDoc,
     }));
-    if (errors.numeroDocumento) setErrors((prev) => ({ ...prev, numeroDocumento: "" }));
+    if (touched.numeroDocumento) {
+      const err = validateSingleField("numeroDocumento", sanitizedDoc, { tipoDocumento: nuevoTipo });
+      setErrors((prev) => ({ ...prev, numeroDocumento: err }));
+    }
   };
 
   const validate = () => {
     const errs = {};
-    if (!form.nombre.trim()) errs.nombre = "El nombre es obligatorio.";
-    else if (form.nombre.trim().length < 2) errs.nombre = "Mínimo 2 caracteres.";
-
-    if (!form.apellidos.trim()) errs.apellidos = "Los apellidos son obligatorios.";
-    else if (form.apellidos.trim().length < 2) errs.apellidos = "Mínimo 2 caracteres.";
-
-    if (!form.email.trim()) errs.email = "El correo es obligatorio.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = "Ingresa un correo electrónico válido.";
-
+    const errNombre = validateSingleField("nombre", form.nombre);
+    if (errNombre) errs.nombre = errNombre;
+    const errApellidos = validateSingleField("apellidos", form.apellidos);
+    if (errApellidos) errs.apellidos = errApellidos;
+    const errEmail = validateSingleField("email", form.email);
+    if (errEmail) errs.email = errEmail;
     if (form.numeroDocumento) {
-      const docErr = validateDocumento(form.numeroDocumento, form.tipoDocumento);
-      if (docErr) errs.numeroDocumento = docErr;
+      const errDoc = validateSingleField("numeroDocumento", form.numeroDocumento);
+      if (errDoc) errs.numeroDocumento = errDoc;
     }
-    if (form.telefono && form.telefono.length < 7) errs.telefono = "Mínimo 7 dígitos.";
+    if (form.telefono) {
+      const errTel = validateSingleField("telefono", form.telefono);
+      if (errTel) errs.telefono = errTel;
+    }
     return errs;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({
+      nombre: true,
+      apellidos: true,
+      email: true,
+      numeroDocumento: true,
+      telefono: true,
+      direccion: true,
+    });
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -816,8 +1065,15 @@ export function ClientePerfil() {
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 shadow-md sticky top-0 z-40">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-4">
-              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100">
+            <div
+              className="flex items-center gap-4 cursor-pointer select-none group"
+              onClick={() => {
+                navigate("/");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              title="Ir al inicio - Chazin Food"
+            >
+              <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
                 <img
                   src={logoImg}
                   alt="Chazin Food"
@@ -827,7 +1083,7 @@ export function ClientePerfil() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100">Chazin Food</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors">Chazin Food</h1>
                   <FidelidadBadge
                     tipo={tipoFidelidad}
                     descuento={descuentoPorcentaje}
@@ -1478,7 +1734,7 @@ export function ClientePerfil() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 border-t sm:border-t-0 pt-2.5 sm:pt-0">
                           <div className="text-right">
                             <p className="text-base font-black text-gray-900 dark:text-gray-100">
                               ${(parseFloat(ped.total) || 0).toLocaleString("es-CO")}
@@ -1489,6 +1745,14 @@ export function ClientePerfil() {
                               </p>
                             )}
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPedidoDetalle(ped)}
+                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-[#f05454] hover:text-white text-gray-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>Ver detalle</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -1512,6 +1776,75 @@ export function ClientePerfil() {
                     </p>
                   </div>
 
+                  {/* Onboarding exclusivo para usuarios de Google Auth con datos pendientes */}
+                  {isGoogleUser && (!form.numeroDocumento || form.numeroDocumento.length < 6 || !form.telefono || form.telefono.length < 7 || !form.direccion || form.direccion.length < 5) && (
+                    <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50/50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/20 border-2 border-amber-300 dark:border-amber-700/80 rounded-3xl p-5 shadow-xs space-y-3.5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-black shadow-sm mt-0.5">
+                          <Globe className="w-5 h-5" />
+                        </div>
+                        <div className="text-xs space-y-1 flex-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-black text-amber-950 dark:text-amber-100 text-sm sm:text-base flex items-center gap-2">
+                              <span>Completa tus datos de entrega y facturación</span>
+                            </h4>
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                              Acceso con Google OAuth 2.0
+                            </span>
+                          </div>
+                          <p className="text-amber-900 dark:text-amber-200/90 leading-relaxed text-xs">
+                            Al iniciar con Google, datos como tu <strong>teléfono</strong> y <strong>dirección</strong> quedan pendientes por privacidad. Completa los campos marcados como <strong className="text-amber-800 dark:text-amber-300">Pendiente</strong> a continuación para que el restaurante pueda coordinar tus domicilios y emitir tu factura:
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Checklist dinámico interactivo con progreso en vivo */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.numeroDocumento && form.numeroDocumento.length >= 6
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.numeroDocumento && form.numeroDocumento.length >= 6 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Cédula: {form.numeroDocumento && form.numeroDocumento.length >= 6 ? 'Lista ✓' : 'Falta registrar'}</span>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.telefono && form.telefono.length >= 7
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.telefono && form.telefono.length >= 7 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Teléfono: {form.telefono && form.telefono.length >= 7 ? 'Listo ✓' : 'Falta registrar'}</span>
+                        </div>
+
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
+                          form.direccion && form.direccion.length >= 5
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+                            : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+                        }`}>
+                          {form.direccion && form.direccion.length >= 5 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+                          <span className="truncate">Dirección: {form.direccion && form.direccion.length >= 5 ? 'Lista ✓' : 'Falta registrar'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Banner tradicional para usuarios de registro normal sin cédula */}
+                  {!isGoogleUser && !tieneCedulaRegistrada && (
+                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+                      <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-1">
+                        <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                          Tu cuenta no cuenta con un número de documento registrado
+                        </p>
+                        <p className="text-amber-800 dark:text-amber-300/90 leading-relaxed">
+                          Para cumplir con los requisitos de facturación electrónica y procesar tus pedidos en Chazin Food, por favor registra tu número de cédula válido (6 a 10 dígitos).
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Nombre */}
@@ -1523,13 +1856,14 @@ export function ClientePerfil() {
                           type="text"
                           name="nombre"
                           value={form.nombre}
+                          onBlur={() => handleBlur("nombre")}
                           onChange={handleChange}
                           placeholder="Tu nombre"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.nombre ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.nombre} />
+                        <FieldError msg={touched.nombre ? errors.nombre : ""} />
                       </div>
 
                       {/* Apellidos */}
@@ -1541,13 +1875,14 @@ export function ClientePerfil() {
                           type="text"
                           name="apellidos"
                           value={form.apellidos}
+                          onBlur={() => handleBlur("apellidos")}
                           onChange={handleChange}
                           placeholder="Tus apellidos"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.apellidos ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.apellidos} />
+                        <FieldError msg={touched.apellidos ? errors.apellidos : ""} />
                       </div>
                     </div>
 
@@ -1562,14 +1897,15 @@ export function ClientePerfil() {
                           type="email"
                           name="email"
                           value={form.email}
+                          onBlur={() => handleBlur("email")}
                           onChange={handleChange}
                           placeholder="tu@correo.com"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.email ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.email} />
+                      <FieldError msg={touched.email ? errors.email : ""} />
                     </div>
 
                     {/* Documento */}
@@ -1581,7 +1917,7 @@ export function ClientePerfil() {
                         <select
                           value={form.tipoDocumento}
                           onChange={handleTipoDocChange}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400"
+                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 cursor-pointer"
                         >
                           {TIPOS_DOCUMENTO.map((t) => (
                             <option key={t} value={t}>
@@ -1592,27 +1928,42 @@ export function ClientePerfil() {
                       </div>
 
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                          N.° Documento
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                          <span>
+                            N.° Documento <span className="text-red-500">*</span>
+                            <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
+                          </span>
+                          {!tieneCedulaRegistrada && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              Pendiente
+                            </span>
+                          )}
                         </label>
                         <input
                           type="text"
                           name="numeroDocumento"
                           value={form.numeroDocumento}
+                          onBlur={() => handleBlur("numeroDocumento")}
                           onChange={handleChange}
-                          placeholder="Número de identificación"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.numeroDocumento ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          inputMode={docConfig.numericOnly ? "numeric" : "text"}
+                          placeholder={docConfig.helper}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
-                        <FieldError msg={errors.numeroDocumento} />
+                        <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
                       </div>
                     </div>
 
                     {/* Teléfono */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Teléfono Celular
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                        <span>Teléfono Celular</span>
+                        {isGoogleUser && (!form.telefono || form.telefono.trim().length < 7) && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Pendiente
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1620,20 +1971,27 @@ export function ClientePerfil() {
                           type="text"
                           name="telefono"
                           value={form.telefono}
+                          onBlur={() => handleBlur("telefono")}
                           onChange={handleChange}
+                          inputMode="numeric"
                           placeholder="Ej: 3001234567"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800 ${
-                            errors.telefono ? "border-red-400" : "border-gray-200 dark:border-gray-700"
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
+                            touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
                           }`}
                         />
                       </div>
-                      <FieldError msg={errors.telefono} />
+                      <FieldError msg={touched.telefono ? errors.telefono : ""} />
                     </div>
 
                     {/* Dirección de Entrega por Defecto */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                        Dirección de Entrega por Defecto
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                        <span>Dirección de Entrega por Defecto</span>
+                        {isGoogleUser && (!form.direccion || form.direccion.trim().length < 5) && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" /> Pendiente
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1672,6 +2030,188 @@ export function ClientePerfil() {
                       </button>
                     </div>
                   </form>
+
+                  {/* ── Tarjeta de Seguridad y Contraseña de Acceso ── */}
+                  <div className="bg-gray-50/80 dark:bg-gray-800/40 p-6 rounded-3xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div>
+                        <h4 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                          <Key className="w-4 h-4 text-[#f05454]" />
+                          <span>Seguridad &amp; Contraseña de Acceso</span>
+                        </h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {isGoogleUser
+                            ? "Asigna una contraseña para ingresar también escribiendo tu correo y contraseña directamente."
+                            : "Actualiza tu contraseña para mantener la seguridad de tu cuenta."}
+                        </p>
+                      </div>
+                      {isGoogleUser && (
+                        <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-blue-100/80 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 shrink-0">
+                          <Globe className="w-3.5 h-3.5" /> Cuenta Google
+                        </span>
+                      )}
+                    </div>
+
+                    {isGoogleUser && (
+                      <div className="bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/70 rounded-2xl p-4 flex items-start gap-3">
+                        <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                        <div className="text-xs space-y-1">
+                          <p className="font-bold text-blue-900 dark:text-blue-200">
+                            Acceso vinculado con Google OAuth 2.0
+                          </p>
+                          <p className="text-blue-800 dark:text-blue-300/90 leading-relaxed">
+                            Actualmente accedes mediante Google. Si deseas ingresar también directamente ingresando tu correo electrónico en el login tradicional, crea tu contraseña a continuación (no se requiere contraseña actual).
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <form onSubmit={handlePassSubmit} className="space-y-4" noValidate>
+                      {!isGoogleUser && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            Contraseña Actual <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassActual ? "text" : "password"}
+                              name="passwordActual"
+                              value={passForm.passwordActual}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordActual: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordActual: "" }));
+                              }}
+                              placeholder="Tu contraseña actual"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordActual && passErrors.passwordActual
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassActual(!showPassActual)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordActual && passErrors.passwordActual && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordActual}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            {isGoogleUser ? "Crear Contraseña" : "Nueva Contraseña"} <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassNueva ? "text" : "password"}
+                              name="passwordNueva"
+                              value={passForm.passwordNueva}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordNueva: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordNueva: "" }));
+                              }}
+                              placeholder="Mínimo 6 caracteres"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordNueva && passErrors.passwordNueva
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassNueva(!showPassNueva)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordNueva && passErrors.passwordNueva && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordNueva}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                            Confirmar Contraseña <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassConfirm ? "text" : "password"}
+                              name="passwordConfirm"
+                              value={passForm.passwordConfirm}
+                              onChange={(e) => {
+                                setPassForm((prev) => ({ ...prev, passwordConfirm: e.target.value }));
+                                setPassErrors((prev) => ({ ...prev, passwordConfirm: "" }));
+                              }}
+                              placeholder="Repite la contraseña"
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
+                                passTouched.passwordConfirm && passErrors.passwordConfirm
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassConfirm(!showPassConfirm)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              {showPassConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          {passTouched.passwordConfirm && passErrors.passwordConfirm && (
+                            <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordConfirm}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Botón Mostrar / Ocultar contraseñas */}
+                      <div className="flex items-center justify-start pt-1">
+                        <button
+                          type="button"
+                          onClick={toggleAllPasswords}
+                          className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer select-none"
+                        >
+                          {showPasswords ? (
+                            <>
+                              <EyeOff className="w-4 h-4 text-gray-500 shrink-0" />
+                              <span>Ocultar contraseñas</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 text-gray-500 shrink-0" />
+                              <span>Mostrar contraseñas</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="submit"
+                          disabled={savingPass}
+                          className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 dark:bg-gray-100 hover:bg-black dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-2xl transition-all shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-60 cursor-pointer"
+                        >
+                          {savingPass ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span>Guardando contraseña...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Key className="w-4 h-4" />
+                              <span>{isGoogleUser ? "Crear y Asignar Contraseña" : "Actualizar Contraseña"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
 
                 {/* ── Right Column: Foto de Perfil & Sesiones Activas ── */}
@@ -1890,6 +2430,164 @@ export function ClientePerfil() {
             )}
           </div>
         </div>
+
+        {/* ═══ MODAL VER DETALLE DE PEDIDO (ITEM 27) ═══ */}
+        {selectedPedidoDetalle && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+            onClick={() => setSelectedPedidoDetalle(null)}
+          >
+            <div
+              className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-2xl border border-gray-150 dark:border-gray-800 space-y-5 text-left max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-red-500 block">
+                    Detalle del Pedido
+                  </span>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2 mt-0.5">
+                    <Receipt className="w-5 h-5 text-red-500" />
+                    <span>{selectedPedidoDetalle.numeroVenta || `Pedido #${selectedPedidoDetalle.id}`}</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{selectedPedidoDetalle.fecha}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPedidoDetalle(null)}
+                  aria-label="Cerrar detalle del pedido"
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status & Delivery Summary */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+                  <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Estado del Pedido</span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${
+                      selectedPedidoDetalle.estado === "Completada" || selectedPedidoDetalle.estado === "Listo"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : selectedPedidoDetalle.estado === "En Preparación"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                        : selectedPedidoDetalle.estado === "Anulada"
+                        ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                    }`}
+                  >
+                    <Clock className="w-3 h-3" />
+                    {selectedPedidoDetalle.estado}
+                  </span>
+                </div>
+                <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+                  <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Método de Pago</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-red-500" />
+                    {selectedPedidoDetalle.metodoPago || "Wompi (En línea)"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Delivery address & specs */}
+              <div className="p-3.5 rounded-2xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-[#f05454] font-black">
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span>Dirección de Entrega:</span>
+                </div>
+                <p className="font-medium text-gray-800 dark:text-gray-200 pl-5">
+                  {typeof selectedPedidoDetalle.direccion === "string" && selectedPedidoDetalle.direccion.trim().startsWith("{")
+                    ? (() => {
+                        try {
+                          const p = JSON.parse(selectedPedidoDetalle.direccion);
+                          return p.direccion || "Medellín, Antioquia";
+                        } catch (e) {
+                          return "Medellín, Antioquia";
+                        }
+                      })()
+                    : (selectedPedidoDetalle.direccion || "Medellín, Antioquia")}
+                </p>
+                {Boolean(extractCleanSpecifications(selectedPedidoDetalle.especificaciones)) && (
+                  <div className="pt-1.5 border-t border-red-100/60 dark:border-red-900/40 text-gray-600 dark:text-gray-300 text-[11px] pl-5">
+                    <strong>Especificaciones:</strong> {extractCleanSpecifications(selectedPedidoDetalle.especificaciones)}
+                  </div>
+                )}
+              </div>
+
+              {/* Products Breakdown List */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <ShoppingBag className="w-4 h-4 text-amber-500" />
+                  <span>Productos Ordenados:</span>
+                </h4>
+                <div className="space-y-2 divide-y divide-gray-100 dark:divide-gray-800">
+                  {(selectedPedidoDetalle.items || []).map((it, itIdx) => (
+                    <div key={itIdx} className="pt-2 first:pt-0 flex items-start justify-between gap-3 text-xs">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 font-black text-xs mt-0.5">
+                          {it.cantidad || 1}x
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{it.nombre}</p>
+                          {it.adiciones && it.adiciones.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {it.adiciones.map((ad, adIdx) => (
+                                <span key={adIdx} className="text-[10px] text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.2 rounded">
+                                  +{ad.nombre || ad}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {it.personalizaciones && it.personalizaciones.length > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+                              Sin: {it.personalizaciones.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-bold text-gray-800 dark:text-gray-200 shrink-0">
+                        ${(Number(it.precio || 0) * (Number(it.cantidad) || 1)).toLocaleString("es-CO")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financial Summary */}
+              <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 border border-gray-150 dark:border-gray-700 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">
+                    ${(parseFloat(selectedPedidoDetalle.subtotal || selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+                  </span>
+                </div>
+                {selectedPedidoDetalle.descuentoAplicado > 0 && (
+                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                    <span>Descuento Fidelidad:</span>
+                    <span>-${(parseFloat(selectedPedidoDetalle.descuentoAplicado) || 0).toLocaleString("es-CO")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm font-black text-gray-900 dark:text-gray-100 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+                  <span>Total Pagado:</span>
+                  <span className="text-red-600 dark:text-red-400 text-base">
+                    ${(parseFloat(selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setSelectedPedidoDetalle(null)}
+                className="w-full py-3 rounded-2xl bg-[#f05454] hover:bg-red-600 text-white font-bold text-xs transition cursor-pointer active:scale-98 shadow-md"
+              >
+                Cerrar Detalle
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

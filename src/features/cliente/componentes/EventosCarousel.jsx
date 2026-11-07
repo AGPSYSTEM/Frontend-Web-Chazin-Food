@@ -26,130 +26,79 @@ import {
   IconServingCloche,
   IconBaconStrip
 } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
+import { calculateCountdown } from "@/shared/utils/dateUtils";
 
-// Paletas de color premium cinematográficas para cada evento (8 temas únicos sin repeticiones)
+// Paleta de color unificada premium gastronómica para la sección de eventos (Color Chazin Red/Amber)
+const UNIFIED_EVENT_THEME = {
+  bg: "from-[#380e12] via-[#22070a] to-stone-950",
+  glow: "rgba(239, 68, 68, 0.45)",
+  border: "border-red-500/30",
+  badgeBg: "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40",
+  accent: "text-amber-400",
+  btnGrad: "from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white shadow-lg shadow-red-950/60",
+  pillBg: "bg-red-500/15 border-red-400/30 text-red-200",
+  heroGradient: "from-red-600 via-rose-600 to-amber-500",
+  heroSubtext: "text-red-100"
+};
+
 export const THEMES = {
   fire: {
-    bg: "from-red-950 via-stone-900 to-stone-950",
-    glow: "rgba(239, 68, 68, 0.45)",
-    border: "border-red-500/30",
-    badgeBg: "bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-md shadow-red-900/40",
-    accent: "text-red-400",
-    btnGrad: "from-red-600 via-rose-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white shadow-lg shadow-red-950/60",
-    pillBg: "bg-red-500/15 border-red-400/30 text-red-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "2X1 IMPERDIBLE",
     tagText: "2X1 IMPERDIBLE",
     TagIcon: StreamlineFlame,
-    TitleIcon: null,
-    heroGradient: "from-red-600 via-rose-600 to-orange-600",
-    heroSubtext: "text-red-100"
+    TitleIcon: null
   },
   violet: {
-    bg: "from-purple-950 via-indigo-950 to-stone-950",
-    glow: "rgba(168, 85, 247, 0.45)",
-    border: "border-purple-500/30",
-    badgeBg: "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40",
-    accent: "text-purple-300",
-    btnGrad: "from-purple-500 via-indigo-600 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-lg shadow-purple-950/60",
-    pillBg: "bg-purple-500/15 border-purple-400/30 text-purple-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "PROMO FIN DE SEMANA",
     tagText: "PROMO FIN DE SEMANA",
     TagIcon: StreamlinePartyPopper,
-    TitleIcon: null,
-    heroGradient: "from-purple-700 via-indigo-600 to-pink-600",
-    heroSubtext: "text-purple-100"
+    TitleIcon: null
   },
   ocean: {
-    bg: "from-sky-950 via-blue-950 to-stone-950",
-    glow: "rgba(14, 165, 233, 0.45)",
-    border: "border-sky-500/30",
-    badgeBg: "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-blue-900/40",
-    accent: "text-sky-300",
-    btnGrad: "from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-blue-950/60",
-    pillBg: "bg-sky-500/15 border-sky-400/30 text-sky-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "COMBO FESTIVO EN PAREJA",
     tagText: "COMBO FESTIVO EN PAREJA",
     TagIcon: IconCoupleHeart,
-    TitleIcon: null,
-    heroGradient: "from-blue-700 via-sky-600 to-indigo-700",
-    heroSubtext: "text-sky-100"
+    TitleIcon: null
   },
   gold: {
-    bg: "from-amber-950 via-yellow-950 to-stone-950",
-    glow: "rgba(245, 158, 11, 0.45)",
-    border: "border-amber-500/30",
-    badgeBg: "bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-gray-950 shadow-md shadow-amber-900/40 font-black",
-    accent: "text-amber-300",
-    btnGrad: "from-amber-400 via-yellow-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-gray-950 font-black shadow-lg shadow-amber-950/60",
-    pillBg: "bg-amber-500/15 border-amber-400/30 text-amber-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "EDICIÓN LIMITADA CHEF",
     tagText: "EDICIÓN LIMITADA CHEF",
     TagIcon: StreamlineCrown,
-    TitleIcon: StreamlineFlame,
-    heroGradient: "from-amber-600 via-yellow-600 to-orange-600",
-    heroSubtext: "text-amber-100"
+    TitleIcon: StreamlineFlame
   },
   sunset: {
-    bg: "from-orange-950 via-amber-950 to-stone-950",
-    glow: "rgba(249, 115, 22, 0.45)",
-    border: "border-orange-500/30",
-    badgeBg: "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-900/40",
-    accent: "text-orange-400",
-    btnGrad: "from-orange-500 via-amber-500 to-red-500 hover:from-orange-400 hover:to-amber-500 text-white shadow-lg shadow-orange-950/60",
-    pillBg: "bg-orange-500/15 border-orange-400/30 text-orange-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "OFERTA RELÁMPAGO CRISPY",
     tagText: "OFERTA RELÁMPAGO CRISPY",
     TagIcon: IconLightningBolt,
-    TitleIcon: IconLightningBolt,
-    heroGradient: "from-orange-600 via-amber-500 to-red-500",
-    heroSubtext: "text-orange-100"
+    TitleIcon: IconLightningBolt
   },
   ruby: {
-    bg: "from-rose-950 via-red-950 to-stone-950",
-    glow: "rgba(225, 29, 72, 0.45)",
-    border: "border-rose-500/30",
-    badgeBg: "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-900/40",
-    accent: "text-rose-300",
-    btnGrad: "from-rose-500 via-red-600 to-pink-600 hover:from-rose-400 hover:to-red-500 text-white shadow-lg shadow-rose-950/60",
-    pillBg: "bg-rose-500/15 border-rose-400/30 text-rose-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "MASTER PARRILLA & BACON",
     tagText: "MASTER PARRILLA & BACON",
     TagIcon: IconMeatSteak,
-    TitleIcon: IconExplosion,
-    heroGradient: "from-rose-700 via-red-600 to-pink-700",
-    heroSubtext: "text-rose-100"
+    TitleIcon: IconExplosion
   },
   emerald: {
-    bg: "from-emerald-950 via-teal-950 to-stone-950",
-    glow: "rgba(16, 185, 129, 0.45)",
-    border: "border-emerald-500/30",
-    badgeBg: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/40",
-    accent: "text-emerald-300",
-    btnGrad: "from-emerald-500 via-teal-600 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white shadow-lg shadow-emerald-950/60",
-    pillBg: "bg-emerald-500/15 border-emerald-400/30 text-emerald-200",
+    ...UNIFIED_EVENT_THEME,
     tag: "FESTIVAL DE TOPPINGS",
     tagText: "FESTIVAL DE TOPPINGS",
     TagIcon: IconBaconStrip,
-    TitleIcon: IconBaconStrip,
-    heroGradient: "from-emerald-700 via-teal-600 to-cyan-700",
-    heroSubtext: "text-emerald-100"
+    TitleIcon: IconBaconStrip
   },
   teal: {
-    bg: "from-teal-950 via-slate-900 to-stone-950",
-    glow: "rgba(20, 184, 166, 0.45)",
-    border: "border-teal-500/30",
-    badgeBg: "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md shadow-teal-900/40",
-    accent: "text-teal-300",
-    btnGrad: "from-teal-500 via-cyan-600 to-emerald-600 hover:from-teal-400 hover:to-cyan-500 text-white shadow-lg shadow-teal-950/60",
-    pillBg: "bg-teal-500/15 border-teal-400/30 text-teal-200",
-    tag: "CREACIÓN DE AUTOR EXCLUSIVA",
-    tagText: "CREACIÓN DE AUTOR EXCLUSIVA",
-    TagIcon: IconServingCloche,
-    TitleIcon: IconServingCloche,
-    heroGradient: "from-teal-700 via-cyan-700 to-emerald-700",
-    heroSubtext: "text-teal-100"
+    ...UNIFIED_EVENT_THEME,
+    tag: "COMBO ESPECIAL CHAZIN",
+    tagText: "COMBO ESPECIAL CHAZIN",
+    TagIcon: StreamlineFlame,
+    TitleIcon: null
   }
 };
 
@@ -252,7 +201,7 @@ export const getEventThemeAndTag = (event, index) => {
 export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {}, onSelectEvento, onThemeChange }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({ dias: 2, horas: 14, minutos: 42, segundos: 30 });
+  const [currentTick, setCurrentTick] = useState(() => Date.now());
 
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -409,55 +358,38 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
       };
     });
 
+    // Si no hay eventos activos registrados en la base de datos, no generamos simulaciones
+    if (enrichedDb.length === 0) {
+      return [];
+    }
+
     return enrichedDb;
   }, [eventos, productos, ratingsMap]);
 
   const totalSlides = combinedEventos.length;
 
-  // Autoplay continuo mediante temporizador limpio (sin re-renders de 60fps en CPU)
+  // Autoplay continuo mediante temporizador limpio
   useEffect(() => {
     if (totalSlides <= 1 || isPaused) return;
 
-    let timer;
-    const startDelay = setTimeout(() => {
-      timer = setInterval(() => {
-        if (!document.hidden) {
-          setCurrentIndex((prev) => (prev + 1) % totalSlides);
-        }
-      }, slideDuration);
-    }, 8000);
+    const timer = setInterval(() => {
+      if (!document.hidden) {
+        setCurrentIndex((prev) => (prev + 1) % totalSlides);
+      }
+    }, slideDuration);
 
-    return () => {
-      clearTimeout(startDelay);
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [totalSlides, isPaused, slideDuration]);
 
-  // Reloj de cuenta regresiva en vivo (arranque diferido para liberar hilo principal en carga inicial)
+  // Reloj de cuenta regresiva en vivo (descuenta segundo a segundo con precisión absoluta sin demoras)
   useEffect(() => {
-    let timer;
-    const startDelay = setTimeout(() => {
-      timer = setInterval(() => {
-        if (document.hidden) return;
-        setTimeLeft((prev) => {
-          if (prev.segundos > 0) {
-            return { ...prev, segundos: prev.segundos - 1 };
-          } else if (prev.minutos > 0) {
-            return { ...prev, minutos: prev.minutos - 1, segundos: 59 };
-          } else if (prev.horas > 0) {
-            return { ...prev, horas: prev.horas - 1, minutos: 59, segundos: 59 };
-          } else if (prev.dias > 0) {
-            return { ...prev, dias: prev.dias - 1, horas: 23, minutos: 59, segundos: 59 };
-          }
-          return { dias: 2, horas: 12, minutos: 30, segundos: 45 };
-        });
-      }, 1000);
-    }, 8000);
+    const timer = setInterval(() => {
+      if (!document.hidden) {
+        setCurrentTick(Date.now());
+      }
+    }, 1000);
 
-    return () => {
-      clearTimeout(startDelay);
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // Navegación fluida por teclado
@@ -570,31 +502,8 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
               </span>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
-              Desliza para descubrir nuestras promociones especiales y combos de la casa.
+              Desliza para descubrir nuestras promociones especiales y platos recomendados de la casa.
             </p>
-          </div>
-        </div>
-
-        {/* TEMPORIZADOR DIGITAL FLOTANTE */}
-        <div className="flex items-center gap-2 bg-gray-100/90 dark:bg-gray-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs self-start sm:self-auto">
-          <Clock className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">Termina en:</span>
-          <div className="flex items-center gap-1 font-mono text-xs font-black text-gray-900 dark:text-amber-300">
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.dias).padStart(2, "0")}d
-            </span>
-            <span>:</span>
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.horas).padStart(2, "0")}h
-            </span>
-            <span>:</span>
-            <span className="bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded-md shadow-2xs border border-gray-200 dark:border-gray-700">
-              {String(timeLeft.minutos).padStart(2, "0")}m
-            </span>
-            <span>:</span>
-            <span className="bg-red-800 text-white px-1.5 py-0.5 rounded-md shadow-2xs font-bold">
-              {String(timeLeft.segundos).padStart(2, "0")}s
-            </span>
           </div>
         </div>
       </div>
@@ -687,10 +596,10 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider shrink-0 ${theme.badgeBg}`}
                       >
                         <Zap className="w-3.5 h-3.5 fill-current" />
-                        <span>{evt.tipoEvento || "Evento Activo"}</span>
+                        <span>{formatTipoEvento(evt.tipoEvento) || "Evento Activo"}</span>
                       </span>
 
-                      {/* Píldora de Calificación Real o Sin Reseñas (Ancho estable min-w-[88px] para 0 CLS) */}
+                      {/* Píldora de Calificación Real o Sin Reseñas */}
                       {evt.rating && Number(evt.rating) > 0 && evt.totalResenas > 0 ? (
                         <span
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 backdrop-blur-md text-white/95 border border-white/20 shrink-0 min-w-[88px]"
@@ -703,17 +612,54 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       ) : (
                         <span
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0 min-w-[88px]"
-                          title="Este evento aún no tiene reseñas de usuarios"
+                          title="Este producto aún no tiene reseñas de usuarios"
                         >
                           <Star className="w-3 h-3 text-white/40" />
                           <span>Sin reseñas</span>
                         </span>
                       )}
 
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 backdrop-blur-md text-white/80 border border-white/10 shrink-0">
-                        <Clock className="w-3 h-3" />
-                        <span>{evt.tiempoPrep || "10-15 min"}</span>
+                      {/* Tiempo de Preparación Detallado */}
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/40 backdrop-blur-md text-white/90 border border-white/10 shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Preparación artesanal: {evt.tiempoPrep || "12 - 15 min"}</span>
                       </span>
+
+                      {/* Temporizador Reloj Integrado Directamente dentro de la Tarjeta */}
+                      {(() => {
+                        const evtTimeLeft = (() => {
+                          if (evt.fechaFin) {
+                            return calculateCountdown(evt.fechaFin, currentTick);
+                          }
+                          const fallbackBase = Math.floor(currentTick / 1000);
+                          const diffSec = Math.max(0, (48 * 3600) - (fallbackBase % (48 * 3600)));
+                          return {
+                            dias: Math.floor(diffSec / 86400),
+                            horas: Math.floor((diffSec % 86400) / 3600),
+                            minutos: Math.floor((diffSec % 3600) / 60),
+                            segundos: diffSec % 60,
+                            expirado: false
+                          };
+                        })();
+
+                        return (
+                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black backdrop-blur-md border shadow-md shrink-0 ${
+                            evtTimeLeft.expirado
+                              ? "bg-rose-950/80 text-rose-300 border-rose-500/40"
+                              : "bg-black/60 text-amber-300 border-amber-400/40"
+                          }`}>
+                            <Clock className={`w-3.5 h-3.5 ${evtTimeLeft.expirado ? "text-rose-400" : "text-amber-400 animate-pulse"}`} />
+                            <span className="text-[10.5px] font-bold text-gray-200">
+                              {evtTimeLeft.expirado ? "Estado:" : "Disponible:"}
+                            </span>
+                            <span className={`font-mono font-black ${evtTimeLeft.expirado ? "text-rose-300" : "text-amber-300"}`}>
+                              {evtTimeLeft.expirado
+                                ? "¡Finalizado!"
+                                : `${String(evtTimeLeft.dias).padStart(2, "0")}d : ${String(evtTimeLeft.horas).padStart(2, "0")}h : ${String(evtTimeLeft.minutos).padStart(2, "0")}m : ${String(evtTimeLeft.segundos).padStart(2, "0")}s`}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {savePct > 0 && (
@@ -744,23 +690,10 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                       </div>
 
                       <p className="text-xs sm:text-sm text-gray-200/90 leading-relaxed font-normal max-w-xl line-clamp-2 sm:line-clamp-3">
-                        {evt.descripcion}
+                        {evt.descripcion && !/^(test|prueba|asdf)$/i.test(evt.descripcion.trim())
+                          ? evt.descripcion
+                          : "Disfruta de este plato seleccionado preparado con los ingredientes más frescos de la casa."}
                       </p>
-
-                      {/* Perks e ingredientes clave */}
-                      {evt.perks && evt.perks.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          {evt.perks.slice(0, 4).map((perk, pIdx) => (
-                            <div
-                              key={pIdx}
-                              className="flex items-center gap-1.5 text-xs font-medium text-white/90 bg-white/10 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="truncate">{perk}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
 
                       {/* Comparativa de precio */}
                       <div className="pt-2 flex items-baseline gap-3 flex-wrap">
@@ -800,7 +733,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                             style={{ aspectRatio: "1 / 1" }}
                             className="w-full h-full object-cover rounded-2xl"
                             loading={idx === 0 ? "eager" : "lazy"}
-                            fetchPriority={idx === 0 ? "high" : "low"}
+                            fetchpriority={idx === 0 ? "high" : "low"}
                             decoding="async"
                             onError={(e) => {
                               e.target.onerror = null;
@@ -824,11 +757,11 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                     <div className="flex items-center gap-3 w-full sm:w-auto">
                       <button
                         type="button"
-                        onClick={() => onSelectEvento && onSelectEvento(evt, prod)}
+                        onClick={() => onSelectEvento && onSelectEvento(evt, prod || evt.producto)}
                         className={`w-full sm:w-auto px-7 py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 bg-gradient-to-r ${theme.btnGrad} transition-all duration-200 shadow-xl hover:scale-[1.02] active:scale-98 cursor-pointer group/cta`}
                       >
                         <Sparkles className="w-4 h-4 text-white" />
-                        <span>¡Aprovechar Oferta!</span>
+                        <span>{evt.esProductoAleatorio ? "¡Pedir Ahora!" : "¡Aprovechar Oferta!"}</span>
                         <ArrowRight className="w-4 h-4 transition-transform group-hover/cta:translate-x-1" />
                       </button>
                     </div>
@@ -866,7 +799,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
             })}
           </div>
 
-          {/* BOTÓN NAVEGACIÓN IZQUIERDO (CENTRADO VERTICALMENTE EN EL EXTREMO IZQUIERDO) */}
+          {/* BOTÓN NAVEGACIÓN IZQUIERDO */}
           <button
             type="button"
             onClick={prevSlide}
@@ -876,7 +809,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
             <ChevronLeft className="w-6 h-6 transition-transform group-hover:-translate-x-0.5" />
           </button>
 
-          {/* BOTÓN NAVEGACIÓN DERECHO (CENTRADO VERTICALMENTE EN EL EXTREMO DERECHO) */}
+          {/* BOTÓN NAVEGACIÓN DERECHO */}
           <button
             type="button"
             onClick={nextSlide}
@@ -926,7 +859,7 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                 <FoodIcon name={evt.icono || "burger"} size={16} />
               )}
               <span className="truncate max-w-[150px] sm:max-w-[200px] whitespace-nowrap">{cleanName}</span>
-              {evt.descuento && (
+              {Number(evt.descuento) > 0 && (
                 <span
                   className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
                     isSelected

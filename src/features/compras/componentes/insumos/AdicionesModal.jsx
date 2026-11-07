@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles, UploadCloud, Loader2 } from "lucide-react";
+import { X, Plus, Edit, Trash2, Save, Image as ImageIcon, Sparkles, UploadCloud, Loader2, AlertCircle } from "lucide-react";
 import { adicionesService } from "../../servicios/adicionesService";
 import { useToast } from "@/shared/context/ToastContext";
 import { useConfirm } from "@/shared/context/ConfirmContext";
 import { getAdditionEmoji, FOOD_EMOJI_LIST } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge, AVAILABLE_FOOD_SLUGS } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
+import { validateTexto, validateMoneda, validateRequerido } from "@/shared/utils/validationUtils";
 
 export function AdicionesModal({ isOpen, onClose, insumos }) {
   const toast = useToast();
@@ -21,6 +22,8 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     descripcion: "",
     imagen: "",
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -40,6 +43,8 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       descripcion: "",
       imagen: "",
     });
+    setErrors({});
+    setTouched({});
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -82,17 +87,35 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
     }
   };
 
+  const validateField = (field, val, currentForm = formData) => {
+    let err = "";
+    if (field === "nombre") {
+      const res = validateTexto(val, "nombre de la adición", { min: 2, max: 60 });
+      if (!res.isValid) err = res.error;
+    } else if (field === "idInsumo") {
+      const res = validateRequerido(val, "Insumo base");
+      if (!res.isValid) err = res.error;
+    } else if (field === "precio") {
+      const res = validateMoneda(val, "precio", { allowZero: false });
+      if (!res.isValid) err = res.error;
+    }
+    return err;
+  };
+
   const handleCreateNew = () => {
     setFileToUpload(null);
     setIsEditing(false);
+    const initialInsumoId = insumos && insumos.length > 0 ? insumos[0].id || insumos[0].idInsumo : "";
     setFormData({
       id: null,
       nombre: "",
-      idInsumo: insumos && insumos.length > 0 ? insumos[0].id || insumos[0].idInsumo : "",
+      idInsumo: initialInsumoId,
       precio: "",
       descripcion: "",
       imagen: "bacon",
     });
+    setErrors({});
+    setTouched({});
     setShowForm(true);
   };
 
@@ -107,6 +130,8 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       descripcion: adicion.descripcion || "",
       imagen: adicion.imagen || getAdditionEmoji(adicion.nombre, ""),
     });
+    setErrors({});
+    setTouched({});
     setShowForm(true);
   };
 
@@ -145,7 +170,6 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
       return;
     }
 
-    // Previsualización local inmediata: cero subidas a Cloudinary hasta que guarde
     setFileToUpload(file);
     const localUrl = URL.createObjectURL(file);
     setFormData((prev) => ({ ...prev, imagen: localUrl }));
@@ -167,8 +191,20 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.nombre.trim() || !formData.idInsumo || formData.precio === "") {
-      toast.error("Campos requeridos", "Por favor completa el nombre, insumo base y precio");
+    setTouched({ nombre: true, idInsumo: true, precio: true });
+
+    const nombreErr = validateField("nombre", formData.nombre);
+    const insumoErr = validateField("idInsumo", formData.idInsumo);
+    const precioErr = validateField("precio", formData.precio);
+
+    const newErrors = {};
+    if (nombreErr) newErrors.nombre = nombreErr;
+    if (insumoErr) newErrors.idInsumo = insumoErr;
+    if (precioErr) newErrors.precio = precioErr;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("Campos requeridos", Object.values(newErrors)[0]);
       return;
     }
 
@@ -252,13 +288,30 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                       setFormData((prev) => ({
                         ...prev,
                         nombre: newNombre,
-                        // auto-suggest emoji if currently matching default
                         imagen: prev.imagen && prev.imagen.length > 2 ? prev.imagen : getAdditionEmoji(newNombre, prev.imagen)
                       }));
+                      setTouched((prev) => ({ ...prev, nombre: true }));
+                      const err = validateField("nombre", newNombre);
+                      setErrors((prev) => ({ ...prev, nombre: err }));
                     }}
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, nombre: true }));
+                      const err = validateField("nombre", formData.nombre);
+                      setErrors((prev) => ({ ...prev, nombre: err }));
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none ${
+                      touched.nombre && errors.nombre
+                        ? "border border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                    }`}
                     placeholder="Ej. Tocineta Extra"
                   />
+                  {touched.nombre && errors.nombre && (
+                    <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.nombre}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -267,8 +320,23 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                   <select
                     required
                     value={formData.idInsumo}
-                    onChange={(e) => setFormData({ ...formData, idInsumo: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, idInsumo: val });
+                      setTouched((prev) => ({ ...prev, idInsumo: true }));
+                      const err = validateField("idInsumo", val);
+                      setErrors((prev) => ({ ...prev, idInsumo: err }));
+                    }}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, idInsumo: true }));
+                      const err = validateField("idInsumo", formData.idInsumo);
+                      setErrors((prev) => ({ ...prev, idInsumo: err }));
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl text-sm cursor-pointer transition-all duration-150 outline-none ${
+                      touched.idInsumo && errors.idInsumo
+                        ? "border border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                    }`}
                   >
                     <option value="">Selecciona un insumo...</option>
                     {insumos.map((i) => (
@@ -277,6 +345,12 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                       </option>
                     ))}
                   </select>
+                  {touched.idInsumo && errors.idInsumo && (
+                    <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.idInsumo}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -288,10 +362,31 @@ export function AdicionesModal({ isOpen, onClose, insumos }) {
                     min="0"
                     step="50"
                     value={formData.precio}
-                    onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-purple-500"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, precio: val });
+                      setTouched((prev) => ({ ...prev, precio: true }));
+                      const err = validateField("precio", val);
+                      setErrors((prev) => ({ ...prev, precio: err }));
+                    }}
+                    onBlur={() => {
+                      setTouched((prev) => ({ ...prev, precio: true }));
+                      const err = validateField("precio", formData.precio);
+                      setErrors((prev) => ({ ...prev, precio: err }));
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-150 outline-none ${
+                      touched.precio && errors.precio
+                        ? "border border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-purple-500"
+                    }`}
                     placeholder="Ej. 3500"
                   />
+                  {touched.precio && errors.precio && (
+                    <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{errors.precio}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Emoji / Imagen selector with visual preview */}

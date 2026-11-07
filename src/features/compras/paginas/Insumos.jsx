@@ -1,6 +1,9 @@
-import { useState } from "react";
-import { Plus, Search, Bell } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import * as XLSX from "xlsx";
+import { Plus, Search, Bell, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useInsumos } from "../hooks/useInsumos";
+import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { InsumosStatsCards } from "../componentes/insumos/InsumosStatsCards";
 import { InsumosTable } from "../componentes/insumos/InsumosTable";
 import { InsumoModal } from "../componentes/insumos/InsumoModal";
@@ -10,6 +13,11 @@ import { VerInsumoModal } from "../componentes/insumos/VerInsumoModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Insumos() {
+  const { user } = useAuth();
+  const canCreate = hasPrivilege(user, "Insumos", "crear");
+  const canEdit = hasPrivilege(user, "Insumos", "editar");
+  const canDelete = hasPrivilege(user, "Insumos", "eliminar");
+
   const {
     insumos,
     filteredInsumos,
@@ -41,6 +49,141 @@ export function Insumos() {
   const [modalInsumoOpen, setModalInsumoOpen] = useState(false);
   const [editingInsumo, setEditingInsumo] = useState(null);
   const [viewingInsumo, setViewingInsumo] = useState(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (exportRef.current && !exportRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const exportarExcel = () => {
+    const rows = filteredInsumos;
+    if (rows.length === 0) return;
+
+    const headers = [
+      "ID",
+      "Nombre",
+      "Tipo",
+      "Categoría",
+      "Stock Actual",
+      "Unidad de Medida",
+      "Stock Mínimo",
+      "Stock Máximo",
+      "Precio / Costo",
+      "Es Adición",
+      "Precio Adición",
+      "Estado"
+    ];
+
+    const data = rows.map((i, index) => [
+      i.id || i.idInsumo || index + 1,
+      i.nombre || "",
+      i.tipo === "Preparado" ? "Insumo Preparado" : "Insumo Base",
+      i.categoriaNombre || (typeof i.categoria === "string" ? i.categoria : i.categoria?.nombre) || "Sin categoría",
+      i.stock ?? 0,
+      i.unidadMedida || "und",
+      i.stockMinimo ?? 0,
+      i.stockMaximo ?? 100,
+      Number(i.precioUnitario || i.costo || 0),
+      (i.esAdicion === 1 || i.esAdicion === true) ? "Sí" : "No",
+      Number(i.precioAdicion || 0),
+      i.estado || "Activo"
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    worksheet["!cols"] = [
+      { wch: 8 },
+      { wch: 28 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 12 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Insumos");
+    XLSX.writeFile(workbook, `reporte_insumos_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    setExportMenuOpen(false);
+  };
+
+  const exportarPDF = () => {
+    const rows = filteredInsumos;
+    if (rows.length === 0) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const tableRows = rows
+      .map(
+        (i, idx) => `
+      <tr>
+        <td>${i.id || i.idInsumo || idx + 1}</td>
+        <td><strong>${i.nombre || ""}</strong></td>
+        <td>${i.tipo === "Preparado" ? "Insumo Preparado" : "Insumo Base"}</td>
+        <td>${i.categoriaNombre || (typeof i.categoria === "string" ? i.categoria : i.categoria?.nombre) || "Sin categoría"}</td>
+        <td>${i.stock ?? 0} ${i.unidadMedida || "und"}</td>
+        <td>${i.stockMinimo ?? 0} ${i.unidadMedida || "und"}</td>
+        <td>${Number(i.precioUnitario || i.costo || 0).toLocaleString("es-CO")}</td>
+        <td>${i.estado || "Activo"}</td>
+      </tr>`
+      )
+      .join("");
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Reporte de Insumos - Chazin Food</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            h1 { color: #f05454; font-size: 20px; margin-bottom: 4px; }
+            p { font-size: 12px; color: #666; margin-top: 0; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; text-align: left; font-weight: bold; }
+            td { border: 1px solid #e2e8f0; padding: 6px 8px; }
+            tr:nth-child(even) { background: #fdfdfd; }
+          </style>
+        </head>
+        <body>
+          <h1>Chazin Food — Reporte de Insumos</h1>
+          <p>Generado el ${new Date().toLocaleString("es-CO")} | Total registros: ${rows.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Stock Mín.</th>
+                <th>Precio / Costo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+          <script>window.onload = function() { window.print(); window.close(); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setExportMenuOpen(false);
+  };
+
 
   // Filter unified insumos (base + prepared) according to selected type filter
   const itemsToShow = filteredInsumos.filter((item) => {
@@ -192,13 +335,15 @@ export function Insumos() {
                 )}
               </div>
 
-              <button
-                onClick={handleOpenCreate}
-                className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Nuevo Insumo</span>
-              </button>
+              {canCreate && (
+                <button
+                  onClick={handleOpenCreate}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 w-full sm:w-auto shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Nuevo Insumo</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -271,6 +416,8 @@ export function Insumos() {
               onDelete={handleDeleteItem}
               onView={(item) => setViewingInsumo(item)}
               onToggleEstado={toggleEstadoInsumo}
+              canEdit={canEdit}
+              canDelete={canDelete}
             />
           )}
         </div>
@@ -295,6 +442,14 @@ export function Insumos() {
         isOpen={!!viewingInsumo}
         onClose={() => setViewingInsumo(null)}
         insumo={viewingInsumo}
+        onEdit={
+          canEdit
+            ? (ins) => {
+                setViewingInsumo(null);
+                handleOpenEdit(ins);
+              }
+            : undefined
+        }
       />
 
       {/* Trazabilidad Modal */}

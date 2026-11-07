@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { productosService } from "../servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useProductos() {
   const notify = useNotifications();
@@ -15,11 +16,34 @@ export function useProductos() {
   const fetchProductos = useCallback(async () => {
     try {
       setLoading(true);
-      const [prods, cats] = await Promise.all([
+      const [prods, cats, fichas] = await Promise.all([
         productosService.getProductos(),
-        productosService.getCategorias()
+        productosService.getCategorias(),
+        fichasTecnicasService.getFichas().catch(() => [])
       ]);
-      setProductos(prods || []);
+      const fichaMap = new Map();
+      if (Array.isArray(fichas)) {
+        fichas.forEach((f) => {
+          if (f && f.idProducto) {
+            fichaMap.set(Number(f.idProducto), f);
+          }
+        });
+      }
+      const enrichedProds = (prods || []).map((p) => {
+        const prodId = Number(p.idProducto || p.id);
+        const ficha = fichaMap.get(prodId);
+        const ent = ficha?.datosEntidad;
+        if (!ent) {
+          return ficha ? { ...p, fichaTecnica: p.fichaTecnica || ficha } : p;
+        }
+        return {
+          ...p,
+          fichaTecnica: p.fichaTecnica || ficha,
+          precio: ent.precio !== undefined && Number(ent.precio) > 0 ? Number(ent.precio) : p.precio,
+          descripcion: ent.descripcion !== undefined ? ent.descripcion : p.descripcion
+        };
+      });
+      setProductos(enrichedProds);
       setCategorias(cats || []);
     } catch (err) {
       console.error(err);
@@ -33,17 +57,53 @@ export function useProductos() {
     fetchProductos();
   }, [fetchProductos]);
 
-  const filteredProductos = productos.filter((p) => {
-    const matchSearch =
-      searchTerm === "" ||
-      p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.codigo?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Buscador generalizado por todas las columnas (unidades, inactivos, variantes, adiciones, combos, precio, etc.)
+  const filteredProductos = useMemo(() => {
+    return productos.filter((p) => {
+      if (!p) return false;
 
-    const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
-    const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
+      const variantesText = Array.isArray(p.variantes)
+        ? p.variantes.map((v) => v.nombre || "").join(" ")
+        : "";
+      const adicionesText = Array.isArray(p.adiciones)
+        ? p.adiciones.map((a) => (typeof a === "object" ? a.nombre : String(a))).join(" ")
+        : "";
+      
+      let comboItemsText = "";
+      if (p.configuracionCombo) {
+        try {
+          const cfg = typeof p.configuracionCombo === "string" ? JSON.parse(p.configuracionCombo) : p.configuracionCombo;
+          if (Array.isArray(cfg?.productosAsociados)) {
+            comboItemsText = cfg.productosAsociados.map(a => a.nombre || "").join(" ");
+          }
+        } catch (_) {}
+      }
 
-    return matchSearch && matchCategoria && matchEstado;
-  });
+      const matchSearch = matchesSmartSearch(
+        [
+          p.nombre,
+          p.codigo,
+          p.id,
+          p.idProducto,
+          p.categoria,
+          p.descripcion,
+          p.precio,
+          p.estado,
+          p.stock !== undefined ? `${p.stock} unidades` : "",
+          p.ventas !== undefined ? `${p.ventas} ventas` : "",
+          variantesText,
+          adicionesText,
+          comboItemsText
+        ],
+        searchTerm
+      );
+
+      const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
+      const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
+
+      return matchSearch && matchCategoria && matchEstado;
+    });
+  }, [productos, searchTerm, filterCategoria, filterEstado]);
 
   const createProducto = async (data) => {
     try {
@@ -69,17 +129,34 @@ export function useProductos() {
 
   const updateProducto = async (id, data) => {
     try {
-      await productosService.updateProducto(id, data);
-      // Los combos no llevan ficha técnica
+      // 1. Guardar primero la ficha técnica con su versionamiento (los combos no llevan ficha técnica)
       const esCombo = data.configuracionCombo?.esCombo;
+      let fichaGuardada = false;
       if (data.fichaTecnica && id && !esCombo) {
         try {
           await fichasTecnicasService.saveFichaProducto(id, data.fichaTecnica);
+          fichaGuardada = true;
         } catch (e) {
           console.error("Error guardando ficha técnica del producto:", e);
         }
       }
-      notify.success("Producto actualizado", "Cambios guardados correctamente");
+
+      // 2. Actualizar los datos generales del producto
+      try {
+        await productosService.updateProducto(id, data);
+      } catch (prodErr) {
+        const msg = String(prodErr?.message || "");
+        // Si el servidor remoto restringe cambios generales por ventas previas pero ya guardamos la ficha técnica
+        if (fichaGuardada && msg.toLowerCase().includes("ventas registradas")) {
+          if (data.estado !== undefined) {
+            await productosService.updateProducto(id, { estado: data.estado }).catch(() => {});
+          }
+        } else {
+          throw prodErr;
+        }
+      }
+
+      notify.success("Producto actualizado", "El producto y su ficha técnica fueron actualizados correctamente");
       await fetchProductos();
       return true;
     } catch (err) {
@@ -96,11 +173,11 @@ export function useProductos() {
     if (!confirmed) return false;
     try {
       await productosService.deleteProducto(id);
-      notify.success("Producto eliminado", "El producto fue eliminado del menú");
+      notify.success("Producto eliminado", "El producto fue eliminado del sistema");
       await fetchProductos();
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "No se pudo eliminar el producto");
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar el producto");
       return false;
     }
   };

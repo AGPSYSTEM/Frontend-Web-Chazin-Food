@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Settings,
+  Users,
   ShoppingCart,
   ChefHat,
   TrendingUp,
@@ -11,10 +12,10 @@ import {
 } from "lucide-react";
 
 export const ACCIONES_PRIVILEGIOS = [
-  { id: "ver", label: "Ver", key: "Ver", icon: Eye, color: "text-blue-600 dark:text-blue-400", bgActive: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
-  { id: "crear", label: "Crear", key: "Crear", icon: PlusCircle, color: "text-emerald-600 dark:text-emerald-400", bgActive: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
-  { id: "editar", label: "Editar", key: "Editar", icon: Edit3, color: "text-amber-600 dark:text-amber-400", bgActive: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-  { id: "eliminar", label: "Eliminar", key: "Eliminar", icon: Trash2, color: "text-rose-600 dark:text-rose-400", bgActive: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800" }
+  { id: "ver", label: "Ver", key: "Ver", icon: Eye, color: "text-slate-600 dark:text-slate-300", bgActive: "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600" },
+  { id: "crear", label: "Crear", key: "Crear", icon: PlusCircle, color: "text-slate-600 dark:text-slate-300", bgActive: "bg-red-50/80 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60" },
+  { id: "editar", label: "Editar", key: "Editar", icon: Edit3, color: "text-slate-600 dark:text-slate-300", bgActive: "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600" },
+  { id: "eliminar", label: "Eliminar", key: "Eliminar", icon: Trash2, color: "text-slate-600 dark:text-slate-300", bgActive: "bg-red-50/80 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60" }
 ];
 
 export const GRUPOS_PERMISOS = [
@@ -28,14 +29,23 @@ export const GRUPOS_PERMISOS = [
     accionesDisponibles: ["ver"]
   },
   {
+    id: "usuarios",
+    nombre: "Usuarios",
+    icon: Users,
+    isGroup: true,
+    parentPermiso: "Usuarios",
+    subPermisos: [
+      { id: "Usuarios", nombre: "Gestión de Usuarios", descripcion: "Gestión de cuentas, colaboradores y estados de acceso", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+    ]
+  },
+  {
     id: "configuracion",
     nombre: "Configuración",
     icon: Settings,
     isGroup: true,
     parentPermiso: "Configuración",
     subPermisos: [
-      { id: "Roles", nombre: "Roles", descripcion: "Administración de roles y asignación de permisos del sistema", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Usuarios", nombre: "Usuarios", descripcion: "Gestión de cuentas, colaboradores y estados de acceso", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+      { id: "Roles", nombre: "Roles", descripcion: "Administración de roles, módulos y privilegios del sistema", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
     ]
   },
   {
@@ -46,9 +56,9 @@ export const GRUPOS_PERMISOS = [
     parentPermiso: "Compras",
     subPermisos: [
       { id: "Categoría Insumos", nombre: "Categoría Insumos", descripcion: "Clasificación de insumos y materias primas", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Insumos", nombre: "Insumos", descripcion: "Catálogo de insumos, unidades y control de stock", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
+      { id: "Insumos", nombre: "Insumos", descripcion: "Catálogo de insumos, recetas preparadas y control de stock", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
       { id: "Proveedores", nombre: "Proveedores", descripcion: "Directorio de proveedores y datos de contacto", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Gestión de Compras", nombre: "Gestión de Compras", descripcion: "Registro, recepción y anulación de compras a proveedores", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+      { id: "Gestión de Compras", nombre: "Gestión de Compras", descripcion: "Registro de compras, lotes y devoluciones a proveedores", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
     ]
   },
   {
@@ -59,9 +69,8 @@ export const GRUPOS_PERMISOS = [
     parentPermiso: "Producción",
     subPermisos: [
       { id: "Categoría Productos", nombre: "Categoría Productos", descripcion: "Familias de productos del menú y bebidas", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Productos", nombre: "Productos", descripcion: "Catálogo de productos finales, precios y fotos", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Fichas Técnicas", nombre: "Fichas Técnicas", descripcion: "Recetas estándar, ingredientes y gramajes", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Gestión de Producción", nombre: "Gestión de Producción", descripcion: "Control de órdenes de preparación y cocción", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+      { id: "Productos", nombre: "Productos", descripcion: "Catálogo de productos, combos, fichas técnicas y eventos", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
+      { id: "Gestión de Producción", nombre: "Gestión de Producción", descripcion: "Control de órdenes de preparación y cocción en cocina", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
     ]
   },
   {
@@ -71,9 +80,8 @@ export const GRUPOS_PERMISOS = [
     isGroup: true,
     parentPermiso: "Ventas",
     subPermisos: [
-      { id: "Punto de Venta", nombre: "Punto de Venta", descripcion: "Terminal de venta rápida y cobros en caja", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Clientes", nombre: "Clientes", descripcion: "Directorio de clientes y registro de compradores", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Gestión de Ventas", nombre: "Gestión de Ventas", descripcion: "Historial de transacciones, facturación y estados", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+      { id: "Clientes", nombre: "Clientes", descripcion: "Directorio de clientes, activación y programa de fidelidad", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
+      { id: "Gestión de Ventas", nombre: "Gestión de Ventas", descripcion: "Historial de ventas, aprobación de pagos y creación de venta física (POS)", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
     ]
   }
 ];
@@ -83,28 +91,71 @@ export const TOTAL_MODULOS = GRUPOS_PERMISOS.reduce((acc, g) => {
 }, 0);
 
 /**
+ * Verifica si un usuario autenticado posee un privilegio específico (ver, crear, editar, eliminar)
+ * sobre un módulo del sistema, manteniendo retrocompatibilidad con permisos heredados.
+ */
+export function hasPrivilege(user, modulo, accion = "ver") {
+  if (!user) return false;
+  const rawRol = typeof user.rol === "object" ? user.rol?.nombre : user.rol;
+  const rolLower = String(rawRol || "").toLowerCase().trim();
+  if (rolLower === "administrador" || rolLower === "admin") return true;
+
+  const permisos = Array.isArray(user.permisos) ? user.permisos : [];
+  if (permisos.length === 0) return false;
+
+  const accionNorm = String(accion || "ver").toLowerCase().trim();
+  const accionKey = accionNorm.charAt(0).toUpperCase() + accionNorm.slice(1); // "Ver", "Crear", "Editar", "Eliminar"
+
+  // Compatibilidad para Punto de Venta integrado en Gestión de Ventas (Ítem #40)
+  const modulosEquivalentes = [modulo];
+  if (modulo === "Punto de Venta") {
+    modulosEquivalentes.push("Gestión de Ventas", "Vendedor");
+  } else if (modulo === "Gestión de Ventas" && (accionNorm === "ver" || accionNorm === "crear")) {
+    modulosEquivalentes.push("Punto de Venta");
+  } else if (modulo === "Fichas Técnicas") {
+    modulosEquivalentes.push("Productos", "Insumos");
+  }
+
+  for (const mod of modulosEquivalentes) {
+    if (permisos.includes(`${mod}:${accionKey}`)) {
+      return true;
+    }
+    const hasGranularForMod = permisos.some((p) => typeof p === "string" && p.startsWith(`${mod}:`));
+    if (!hasGranularForMod && permisos.includes(mod)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Convierte un arreglo plano de permisos (ej: ["Insumos", "Insumos:Ver", "Insumos:Crear"])
  * a un mapa estructurado de { [modulo]: { activo: boolean, privilegios: { ver, crear, editar, eliminar } } }
  */
 export function parsePermisosYPrivilegios(permisosArray = []) {
   const result = {};
 
-  // Inicializar todos los módulos
   GRUPOS_PERMISOS.forEach((g) => {
     if (!g.isGroup) {
-      const isActivo = permisosArray.includes(g.permiso);
+      const hasGranular = permisosArray.some((p) => typeof p === "string" && p.startsWith(`${g.permiso}:`));
+      const isActivo = permisosArray.includes(g.permiso) || permisosArray.includes(`${g.permiso}:Ver`);
       result[g.permiso] = {
         activo: isActivo,
-        privilegios: { ver: isActivo }
+        privilegios: { ver: hasGranular ? permisosArray.includes(`${g.permiso}:Ver`) : isActivo }
       };
     } else {
       g.subPermisos.forEach((sub) => {
-        const isActivo = permisosArray.includes(sub.id);
-        const hasGranular = permisosArray.some((p) => p.startsWith(`${sub.id}:`));
+        let isActivo = permisosArray.includes(sub.id);
+        let hasGranular = permisosArray.some((p) => typeof p === "string" && p.startsWith(`${sub.id}:`));
+
+        // Retrocompatibilidad: roles que tenían "Punto de Venta" heredan acceso a "Gestión de Ventas"
+        if (!isActivo && sub.id === "Gestión de Ventas" && permisosArray.includes("Punto de Venta")) {
+          isActivo = true;
+          hasGranular = false;
+        }
 
         if (isActivo && !hasGranular) {
-          // Si el rol ya tenía el módulo pero no privilegios específicos (datos previos en BD),
-          // por defecto se habilitan todas las acciones disponibles para no romper funcionalidad.
           result[sub.id] = {
             activo: true,
             privilegios: {
@@ -147,7 +198,7 @@ export function buildPermisosArray(stateMap = {}) {
     if (!g.isGroup) {
       if (stateMap[g.permiso]?.activo) {
         list.add(g.permiso);
-        if (stateMap[g.permiso]?.privilegios?.ver) {
+        if (stateMap[g.permiso]?.privilegios?.ver !== false) {
           list.add(`${g.permiso}:Ver`);
         }
       }
@@ -180,7 +231,6 @@ export function getPlantillaRol(tipo) {
   const base = parsePermisosYPrivilegios([]);
 
   if (tipo === "admin") {
-    // Administrador: Todos los módulos, todos los privilegios
     GRUPOS_PERMISOS.forEach((g) => {
       if (!g.isGroup) {
         base[g.permiso] = { activo: true, privilegios: { ver: true } };
@@ -194,26 +244,20 @@ export function getPlantillaRol(tipo) {
       }
     });
   } else if (tipo === "cocinero") {
-    // Cocinero: Dashboard, Insumos (solo ver), Fichas Técnicas (solo ver), Producción (ver, crear, editar)
     base["Dashboard"] = { activo: true, privilegios: { ver: true } };
     base["Categoría Insumos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Insumos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Categoría Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
-    base["Fichas Técnicas"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Gestión de Producción"] = { activo: true, privilegios: { ver: true, crear: true, editar: true, eliminar: false } };
   } else if (tipo === "vendedor") {
-    // Vendedor: Categoría Productos, Productos, Punto de Venta (ver, crear, editar), Clientes (ver, crear), Ventas (ver)
     base["Categoría Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
-    base["Punto de Venta"] = { activo: true, privilegios: { ver: true, crear: true, editar: true, eliminar: false } };
     base["Clientes"] = { activo: true, privilegios: { ver: true, crear: true, editar: false, eliminar: false } };
-    base["Gestión de Ventas"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
+    base["Gestión de Ventas"] = { activo: true, privilegios: { ver: true, crear: true, editar: true, eliminar: false } };
   } else if (tipo === "cliente") {
-    // Cliente: Catálogo/Productos (ver) y realizar pedidos
     base["Categoría Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
     base["Productos"] = { activo: true, privilegios: { ver: true, crear: false, editar: false, eliminar: false } };
-    base["Punto de Venta"] = { activo: true, privilegios: { ver: true, crear: true, editar: false, eliminar: false } };
   }
 
   return base;

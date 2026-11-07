@@ -1,23 +1,25 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 
 export const IVA_RATE = 0.19;
 const CartContext = createContext(undefined);
 
 /**
  * Generates a unique, deterministic ID for an item in the cart based on:
- * - Product ID
+ * - Product ID / Variant ID / Sabor
  * - Selected additions (id and quantity)
  * - Any special instructions
  */
 export function generateCartItemId(item) {
   const prodId = item.id || item.idProducto;
+  const varKey = item.idVariante && String(item.idVariante) !== String(prodId) ? `_var[${item.idVariante}]` : '';
+  const saborKey = item.sabor ? `_sabor[${String(item.sabor).toLowerCase().trim()}]` : '';
   const evtKey = item.eventoInfo?.idEvento || (item.isEvento ? 'evt' : '');
   const adicionesKey = (item.adiciones || [])
     .map((a) => `${a.idAdicion || a.id}:${a.cantidad || 1}`)
     .sort()
     .join(",");
-  const obsKey = (item.observaciones || item.instrucciones || "").trim().toLowerCase();
-  return `${prodId}__evt[${evtKey}]__ads[${adicionesKey}]__obs[${obsKey}]`;
+  const obsKey = (item.observaciones || item.instrucciones || item.observacion || "").trim().toLowerCase();
+  return `${prodId}${varKey}${saborKey}__evt[${evtKey}]__ads[${adicionesKey}]__obs[${obsKey}]`;
 }
 
 export function CartProvider({ children }) {
@@ -39,6 +41,11 @@ export function CartProvider({ children }) {
     }
   });
 
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
   // Persist cart on changes
   useEffect(() => {
     try {
@@ -52,7 +59,7 @@ export function CartProvider({ children }) {
    * Returns the total units of a given product currently in the cart
    */
   const getProductQuantityInCart = (productId) => {
-    return cart
+    return (cartRef.current || cart)
       .filter((it) => String(it.id || it.idProducto) === String(productId))
       .reduce((sum, it) => sum + Number(it.cantidad || 0), 0);
   };
@@ -74,59 +81,81 @@ export function CartProvider({ children }) {
     };
   };
 
-  const addToCart = (item) => {
-    const cartItemId = item.cartItemId || generateCartItemId(item);
-    const prodId = item.id || item.idProducto;
-    const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 9999));
-    const qtyToAdd = Number(item.cantidad || 1);
+  /**
+   * Adds one item or an array of items to the cart atomically without race conditions or state overwriting.
+   */
+  const addToCart = (itemOrItems) => {
+    const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    if (items.length === 0) return { success: true, addedCount: 0 };
 
-    // Calculate current total for this product in cart excluding the exact same line item if we are re-adding
-    const otherLinesQty = cart
-      .filter((it) => String(it.id || it.idProducto) === String(prodId) && it.cartItemId !== cartItemId)
-      .reduce((sum, it) => sum + Number(it.cantidad || 0), 0);
+    let currentCart = [...(cartRef.current || cart)];
+    let lastError = null;
+    let addedCount = 0;
 
-    const existingItem = cart.find((it) => it.cartItemId === cartItemId);
-    const currentLineQty = existingItem ? Number(existingItem.cantidad || 0) : 0;
-    const newLineQty = currentLineQty + qtyToAdd;
+    for (const item of items) {
+      if (!item) continue;
+      const cartItemId = item.cartItemId || generateCartItemId(item);
+      const prodId = item.id || item.idProducto;
+      const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 9999));
+      const qtyToAdd = Number(item.cantidad || 1);
 
-    if (otherLinesQty + newLineQty > stock) {
-      const allowedForThisLine = Math.max(0, stock - otherLinesQty - currentLineQty);
-      return {
-        success: false,
-        message: `Solo hay ${stock} unidades disponibles en stock de ${item.nombre}. Ya tienes ${otherLinesQty + currentLineQty} en tu carrito.`,
-        allowedForThisLine
-      };
-    }
+      // Calculate current total for this product in cart excluding the exact same line item if we are re-adding
+      const otherLinesQty = currentCart
+        .filter((it) => String(it.id || it.idProducto) === String(prodId) && it.cartItemId !== cartItemId)
+        .reduce((sum, it) => sum + Number(it.cantidad || 0), 0);
 
-    if (existingItem) {
-      setCart(
-        cart.map((cartItem) =>
-          cartItem.cartItemId === cartItemId
-            ? { ...cartItem, cantidad: newLineQty, stock: stock }
-            : cartItem
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
-        {
+      const existingIndex = currentCart.findIndex((it) => it.cartItemId === cartItemId);
+      const currentLineQty = existingIndex >= 0 ? Number(currentCart[existingIndex].cantidad || 0) : 0;
+      const newLineQty = currentLineQty + qtyToAdd;
+
+      if (otherLinesQty + newLineQty > stock) {
+        const allowedForThisLine = Math.max(0, stock - otherLinesQty - currentLineQty);
+        lastError = {
+          success: false,
+          message: `Solo hay ${stock} unidades disponibles en stock de ${item.nombre}. Ya tienes ${otherLinesQty + currentLineQty} en tu carrito.`,
+          allowedForThisLine
+        };
+        continue;
+      }
+
+      if (existingIndex >= 0) {
+        currentCart[existingIndex] = {
+          ...currentCart[existingIndex],
+          ...item,
+          cantidad: newLineQty,
+          stock: stock
+        };
+      } else {
+        currentCart.push({
           ...item,
           cartItemId,
           cantidad: qtyToAdd,
           stock: stock
-        }
-      ]);
+        });
+      }
+      addedCount++;
     }
 
-    return { success: true };
+    if (addedCount > 0) {
+      cartRef.current = currentCart;
+      setCart(currentCart);
+    }
+
+    if (lastError && addedCount === 0) {
+      return lastError;
+    }
+
+    return { success: true, addedCount };
   };
 
   const removeFromCart = (cartItemIdOrId) => {
-    setCart((prev) =>
-      prev.filter(
+    setCart((prev) => {
+      const next = prev.filter(
         (item) => item.cartItemId !== cartItemIdOrId && String(item.id || item.idProducto) !== String(cartItemIdOrId)
-      )
-    );
+      );
+      cartRef.current = next;
+      return next;
+    });
   };
 
   const updateQuantity = (cartItemIdOrId, delta) => {
@@ -150,7 +179,7 @@ export function CartProvider({ children }) {
         }
       }
 
-      return prev
+      const next = prev
         .map((item) => {
           if (item.cartItemId === target.cartItemId) {
             const newQuantity = item.cantidad + delta;
@@ -159,10 +188,14 @@ export function CartProvider({ children }) {
           return item;
         })
         .filter((item) => item.cantidad > 0);
+
+      cartRef.current = next;
+      return next;
     });
   };
 
   const clearCart = () => {
+    cartRef.current = [];
     setCart([]);
     try {
       localStorage.removeItem("chazin_cart");
@@ -191,6 +224,7 @@ export function CartProvider({ children }) {
       value={{
         cart,
         addToCart,
+        addMultipleToCart: addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,

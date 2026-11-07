@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { insumosService } from "../servicios/insumosService";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
+import { normalizeFichaWithVersions } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useInsumos() {
   const notify = useNotifications();
@@ -50,25 +52,36 @@ export function useInsumos() {
         estado: i.estado === 1 || i.estado === "Activo" || i.estado === "1" ? "Activo" : "Inactivo"
       }));
 
-      const prepMapped = (preparadosData || []).map(p => ({
-        id: p.id,
-        idInsumo: p.id,
-        nombre: p.nombre,
-        tipo: "Preparado",
-        descripcion: p.descripcion || "",
-        precio: p.precioVenta || p.costoTotal || 0,
-        costo: p.costoTotal || 0,
-        unidadMedida: p.unidadMedida || "und",
-        estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
-        fichaTecnica: p.fichaTecnica || null,
-        ingredientes: (p.insumos || p.componentes || []).map(d => ({
-          id: d.idInsumo,
-          nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
-          cantidad: parseFloat(d.cantidad || 0),
-          unidadMedida: d.unidadMedida || "und",
-          precioUnitario: parseFloat(d.precioUnitario || 0)
-        }))
-      }));
+      const prepMapped = (preparadosData || []).map(p => {
+        const fichaNorm = p.fichaTecnica
+          ? normalizeFichaWithVersions(p.fichaTecnica, "INSUMO_PREPARADO", p.id)
+          : null;
+        const ent = fichaNorm?.datosEntidad;
+        const resolvedPrecio =
+          ent?.precioUnitario !== undefined && Number(ent.precioUnitario) > 0
+            ? Number(ent.precioUnitario)
+            : (p.precioVenta || p.costoTotal || 0);
+        return {
+          id: p.id,
+          idInsumo: p.id,
+          nombre: p.nombre,
+          tipo: "Preparado",
+          descripcion: ent?.descripcion !== undefined ? ent.descripcion : (p.descripcion || ""),
+          precio: resolvedPrecio,
+          precioUnitario: resolvedPrecio,
+          costo: p.costoTotal || 0,
+          unidadMedida: ent?.unidadMedida || p.unidadMedida || "und",
+          estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
+          fichaTecnica: fichaNorm,
+          ingredientes: (p.insumos || p.componentes || []).map(d => ({
+            id: d.idInsumo,
+            nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
+            cantidad: parseFloat(d.cantidad || 0),
+            unidadMedida: d.unidadMedida || "und",
+            precioUnitario: parseFloat(d.precioUnitario || 0)
+          }))
+        };
+      });
 
       setInsumos([...baseMapped, ...prepMapped]);
       setCategorias(categoriasData || []);
@@ -101,7 +114,7 @@ export function useInsumos() {
         costo: p.costoTotal || 0,
         unidadMedida: p.unidadMedida || "und",
         estado: p.estado === 1 || p.estado === "Activo" || p.estado === "1" ? "Activo" : "Inactivo",
-        fichaTecnica: p.fichaTecnica || null,
+        fichaTecnica: p.fichaTecnica ? normalizeFichaWithVersions(p.fichaTecnica, "insumo", p.id) : null,
         ingredientes: (p.insumos || p.componentes || []).map(d => ({
           id: d.idInsumo,
           nombre: d.insumoNombre || `Insumo #${d.idInsumo}`,
@@ -124,19 +137,22 @@ export function useInsumos() {
   }, [fetchInsumos, fetchPapelera]);
 
   const filteredInsumos = insumos.filter((item) => {
-    const term = searchTerm.toLowerCase().trim();
-    const matchSearch =
-      !term ||
-      (item.nombre && item.nombre.toLowerCase().includes(term)) ||
-      (item.categoria && item.categoria.toLowerCase().includes(term)) ||
-      (item.categoriaNombre && item.categoriaNombre.toLowerCase().includes(term)) ||
-      (item.proveedor && item.proveedor.toLowerCase().includes(term)) ||
-      (item.proveedorNombre && item.proveedorNombre.toLowerCase().includes(term)) ||
-      (item.estado && item.estado.toLowerCase().includes(term)) ||
-      (item.tipo && item.tipo.toLowerCase().includes(term)) ||
-      (item.descripcion && item.descripcion.toLowerCase().includes(term)) ||
-      (item.unidadMedida && item.unidadMedida.toLowerCase().includes(term)) ||
-      String(item.id || item.idInsumo || "").includes(term);
+    const matchSearch = matchesSmartSearch(
+      [
+        item.nombre,
+        item.categoria,
+        item.categoriaNombre,
+        item.proveedor,
+        item.proveedorNombre,
+        item.estado,
+        item.tipo,
+        item.descripcion,
+        item.unidadMedida,
+        item.id,
+        item.idInsumo
+      ],
+      searchTerm
+    );
 
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
     const matchEstado = filterEstado === "Todos" || item.estado === filterEstado;
@@ -179,15 +195,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo) || 0,
           unidadMedida: data.unidadMedida || "und",
           precioUnitario: Number(data.precioUnitario) || 0,
-          idProveedor: data.idProveedor || null,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion || "",
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
           incluyeIva: data.incluyeIva ? 1 : 0,
           estado: data.estado || "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.createInsumo(payload);
       }
@@ -200,7 +216,8 @@ export function useInsumos() {
       );
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "Error al crear");
+      const statusPfx = err?.status ? `[HTTP ${err.status}] ` : "";
+      notify.error("Error al registrar insumo", `${statusPfx}${err.message || "Error en el servidor"}`);
       return false;
     }
   };
@@ -209,6 +226,13 @@ export function useInsumos() {
     try {
       const isPrep = data.tipo === "Preparado";
       if (isPrep) {
+        if (data.fichaTecnica && id) {
+          try {
+            await fichasTecnicasService.saveFichaInsumoPreparado(id, data.fichaTecnica);
+          } catch (e) {
+            console.error("Error guardando ficha técnica del preparado:", e);
+          }
+        }
         const payload = {
           nombre: data.nombre,
           descripcion: data.descripcion || "",
@@ -219,17 +243,9 @@ export function useInsumos() {
             idInsumo: i.id || i.idInsumo,
             cantidad: i.cantidad,
             unidadMedida: i.unidadMedida || "und"
-          })),
-          fichaTecnica: data.fichaTecnica || null
+          }))
         };
         await insumosService.updatePreparado(id, payload);
-        if (data.fichaTecnica && id) {
-          try {
-            await fichasTecnicasService.saveFichaInsumoPreparado(id, data.fichaTecnica);
-          } catch (e) {
-            console.error("Error guardando ficha técnica del preparado:", e);
-          }
-        }
       } else {
         const payload = {
           nombre: data.nombre,
@@ -238,15 +254,15 @@ export function useInsumos() {
           stockMinimo: Number(data.stockMinimo),
           unidadMedida: data.unidadMedida,
           precioUnitario: Number(data.precioUnitario),
-          idProveedor: data.idProveedor,
+          idProveedor: data.idProveedor && String(data.idProveedor).trim() !== "" ? Number(data.idProveedor) : null,
           descripcion: data.descripcion,
           esAdicion: data.esAdicion ? 1 : 0,
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
           incluyeIva: data.incluyeIva !== undefined ? (data.incluyeIva ? 1 : 0) : undefined,
           estado: data.estado !== undefined ? data.estado : "Activo",
-          fechaExpedicion: data.fechaExpedicion || null,
-          fechaVencimiento: data.fechaVencimiento || null
+          fechaExpedicion: null, // #62: Eliminada fecha de expedición
+          fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
         };
         await insumosService.updateInsumo(id, payload);
       }
@@ -256,7 +272,8 @@ export function useInsumos() {
       notify.success("Insumo actualizado", "Los datos fueron guardados exitosamente.");
       return true;
     } catch (err) {
-      notify.error("Error", err.message || "Error al actualizar");
+      const statusPfx = err?.status ? `[HTTP ${err.status}] ` : "";
+      notify.error("Error al actualizar insumo", `${statusPfx}${err.message || "Error en el servidor"}`);
       return false;
     }
   };

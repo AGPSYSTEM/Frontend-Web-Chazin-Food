@@ -3,7 +3,7 @@ import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRig
 import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
-export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete }) {
+export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -42,21 +42,20 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-400 dark:text-gray-400 tracking-wider uppercase">
-              <th className="px-5 py-3.5 w-12">ID</th>
-              <th className="px-5 py-3.5">CLIENTE</th>
-              <th className="px-5 py-3.5">TELÉFONO</th>
-              <th className="px-5 py-3.5">EMAIL</th>
-              <th className="px-5 py-3.5 text-center">COMPRAS</th>
-              <th className="px-5 py-3.5">TOTAL CONSUMIDO</th>
-              <th className="px-5 py-3.5">TIPO</th>
-              <th className="px-5 py-3.5">ESTADO</th>
-              <th className="px-5 py-3.5 text-center">ACCIONES</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">CLIENTE</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TELÉFONO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">EMAIL</th>
+              <th className="px-3.5 py-3 text-center whitespace-nowrap">COMPRAS</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TOTAL CONSUMIDO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">TIPO</th>
+              <th className="px-3.5 py-3 whitespace-nowrap">ESTADO</th>
+              <th className="px-3.5 py-3 text-center whitespace-nowrap">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
             {totalRecords === 0 ? (
               <tr>
-                <td colSpan={9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron clientes registrados
                 </td>
               </tr>
@@ -64,17 +63,14 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
               paginatedClientes.map((c, index) => {
                 const tipoCliente = c.tipo || (c.esVip ? "VIP" : "Nuevo");
                 const tieneCuenta = c.tieneCuenta !== false && !!c.idUsuario;
-                const isActivo = tieneCuenta && (c.estado === "Activo" || c.estado === 1);
+                const isPendiente = c.estado === "PENDIENTE" || c.estado === "Pendiente" || c.estadoUsuario === "PENDIENTE";
+                const isActivo = tieneCuenta && !isPendiente && (c.estado === "Activo" || c.estado === 1);
 
                 return (
                   <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-5 py-4 text-gray-500 dark:text-gray-400 font-medium text-xs">
-                      #{c.id || startIndex + index + 1}
-                    </td>
-
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${getAvatarBg(c.nombre)}`}>
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${getAvatarBg(c.nombre)}`}>
                           {c.nombre ? c.nombre.charAt(0).toUpperCase() : "C"}
                         </div>
                         <div>
@@ -95,11 +91,11 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-gray-600 dark:text-gray-300 font-medium">
+                    <td className="px-3.5 py-3 text-gray-600 dark:text-gray-300 font-medium whitespace-nowrap">
                       {c.telefono || "Sin teléfono"}
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       {c.email ? (
                         <a href={`mailto:${c.email}`} className="text-blue-500 hover:underline font-medium">
                           {c.email}
@@ -109,7 +105,7 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center">
                         <span className="font-bold text-gray-800 dark:text-gray-200">{c.compras || 0}</span>
                         <span className="text-[10px] text-orange-600 dark:text-orange-400 font-extrabold flex items-center gap-0.5">
@@ -119,11 +115,16 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 font-extrabold text-gray-900 dark:text-gray-100">
-                      {c.totalConsumido || c.totalGastado || "$0"}
+                    {/* Total Consumido */}
+                    <td className="px-3.5 py-3 font-extrabold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      {(() => {
+                        const raw = c.totalConsumido || c.totalGastado || 0;
+                        const num = typeof raw === "string" ? Number(raw.replace(/[^0-9]/g, "")) || 0 : Number(raw) || 0;
+                        return `$${num.toLocaleString("es-CO")} COP`;
+                      })()}
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-3.5 py-3 whitespace-nowrap">
                       <div className="flex flex-col items-start gap-0.5">
                         <FidelidadBadge
                           tipo={tipoCliente}
@@ -149,17 +150,23 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        isActivo
-                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
-                          : "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50"
-                      }`}>
-                        {isActivo ? "Activo" : "Inactivo / Pendiente"}
-                      </span>
+                    <td className="px-3.5 py-3 whitespace-nowrap">
+                      {isPendiente ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800">
+                          Pendiente
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          isActivo
+                            ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
+                            : "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
+                        }`}>
+                          {isActivo ? "Activo" : "Inactivo"}
+                        </span>
+                      )}
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => onViewDetail && onViewDetail(c)}
@@ -169,21 +176,25 @@ export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete })
                           <Eye className="w-4 h-4" />
                         </button>
 
-                        <button
-                          onClick={() => onEdit(c)}
-                          title="Editar cliente"
-                          className="p-1 text-gray-400 hover:text-emerald-500 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(c)}
+                            title="Editar cliente"
+                            className="p-1 text-gray-400 hover:text-emerald-500 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
 
-                        <button
-                          onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`.trim(), c.compras || 0)}
-                          title={c.compras > 0 ? "No se puede eliminar: cuenta con ventas asociadas (solo inactivar)" : "Eliminar cliente"}
-                          className={`p-1 transition-colors ${c.compras > 0 ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-red-500"}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(c.id || c.idCliente, `${c.nombre} ${c.apellidos || ""}`.trim(), c.compras || 0)}
+                            title={c.compras > 0 ? "No se puede eliminar: cuenta con ventas asociadas (solo inactivar)" : "Eliminar cliente"}
+                            className={`p-1 transition-colors ${c.compras > 0 ? "text-amber-500 hover:text-amber-600" : "text-gray-400 hover:text-red-500"}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

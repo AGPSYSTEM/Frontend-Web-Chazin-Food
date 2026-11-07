@@ -1,6 +1,6 @@
 import { TrendingUp, Users, ShoppingBag, Layers } from "lucide-react";
 
-export function VentasStatsCards({ ventas = [], stats = null }) {
+export function VentasStatsCards({ ventas = [], stats = null, selectedPeriod = "personalizado" }) {
   const totalVentasSum = stats ? stats.totalVentas : ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalVentasStr = stats ? stats.totalVentasFormatted : `$${totalVentasSum.toLocaleString("es-CO")}`;
 
@@ -39,7 +39,7 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
           </div>
         </div>
         <div className="mt-4 pt-2.5 border-t border-gray-50 dark:border-gray-800/60 flex items-center justify-between text-xs">
-          <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">Ingresos brutos</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">{selectedPeriod === "personalizado" || selectedPeriod === "todos" ? "Histórico acumulado" : selectedPeriod === "este_mes" ? "Facturación este mes" : selectedPeriod === "7_dias" ? "Últimos 7 días" : selectedPeriod === "este_ano" ? "Facturación este año" : "Ingresos de hoy"}</span>
           <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md text-[10px]">
             COP
           </span>
@@ -62,7 +62,7 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
           </div>
         </div>
         <div className="mt-4 pt-2.5 border-t border-gray-50 dark:border-gray-800/60 flex items-center justify-between text-xs">
-          <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">Valor medio por pedido</span>
+          <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">Valor medio por venta</span>
           <span className="text-gray-400 dark:text-gray-500 font-medium text-[10px]">Promedio</span>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
               <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
                 {frecuenciaVal}
               </span>
-              <span className="text-xs font-bold text-gray-400">ped/cli</span>
+              <span className="text-xs font-bold text-gray-400">ventas/cli</span>
             </div>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-blue-100/70 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -88,7 +88,7 @@ export function VentasStatsCards({ ventas = [], stats = null }) {
         <div className="mt-4 pt-2.5 border-t border-gray-50 dark:border-gray-800/60 flex items-center justify-between text-xs">
           <span className="text-gray-500 dark:text-gray-400 font-medium text-[11px]">Promedio clientes</span>
           <span className="px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
-            {frecuenciaDiariaVal} ped/día
+            {frecuenciaDiariaVal} ventas/día
           </span>
         </div>
       </div>

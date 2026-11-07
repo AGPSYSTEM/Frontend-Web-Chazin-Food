@@ -93,6 +93,17 @@ export function Login() {
     };
   }, [isTipoDocOpen]);
 
+  // Evitar que el autocompletado del navegador ensucie el registro con credenciales guardadas
+  useEffect(() => {
+    if (tab === "register") {
+      const timer = setTimeout(() => {
+        setRegDireccion((prev) => (prev.includes("@") ? "" : prev));
+        setRegContraseña((prev) => (!touched.regContraseña && prev ? "" : prev));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [tab, touched.regContraseña]);
+
   useEffect(() => {
     const wasDark = document.documentElement.classList.contains("dark");
     if (wasDark) document.documentElement.classList.remove("dark");
@@ -291,18 +302,30 @@ export function Login() {
   };
 
   const getInputClass = (hasError, isOk) =>
-    `relative w-full pl-12 pr-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-12 pr-4 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   const getInputWithRightClass = (hasError, isOk) =>
-    `relative w-full pl-12 pr-12 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-12 pr-12 py-3.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   const getRegInputClass = (hasError, isOk) =>
-    `relative w-full pl-10 pr-3 py-2.5 border-2 rounded-xl focus:ring-2 focus:ring-red-500/20 transition-all bg-white/50 backdrop-blur-sm outline-none text-xs sm:text-sm ${
-      hasError ? "border-red-500 focus:border-red-500" : isOk ? "border-emerald-500/80 focus:border-emerald-500" : "border-gray-200 focus:border-red-500"
+    `relative w-full pl-10 pr-3 py-2.5 border-2 rounded-xl transition-all backdrop-blur-sm outline-none text-xs sm:text-sm ${
+      hasError
+        ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-2 focus:ring-red-400 focus:border-red-500"
+        : isOk
+        ? "border-emerald-500/80 bg-white/50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+        : "border-gray-200 bg-white/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
     }`;
 
   return (
@@ -325,15 +348,15 @@ export function Login() {
       <div className={`relative w-full ${tab === "register" ? "max-w-xl" : "max-w-md"} z-10 my-4 transition-all duration-300`}>
         {/* Logo */}
         <div className="text-center mb-4 sm:mb-6">
-          <div className="inline-flex items-center justify-center relative mb-3 sm:mb-4">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 animate-pulse" />
-            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20">
+          <Link to="/" className="inline-flex items-center justify-center relative mb-3 sm:mb-4 group cursor-pointer" title="Volver al inicio">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-rose-500 rounded-full blur-2xl opacity-30 group-hover:opacity-50 transition-opacity animate-pulse" />
+            <div className="relative bg-white rounded-full p-4 sm:p-5 shadow-2xl border-4 border-red-500/20 group-hover:scale-105 transition-transform">
               <img src={logoImg} alt="Chazin Food" className={`transition-all duration-300 ${tab === "register" ? "w-14 h-14" : "w-20 h-20"} object-contain`} />
             </div>
             <div className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-rose-600 p-1.5 rounded-full shadow-lg">
               <ChefHat className="w-4 h-4 text-white" />
             </div>
-          </div>
+          </Link>
           <h1 className="text-3xl sm:text-4xl font-bold mb-1 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 bg-clip-text text-transparent">
             Chazin Food
           </h1>
@@ -479,7 +502,7 @@ export function Login() {
 
             {/* REGISTRO */}
             {tab === "register" && (
-              <form onSubmit={handleRegister} className="space-y-3">
+              <form onSubmit={handleRegister} className="space-y-3" noValidate autoComplete="off">
                 <p className="text-xs text-gray-500 text-center -mt-1 mb-2">
                   Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
                 </p>
@@ -493,6 +516,8 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_first_name"
+                        autoComplete="off"
                         value={regNombre}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[@0-9]/g, "");
@@ -520,6 +545,8 @@ export function Login() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="reg_last_name"
+                        autoComplete="off"
                         value={regApellidos}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[@0-9]/g, "");
@@ -675,6 +702,8 @@ export function Login() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="email"
+                        name="reg_user_email"
+                        autoComplete="off"
                         value={regCorreo}
                         onChange={(e) => {
                           setRegCorreo(e.target.value);
@@ -707,6 +736,8 @@ export function Login() {
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type="text"
+                        name="delivery_address_reg"
+                        autoComplete="street-address"
                         value={regDireccion}
                         onChange={(e) => {
                           setRegDireccion(e.target.value);
@@ -733,6 +764,8 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_password"
+                        autoComplete="new-password"
                         value={regContraseña}
                         onChange={(e) => {
                           setRegContraseña(e.target.value);
@@ -759,6 +792,8 @@ export function Login() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 w-4 h-4 transition-colors z-10" />
                       <input
                         type={showRegPassword ? "text" : "password"}
+                        name="new_user_reg_confirm_password"
+                        autoComplete="new-password"
                         value={regConfirmar}
                         onChange={(e) => {
                           setRegConfirmar(e.target.value);

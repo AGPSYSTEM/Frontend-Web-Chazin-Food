@@ -21,13 +21,31 @@ import {
   ShieldCheck,
   Coins,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import { clientesService } from "@/features/ventas/servicios/clientesService";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import NumberInput from "@/shared/components/ui/NumberInput";
+
+export const isClientInactive = (c) => {
+  if (!c) return false;
+  return Boolean(
+    c.estado === 'Inactivo' ||
+    c.estado === 'INACTIVO' ||
+    c.estado === 0 ||
+    c.estado === false ||
+    c.estadoCuenta === 'INACTIVO' ||
+    c.cuentaActiva === false ||
+    c.usuario?.estado === 'Inactivo' ||
+    c.usuario?.estado === 'INACTIVO' ||
+    c.usuario?.estado === 0 ||
+    c.usuario?.estado === false
+  );
+};
 
 export function PosCheckoutModal({
   isOpen,
@@ -53,6 +71,7 @@ export function PosCheckoutModal({
   );
   const [tieneCuenta, setTieneCuenta] = useState(initialTieneCuenta || Boolean(initialCliente));
   const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [tieneCuenta, setTieneCuenta] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
 
   // Sincronizar selección inicial proveniente del apartado superior del POS
@@ -92,9 +111,10 @@ export function PosCheckoutModal({
       clientesService.getClientes().then(res => {
         if (Array.isArray(res)) {
           // Filter out generic placeholder entries
-          const validClients = res.filter(c => 
-            c.idCliente !== 26 && 
-            !c.nombre?.toLowerCase().includes("cliente mostrador")
+                    const validClients = res.filter(c => 
+            !c.esMostrador &&
+            !c.nombre?.toLowerCase().includes("cliente mostrador") &&
+            !c.apellidos?.toLowerCase().includes("mostrador")
           );
           setClientesList(validClients);
         }
@@ -136,13 +156,23 @@ export function PosCheckoutModal({
     : [];
 
   const handleSelectClient = (c) => {
+    if (!c) return;
+    if (isClientInactive(c)) {
+      warning(
+        "Cliente Inactivo",
+        `El cliente "${(`${c.nombre || ''} ${c.apellidos || ''}`).trim()}" se encuentra inactivo y no tiene permitido realizar compras ni asociarse a pedidos.`
+      );
+      return;
+    }
     setSelectedCliente(c);
+    setTieneCuenta(true);
     setClienteNombre(`${c.nombre} ${c.apellidos || ''}`.trim());
     setIsSearchingClient(false);
   };
 
   const handleClearSelectedClient = () => {
     setSelectedCliente(null);
+    setTieneCuenta(false);
     setClienteNombre("");
   };
 
@@ -154,6 +184,15 @@ export function PosCheckoutModal({
       warning(
         "Nombre de cliente obligatorio",
         "Por favor ingresa el nombre del cliente para registrar la orden."
+      );
+      return;
+    }
+
+    // Validación de Cliente Inactivo
+    if (selectedCliente && isClientInactive(selectedCliente)) {
+      warning(
+        "Cliente Inactivo",
+        `El cliente asociado "${selectedCliente.nombre || 'seleccionado'}" se encuentra inactivo y no tiene permitido realizar compras.`
       );
       return;
     }
@@ -197,14 +236,17 @@ export function PosCheckoutModal({
     const payload = {
       idUsuario: user?.idUsuario || user?.id || null,
       idCliente: selectedCliente ? (selectedCliente.id || selectedCliente.idCliente) : null,
-      tipoEntrega: "Recoger",
-      direccion: "Recoger en Local",
+      tipoEntrega: "En Mesa",
+      direccion: "Consumo en Mesa",
       clienteNombre: clienteNombre.trim(),
       responsable: responsableNombre,
       subtotal: Number(subtotal || 0),
+      descuento: calculatedDescuento,
       descuentoAplicado: calculatedDescuento,
       descuentoPorcentaje: discountPercent,
       total: finalTotal,
+      origen: "PUNTO_FISICO",
+      tiempoEstimadoEntrega: "15-20 min",
       metodoPago: metodoPago === "tarjeta" ? "Tarjeta" : "Efectivo",
       datosPago: {
         efectivoConCuanto: efectivoPaga ? Number(efectivoPaga) : null,
@@ -264,10 +306,10 @@ export function PosCheckoutModal({
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* 1. Tarjeta Resumen Financiero */}
-          <div className="bg-[#f8fafc] dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-xs space-y-2">
+          <div className="bg-[#f8fafc] dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-xs space-y-2 font-mono">
             <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
               <span>Subtotal ({safeCart.reduce((a, b) => a + (Number(b.cantidad) || 1), 0)} items)</span>
-              <span className="font-bold text-gray-800 dark:text-gray-200">
+              <span className="font-bold text-gray-800 dark:text-gray-200 tabular-nums">
                 ${Number(subtotal || 0).toLocaleString("es-CO")}
               </span>
             </div>
@@ -284,7 +326,7 @@ export function PosCheckoutModal({
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
               <span className="text-base font-black text-gray-900 dark:text-gray-100">Total a Pagar</span>
-              <span className="text-2xl font-black text-[#f05454] dark:text-red-400">
+              <span className="text-2xl font-black text-[#f05454] dark:text-red-400 tabular-nums">
                 ${finalTotal.toLocaleString("es-CO")}
               </span>
             </div>
@@ -325,13 +367,11 @@ export function PosCheckoutModal({
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#f05454]">
                     Entrega
                   </span>
-                  <p className="font-bold text-xs text-[#f05454] truncate">Recoger en Local</p>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Mostrador físico</p>
+                  <p className="font-bold text-xs text-[#f05454] truncate">Consumo en Mesa</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">Servicio en salón / mesa</p>
                 </div>
               </div>
-              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0">
-                ✓
-              </span>
+              <span className="w-5 h-5 rounded-full border-2 border-[#f05454] flex items-center justify-center text-[#f05454] text-xs font-black shrink-0"><Check className="w-3 h-3 stroke-[3]" /></span>
             </div>
           </div>
 
@@ -340,12 +380,53 @@ export function PosCheckoutModal({
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-black text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
                 <User className="w-4 h-4 text-[#f05454]" />
-                <span>Cliente y Fidelidad</span>
+                <span>Identificación del Cliente</span>
               </h4>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black flex items-center gap-1">
                 <Check className="w-3 h-3" />
                 <span>Identificado al inicio</span>
               </span>
+            </div>
+
+            {/* Selector Inicial: Especificar al hacer la venta si tiene cuenta o no */}
+            <div className="bg-white dark:bg-gray-800 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2 shadow-2xs">
+              <span className="text-[11px] font-black text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                <span>¿El cliente tiene cuenta registrada en Chazin Food?</span>
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(true);
+                    setIsSearchingClient(true);
+                  }}
+                  className={`py-2 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    tieneCuenta || selectedCliente
+                      ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/40 text-[#f05454] shadow-2xs"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Sí, Con Cuenta</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(false);
+                    setIsSearchingClient(false);
+                    handleClearSelectedClient();
+                  }}
+                  className={`py-2 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                    !tieneCuenta && !selectedCliente
+                      ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-2xs"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>No, Sin Cuenta (Ocasional)</span>
+                </button>
+              </div>
             </div>
 
             {/* CASO B: Buscador Interactivo de Clientes (Se muestra al presionar Buscar o Cambiar) */}
@@ -415,16 +496,7 @@ export function PosCheckoutModal({
                       const cDesc = c.descuentoPorcentaje ? `${c.descuentoPorcentaje}% OFF` : '';
                       const isCurrentlySelected = Boolean(selectedCliente && (selectedCliente.id || selectedCliente.idCliente) === cId);
 
-                      const isInactive =
-                        c.estado === 'Inactivo' ||
-                        c.estado === 'INACTIVO' ||
-                        c.estado === 0 ||
-                        c.estado === false ||
-                        c.usuario?.estado === 'Inactivo' ||
-                        c.usuario?.estado === 'INACTIVO' ||
-                        c.usuario?.estado === 0 ||
-                        c.usuario?.estado === false;
-
+                      const isInactive = isClientInactive(c);
                       const hasAccount = Boolean(c.idUsuario || c.usuario || c.tieneCuenta);
                       const hasActiveAccount = hasAccount && !isInactive;
 
@@ -432,10 +504,12 @@ export function PosCheckoutModal({
                         <div
                           key={cId}
                           onClick={() => handleSelectClient(c)}
-                          className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2.5 cursor-pointer group ${
-                            isCurrentlySelected
-                              ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/30 shadow-xs"
-                              : "border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20"
+                          className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2.5 transition-all ${
+                            isInactive
+                              ? "bg-gray-100/70 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-70 cursor-not-allowed hover:border-red-300 dark:hover:border-red-800"
+                              : isCurrentlySelected
+                              ? "border-[#f05454] bg-[#FFF5F5] dark:bg-red-950/30 shadow-xs cursor-pointer"
+                              : "border-gray-100 dark:border-gray-700/80 hover:border-[#f05454] bg-gray-50/60 hover:bg-[#FFF5F5] dark:bg-gray-750/50 dark:hover:bg-red-950/20 cursor-pointer group"
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -444,18 +518,18 @@ export function PosCheckoutModal({
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                                <p className={`text-xs font-bold truncate ${isInactive ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-gray-100"}`}>
                                   {cNombre}
                                 </p>
-                                {hasActiveAccount ? (
+                                {isInactive ? (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-[9.5px] font-black flex items-center gap-1 shrink-0">
+                                    <Lock className="w-2.5 h-2.5" />
+                                    <span>Inactivo (Bloqueado)</span>
+                                  </span>
+                                ) : hasActiveAccount ? (
                                   <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-black flex items-center gap-0.5 shrink-0">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                     <span>Cuenta Activa</span>
-                                  </span>
-                                ) : hasAccount ? (
-                                  <span className="px-1.5 py-0.5 rounded-md bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-[9.5px] font-black flex items-center gap-0.5 shrink-0">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                    <span>Cuenta Inactiva</span>
                                   </span>
                                 ) : (
                                   <span className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[9.5px] font-semibold shrink-0">
@@ -472,18 +546,21 @@ export function PosCheckoutModal({
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            {cDesc ? (
+                            {cDesc && !isInactive ? (
                               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black rounded-lg">
                                 {cDesc}
                               </span>
+                            ) : null}
+                            {isInactive ? (
+                              <span className="px-2.5 py-1 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 border border-red-200 dark:border-red-900/40 text-[10.5px] font-bold rounded-xl flex items-center gap-1 shadow-2xs">
+                                <Lock className="w-3 h-3" />
+                                <span>No disponible</span>
+                              </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-[10px] font-semibold rounded-md">
-                                {cTipo}
+                              <span className="px-2.5 py-1 bg-white dark:bg-gray-800 text-[#f05454] group-hover:bg-[#f05454] group-hover:text-white border border-[#f05454] text-[11px] font-black rounded-xl transition shadow-2xs">
+                                {isCurrentlySelected ? "Seleccionado" : "Asociar"}
                               </span>
                             )}
-                            <span className="px-2.5 py-1 bg-white dark:bg-gray-800 text-[#f05454] group-hover:bg-[#f05454] group-hover:text-white border border-[#f05454] text-[11px] font-black rounded-xl transition shadow-2xs">
-                              {isCurrentlySelected ? "Seleccionado ✓" : "Asociar"}
-                            </span>
                           </div>
                         </div>
                       );
@@ -504,16 +581,8 @@ export function PosCheckoutModal({
                         <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
                           {selectedCliente.nombre} {selectedCliente.apellidos || ''}
                         </h5>
-                        {(() => {
-                          const isSelInactive =
-                            selectedCliente.estado === 'Inactivo' ||
-                            selectedCliente.estado === 'INACTIVO' ||
-                            selectedCliente.estado === 0 ||
-                            selectedCliente.estado === false ||
-                            selectedCliente.usuario?.estado === 'Inactivo' ||
-                            selectedCliente.usuario?.estado === 'INACTIVO' ||
-                            selectedCliente.usuario?.estado === 0 ||
-                            selectedCliente.usuario?.estado === false;
+                                                {(() => {
+                          const isSelInactive = isClientInactive(selectedCliente);
 
                           const selHasAccount = Boolean(selectedCliente.idUsuario || selectedCliente.usuario || selectedCliente.tieneCuenta);
                           const selHasActive = selHasAccount && !isSelInactive;
@@ -593,10 +662,24 @@ export function PosCheckoutModal({
                     type="text"
                     required
                     value={clienteNombre}
-                    onChange={(e) => setClienteNombre(e.target.value)}
+                    onChange={(e) => {
+                      setClienteTouched(true);
+                      setClienteNombre(e.target.value);
+                    }}
+                    onBlur={() => setClienteTouched(true)}
                     placeholder="Ingresa el nombre del cliente (Obligatorio)"
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#f05454]/30"
+                    className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none transition ${
+                      clienteTouched && !clienteNombre.trim()
+                        ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
+                        : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
+                    }`}
                   />
+                  {clienteTouched && !clienteNombre.trim() && (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>El nombre del cliente es obligatorio.</span>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -640,7 +723,7 @@ export function PosCheckoutModal({
                       onBlur={() => setClienteTouched(true)}
                       className={`w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-750 border rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none transition ${
                         clienteTouched && !clienteNombre.trim()
-                          ? "border-red-400 focus:ring-2 focus:ring-red-400/30"
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-2 focus:ring-red-400"
                           : clienteNombre.trim()
                           ? "border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
                           : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/30"
@@ -648,13 +731,13 @@ export function PosCheckoutModal({
                       placeholder="Ingresa el nombre del cliente (Obligatorio)"
                     />
                     {clienteTouched && !clienteNombre.trim() ? (
-                      <p className="text-[10.5px] text-red-500 font-semibold mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                      <p className="text-[10.5px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
                         <span>El nombre del cliente es obligatorio para registrar la venta.</span>
                       </p>
                     ) : (
                       <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
                         <span>Nombre registrado correctamente para recibo y cocina.</span>
                       </p>
                     )}
@@ -693,9 +776,7 @@ export function PosCheckoutModal({
                 <Banknote className="w-5 h-5 text-inherit" />
                 <span className="text-xs font-bold text-inherit">Efectivo</span>
                 {metodoPago === "efectivo" && (
-                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
-                    ✓
-                  </span>
+                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black"><Check className="w-3 h-3 stroke-[3]" /></span>
                 )}
               </button>
 
@@ -712,9 +793,7 @@ export function PosCheckoutModal({
                 <CreditCard className="w-5 h-5 text-inherit" />
                 <span className="text-xs font-bold text-inherit">Tarjeta</span>
                 {metodoPago === "tarjeta" && (
-                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black">
-                    ✓
-                  </span>
+                  <span className="w-4 h-4 rounded-full border border-[#f05454] flex items-center justify-center text-[#f05454] text-[10px] font-black"><Check className="w-3 h-3 stroke-[3]" /></span>
                 )}
               </button>
             </div>
@@ -732,25 +811,22 @@ export function PosCheckoutModal({
                 </div>
 
                 <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
-                  pagoTouched && !efectivoPaga
-                    ? "border-red-400"
-                    : montoPagaNum > 0 && montoPagaNum < finalTotal
-                    ? "border-amber-400"
-                    : vueltoEfectivo > 100000
-                    ? "border-red-400"
+                  pagoTouched && (!efectivoPaga || montoPagaNum < finalTotal || vueltoEfectivo > 100000)
+                    ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
                     : montoPagaNum >= finalTotal
                     ? "border-emerald-500"
                     : "border-[#86EFAC] dark:border-emerald-700"
                 }`}>
                   <Banknote className="w-4 h-4 text-[#16A34A] mr-2 shrink-0" />
-                  <input
-                    type="number"
-                    min={finalTotal}
-                    required
+                  <NumberInput
+                    formatThousands={true}
+                    showStepper={false}
+                    min={0}
                     value={efectivoPaga}
                     onChange={(e) => {
                       setPagoTouched(true);
-                      setEfectivoPaga(e.target.value);
+                      const raw = e?.target ? e.target.value : e;
+                      setEfectivoPaga(raw);
                     }}
                     onBlur={() => setPagoTouched(true)}
                     placeholder={`Mínimo: $${finalTotal.toLocaleString("es-CO")}`}
@@ -760,18 +836,25 @@ export function PosCheckoutModal({
 
                 {/* Live validation feedback for Cash */}
                 {!efectivoPaga ? (
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
-                  </p>
+                  pagoTouched ? (
+                    <p className="text-[11px] text-red-600 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Ingresa el valor entregado (mínimo ${finalTotal.toLocaleString("es-CO")}).</span>
+                    </p>
+                  )
                 ) : montoPagaNum < finalTotal ? (
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                    <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                     <span>Monto insuficiente: Faltan ${(finalTotal - montoPagaNum).toLocaleString("es-CO")} para cubrir el total.</span>
                   </div>
                 ) : vueltoEfectivo > 100000 ? (
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-900/60">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-900/60">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
                     <span>El cambio (${vueltoEfectivo.toLocaleString("es-CO")}) excede el límite de caja ($100.000 COP). Cobrar por tarjeta.</span>
                   </div>
                 ) : (
@@ -796,10 +879,10 @@ export function PosCheckoutModal({
                     Número de tarjeta <span className="text-red-500">*</span>
                   </label>
                   <div className={`relative flex items-center bg-white dark:bg-gray-800 border rounded-xl px-3.5 py-2 shadow-2xs transition ${
-                    isCardComplete
+                    pagoTouched && !isCardComplete
+                      ? "border-red-500 bg-red-50/40 dark:bg-red-950/20 text-red-900"
+                      : isCardComplete
                       ? "border-emerald-500"
-                      : tarjetaNumero
-                      ? "border-amber-400"
                       : "border-[#C7D2FE] dark:border-blue-700"
                   }`}>
                     <CreditCard className="w-4 h-4 text-[#3B82F6] mr-2 shrink-0" />
@@ -808,9 +891,11 @@ export function PosCheckoutModal({
                       required
                       value={tarjetaNumero}
                       onChange={(e) => {
+                        setPagoTouched(true);
                         const v = e.target.value.replace(/[^\d]/g, "").slice(0, 16);
                         setTarjetaNumero(v.replace(/(\d{4})(?=\d)/g, "$1 "));
                       }}
+                      onBlur={() => setPagoTouched(true)}
                       placeholder="0000 0000 0000 0000"
                       className="w-full bg-transparent text-sm font-mono font-bold text-gray-900 dark:text-gray-100 outline-none tracking-widest"
                     />
@@ -818,14 +903,21 @@ export function PosCheckoutModal({
 
                   {/* Live Card Feedback */}
                   {!cleanCardDigits ? (
-                    <p className="text-[10.5px] text-gray-400 mt-1 flex items-center gap-1">
-                      <Info className="w-3 h-3 text-gray-400" />
-                      <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
-                    </p>
+                    pagoTouched ? (
+                      <p className="text-[10.5px] text-red-600 font-medium mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10.5px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Info className="w-3 h-3 text-gray-400" />
+                        <span>Ingresa los 16 dígitos para registrar la venta en datáfono.</span>
+                      </p>
+                    )
                   ) : !isCardComplete ? (
-                    <p className="text-[10.5px] text-amber-600 dark:text-amber-400 font-semibold mt-1 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-amber-500" />
-                      <span>Faltan {16 - cleanCardDigits.length} dígitos para completar la tarjeta (16 dígitos).</span>
+                    <p className="text-[10.5px] text-red-600 dark:text-red-400 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      <span>Faltan {16 - cleanCardDigits.length} dígitos para completar la tarjeta (16 dígitos requeridos).</span>
                     </p>
                   ) : (
                     <p className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
@@ -867,18 +959,32 @@ export function PosCheckoutModal({
                 const itemLineTotal =
                   ((Number(item.precio) || 0) + itemAddsTotal) * (Number(item.cantidad) || 1);
 
+                const unitPrice = (Number(item.precio) || 0) + itemAddsTotal;
+
                 return (
                   <div
                     key={`${item.productoId || idx}-${idx}`}
                     className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#fbfcfd] dark:bg-gray-800/40 text-xs flex flex-col gap-1.5"
                   >
-                    <div className="flex items-center justify-between font-bold text-gray-900 dark:text-gray-100">
-                      <span className="truncate">
-                        {item.cantidad || 1}x {item.nombre || "Producto"}
-                      </span>
-                      <span className="shrink-0 text-gray-800 dark:text-gray-200 font-black">
-                        ${itemLineTotal.toLocaleString("es-CO")}
-                      </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 font-bold text-gray-900 dark:text-gray-100">
+                        <span className="truncate block text-sm">
+                          {item.cantidad || 1}x {item.nombre || "Producto"}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-end text-right font-mono tabular-nums shrink-0">
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                          Unit: ${unitPrice.toLocaleString("es-CO")}
+                        </span>
+                        {(item.cantidad || 1) > 1 && (
+                          <span className="text-[9.5px] text-gray-400">
+                            {item.cantidad} × ${unitPrice.toLocaleString("es-CO")}
+                          </span>
+                        )}
+                        <span className="text-sm font-black text-gray-900 dark:text-gray-100 tracking-tight">
+                          ${itemLineTotal.toLocaleString("es-CO")}
+                        </span>
+                      </div>
                     </div>
 
                     {itemAdds.length > 0 && (

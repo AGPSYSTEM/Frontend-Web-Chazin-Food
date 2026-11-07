@@ -128,6 +128,7 @@ export default {
       'X-Frame-Options': 'SAMEORIGIN',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
   },
   preview: {
@@ -138,6 +139,7 @@ export default {
       'X-Frame-Options': 'SAMEORIGIN',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'Cache-Control': 'public, max-age=31536000, immutable',
     },

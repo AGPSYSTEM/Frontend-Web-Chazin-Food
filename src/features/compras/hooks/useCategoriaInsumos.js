@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { categoriaInsumosService } from "../servicios/categoriaInsumosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useCategoriaInsumos() {
   const notify = useNotifications();
@@ -25,14 +26,21 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  const filteredCategorias = categorias.filter((c) => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true;
-    return (
-      (c.nombre && c.nombre.toLowerCase().includes(term)) ||
-      (c.descripcion && c.descripcion.toLowerCase().includes(term)) ||
-      (c.estado && c.estado.toLowerCase().includes(term)) ||
-      String(c.id || c.idCategoriaInsumo || "").includes(term)
+    const filteredCategorias = categorias.filter((c) => {
+    const count = c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0);
+    const estadoKeywords = c.estado === "Activo" ? "activo activa habilitado" : "inactivo inactiva deshabilitado";
+    return matchesSmartSearch(
+      [
+        c.nombre,
+        c.descripcion,
+        c.estado,
+        estadoKeywords,
+        String(count),
+        `${count} insumos`,
+        c.id,
+        c.idCategoriaInsumo
+      ],
+      searchTerm
     );
   });
 

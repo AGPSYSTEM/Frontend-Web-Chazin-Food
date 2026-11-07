@@ -1275,6 +1275,16 @@ export function getEventBadgeConfig(event, product = null) {
   const combined = `${rawIcon} ${rawType} ${rawName}`;
   const cleanName = stripEmojis(event.nombreEvento || event.nombre || "");
 
+  // Paleta naranja / ámbar consistente con degradado (degradado cálido conmemorativo según diseño)
+  const orangeBadgeStyle = {
+    gradient: "from-orange-600 via-amber-600 to-red-600",
+    border: "border-amber-300/50",
+    glow: "shadow-[0_4px_16px_rgba(249,115,22,0.45)]",
+    textColor: "text-white",
+    pillBg: "bg-amber-100/90 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-750/70 font-black",
+    accentColor: "#f97316"
+  };
+
   // 1. PROMOCIÓN 2X1 (Evento 1: Jueves 2x1)
   if (
     rawIcon === "2x1" ||
@@ -1288,30 +1298,22 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "fire",
       label: "PROMO 2X1",
       fullLabel: cleanName || "Jueves 2x1 de Burger Artesanal",
-      gradient: "from-red-600 via-rose-600 to-orange-600",
-      border: "border-red-300/40",
-      glow: "shadow-[0_4px_16px_rgba(239,68,68,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/60",
-      accentColor: "#ef4444"
+      ...orangeBadgeStyle
     };
   }
 
   // 2. FIESTA FIN DE SEMANA / CONFETI (Evento 2: Super Fin de Semana)
   if (combined.includes("fin de semana") || combined.includes("fiesta") || rawIcon === "party") {
-    const pct = event.descuento ? Number(event.descuento) : 15;
+    const numDesc = Number(event.descuento);
+    const pct = !isNaN(numDesc) && numDesc > 0 ? numDesc : 0;
+    const badgeLabel = pct > 0 ? `-${pct}% OFF` : (cleanName ? (cleanName.length > 14 ? "FESTIVAL" : cleanName.toUpperCase()) : "EDICIÓN EVENTO");
     return {
       key: "party",
       Icon: StreamlinePartyPopper, // Icono confeti solicitado para el segundo evento
       iconSlug: "party",
-      label: `-${pct}% OFF`,
-      fullLabel: cleanName || "Super Fin de Semana Chazin (15% OFF)",
-      gradient: "from-purple-600 via-indigo-600 to-pink-600",
-      border: "border-purple-300/40",
-      glow: "shadow-[0_4px_16px_rgba(168,85,247,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
-      accentColor: "#a855f7"
+      label: badgeLabel,
+      fullLabel: cleanName || (pct > 0 ? `Super Fin de Semana (${pct}% OFF)` : "Super Fin de Semana"),
+      ...orangeBadgeStyle
     };
   }
 
@@ -1323,12 +1325,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "couple_heart",
       label: "COMBO PAREJA",
       fullLabel: cleanName || "Combo Pareja Festivo",
-      gradient: "from-sky-600 via-blue-600 to-indigo-600",
-      border: "border-sky-300/40",
-      glow: "shadow-[0_4px_16px_rgba(14,165,233,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-900/60",
-      accentColor: "#0ea5e9"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1340,12 +1337,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "crown",
       label: "BURGER FEST",
       fullLabel: cleanName || "Chazin Burger Fest 2026",
-      gradient: "from-amber-500 via-yellow-500 to-orange-500",
-      border: "border-amber-300/40",
-      glow: "shadow-[0_4px_16px_rgba(245,158,11,0.45)]",
-      textColor: "text-gray-950 font-black",
-      pillBg: "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-200 dark:border-amber-900/60",
-      accentColor: "#f59e0b"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1363,12 +1355,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "lightning_bolt",
       label: "PROMO FLASH",
       fullLabel: cleanName || "Promo Relámpago: Pollo Crispy Gourmet",
-      gradient: "from-orange-500 via-amber-500 to-red-500",
-      border: "border-orange-300/40",
-      glow: "shadow-[0_4px_16px_rgba(249,115,22,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-orange-100 dark:bg-orange-950/60 text-orange-900 dark:text-orange-300 border-orange-200 dark:border-orange-900/60",
-      accentColor: "#f97316"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1380,12 +1367,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "explosion",
       label: "-20% OFF",
       fullLabel: cleanName || "20% OFF en Doble Carne & Tocineta",
-      gradient: "from-rose-600 via-red-600 to-pink-600",
-      border: "border-rose-300/40",
-      glow: "shadow-[0_4px_16px_rgba(225,29,72,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60",
-      accentColor: "#e11d48"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1402,12 +1384,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "bacon",
       label: "+ TOPPING GRATIS",
       fullLabel: cleanName || "Festival de Toppings: Perro Suizo",
-      gradient: "from-emerald-600 via-teal-600 to-cyan-600",
-      border: "border-emerald-300/40",
-      glow: "shadow-[0_4px_16px_rgba(16,185,129,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60",
-      accentColor: "#10b981"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1419,12 +1396,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: "serving_cloche",
       label: "EDICIÓN ESPECIAL",
       fullLabel: cleanName || "Chazin Burger Fest 2026 - Edición Limitada",
-      gradient: "from-teal-600 via-cyan-600 to-emerald-600",
-      border: "border-teal-300/40",
-      glow: "shadow-[0_4px_16px_rgba(20,184,166,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-teal-100 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-900/60",
-      accentColor: "#14b8a6"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1437,12 +1409,7 @@ export function getEventBadgeConfig(event, product = null) {
       iconSlug: matchedFood.slug,
       label: matchedFood.label.toUpperCase(),
       fullLabel: cleanName || matchedFood.label,
-      gradient: "from-purple-600 via-indigo-600 to-blue-600",
-      border: "border-purple-300/40",
-      glow: "shadow-[0_4px_16px_rgba(147,51,234,0.45)]",
-      textColor: "text-white",
-      pillBg: "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
-      accentColor: "#9333ea"
+      ...orangeBadgeStyle
     };
   }
 
@@ -1453,12 +1420,7 @@ export function getEventBadgeConfig(event, product = null) {
     iconSlug: "party",
     label: "OFERTA EXCLUSIVA",
     fullLabel: cleanName || "Oferta Especial",
-    gradient: "from-purple-600 via-indigo-600 to-blue-600",
-    border: "border-purple-300/40",
-    glow: "shadow-[0_4px_16px_rgba(147,51,234,0.45)]",
-    textColor: "text-white",
-    pillBg: "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
-    accentColor: "#9333ea"
+    ...orangeBadgeStyle
   };
 }
 

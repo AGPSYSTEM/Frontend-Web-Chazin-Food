@@ -14,7 +14,8 @@ import {
   Zap,
   CheckCircle2,
   Calendar,
-  Layers
+  Layers,
+  Clock
 } from "lucide-react";
 import {
   AreaChart,
@@ -30,6 +31,7 @@ import {
   Cell
 } from "recharts";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+import { formatTime12h } from "@/shared/utils/dateUtils";
 
 function StatVariation({ value, label = "vs mes anterior" }) {
   const num = Number(value || 0);
@@ -106,6 +108,79 @@ const quickAccess = [
   }
 ];
 
+const defaultProductPrices = {
+  "hamburguesa clásica chazin": 18000,
+  "hamburguesa clasica chazin": 18000,
+  "hamburguesa doble carne & tocineta": 25000,
+  "hamburguesa doble carne": 25000,
+  "hamburguesa pollo crispy gourmet": 21000,
+  "hamburguesa pollo crispy": 21000,
+  "hamburguesa bbq bacon chazin": 22000,
+  "hamburguesa mexicana chazin": 22000,
+  "hamburguesa campesina chazin": 23000,
+  "perro caliente especial americano": 14000,
+  "perro especial americano": 14000,
+  "perro suizo chazin": 17000,
+  "perro mexicano clásico": 16000,
+  "perro criollo especial chazin": 17000,
+  "salchipapa salvaje gourmet": 24000,
+  "salchipapa criolla chazin": 20000,
+  "salchipapa costeña chazin": 22000,
+  "combo pareja chazin": 38000,
+  "porción papas a la francesa (150g)": 7500,
+  "porción papas a la francesa": 7500,
+  "porcion papas a la francesa": 7500,
+  "papas a la francesa": 7500,
+  "papas corral grandes": 9000,
+  "gaseosa coca-cola 400ml": 4500,
+  "gaseosa coca cola 400ml": 4500,
+  "gaseosa coca-cola": 4500,
+  "gaseosa manzana postobón 400ml": 4500,
+  "gaseosa manzana postobon": 4500,
+  "gaseosa postobón manzana 400ml": 4500,
+  "gaseosa postobon manzana": 4500,
+  "gaseosa pepsi 400ml": 4500,
+  "gaseosa pepsi": 4500
+};
+
+function CustomProductoTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload || {};
+    const nombre = data.nombreLimpio || data.nombre || "Producto";
+    const qty = Number(data.ventas || payload[0].value || 0);
+    const unitPrice = Number(data.precioUnitario || 0);
+    const totalVentas = Number(data.ingresos || (qty * unitPrice) || 0);
+    const pct = data.porcentaje || 0;
+
+    return (
+      <div className="bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-700 p-3.5 rounded-2xl shadow-xl text-xs space-y-1 animate-in fade-in duration-150 min-w-[210px]">
+        <p className="font-extrabold text-gray-900 dark:text-gray-100 text-sm leading-snug">
+          {nombre}
+        </p>
+        <p className="font-extrabold text-[#10B981] text-sm">
+          Unidades : {qty} {qty === 1 ? "venta" : "ventas"}
+        </p>
+        {totalVentas > 0 && (
+          <p className="font-bold text-teal-600 dark:text-teal-400 text-xs">
+            Total en ventas: ${totalVentas.toLocaleString("es-CO")} COP
+          </p>
+        )}
+        {unitPrice > 0 && (
+          <p className="text-gray-600 dark:text-gray-300 text-xs font-medium">
+            Precio unitario: ${unitPrice.toLocaleString("es-CO")} c/u
+          </p>
+        )}
+        {pct > 0 && (
+          <p className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
+            Representación: {pct}% del volumen de ventas
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
 export function Dashboard() {
   const isDark = useDarkMode();
   const {
@@ -137,6 +212,29 @@ export function Dashboard() {
 
   const finalVentasData = Array.isArray(ventasChart) && ventasChart.length > 0 ? ventasChart : defaultVentasData;
   const finalPopulares = Array.isArray(productosPopulares) && productosPopulares.length > 0 ? productosPopulares : defaultProductosPopulares;
+
+  const totalPopularesUnidades = finalPopulares.reduce((acc, p) => acc + (Number(p.ventas || p.cantidad) || 0), 0);
+
+  const enrichedPopulares = finalPopulares.map((p) => {
+    const cleanName = (p.nombre || "").replace(/\s*\(.*?\)/g, "").replace(/\s*-\s*base/i, "").trim();
+    const cleanKey = cleanName.toLowerCase();
+    const qty = Number(p.ventas || p.cantidad || 0);
+
+    const refPrice = defaultProductPrices[cleanKey] || (cleanKey.includes("hamburguesa") ? 18000 : cleanKey.includes("perro") ? 14000 : cleanKey.includes("gaseosa") ? 4500 : 15000);
+    const unitPrice = Number(p.precioUnitario > 0 ? p.precioUnitario : refPrice);
+    const totalIngresos = Number(p.ingresos > 0 ? p.ingresos : (qty * unitPrice));
+    const pct = Number(p.porcentaje > 0 ? p.porcentaje : (totalPopularesUnidades > 0 ? Math.round((qty / totalPopularesUnidades) * 100) : 0));
+
+    return {
+      ...p,
+      nombreLimpio: cleanName,
+      nombreShort: cleanName,
+      ventas: qty,
+      precioUnitario: unitPrice,
+      ingresos: totalIngresos,
+      porcentaje: pct
+    };
+  });
   const finalAlertas = Array.isArray(alertasStock) && alertasStock.length > 0 ? alertasStock : defaultAlertasStock;
 
   const periods = [
@@ -201,9 +299,9 @@ export function Dashboard() {
               aria-label="Filtrar por año"
               className="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-300 py-1 px-1 rounded-lg border-0 outline-none cursor-pointer focus:ring-1 focus:ring-red-500/50"
             >
-              <option value={2026}>2026</option>
-              <option value={2025}>2025</option>
-              <option value={2024}>2024</option>
+              {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2, new Date().getFullYear() - 3].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -234,8 +332,8 @@ export function Dashboard() {
       </div>
 
       {/* ── KPI Cards Rediseñadas (Ítems 29, 30 y 31) ── */}
-      {/* 5 Tarjetas simétricas con divisa COP explícita y distribución equilibrada */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5">
+      {/* 5 Tarjetas simétricas con divisa COP explícita y distribución equilibrada (Ítem #29) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 lg:gap-5">
 
         {/* 1. Total de Ventas (COP) - Ítem 31 y 30 */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-800 p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -244,8 +342,11 @@ export function Dashboard() {
               <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                 Total de ventas (COP)
               </span>
-              <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")}
+              <span
+                title={`$${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} COP`}
+                className="text-base sm:text-lg xl:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight leading-snug break-words"
+              >
+                ${Number(stats.totalVentasGlobal || stats.ventasTotal || 0).toLocaleString("es-CO")} <span className="text-xs font-bold text-gray-400 dark:text-gray-500">COP</span>
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -267,8 +368,11 @@ export function Dashboard() {
               <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">
                 Ventas del Período (COP)
               </span>
-              <span className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight truncate">
-                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")}
+              <span
+                title={`$${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} COP`}
+                className="text-base sm:text-lg xl:text-xl font-extrabold text-gray-900 dark:text-gray-100 block tracking-tight leading-snug break-words"
+              >
+                ${Number(stats.ventasTotal || 0).toLocaleString("es-CO")} <span className="text-xs font-bold text-gray-400 dark:text-gray-500">COP</span>
               </span>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-green-100/80 dark:bg-green-950/50 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0 shadow-2xs">
@@ -384,7 +488,7 @@ export function Dashboard() {
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
                   itemStyle={tooltipItemStyle}
-                  formatter={(value) => [`$${Number(value).toLocaleString("es-CO")} COP`, ""]}
+                  formatter={(value, name) => [`$${Number(value || 0).toLocaleString("es-CO")} COP`, name || "Monto"]}
                 />
                 <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
                 {/* Etiquetas Compras y Ventas (Ítem 33) */}
@@ -411,15 +515,12 @@ export function Dashboard() {
             </span>
           </div>
 
-          {finalPopulares.length > 0 ? (
+          {enrichedPopulares.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart
                 layout="vertical"
-                data={finalPopulares.map(p => ({
-                  ...p,
-                  nombreShort: (p.nombre || "").replace(/\s*\(.*?\)/g, "").trim()
-                }))}
-                margin={{ top: 5, right: 25, left: 20, bottom: 25 }}
+                data={enrichedPopulares}
+                margin={{ top: 10, right: 25, left: 25, bottom: 30 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={isDark ? "#374151" : "#f1f5f9"} />
                 {/* Eje X Etiquetado claramente (Ítem 32) */}
@@ -429,7 +530,7 @@ export function Dashboard() {
                   label={{
                     value: "Cantidad de unidades vendidas",
                     position: "insideBottom",
-                    offset: -12,
+                    offset: -16,
                     fill: axisColorMuted,
                     fontSize: 11,
                     fontWeight: 600
@@ -447,21 +548,21 @@ export function Dashboard() {
                     value: "Productos",
                     angle: -90,
                     position: "insideLeft",
-                    offset: -5,
+                    offset: -8,
                     fill: axisColorMuted,
                     fontSize: 11,
                     fontWeight: 600
                   }}
                 />
+                {/* Mini-tarjeta interactiva con toda la información al pasar el cursor */}
                 <Tooltip
-                  formatter={(value) => [`${value} unidades`, "Total Vendido"]}
-                  labelFormatter={(label, items) => (items && items[0] && items[0].payload ? items[0].payload.nombre : label)}
-                  contentStyle={tooltipStyle}
-                  labelStyle={tooltipLabelStyle}
-                  itemStyle={tooltipItemStyle}
+                  content={<CustomProductoTooltip />}
+                  cursor={{ fill: "rgba(156, 163, 175, 0.12)" }}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }}
                 />
                 <Bar dataKey="ventas" radius={[0, 6, 6, 0]} barSize={20}>
-                  {finalPopulares.map((_, index) => (
+                  {enrichedPopulares.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index === 0 ? "#16a34a" : "#22c55e"} fillOpacity={1 - index * 0.12} />
                   ))}
                 </Bar>
@@ -557,14 +658,34 @@ export function Dashboard() {
                   ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50"
                   : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50";
 
-                const formatHoraDynamic = (dateStr, fallback) => {
-                  if (fallback) return fallback;
-                  if (!dateStr) return "Reciente";
-                  const d = new Date(dateStr);
-                  return isNaN(d.getTime()) ? dateStr : d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const getHoraCambioEstado = (v) => {
+                  if (v.horaCambioEstado && v.horaCambioEstado !== "12:30 PM") {
+                    return formatTime12h(v.horaCambioEstado);
+                  }
+                  if (v.horaEstado && v.horaEstado !== "12:30 PM") {
+                    return formatTime12h(v.horaEstado);
+                  }
+                  if (Array.isArray(v.historialEstados) && v.historialEstados.length > 0) {
+                    const ultimo = v.historialEstados[v.historialEstados.length - 1];
+                    if (ultimo?.hora) return formatTime12h(ultimo.hora);
+                    if (ultimo?.fecha) return formatTime12h(ultimo.fecha);
+                  }
+                  if (v.fechaCambioEstado) {
+                    return formatTime12h(v.fechaCambioEstado);
+                  }
+                  if (v.updatedAt) {
+                    return formatTime12h(v.updatedAt);
+                  }
+                  if (v.fechaVenta || v.fecha) {
+                    return formatTime12h(v.fechaVenta || v.fecha);
+                  }
+                  if (v.horario) {
+                    return formatTime12h(v.horario);
+                  }
+                  return formatTime12h(new Date());
                 };
 
-                const horaEstado = venta.horaEstado || formatHoraDynamic(venta.fechaVenta || venta.fecha, venta.horario);
+                const horaEstado = getHoraCambioEstado(venta);
 
                 return (
                   <div
@@ -576,11 +697,20 @@ export function Dashboard() {
                         <p className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
                           {venta.codigoPedido || venta.numeroVenta || `#${String(venta.id).padStart(4, '0')}`}
                         </p>
-                        {/* Estado con Hora del estado dinámica (Ítem 36) */}
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
-                          <span>{venta.estado || "Pendiente"}</span>
-                          <span className="opacity-75 font-mono text-[11px] font-normal">• {horaEstado}</span>
-                        </span>
+                        {/* Estado y Hora del cambio de estado (Ítems 36 y 85) */}
+                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                            <span>{venta.estado || "Pendiente"}</span>
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full border border-gray-200/60 dark:border-gray-700/60"
+                            title="Hora del cambio de estado"
+                          >
+                            <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                            <span>{horaEstado}</span>
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {venta.clienteNombre || venta.cliente || "Cliente General"} · {venta.origenNombre || (venta.tipoEntrega === 'Domicilio' ? 'Venta Online' : 'Punto Físico')}

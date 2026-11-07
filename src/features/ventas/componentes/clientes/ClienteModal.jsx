@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { X, AlertTriangle, Clock, Lightbulb, Mail, CheckCircle2 } from "lucide-react";
+import { X, AlertTriangle, Clock, Lightbulb, Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import {
   sanitizeTelefono,
   sanitizeDocumento,
   getDocConfig,
   validateTelefono,
   validateDocumento,
+  validateTexto,
+  validateEmail,
   formatNombreCompleto
 } from "@/shared/utils/validationUtils";
 
@@ -23,6 +25,9 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
     descuentoPorcentaje: 0
   });
   const [errorMsg, setErrorMsg] = useState("");
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (cliente) {
@@ -32,7 +37,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
         nombre: cliente.nombre || "",
         apellidos: cliente.apellidos || "",
         tipoDocumento: cliente.tipoDocumento || "C.C.",
-        documento: cliente.documento || (cliente.idUsuario ? String(cliente.idUsuario) : ""),
+        documento: (cliente.documento && String(cliente.documento).length >= 6) ? cliente.documento : (cliente.numeroDocumento && String(cliente.numeroDocumento).length >= 6) ? cliente.numeroDocumento : "",
         email: cliente.email || "",
         telefono: sanitizeTelefono(cliente.telefono || ""),
         direccion: cliente.direccion || "",
@@ -53,6 +58,9 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
       });
     }
     setErrorMsg("");
+    setErrors({});
+    setTouched({});
+    setSubmitted(false);
   }, [cliente, isOpen]);
 
   if (!isOpen) return null;
@@ -65,57 +73,97 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
     if (isEditing && (c.id === cliente?.id || c.idCliente === cliente?.idCliente)) return false;
     if (!cleanDocCurrent || cleanDocCurrent.trim().length < 5) return false;
     const docClean = cleanDocCurrent.trim();
-    const cDoc = sanitizeDocumento(c.documento || (c.idUsuario ? String(c.idUsuario) : ""), c.tipoDocumento || form.tipoDocumento);
+    const cDoc = sanitizeDocumento(c.documento || c.numeroDocumento || "", c.tipoDocumento || form.tipoDocumento);
     return docClean === cDoc;
   });
 
+  const validateField = (name, value, currentForm = form) => {
+    switch (name) {
+      case "documento": {
+        if (!value || !value.trim()) return "El número de documento es obligatorio.";
+        const docVal = validateDocumento(value, currentForm.tipoDocumento);
+        if (!docVal.isValid) return docVal.error;
+        if (existingClient) {
+          return `Ya existe un cliente con este documento (${formatNombreCompleto(existingClient.nombre, existingClient.apellidos)}).`;
+        }
+        return null;
+      }
+      case "nombre": {
+        const res = validateTexto(value, "El nombre del cliente", 2, 60);
+        return res.isValid ? null : res.error;
+      }
+      case "apellidos": {
+        if (value && value.trim()) {
+          const res = validateTexto(value, "Los apellidos", 2, 60);
+          return res.isValid ? null : res.error;
+        }
+        return null;
+      }
+      case "email": {
+        const res = validateEmail(value);
+        return res.isValid ? null : res.error;
+      }
+      case "telefono": {
+        if (!value || !value.trim()) return "El número de teléfono es obligatorio.";
+        const telVal = validateTelefono(value);
+        return telVal.isValid ? null : telVal.error;
+      }
+      case "direccion":
+        if (value && value.length > 150) {
+          return "La dirección no puede superar los 150 caracteres.";
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, form[field]);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
+  const handleChange = (field, val) => {
+    const updated = { ...form, [field]: val };
+    setForm(updated);
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateField(field, val, updated);
+    setErrors((prev) => ({ ...prev, [field]: err }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
     setErrorMsg("");
 
-    // 1. Verificación de documento duplicado
-    if (existingClient) {
-      setErrorMsg(`Ya existe un cliente registrado con el documento ${form.documento} (${formatNombreCompleto(existingClient.nombre, existingClient.apellidos)}). No se puede duplicar.`);
-      return;
-    }
+    const errDoc = validateField("documento", form.documento);
+    const errNom = validateField("nombre", form.nombre);
+    const errApe = validateField("apellidos", form.apellidos);
+    const errEmail = validateField("email", form.email);
+    const errTel = validateField("telefono", form.telefono);
+    const errDir = validateField("direccion", form.direccion);
 
-    // 2. Validación de campos obligatorios
-    if (!form.documento.trim()) {
-      setErrorMsg("El número de documento es obligatorio.");
-      return;
-    }
+    const newErrors = {};
+    if (errDoc) newErrors.documento = errDoc;
+    if (errNom) newErrors.nombre = errNom;
+    if (errApe) newErrors.apellidos = errApe;
+    if (errEmail) newErrors.email = errEmail;
+    if (errTel) newErrors.telefono = errTel;
+    if (errDir) newErrors.direccion = errDir;
 
-    if (!form.nombre.trim()) {
-      setErrorMsg("El nombre del cliente es obligatorio.");
-      return;
-    }
+    setErrors(newErrors);
+    setTouched({
+      documento: true,
+      nombre: true,
+      apellidos: true,
+      email: true,
+      telefono: true,
+      direccion: true
+    });
 
-    if (!form.telefono.trim()) {
-      setErrorMsg("El número de teléfono es obligatorio.");
-      return;
-    }
-
-    if (!form.email.trim()) {
-      setErrorMsg("El correo electrónico es obligatorio para el envío del correo de activación.");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setErrorMsg("Por favor ingresa un correo electrónico válido (ej: cliente@correo.com).");
-      return;
-    }
-
-    // 3. Validación de formatos específicos
-    const docVal = validateDocumento(form.documento, form.tipoDocumento);
-    if (!docVal.isValid) {
-      setErrorMsg(docVal.error);
-      return;
-    }
-
-    const telVal = validateTelefono(form.telefono);
-    if (!telVal.isValid) {
-      setErrorMsg(telVal.error);
+    if (Object.keys(newErrors).length > 0) {
+      setErrorMsg(Object.values(newErrors)[0]);
       return;
     }
 
@@ -175,7 +223,20 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        {/* ÍTEM 121: Aviso de activación por correo para cuentas nuevas */}
+        {!isEditing && (
+          <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 rounded-xl flex items-start gap-3 text-xs text-blue-700 dark:text-blue-300">
+            <Mail className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Activación de Cuenta por Correo</p>
+              <p className="mt-0.5 leading-relaxed">
+                Se enviará un correo de activación al cliente con un enlace seguro para que confirme su correo y cree su contraseña de acceso.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs" noValidate>
 
           {/* ── ÍTEM 120: Número y Tipo de Documento en Primer Lugar ── */}
           <div className="bg-gray-50/70 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-2.5">
@@ -197,11 +258,15 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                   aria-required="true"
                   onChange={(e) => {
                     const newTipo = e.target.value;
+                    const cleanDoc = sanitizeDocumento(form.documento, newTipo);
                     setForm({
                       ...form,
                       tipoDocumento: newTipo,
-                      documento: sanitizeDocumento(form.documento, newTipo)
+                      documento: cleanDoc
                     });
+                    setTouched((prev) => ({ ...prev, documento: true }));
+                    const err = validateField("documento", cleanDoc, { ...form, tipoDocumento: newTipo, documento: cleanDoc });
+                    setErrors((prev) => ({ ...prev, documento: err }));
                   }}
                   className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs cursor-pointer font-medium"
                   required
@@ -210,6 +275,7 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                   <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
                   <option value="C.E.">Cédula de Extranjería (C.E.)</option>
                   <option value="Pasaporte">Pasaporte</option>
+                  <option value="PPT">Permiso por Protección Temporal (PPT)</option>
                   <option value="NIT">NIT</option>
                 </select>
               </div>
@@ -228,20 +294,36 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                   type="text"
                   required
                   aria-required="true"
-                  aria-invalid={!!existingClient}
+                  aria-invalid={!!existingClient || (!!(touched.documento || submitted) && !!errors.documento)}
                   value={form.documento}
                   maxLength={docConfig.max}
+                  onBlur={() => handleBlur("documento")}
                   onChange={(e) => {
                     const clean = sanitizeDocumento(e.target.value, form.tipoDocumento);
-                    setForm({ ...form, documento: clean });
+                    handleChange("documento", clean);
                   }}
                   className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
-                    existingClient
+                    (touched.documento || submitted) && errors.documento
+                      ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                      : existingClient
                       ? "border-amber-400 dark:border-amber-500 focus:ring-2 focus:ring-amber-400 bg-amber-50/20"
+                      : touched.documento && form.documento && !errors.documento
+                      ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
                       : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
                   }`}
                   placeholder={docConfig.helper}
                 />
+                {(touched.documento || submitted) && errors.documento ? (
+                  <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {errors.documento}
+                  </p>
+                ) : touched.documento && form.documento && !errors.documento && !existingClient ? (
+                  <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    Documento válido
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -274,15 +356,33 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 required
                 aria-required="true"
                 value={form.nombre}
+                onBlur={() => handleBlur("nombre")}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
-                    setForm({ ...form, nombre: val });
+                    handleChange("nombre", val);
                   }
                 }}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
+                  (touched.nombre || submitted) && errors.nombre
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.nombre && form.nombre && !errors.nombre
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                    : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
+                }`}
                 placeholder="Ej: Juan Carlos"
               />
+              {(touched.nombre || submitted) && errors.nombre ? (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.nombre}
+                </p>
+              ) : touched.nombre && form.nombre && !errors.nombre ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Nombre válido
+                </p>
+              ) : null}
             </div>
             <div>
               <label htmlFor="cliente-apellidos" className="block font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -292,15 +392,33 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 id="cliente-apellidos"
                 type="text"
                 value={form.apellidos}
+                onBlur={() => handleBlur("apellidos")}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]*$/.test(val)) {
-                    setForm({ ...form, apellidos: val });
+                    handleChange("apellidos", val);
                   }
                 }}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
+                  (touched.apellidos || submitted) && errors.apellidos
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.apellidos && form.apellidos && !errors.apellidos
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                    : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
+                }`}
                 placeholder="Ej: Pérez Gómez"
               />
+              {(touched.apellidos || submitted) && errors.apellidos ? (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.apellidos}
+                </p>
+              ) : touched.apellidos && form.apellidos && !errors.apellidos ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Apellidos válidos
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -316,10 +434,28 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 required
                 aria-required="true"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                onBlur={() => handleBlur("email")}
+                onChange={(e) => handleChange("email", e.target.value)}
+                className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
+                  (touched.email || submitted) && errors.email
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.email && form.email && !errors.email
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                    : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
+                }`}
                 placeholder="juan.perez@email.com"
               />
+              {(touched.email || submitted) && errors.email ? (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.email}
+                </p>
+              ) : touched.email && form.email && !errors.email ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Correo electrónico válido
+                </p>
+              ) : null}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -337,13 +473,31 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
                 aria-required="true"
                 value={form.telefono}
                 maxLength={10}
+                onBlur={() => handleBlur("telefono")}
                 onChange={(e) => {
                   const clean = sanitizeTelefono(e.target.value);
-                  setForm({ ...form, telefono: clean });
+                  handleChange("telefono", clean);
                 }}
-                className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+                className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
+                  (touched.telefono || submitted) && errors.telefono
+                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                    : touched.telefono && form.telefono && !errors.telefono
+                    ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                    : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
+                }`}
                 placeholder="3191234567"
               />
+              {(touched.telefono || submitted) && errors.telefono ? (
+                <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {errors.telefono}
+                </p>
+              ) : touched.telefono && form.telefono && !errors.telefono ? (
+                <p className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  Teléfono móvil válido
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -356,10 +510,21 @@ export function ClienteModal({ isOpen, onClose, onSave, cliente = null, clientes
               id="cliente-direccion"
               type="text"
               value={form.direccion}
-              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-red-500/50 text-xs"
+              onBlur={() => handleBlur("direccion")}
+              onChange={(e) => handleChange("direccion", e.target.value)}
+              className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 border rounded-xl text-gray-900 dark:text-gray-100 outline-none text-xs transition-colors ${
+                (touched.direccion || submitted) && errors.direccion
+                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                  : "border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-500/50"
+              }`}
               placeholder="Calle 50 #45-30, Belén, Medellín"
             />
+            {(touched.direccion || submitted) && errors.direccion && (
+              <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {errors.direccion}
+              </p>
+            )}
           </div>
 
           {/* ── ÍTEM 121: Banner Informativo de Activación por Correo ── */}

@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
+export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when categorias length changes (#51)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categorias.length]);
 
   const totalRecords = categorias.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
@@ -16,7 +21,7 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
-              <th className="px-6 py-4 w-[13%] text-left">ID</th>
+              {/* <th className="px-6 py-4 w-[13%] text-left">ID</th> */}
               <th className="px-6 py-4 w-[17%] text-left">Nombre</th>
               <th className="px-6 py-4 w-[17%] text-left">Descripción</th>
               <th className="px-6 py-4 w-[17%] text-left">Insumos</th>
@@ -33,10 +38,8 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
               </tr>
             ) : (
               paginatedCategorias.map((c, index) => (
-                <tr key={c.id || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium text-left">
-                    {c.id || startIndex + index + 1}
-                  </td>
+                <tr key={c.id ?? `cat-${index}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                
                   <td className="px-6 py-4 font-bold text-[#1e293b] dark:text-gray-100 whitespace-nowrap text-left">
                     {c.nombre}
                   </td>
@@ -61,20 +64,24 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete }) {
                   </td>
                   <td className="px-6 py-4 text-left">
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => onEdit(c)}
-                        title="Editar categoría"
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4 stroke-[2]" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(c.id, c.nombre)}
-                        title="Eliminar categoría"
-                        className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4 stroke-[2]" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => onEdit(c)}
+                          title="Editar categoría"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors p-1 cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 stroke-[2]" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => onDelete(c.id, c.nombre)}
+                          title="Eliminar categoría"
+                          className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

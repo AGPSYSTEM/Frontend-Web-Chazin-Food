@@ -18,7 +18,7 @@ export const loadWompiScript = () => {
         clearInterval(interval);
         return resolve(window.WidgetCheckout);
       }
-      if (checkCount >= 100) { // 10 segundos (100 * 100ms)
+      if (checkCount >= 25) { // 2.5 segundos (25 * 100ms) - Fallback rápido para no congelar la UI
         clearInterval(interval);
         reject(new Error("No se pudo inicializar la pasarela Wompi en el navegador. Revisa tu conexión o desactiva bloqueadores de anuncios."));
       }

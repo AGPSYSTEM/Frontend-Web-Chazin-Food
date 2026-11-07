@@ -200,7 +200,7 @@ export function TrazabilidadModal({
             onClick={() => setFilterType("Todos")}
             className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
               filterType === "Todos"
-                ? "bg-[#2c3e50] text-white"
+                ? "bg-[#F05454] text-white"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
@@ -235,7 +235,7 @@ export function TrazabilidadModal({
             onClick={() => setFilterType("Creados")}
             className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
               filterType === "Creados"
-                ? "bg-[#2c3e50] text-white"
+                ? "bg-[#F05454] text-white"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
@@ -246,7 +246,7 @@ export function TrazabilidadModal({
             onClick={() => setFilterType("Editados")}
             className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
               filterType === "Editados"
-                ? "bg-[#2c3e50] text-white"
+                ? "bg-[#F05454] text-white"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
@@ -257,7 +257,7 @@ export function TrazabilidadModal({
             onClick={() => setFilterType("Eliminados")}
             className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
               filterType === "Eliminados"
-                ? "bg-[#2c3e50] text-white"
+                ? "bg-[#F05454] text-white"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
@@ -268,7 +268,7 @@ export function TrazabilidadModal({
             onClick={() => setFilterType("Restaurados")}
             className={`px-3 py-1 rounded-full font-medium transition-colors shrink-0 ${
               filterType === "Restaurados"
-                ? "bg-[#2c3e50] text-white"
+                ? "bg-[#F05454] text-white"
                 : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
             }`}
           >
