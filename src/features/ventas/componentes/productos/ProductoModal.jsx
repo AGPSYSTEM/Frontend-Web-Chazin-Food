@@ -103,6 +103,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [fileToUpload, setFileToUpload] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [modoVariantesManual, setModoVariantesManual] = useState(null);
+  const [esBebidaPreparada, setEsBebidaPreparada] = useState(false);
   const fileInputRef = useRef(null);
 
   // Estados del Armador de Combo
@@ -158,6 +159,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const handleChange = (field, val) => {
     const updated = { ...form, [field]: val };
     setForm(updated);
+    if (field === "nombre") {
+      const lower = String(val || "").toLowerCase();
+      if (/batido|smoothie|malteada|jugo natural|frapp|limonada|shake|artesanal|preparad|coctel|cóctel|capuchino|café|cafe/i.test(lower)) {
+        setEsBebidaPreparada(true);
+      } else if (/gaseosa|agua\b|pepsi|coca|sprite|quatro|colombiana|postob|hit\b|cerveza/i.test(lower)) {
+        setEsBebidaPreparada(false);
+      }
+    }
     setFichaTecnica((prev) =>
       prev?._isRestoredVersionCommit ? { ...prev, _isRestoredVersionCommit: false } : prev
     );
@@ -237,6 +246,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         adiciones: producto.adiciones || []
       });
       setFichaTecnica(producto.fichaTecnica || null);
+
+      const isSpecialName = /batido|smoothie|malteada|jugo natural|frapp|limonada|shake|artesanal|preparad|coctel|cóctel|capuchino|café|cafe/i.test(producto.nombre || "") ||
+                            /batido|smoothie|malteada|preparad/i.test(producto.descripcion || "");
+      const hasFicha = Boolean(producto.fichaTecnica && (producto.fichaTecnica.detalles?.length > 0 || producto.fichaTecnica.insumos?.length > 0));
+      setEsBebidaPreparada(isSpecialName || hasFicha);
 
       const pLower = String(producto.nombre || "").toLowerCase();
       const cLower = String(producto.categoria || selectedCat?.nombre || "").toLowerCase();
@@ -322,6 +336,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         adiciones: []
       });
       setFichaTecnica(null);
+      setEsBebidaPreparada(false);
       setConfigCombo({
         esCombo: isFirstCombo,
         cantidadBebidas: 1,
@@ -360,6 +375,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const isDrink = configCombo.esCombo
     ? false
     : (modoVariantesManual !== null ? modoVariantesManual === "bebida" : autoIsDrink);
+
+  const isCommercialDrink = isDrink && !esBebidaPreparada;
+
+  useEffect(() => {
+    if (activeStep === 4 && (isCommercialDrink || configCombo.esCombo)) {
+      setActiveStep(3);
+    }
+  }, [activeStep, isCommercialDrink, configCombo.esCombo]);
 
   // Cálculo de Precio de Referencia gastronómico
   const totalsFicha = useMemo(() => {
@@ -799,16 +822,18 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         }
       }
 
-      // 2. Validar Ficha Técnica obligatoria solo para platos/comidas preparadas
+      // 2. Validar Ficha Técnica obligatoria para platos/comidas preparadas y bebidas especiales (batidos, jugos, malteadas...)
       // Las bebidas y refrescos comerciales son productos terminados de compra directa y no requieren ficha técnica
-      if (!isDrink) {
+      if (!isCommercialDrink) {
         const ft = fichaTecnica || producto?.fichaTecnica || {};
         const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
         if (!ingredientes || ingredientes.length === 0) {
           setActiveStep(4);
           notify.warning(
             "Ficha Técnica Obligatoria",
-            "Sin la ficha técnica no puede existir un producto preparado. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
+            isDrink
+              ? "Para registrar esta bebida preparada o batido debes agregar al menos un ingrediente base en el Paso 4 (Ficha Técnica)."
+              : "Sin la ficha técnica no puede existir un producto preparado. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
           );
           return;
         }
@@ -861,7 +886,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               itemsCombo: configCombo.productosAsociados || []
             }
           : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [], productosAsociados: [] },
-        fichaTecnica: configCombo.esCombo
+        fichaTecnica: (configCombo.esCombo || isCommercialDrink)
           ? null
           : fichaTecnica
           ? {
@@ -979,7 +1004,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         </div>
 
         {/* STEPPER NAVEGADOR DE PASOS (Aprovecha el espacio y explica el proceso claramente) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0">
+        <div className={`grid ${isCommercialDrink || configCombo.esCombo ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4"} border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0`}>
           
           {/* Paso 1 */}
           <button
@@ -1090,55 +1115,37 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             )}
           </button>
 
-          {/* Paso 4: Ficha Técnica (Obligatoria para platos, no requerida para combos ni bebidas compradas) */}
-          <button
-            type="button"
-            onClick={() => {
-              if (configCombo.esCombo) {
-                notify.info("Modo Combo", "Los combos no requieren una Ficha Técnica propia porque cada producto incluido ya cuenta con su receta.");
-                return;
-              }
-              if (isDrink) {
-                notify.info("Bebida Comercial", "Las bebidas comerciales y aguas compradas no requieren ficha técnica de preparación.");
-                return;
-              }
-              setActiveStep(4);
-            }}
-            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
-              configCombo.esCombo || isDrink
-                ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
-                : activeStep === 4
-                ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
-                : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
-            }`}
-          >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-              configCombo.esCombo || isDrink
-                ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
-                : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
-                ? "bg-emerald-600 text-white shadow-xs"
-                : activeStep === 4
-                ? "bg-[#F05454] text-white shadow-xs"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-            }`}>
-              {configCombo.esCombo || isDrink
-                ? "—"
-                : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
-                ? <Check className="w-4 h-4 stroke-[3]" />
-                : "4"}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-black truncate leading-tight">
-                {configCombo.esCombo ? "4. Ficha Técnica (N/A)" : isDrink ? "4. Ficha Técnica (N/A)" : "4. Ficha Técnica"}
-              </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {configCombo.esCombo ? "Heredada de los platos" : isDrink ? "Bebida directa de proveedor" : "Receta, insumos y proceso"}
-              </p>
-            </div>
-            {activeStep === 4 && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
-            )}
-          </button>
+          {/* Paso 4: Ficha Técnica (Visible para platos cocinados y bebidas especiales preparadas como batidos) */}
+          {!configCombo.esCombo && !isCommercialDrink && (
+            <button
+              type="button"
+              onClick={() => setActiveStep(4)}
+              className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
+                activeStep === 4
+                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
+                  : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : activeStep === 4
+                  ? "bg-[#F05454] text-white shadow-xs"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+              }`}>
+                {(fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
+                  ? <Check className="w-4 h-4 stroke-[3]" />
+                  : "4"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black truncate leading-tight">4. Ficha Técnica</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Receta, insumos y proceso</p>
+              </div>
+              {activeStep === 4 && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* Form Body - Paneles por Paso */}
@@ -1257,6 +1264,55 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                   </button>
                 </div>
+
+                {/* Subtipo de Bebida: Comercial vs Especial/Preparada */}
+                {isDrink && !configCombo.esCombo && (
+                  <div className="p-3.5 bg-purple-50/70 dark:bg-purple-950/25 rounded-2xl border border-purple-200/80 dark:border-purple-900/50 space-y-2 mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        Modalidad de la Bebida:
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                        esBebidaPreparada 
+                          ? "bg-purple-200 dark:bg-purple-900/70 text-purple-800 dark:text-purple-200" 
+                          : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+                      }`}>
+                        {esBebidaPreparada ? "Ficha Técnica Activada (Receta)" : "Reventa Directa (Sin Ficha)"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEsBebidaPreparada(false)}
+                        className={`p-2.5 rounded-xl text-left transition border cursor-pointer ${
+                          !esBebidaPreparada
+                            ? "bg-white dark:bg-gray-900 border-purple-400 dark:border-purple-500 shadow-2xs ring-1 ring-purple-400/30"
+                            : "bg-purple-100/30 dark:bg-purple-900/10 border-transparent hover:bg-white/50"
+                        }`}
+                      >
+                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Bebida Comercial / Reventa</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Agua, gaseosas, botellas, latas. No requiere ficha técnica culinaria.</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEsBebidaPreparada(true)}
+                        className={`p-2.5 rounded-xl text-left transition border cursor-pointer ${
+                          esBebidaPreparada
+                            ? "bg-white dark:bg-gray-900 border-purple-400 dark:border-purple-500 shadow-2xs ring-1 ring-purple-400/30"
+                            : "bg-purple-100/30 dark:bg-purple-900/10 border-transparent hover:bg-white/50"
+                        }`}
+                      >
+                        <p className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                          <span>Bebida Especial / Preparada</span>
+                        </p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">Batidos, malteadas, smoothies, jugos naturales. Sí lleva ficha técnica.</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Grid Principal Paso 1: Izquierda (Imagen & Preview) + Derecha (Campos de entrada) */}
@@ -1398,6 +1454,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           const selectedName = e.target.value;
                           const catObj = (categorias || []).find(c => c.nombre === selectedName);
                           const isComboCat = selectedName.toLowerCase().includes("combo");
+                          const isDrinkCat = selectedName.toLowerCase().includes("bebida") ||
+                            selectedName.toLowerCase().includes("gaseos") ||
+                            selectedName.toLowerCase().includes("refresco") ||
+                            selectedName.toLowerCase().includes("jugo") ||
+                            selectedName.toLowerCase().includes("cerveza") ||
+                            catObj?.id === 4 || catObj?.idCategoriaProducto === 4;
+
                           setForm({
                             ...form,
                             categoria: selectedName,
@@ -1405,6 +1468,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           });
                           if (isComboCat) {
                             setConfigCombo(prev => ({ ...prev, esCombo: true }));
+                            setModoVariantesManual(null);
+                          } else if (isDrinkCat) {
+                            setModoVariantesManual("bebida");
+                            setConfigCombo(prev => ({ ...prev, esCombo: false }));
+                          } else {
+                            setModoVariantesManual("comida");
+                            setConfigCombo(prev => ({ ...prev, esCombo: false }));
                           }
                         }}
                         className={`${inputCls} ${
@@ -2262,7 +2332,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                   )}
                 </div>
-              ) : isDrink ? (
+              ) : isCommercialDrink ? (
                 /* Bebida o Refresco Comercial: No requiere Ficha Técnica */
                 <div className="p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-3xl border border-purple-200/80 dark:border-purple-900/40 space-y-4">
                   <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-xs">
@@ -2281,7 +2351,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   </div>
                 </div>
               ) : (
-                /* Producto (Comida o Plato): Editor completo de Ficha Técnica */
+                /* Producto (Comida o Bebida Especial / Batido): Editor completo de Ficha Técnica */
                 <div className="space-y-4">
                   <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -2289,10 +2359,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                     <div className="space-y-0.5 text-xs">
                       <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                        Ficha Técnica Oficial del Producto (Paso 4 de 4)
+                        {isDrink ? "Ficha Técnica de Bebida Especial / Preparada (Paso 4 de 4)" : "Ficha Técnica Oficial del Producto (Paso 4 de 4)"}
                       </h4>
                       <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                        Configura los ingredientes / insumos necesarios con sus cantidades, las fases de preparación, tiempo, porciones y costos reales.
+                        {isDrink
+                          ? "Configura la receta (leche, fruta, azúcar, jarabes, hielo), fases de elaboración y costos reales de este batido o bebida especial."
+                          : "Configura los ingredientes / insumos necesarios con sus cantidades, las fases de preparación, tiempo, porciones y costos reales."}
                       </p>
                     </div>
                   </div>
@@ -2368,7 +2440,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </button>
               )}
 
-              {((configCombo.esCombo && activeStep < 3) || (isDrink && activeStep < 3) || (!configCombo.esCombo && !isDrink && activeStep < 4)) && (
+              {((configCombo.esCombo && activeStep < 3) || (isCommercialDrink && activeStep < 3) || (!configCombo.esCombo && !isCommercialDrink && activeStep < 4)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2386,7 +2458,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         return;
                       }
                     }
-                    if (activeStep === 3 && !configCombo.esCombo && !isDrink) {
+                    if (activeStep === 3 && !configCombo.esCombo && !isCommercialDrink) {
                       setActiveStep(4);
                       return;
                     }
@@ -2397,7 +2469,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   <span>
                     {configCombo.esCombo && activeStep === 1
                       ? "Ir a Armador de Combo"
-                      : !configCombo.esCombo && !isDrink && activeStep === 3
+                      : !configCombo.esCombo && !isCommercialDrink && activeStep === 3
                       ? "Ir a Ficha Técnica"
                       : "Siguiente"}
                   </span>
@@ -2410,7 +2482,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 type="submit"
                 disabled={uploading}
                 className={`px-5 py-2 text-xs font-bold text-white rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50 ${
-                  (configCombo.esCombo && activeStep === 3) || (isDrink && activeStep === 3) || (!configCombo.esCombo && !isDrink && activeStep === 4)
+                  (configCombo.esCombo && activeStep === 3) || (isCommercialDrink && activeStep === 3) || (!configCombo.esCombo && !isCommercialDrink && activeStep === 4)
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : isStep1Valid
                     ? "bg-gray-900 hover:bg-black dark:bg-gray-100 dark:text-gray-900"

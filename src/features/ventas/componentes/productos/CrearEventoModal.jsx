@@ -9,6 +9,7 @@ import {
 import { eventosService } from "../../servicios/eventosService";
 import { categoriaProductosService } from "../../servicios/categoriaProductosService";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
+import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
@@ -516,6 +517,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
             procedimiento: prodFichaTecnica?.procedimiento || 'Preparar con los más selectos ingredientes de temporada.',
             tiempoPreparacion: Number(prodFichaTecnica?.tiempoPreparacion) || 12,
             rendimiento: prodFichaTecnica?.rendimiento || prodRendimiento || '1 porción',
+            especificaciones: prodFichaTecnica?.especificaciones || '',
+            caracteristicas: prodFichaTecnica?.caracteristicas || '',
+            informacionNutricional: prodFichaTecnica?.informacionNutricional || '',
+            condicionesAlmacenamiento: prodFichaTecnica?.condicionesAlmacenamiento || '',
+            vidaUtil: prodFichaTecnica?.vidaUtil || '',
+            observaciones: prodFichaTecnica?.observaciones || '',
             estado: prodEstadoInicial === "Activo" ? 1 : 0,
             adiciones: adicionesSeleccionadas,
             configuracionCombo: configCombo.esCombo ? configCombo : null,
@@ -527,7 +534,15 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
           }
         };
 
-        await eventosService.createEvento(payload);
+        const res = await eventosService.createEvento(payload);
+        const createdProdId = res?.idProducto || res?.producto?.idProducto || res?.producto?.id;
+        if (createdProdId && prodFichaTecnica && !configCombo.esCombo) {
+          try {
+            await fichasTecnicasService.saveFichaProducto(createdProdId, prodFichaTecnica);
+          } catch (e) {
+            console.warn("Ficha técnica sincronizada por createEvento:", e);
+          }
+        }
         success("¡Producto de Evento Creado!", `Se creó "${prodNombre.trim()}" con su ficha técnica, adiciones y evento activo.`);
         if (onCreated) onCreated();
         onClose();
@@ -2024,7 +2039,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   <div className="bg-white dark:bg-gray-850 p-2 sm:p-4 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
                     <FichaTecnicaProducto
                       productId={null}
-                      productName={prodNombre || "Nuevo Producto de Evento"}
+                      productName={prodNombre || "Nuevo Platillo de Festival"}
+                      initialData={prodFichaTecnica || null}
+                      entityData={{
+                        nombre: prodNombre || "Nuevo Platillo de Festival",
+                        precio: Number(prodPrecioRegular) || 0,
+                        descripcion: prodDescripcion || ""
+                      }}
                       onChange={(data) => setProdFichaTecnica(data)}
                       onSave={(data) => setProdFichaTecnica(data)}
                     />

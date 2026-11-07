@@ -35,13 +35,41 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
     catName.includes("combo") ||
     prodName.startsWith("combo ")
   );
+  const isSpecialDrink = Boolean(
+    /batido|smoothie|malteada|jugo natural|frapp|limonada|shake|artesanal|preparad|coctel|cóctel|capuchino|café|cafe/i.test(prodName) ||
+    /batido|smoothie|malteada|preparad/i.test(String(producto?.descripcion || ""))
+  );
+
+  const hasFichaTecnica = Boolean(
+    producto?.fichaTecnica && (producto.fichaTecnica.detalles?.length > 0 || producto.fichaTecnica.insumos?.length > 0)
+  );
+
+  const isDrink = Boolean(
+    producto?.idCategoriaProducto === 4 ||
+    catName.includes("bebida") ||
+    catName.includes("gaseos") ||
+    catName.includes("refresco") ||
+    catName.includes("cerveza") ||
+    prodName.includes("agua") ||
+    prodName.includes("gaseosa") ||
+    prodName.includes("coca") ||
+    prodName.includes("pepsi") ||
+    prodName.includes("postob") ||
+    prodName.includes("colombiana") ||
+    prodName.includes("sprite") ||
+    prodName.includes("quatro") ||
+    prodName.includes("cuatro") ||
+    prodName.includes("hit")
+  );
+
+  const isCommercialDrink = isDrink && !isSpecialDrink && !hasFichaTecnica;
 
   useEffect(() => {
     if (isOpen && (producto?.id || producto?.idProducto)) {
       const pId = producto.id || producto.idProducto;
 
-      // Si es combo, no carga ni busca ficha técnica individual
-      if (isCombo) {
+      // Si es combo o bebida comercial pura de reventa, no carga ficha técnica
+      if (isCombo || isCommercialDrink) {
         setFichaTecnica(null);
         setLoadingFicha(false);
       } else {
@@ -101,27 +129,6 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
     : Array.isArray(producto.productosAsociados)
     ? producto.productosAsociados
     : [];
-
-  const isDrink =
-    catName.includes("bebida") ||
-    catName.includes("gaseos") ||
-    catName.includes("refresco") ||
-    catName.includes("jugo") ||
-    catName.includes("líquido") ||
-    catName.includes("liquido") ||
-    prodName.includes("gaseosa") ||
-    prodName.includes("bebida") ||
-    prodName.includes("coca-cola") ||
-    prodName.includes("coca cola") ||
-    prodName.includes("pepsi") ||
-    prodName.includes("postobón") ||
-    prodName.includes("postobon") ||
-    prodName.includes("colombiana") ||
-    prodName.includes("sprite") ||
-    prodName.includes("cuatro") ||
-    prodName.includes("quatro") ||
-    prodName.includes("agua") ||
-    sizeVariantes.length > 0;
 
   return (
     <div
@@ -276,14 +283,16 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
           {/* Insumos & Adiciones Section (solo para productos estándar, no para combos) */}
           {!isCombo ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Insumos */}
+              {/* Insumos / Ficha Técnica (solo para platos preparados, nunca para bebidas comerciales) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <ChefHat className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Insumos de la Ficha Técnica</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                      {isCommercialDrink ? "Tipo de Producto" : "Insumos de la Ficha Técnica"}
+                    </h3>
                   </div>
-                  {fichaTecnica && (
+                  {fichaTecnica && !isCommercialDrink && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <CheckCircle2 className="w-3 h-3" />
                       Versión {fichaTecnica.versionActual || 1} (Vigente)
@@ -291,28 +300,44 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                   )}
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 min-h-[100px] space-y-2.5">
-                  {fichaTecnica && (
+                  {isCommercialDrink ? (
+                    <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center">
+                        <FoodIcon name="drink" size={22} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          Producto de Compra Directa / Reventa
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 max-w-xs mt-0.5">
+                          Las aguas y bebidas embotelladas se adquieren listas para la venta. No requieren receta ni Ficha Técnica culinaria.
+                        </p>
+                      </div>
+                    </div>
+                  ) : fichaTecnica && (
                     <div className="pb-2 border-b border-gray-200/70 dark:border-gray-700/60 text-[11px] text-gray-600 dark:text-gray-400">
                       <span className="font-bold text-gray-700 dark:text-gray-300">Vigente desde:</span>{" "}
                       {formatFechaHoraFicha(fichaTecnica.fechaInicioVigencia || fichaTecnica.fechaCreacion)}
                     </div>
                   )}
-                  {loadingFicha ? (
-                    <p className="text-xs text-gray-400 text-center py-4">Cargando insumos...</p>
-                  ) : fichaTecnica && fichaTecnica.detalles && fichaTecnica.detalles.length > 0 ? (
-                    <ul className="space-y-2">
-                      {fichaTecnica.detalles.map((d, i) => (
-                        <li key={i} className="flex justify-between items-center text-xs">
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">{d.nombreInsumo || d.insumo?.nombre}</span>
-                          <span className="text-gray-500 dark:text-gray-400 font-mono">{d.cantidad} {d.unidadMedida}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-400 py-3">
-                      <Package className="w-5 h-5 mb-1 opacity-50" />
-                      <p className="text-xs text-center">Sin ficha técnica configurada</p>
-                    </div>
+                  {!isCommercialDrink && (
+                    loadingFicha ? (
+                      <p className="text-xs text-gray-400 text-center py-4">Cargando insumos...</p>
+                    ) : fichaTecnica && fichaTecnica.detalles && fichaTecnica.detalles.length > 0 ? (
+                      <ul className="space-y-2">
+                        {fichaTecnica.detalles.map((d, i) => (
+                          <li key={i} className="flex justify-between items-center text-xs">
+                            <span className="text-gray-800 dark:text-gray-200 font-medium">{d.nombreInsumo || d.insumo?.nombre}</span>
+                            <span className="text-gray-500 dark:text-gray-400 font-mono">{d.cantidad} {d.unidadMedida}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400 py-3">
+                        <Package className="w-5 h-5 mb-1 opacity-50" />
+                        <p className="text-xs text-center">Sin ficha técnica configurada</p>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -369,8 +394,8 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
             </div>
           )}
 
-          {/* Detalles completos de Elaboración de la Ficha Técnica (solo no combos) */}
-          {!isCombo && fichaTecnica && (
+          {/* Detalles completos de Elaboración de la Ficha Técnica (solo platos cocinados o bebidas especiales, nunca combos ni bebidas comerciales) */}
+          {!isCombo && !isCommercialDrink && fichaTecnica && (
             <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 space-y-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
@@ -445,7 +470,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
           )}
 
           {/* Historial de Versiones de la Ficha Técnica del Producto */}
-          {!isCombo && fichaTecnica && (
+          {!isCombo && !isCommercialDrink && fichaTecnica && (
             <div className="pt-2">
               <FichaVersionesHistorial
                 versionActual={fichaTecnica.versionActual || 1}
@@ -718,7 +743,7 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
                 className="px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
               >
                 <Edit className="w-4 h-4" />
-                <span>{isCombo ? "Editar Combo" : "Editar Producto y Ficha Técnica"}</span>
+                <span>{isCombo ? "Editar Combo" : isCommercialDrink ? "Editar Producto" : "Editar Producto y Ficha Técnica"}</span>
               </button>
             )}
             <button
