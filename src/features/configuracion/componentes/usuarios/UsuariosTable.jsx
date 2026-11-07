@@ -1,4 +1,4 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
@@ -59,10 +59,8 @@ const formatTelefonoLines = (tel) => {
 };
 
 // ── Paginator ──────────────────────────────────────────────────────────
-function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize }) {
-  if (totalPages <= 1) return null;
-
-  const start = (currentPage - 1) * pageSize + 1;
+function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize, onPageSizeChange }) {
+  const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
 
   // Build page numbers with ellipsis
@@ -82,43 +80,93 @@ function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize
   const btnBase = "w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all";
   const btnActive = `${btnBase} bg-[#F05454] text-white shadow-sm`;
   const btnInactive = `${btnBase} text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`;
-  const btnDisabled = `${btnBase} text-gray-300 dark:text-gray-600 cursor-not-allowed`;
+  const btnDisabled = `${btnBase} text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40`;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl">
+      {/* Selector de registros por página */}
+      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span>Mostrar:</span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
+          className="px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-medium outline-none focus:ring-2 focus:ring-[#F05454]/40"
+        >
+          <option value={5}>5</option>
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span>usuarios</span>
+      </div>
+
+      {/* Contador */}
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Mostrando <span className="font-semibold text-gray-700 dark:text-gray-300">{start}–{end}</span> de{" "}
         <span className="font-semibold text-gray-700 dark:text-gray-300">{totalItems}</span> usuarios
       </p>
+
+      {/* Controles de navegación */}
       <div className="flex items-center gap-1">
         <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage <= 1}
+          className={currentPage <= 1 ? btnDisabled : btnInactive}
+          title="Primera página"
+          aria-label="Primera página"
+        >
+          <ChevronsLeft className="w-4 h-4" />
+        </button>
+        <button
           onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={currentPage === 1 ? btnDisabled : btnInactive}
+          disabled={currentPage <= 1}
+          className={currentPage <= 1 ? btnDisabled : btnInactive}
+          title="Página anterior"
           aria-label="Página anterior"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        {pages.map((p, idx) =>
-          p === "..." ? (
-            <span key={`ellipsis-${idx}`} className="w-8 text-center text-xs text-gray-400">…</span>
-          ) : (
-            <button
-              key={p}
-              onClick={() => onPageChange(p)}
-              className={currentPage === p ? btnActive : btnInactive}
-            >
-              {p}
-            </button>
-          )
-        )}
+
+        <div className="hidden sm:flex items-center gap-1">
+          {pages.map((p, idx) =>
+            p === "..." ? (
+              <span key={`ellipsis-${idx}`} className="w-6 text-center text-xs text-gray-400">…</span>
+            ) : (
+              <button
+                key={p}
+                onClick={() => onPageChange(p)}
+                className={currentPage === p ? btnActive : btnInactive}
+              >
+                {p}
+              </button>
+            )
+          )}
+        </div>
+
+        <div className="sm:hidden px-2">
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages}
+          </span>
+        </div>
+
         <button
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={currentPage === totalPages ? btnDisabled : btnInactive}
+          disabled={currentPage >= totalPages}
+          className={currentPage >= totalPages ? btnDisabled : btnInactive}
+          title="Página siguiente"
           aria-label="Página siguiente"
         >
           <ChevronRight className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage >= totalPages}
+          className={currentPage >= totalPages ? btnDisabled : btnInactive}
+          title="Última página"
+          aria-label="Última página"
+        >
+          <ChevronsRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -133,7 +181,8 @@ export function UsuariosTable({
   onView,
   currentPage = 1,
   pageSize = 10,
-  onPageChange
+  onPageChange,
+  onPageSizeChange
 }) {
   const totalItems = usuarios.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -265,6 +314,7 @@ export function UsuariosTable({
             onPageChange={onPageChange}
             totalItems={totalItems}
             pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
           />
         </div>
       </div>
@@ -435,6 +485,7 @@ export function UsuariosTable({
           onPageChange={onPageChange}
           totalItems={totalItems}
           pageSize={pageSize}
+          onPageSizeChange={onPageSizeChange}
         />
       </div>
     </>

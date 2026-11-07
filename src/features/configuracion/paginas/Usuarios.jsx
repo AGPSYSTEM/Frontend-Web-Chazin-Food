@@ -35,7 +35,7 @@ export function Usuarios() {
   const [viewingUsuario, setViewingUsuario] = useState(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const [pageSize, setPageSize] = useState(10);
 
   const totalActivos = usuarios.filter((u) => u.estado === "Activo").length;
   const totalInactivos = usuarios.filter((u) => u.estado === "Inactivo").length;
@@ -310,8 +310,12 @@ export function Usuarios() {
         onChangePassword={handleOpenPassword}
         onView={handleOpenView}
         currentPage={currentPage}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
         onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setCurrentPage(1);
+        }}
       />
 
       {/* Modals */}

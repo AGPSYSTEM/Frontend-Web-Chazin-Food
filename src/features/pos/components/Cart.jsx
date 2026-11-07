@@ -1,5 +1,5 @@
 import React from "react";
-import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat, UserCheck, Store } from "lucide-react";
 
 export function Cart({
   cart,
@@ -11,7 +11,11 @@ export function Cart({
   loading,
   subtotal,
   descuento,
+  discountPercent = 0,
   total,
+  selectedCliente = null,
+  clienteNombre = "",
+  tieneCuenta = false,
   onClose = null
 }) {
   const isEmpty = cart.length === 0;
@@ -46,6 +50,28 @@ export function Cart({
             <ShoppingCart className="h-4 w-4" />
           </div>
         </div>
+      </div>
+
+      {/* Indicador de Cliente Seleccionado al inicio */}
+      <div className="mb-3 p-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 flex items-center justify-between gap-2 shadow-2xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tieneCuenta && selectedCliente ? "bg-red-50 text-[#f05454] dark:bg-red-950/40" : "bg-gray-100 text-gray-500 dark:bg-gray-800"}`}>
+            {tieneCuenta && selectedCliente ? <UserCheck className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[9.5px] uppercase tracking-wider font-extrabold text-gray-400 block">
+              {tieneCuenta && selectedCliente ? "Cliente Registrado" : "Cliente Mostrador"}
+            </span>
+            <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+              {tieneCuenta && selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellidos || ''}`.trim() : (clienteNombre || "Cliente Mostrador")}
+            </p>
+          </div>
+        </div>
+        {discountPercent > 0 && (
+          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black shrink-0">
+            {discountPercent}% OFF
+          </span>
+        )}
       </div>
 
       {isEmpty ? (
@@ -153,10 +179,17 @@ export function Cart({
           <span>Subtotal</span>
           <span className="font-semibold text-[#1e2b39] dark:text-gray-100">${Number(subtotal || 0).toLocaleString("es-CO")}</span>
         </div>
-        <div className="mt-1.5 flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
-          <span>Descuento</span>
-          <span className="font-semibold text-[#1e2b39] dark:text-gray-100">${Number(descuento || 0).toLocaleString("es-CO")}</span>
-        </div>
+        {Number(descuento || 0) > 0 ? (
+          <div className="mt-1.5 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+            <span>Descuento Fidelidad {discountPercent > 0 ? `(${discountPercent}%)` : ""}</span>
+            <span className="font-bold">-${Number(descuento).toLocaleString("es-CO")}</span>
+          </div>
+        ) : (
+          <div className="mt-1.5 flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
+            <span>Descuento</span>
+            <span className="font-semibold text-[#1e2b39] dark:text-gray-100">$0</span>
+          </div>
+        )}
         <div className="mt-2.5 flex items-center justify-between border-t border-[#edf1f5] dark:border-gray-800 pt-2 text-sm font-black text-[#1e2b39] dark:text-gray-100">
           <span>Total</span>
           <span className="text-[#f05454] dark:text-red-400">${Number(total || 0).toLocaleString("es-CO")}</span>

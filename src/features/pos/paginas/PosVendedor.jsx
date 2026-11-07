@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft } from "lucide-react";
+import { Search, ShoppingCart, Sparkles, ShoppingBag, ChevronRight, X, Flame, ArrowLeft, User, UserCheck, Store, Check, Phone, Mail } from "lucide-react";
+import { clientesService } from "@/features/ventas/servicios/clientesService";
+import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import usePOS from "../hooks/usePOS";
 import ProductCard from "../components/ProductCard";
 import Cart from "../components/Cart";
@@ -39,6 +41,66 @@ export default function PosVendedor() {
   const [customizingFicha, setCustomizingFicha] = useState(null);
   const [allAdiciones, setAllAdiciones] = useState([]);
   const [fichasCache, setFichasCache] = useState({});
+
+  // ── Identificación del Cliente al Inicio del Pedido ──
+  const [tieneCuenta, setTieneCuenta] = useState(false);
+  const [clientesList, setClientesList] = useState([]);
+  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [clienteNombre, setClienteNombre] = useState("Cliente Mostrador");
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+
+  useEffect(() => {
+    clientesService
+      .getClientes()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          const validClients = res.filter(
+            (c) =>
+              c.idCliente !== 26 &&
+              !c.nombre?.toLowerCase().includes("cliente mostrador")
+          );
+          setClientesList(validClients);
+        }
+      })
+      .catch((err) => console.warn("Error cargando clientes en POS:", err));
+  }, []);
+
+  const discountPercent = (tieneCuenta && selectedCliente)
+    ? Number(
+        selectedCliente.descuentoPorcentaje ||
+          (selectedCliente.tipo === "VIP"
+            ? 15
+            : selectedCliente.tipo === "Frecuente"
+            ? 10
+            : selectedCliente.tipo === "Regular"
+            ? 5
+            : 0)
+      )
+    : 0;
+
+  const calculatedDescuento =
+    discountPercent > 0
+      ? Math.round(Number(subtotal || 0) * (discountPercent / 100))
+      : 0;
+
+  const finalTotal = Math.max(0, Number(subtotal || 0) - calculatedDescuento);
+
+  const filteredClientes = clientSearchTerm.trim()
+    ? clientesList.filter((c) => {
+        const search = clientSearchTerm.toLowerCase().trim();
+        const fullName = `${c.nombre || ""} ${c.apellidos || ""}`.toLowerCase();
+        const phone = String(c.telefono || "").toLowerCase();
+        const email = String(c.email || "").toLowerCase();
+        const doc = String(c.documento || c.cedula || c.identificacion || "").toLowerCase();
+        return (
+          fullName.includes(search) ||
+          phone.includes(search) ||
+          email.includes(search) ||
+          doc.includes(search)
+        );
+      })
+    : [];
 
   useEffect(() => {
     adicionesService
@@ -280,6 +342,206 @@ export default function PosVendedor() {
           </div>
         </header>
 
+        {/* Apartado Inicial: Selección / Identificación del Cliente (Con cuenta / Sin cuenta) */}
+        <section className="mb-4 bg-white dark:bg-gray-900 rounded-[22px] border border-[#e2e8f0] dark:border-gray-800 p-3.5 sm:p-4 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Título y Selector de Modo de Cliente */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/40 text-[#f05454] flex items-center justify-center font-bold text-xs shrink-0">
+                  1
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 block">
+                    Paso Inicial
+                  </span>
+                  <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 leading-tight">
+                    ¿El cliente tiene cuenta?
+                  </h3>
+                </div>
+              </div>
+
+              {/* Botones Toggle: Sin Cuenta vs Con Cuenta */}
+              <div className="inline-flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(false);
+                    setSelectedCliente(null);
+                    setClienteNombre("Cliente Mostrador");
+                    setIsSearchingClient(false);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    !tieneCuenta
+                      ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Sin Cuenta (Mostrador)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTieneCuenta(true);
+                    if (!selectedCliente) {
+                      setIsSearchingClient(true);
+                      setClienteNombre("");
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    tieneCuenta
+                      ? "bg-[#f05454] text-white shadow-xs"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Con Cuenta (Registrado)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido / Detalle del cliente según la opción seleccionada */}
+            <div className="flex-1 max-w-xl">
+              {!tieneCuenta ? (
+                /* MODO SIN CUENTA */
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/60 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <User className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={clienteNombre}
+                    onChange={(e) => setClienteNombre(e.target.value)}
+                    placeholder="Nombre del cliente o mesa (ej: Cliente Mostrador)..."
+                    className="w-full bg-transparent text-xs font-semibold text-gray-800 dark:text-gray-200 outline-none"
+                  />
+                  <span className="text-[10px] font-medium text-gray-400 shrink-0 whitespace-nowrap">
+                    Venta Rápida
+                  </span>
+                </div>
+              ) : selectedCliente ? (
+                /* MODO CON CUENTA: CLIENTE SELECCIONADO */
+                <div className="flex items-center justify-between gap-2.5 bg-red-50/60 dark:bg-red-950/20 px-3 py-2 rounded-xl border border-red-200 dark:border-red-900/40">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FidelidadBadge tipo={selectedCliente.tipo || "Nuevo"} size="sm" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">
+                          {selectedCliente.nombre} {selectedCliente.apellidos || ""}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9.5px] font-black shrink-0">
+                          Cuenta Activa
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 block truncate">
+                        {selectedCliente.telefono || selectedCliente.email || "Cliente registrado"} • Descuento aplicado: {discountPercent}% OFF
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {discountPercent > 0 && (
+                      <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-lg">
+                        {discountPercent}% OFF
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSearchingClient(true);
+                        setClientSearchTerm("");
+                      }}
+                      className="text-xs font-bold text-[#f05454] hover:underline cursor-pointer"
+                    >
+                      Cambiar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCliente(null);
+                        setTieneCuenta(false);
+                        setClienteNombre("Cliente Mostrador");
+                      }}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5 cursor-pointer"
+                      title="Quitar cliente"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* MODO CON CUENTA: BUSCAR CLIENTE */
+                <div className="relative">
+                  <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-xl border border-red-300 dark:border-red-800/60 focus-within:ring-2 focus-within:ring-[#f05454]/30">
+                    <Search className="w-4 h-4 text-[#f05454] shrink-0" />
+                    <input
+                      type="text"
+                      value={clientSearchTerm}
+                      onChange={(e) => setClientSearchTerm(e.target.value)}
+                      placeholder="Buscar por cédula, teléfono o nombre de cliente..."
+                      className="w-full bg-transparent text-xs font-semibold text-gray-800 dark:text-gray-100 outline-none placeholder:text-gray-400"
+                      autoFocus
+                    />
+                    {clientSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setClientSearchTerm("")}
+                        className="text-gray-400 hover:text-gray-600 p-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Resultados desplegables de búsqueda rápida */}
+                  {filteredClientes.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 max-h-56 overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-1.5 space-y-1">
+                      {filteredClientes.map((c) => {
+                        const cDesc = c.descuentoPorcentaje || (c.tipo === "VIP" ? 15 : c.tipo === "Frecuente" ? 10 : c.tipo === "Regular" ? 5 : 0);
+                        return (
+                          <div
+                            key={c.id || c.idCliente}
+                            onClick={() => {
+                              setSelectedCliente(c);
+                              setClienteNombre(`${c.nombre} ${c.apellidos || ""}`.trim());
+                              setIsSearchingClient(false);
+                              setClientSearchTerm("");
+                            }}
+                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-between gap-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FidelidadBadge tipo={c.tipo || "Nuevo"} size="sm" />
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate block">
+                                  {c.nombre} {c.apellidos || ""}
+                                </span>
+                                <span className="text-[10px] text-gray-400 block truncate">
+                                  {c.telefono || c.email || c.documento || "Cliente registrado"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {cDesc > 0 && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                                  {cDesc}% OFF
+                                </span>
+                              )}
+                              <span className="text-[10px] font-bold text-[#f05454]">Seleccionar</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {clientSearchTerm.trim() && filteredClientes.length === 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-center text-xs text-gray-400">
+                      No se encontraron clientes registrados con "{clientSearchTerm}".
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
         {/* Mobile Horizontal Categories (Visible only on < lg) */}
         <div className="lg:hidden mb-3.5 overflow-x-auto no-scrollbar pb-1">
           <div className="flex items-center gap-2">
@@ -437,8 +699,12 @@ export default function PosVendedor() {
               submitOrder={() => submitOrder()}
               loading={loading}
               subtotal={subtotal}
-              descuento={descuento}
-              total={total}
+              descuento={calculatedDescuento}
+              discountPercent={discountPercent}
+              total={finalTotal}
+              selectedCliente={selectedCliente}
+              clienteNombre={clienteNombre}
+              tieneCuenta={tieneCuenta}
             />
           </section>
         </div>
@@ -460,7 +726,8 @@ export default function PosVendedor() {
                   Total
                 </p>
                 <p className="text-base font-black text-white truncate">
-                  ${Number(total || 0).toLocaleString("es-CO")}
+                  ${Number(finalTotal || 0).toLocaleString("es-CO")}
+                  {discountPercent > 0 && <span className="text-[10px] text-emerald-400 font-bold ml-1.5">({discountPercent}% OFF)</span>}
                 </p>
               </div>
             </div>
@@ -499,8 +766,12 @@ export default function PosVendedor() {
               submitOrder={() => submitOrder()}
               loading={loading}
               subtotal={subtotal}
-              descuento={descuento}
-              total={total}
+              descuento={calculatedDescuento}
+              discountPercent={discountPercent}
+              total={finalTotal}
+              selectedCliente={selectedCliente}
+              clienteNombre={clienteNombre}
+              tieneCuenta={tieneCuenta}
               onClose={() => setIsMobileCartOpen(false)}
             />
           </div>
@@ -513,8 +784,11 @@ export default function PosVendedor() {
         onClose={() => setIsCheckoutModalOpen(false)}
         cart={cart}
         subtotal={subtotal}
-        descuento={descuento}
-        total={total}
+        descuento={calculatedDescuento}
+        total={finalTotal}
+        initialCliente={selectedCliente}
+        initialClienteNombre={clienteNombre}
+        initialTieneCuenta={tieneCuenta}
         onConfirm={handleConfirmCheckout}
         loading={loading}
       />

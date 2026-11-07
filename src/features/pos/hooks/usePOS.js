@@ -220,15 +220,15 @@ export function usePOS({ initialClienteId = null } = {}) {
 
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
-        idCliente: clienteId,
+        idCliente: checkoutData.idCliente !== undefined ? checkoutData.idCliente : clienteId,
         clienteNombre,
         tipoVenta: "PUNTO_DE_VENTA",
         tipoEntrega,
         direccion,
         metodoPago,
-        subtotal: subtotal,
-        descuentoAplicado: descuento,
-        total: total,
+        subtotal: checkoutData.subtotal !== undefined ? checkoutData.subtotal : subtotal,
+        descuentoAplicado: checkoutData.descuentoAplicado !== undefined ? checkoutData.descuentoAplicado : descuento,
+        total: checkoutData.total !== undefined ? checkoutData.total : total,
         observacion: observacion || observacionOrden,
         observaciones: {
           tipoEntrega,
