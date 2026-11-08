@@ -1,8 +1,11 @@
+import { resolveOrderTimings } from "./tiempoProduccionUtils";
+
 /**
  * Utilidad para imprimir la comanda de cocina (Ticket térmico o estándar de producción)
  */
 export function imprimirComanda(orden) {
   if (!orden) return;
+  const timings = resolveOrderTimings(orden);
 
   const printWindow = window.open("", "_blank", "width=420,height=650");
   if (!printWindow) {
@@ -190,11 +193,15 @@ export function imprimirComanda(orden) {
     </div>
     <div class="meta-row">
       <span class="meta-label">FECHA / HORA PEDIDO:</span>
-      <span>${orden.fecha || new Date().toISOString().split("T")[0]} · ${orden.horaInicio || "12:00 PM"}</span>
+      <span>${timings.fechaColombia} · ${timings.horaPedido}</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-label">TIEMPO COCCIÓN / ENTREGA:</span>
+      <span>${timings.tiempoPreparacion} (${timings.tiempoEstimadoEntrega})</span>
     </div>
     <div class="meta-row">
       <span class="meta-label">HORA ESTADO (${orden.estado}):</span>
-      <span><strong>${orden.horaEstado || orden.horaInicio || "12:00 PM"}</strong></span>
+      <span><strong>${timings.horaEstado}</strong></span>
     </div>
     ${orden.prioridad ? `
     <div class="meta-row" style="margin-top: 4px;">

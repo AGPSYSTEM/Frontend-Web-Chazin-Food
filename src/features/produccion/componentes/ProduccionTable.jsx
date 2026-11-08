@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { imprimirComanda } from "../utils/comandaUtils";
+import { resolveOrderTimings } from "../utils/tiempoProduccionUtils";
 
 export function ProduccionTable({
   ordenes = [],
@@ -33,10 +34,18 @@ export function ProduccionTable({
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     setCurrentPage(1);
   }, [ordenes.length]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const totalRecords = ordenes.length;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
@@ -137,6 +146,7 @@ export function ProduccionTable({
             ) : (
               paginatedOrdenes.map((o) => {
                 const nextConfig = getNextStatusConfig(o.estado);
+                const timings = resolveOrderTimings(o, nowMs);
 
                 return (
                   <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
@@ -216,16 +226,41 @@ export function ProduccionTable({
                       </div>
                     </td>
 
-                    {/* Tiempo / Inicio */}
+                    {/* Tiempo / Inicio (Sincronizado con Recetas, Hora Colombia y Tiempo Estimado) */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex flex-col text-xs space-y-0.5">
-                        <div className="flex items-center gap-1 font-semibold text-gray-800 dark:text-gray-200">
-                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span>{o.tiempo || "15 min"}</span>
+                      <div className="flex flex-col text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 dark:text-gray-200">
+                          <Clock className="w-3.5 h-3.5 text-[#F05454] shrink-0" />
+                          <span title="Tiempo total de cocción en cocina según recetas">{timings.tiempoPreparacion}</span>
+                          {timings.elapsedInfo && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${
+                                timings.elapsedInfo.level === "fresh"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                  : timings.elapsedInfo.level === "warning"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                                  : timings.elapsedInfo.level === "critical"
+                                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
+                                  : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
+                              }`}
+                            >
+                              {timings.elapsedInfo.text}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-gray-400 font-mono text-[11px]">
-                          Inicio: {o.horaInicio || "12:00 PM"}
+                        <div className="text-gray-500 dark:text-gray-400 font-mono text-[11px] flex items-center gap-1.5">
+                          <span>Pedido: {timings.horaPedido}</span>
+                          {!timings.esDeHoy && timings.fechaColombia && (
+                            <span className="text-[10px] px-1 py-0.2 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
+                              {timings.fechaColombia}
+                            </span>
+                          )}
                         </div>
+                        {timings.tiempoEstimadoEntrega && (
+                          <div className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                            Entrega est.: {timings.tiempoEstimadoEntrega}
+                          </div>
+                        )}
                       </div>
                     </td>
 
@@ -272,10 +307,10 @@ export function ProduccionTable({
                           {o.estado === "Entregado" && <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                           <span>{o.estado}</span>
                         </span>
-                        {/* Hora del estado cercano (Requisito 2 y 5) */}
-                        <span className="text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1 bg-gray-50 dark:bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-200/60 dark:border-gray-700/60">
+                        {/* Hora contextual del estado actual en zona horaria Colombia (America/Bogota) */}
+                        <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1 bg-gray-50 dark:bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-200/60 dark:border-gray-700/60">
                           <Clock className="w-2.5 h-2.5 text-gray-400" />
-                          <span>{o.horaEstado || o.horaInicio || "12:00 PM"}</span>
+                          <span>{timings.etiquetaHoraEstado}</span>
                         </span>
                       </div>
                     </td>

@@ -21,9 +21,12 @@ import {
 import { parseKitchenOrderNotes } from "@/shared/utils/orderUtils";
 import { FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { imprimirComanda } from "../utils/comandaUtils";
+import { resolveOrderTimings } from "../utils/tiempoProduccionUtils";
 
 export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
   if (!isOpen || !orden) return null;
+
+  const timings = useMemo(() => resolveOrderTimings(orden), [orden]);
 
   const productos = useMemo(() => {
     if (Array.isArray(orden.productos) && orden.productos.length > 0) {
@@ -169,8 +172,8 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
         {/* Scrollable Body */}
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm text-gray-900 dark:text-gray-100">
           
-          {/* Info Grid (Ajustado con hora de inicio y hora del estado) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
+          {/* Info Grid (Sincronizado con Hora Colombia, Tiempo de Cocción y Estimado de Entrega) */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-gray-50/80 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
                 Estado Actual
@@ -182,11 +185,26 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
 
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
+                Tiempo Cocción
+              </p>
+              <p className="font-bold text-[#F05454] text-xs flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{timings.tiempoPreparacion}</span>
+              </p>
+              {timings.tiempoEstimadoEntrega && (
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                  Entrega: {timings.tiempoEstimadoEntrega}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
                 Hora del Estado
               </p>
               <p className="font-bold text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                <span>{orden.horaEstado || orden.horaEstadoCalculada || orden.horaCambioEstado || orden.horaInicio || "Reciente"}</span>
+                <span>{timings.etiquetaHoraEstado}</span>
               </p>
             </div>
 
@@ -211,10 +229,10 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
 
             <div>
               <p className="text-[11px] font-bold text-gray-400 dark:text-gray-400 uppercase tracking-wider mb-1">
-                Hora Inicio / Fecha
+                Hora Pedido / Fecha
               </p>
               <p className="font-semibold text-gray-900 dark:text-gray-100 text-xs truncate">
-                {orden.horaInicio || "12:00 PM"} · {orden.fecha || "Hoy"}
+                {timings.horaPedido} · {timings.fechaColombia || "Hoy"}
               </p>
             </div>
           </div>

@@ -49,6 +49,11 @@ import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import LoadingSpinner, { ChazinLoader } from "@/shared/components/ui/LoadingSpinner";
 import { HistorialComandasLista } from "../componentes/HistorialComandasLista";
 import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
+import {
+  formatColombiaTime,
+  formatColombiaDate,
+  resolveOrderTimings
+} from "@/features/produccion/utils/tiempoProduccionUtils";
 
 /**
  * Clean Web Audio Kitchen Chime (synthesized without external audio files)
@@ -88,19 +93,14 @@ function playKitchenDing() {
 }
 
 /**
- * Determine if an order is from a previous calendar day
+ * Determine if an order is from a previous calendar day in Colombia timezone (America/Bogota)
  */
 function isOrderFromPastDays(order) {
   const rawDate = order.fechaVenta || order.fecha;
   if (!rawDate) return false;
-  const d = new Date(rawDate);
-  if (isNaN(d.getTime())) return false;
-  const now = new Date();
-  return (
-    d.getFullYear() < now.getFullYear() ||
-    d.getMonth() < now.getMonth() ||
-    d.getDate() < now.getDate()
-  );
+  const orderColDate = formatColombiaDate(rawDate);
+  const todayColDate = formatColombiaDate(new Date());
+  return orderColDate < todayColDate;
 }
 
 /**
@@ -225,72 +225,55 @@ function parseAddition(ad) {
 }
 
 /**
- * Calculate accurate order time and elapsed duration without absurd minute values for past dates
+ * Calculate accurate order time and elapsed duration in Colombia timezone (America/Bogota)
  */
 function getOrderTimeDisplay(order, isListo = false) {
-  let orderDate = null;
-
-  if (order.fechaVenta) {
-    orderDate = new Date(order.fechaVenta);
-  } else if (order.fecha) {
-    if (order.horaInicio) {
-      const parsed = new Date(`${order.fecha} ${order.horaInicio}`);
-      orderDate = !isNaN(parsed.getTime()) ? parsed : new Date(order.fecha);
-    } else {
-      orderDate = new Date(order.fecha);
-    }
-  }
-
-  // Format 12-hour time string (e.g. "07:04 AM")
-  let formattedTime = order.horaInicio || "";
+  const timings = resolveOrderTimings(order);
+  const formattedTime = timings.horaPedido || order.horaInicio || "12:00 PM";
   let datePrefix = "";
 
-  if (orderDate && !isNaN(orderDate.getTime())) {
-    let h = orderDate.getHours();
-    const m = String(orderDate.getMinutes()).padStart(2, "0");
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    formattedTime = `${String(h).padStart(2, "0")}:${m} ${ampm}`;
-
-    const now = new Date();
-    const isSameDay =
-      orderDate.getDate() === now.getDate() &&
-      orderDate.getMonth() === now.getMonth() &&
-      orderDate.getFullYear() === now.getFullYear();
-
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const isYesterday =
-      orderDate.getDate() === yesterday.getDate() &&
-      orderDate.getMonth() === yesterday.getMonth() &&
-      orderDate.getFullYear() === yesterday.getFullYear();
-
-    if (!isSameDay) {
-      if (isYesterday) {
-        datePrefix = "Ayer";
+  if (!timings.esDeHoy && timings.fechaColombia) {
+    const yesterday = new Date(Date.now() - 86400000);
+    const yesterdayCol = formatColombiaDate(yesterday);
+    if (timings.fechaColombia === yesterdayCol) {
+      datePrefix = "Ayer";
+    } else {
+      const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      const parts = timings.fechaColombia.split("-");
+      if (parts.length === 3) {
+        const mIdx = Math.max(0, Math.min(11, parseInt(parts[1], 10) - 1));
+        datePrefix = `${parseInt(parts[2], 10)} ${meses[mIdx]}`;
       } else {
-        const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-        datePrefix = `${orderDate.getDate()} ${meses[orderDate.getMonth()]}`;
+        datePrefix = timings.fechaColombia;
       }
     }
   }
 
-  // 1. If comanda is LISTO: show its registration/completed time rather than active cooking timer
+  // 1. If comanda is LISTO: show its completed/ready time in Colombia timezone
   if (isListo) {
-    const displayText = datePrefix ? `${datePrefix} • ${formattedTime}` : formattedTime || "Listo";
+    const readyTime = timings.horaListo || timings.horaEstado || formattedTime;
+    const displayText = datePrefix ? `${datePrefix} • ${readyTime}` : readyTime || "Listo";
     return {
       text: displayText,
-      exactTime: formattedTime,
+      exactTime: readyTime,
+      targetPrep: timings.tiempoPreparacion,
       level: "completed",
       isCompleted: true
     };
   }
+
+  const refIso =
+    order.estado === "En Preparación" && order.fechaInicioPreparacion
+      ? order.fechaInicioPreparacion
+      : order.fechaVenta || order.fechaCambioEstado;
+  const orderDate = refIso ? new Date(refIso) : null;
 
   // 2. If no valid date found: fallback to time string
   if (!orderDate || isNaN(orderDate.getTime())) {
     return {
       text: formattedTime || "Reciente",
       exactTime: formattedTime,
+      targetPrep: timings.tiempoPreparacion,
       level: "normal",
       isCompleted: false
     };
@@ -307,6 +290,7 @@ function getOrderTimeDisplay(order, isListo = false) {
     return {
       text: `${datePrefix || `${days}d`} • ${formattedTime}`,
       exactTime: formattedTime,
+      targetPrep: timings.tiempoPreparacion,
       level: "warning",
       isCompleted: false
     };
@@ -318,26 +302,29 @@ function getOrderTimeDisplay(order, isListo = false) {
     return {
       text: `Hace ${hours}h ${remMin > 0 ? `${remMin}m` : ""}`,
       exactTime: formattedTime,
+      targetPrep: timings.tiempoPreparacion,
       level: "critical",
       isCompleted: false
     };
   }
 
+  const targetMin = timings.tiempoMinutos || 12;
+
   // Orders created in the last 60 minutes
   if (minutes < 1) {
-    return { text: "Hace un momento", exactTime: formattedTime, level: "fresh", isCompleted: false };
+    return { text: "Hace un momento", exactTime: formattedTime, targetPrep: timings.tiempoPreparacion, level: "fresh", isCompleted: false };
   }
   if (minutes === 1) {
-    return { text: "Hace 1 min", exactTime: formattedTime, level: "fresh", isCompleted: false };
+    return { text: "Hace 1 min", exactTime: formattedTime, targetPrep: timings.tiempoPreparacion, level: "fresh", isCompleted: false };
   }
-  if (minutes < 12) {
-    return { text: `Hace ${minutes} min`, exactTime: formattedTime, level: "normal", isCompleted: false };
+  if (minutes <= targetMin) {
+    return { text: `Hace ${minutes} min`, exactTime: formattedTime, targetPrep: timings.tiempoPreparacion, level: "normal", isCompleted: false };
   }
-  if (minutes < 25) {
-    return { text: `Hace ${minutes} min`, exactTime: formattedTime, level: "warning", isCompleted: false };
+  if (minutes <= targetMin + 8) {
+    return { text: `Hace ${minutes} min`, exactTime: formattedTime, targetPrep: timings.tiempoPreparacion, level: "warning", isCompleted: false };
   }
 
-  return { text: `Hace ${minutes} min`, exactTime: formattedTime, level: "critical", isCompleted: false };
+  return { text: `Hace ${minutes} min`, exactTime: formattedTime, targetPrep: timings.tiempoPreparacion, level: "critical", isCompleted: false };
 }
 
 export function CocineroDashboard() {
@@ -748,14 +735,15 @@ export function CocineroDashboard() {
     );
   }, [pedidosActivos]);
 
-  // Format live header clock in 12h format (e.g. 06:20:33 PM)
+  // Format live header clock in 12h format (America/Bogota)
   const formattedHeaderClock = useMemo(() => {
-    let h = currentTime.getHours();
-    const m = String(currentTime.getMinutes()).padStart(2, "0");
-    const s = String(currentTime.getSeconds()).padStart(2, "0");
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    return `${String(h).padStart(2, "0")}:${m}:${s} ${ampm}`;
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Bogota",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    }).format(currentTime);
   }, [currentTime]);
 
   return (
