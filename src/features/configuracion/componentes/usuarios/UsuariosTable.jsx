@@ -1,5 +1,5 @@
-import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { formatNombreCompleto } from "@/shared/utils/validationUtils";
+import { Edit, Trash2, Lock, Shield, Mail, Phone, MapPin, User, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle } from "lucide-react";
+import { formatNombreCompleto, isCedulaValida } from "@/shared/utils/validationUtils";
 
 const parseDireccion = (raw) => {
   if (!raw) return "-";
@@ -60,7 +60,9 @@ const formatTelefonoLines = (tel) => {
 
 // ── Paginator ──────────────────────────────────────────────────────────
 function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize, onPageSizeChange }) {
-  const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  if (totalItems === 0) return null;
+
+  const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
 
   // Build page numbers with ellipsis
@@ -80,11 +82,10 @@ function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize
   const btnBase = "w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-all";
   const btnActive = `${btnBase} bg-[#F05454] text-white shadow-sm`;
   const btnInactive = `${btnBase} text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800`;
-  const btnDisabled = `${btnBase} text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40`;
+  const btnDisabled = `${btnBase} text-gray-300 dark:text-gray-600 cursor-not-allowed`;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl">
-      {/* Selector de registros por página */}
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-b-2xl">
       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
         <span>Mostrar:</span>
         <select
@@ -100,73 +101,39 @@ function Paginator({ currentPage, totalPages, onPageChange, totalItems, pageSize
         </select>
         <span>usuarios</span>
       </div>
-
-      {/* Contador */}
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Mostrando <span className="font-semibold text-gray-700 dark:text-gray-300">{start}–{end}</span> de{" "}
         <span className="font-semibold text-gray-700 dark:text-gray-300">{totalItems}</span> usuarios
       </p>
-
-      {/* Controles de navegación */}
       <div className="flex items-center gap-1">
         <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage <= 1}
-          className={currentPage <= 1 ? btnDisabled : btnInactive}
-          title="Primera página"
-          aria-label="Primera página"
-        >
-          <ChevronsLeft className="w-4 h-4" />
-        </button>
-        <button
           onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className={currentPage <= 1 ? btnDisabled : btnInactive}
-          title="Página anterior"
+          disabled={currentPage === 1}
+          className={currentPage === 1 ? btnDisabled : btnInactive}
           aria-label="Página anterior"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-
-        <div className="hidden sm:flex items-center gap-1">
-          {pages.map((p, idx) =>
-            p === "..." ? (
-              <span key={`ellipsis-${idx}`} className="w-6 text-center text-xs text-gray-400">…</span>
-            ) : (
-              <button
-                key={p}
-                onClick={() => onPageChange(p)}
-                className={currentPage === p ? btnActive : btnInactive}
-              >
-                {p}
-              </button>
-            )
-          )}
-        </div>
-
-        <div className="sm:hidden px-2">
-          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-        </div>
-
+        {pages.map((p, idx) =>
+          p === "..." ? (
+            <span key={`ellipsis-${idx}`} className="w-8 text-center text-xs text-gray-400">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              className={currentPage === p ? btnActive : btnInactive}
+            >
+              {p}
+            </button>
+          )
+        )}
         <button
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className={currentPage >= totalPages ? btnDisabled : btnInactive}
-          title="Página siguiente"
+          disabled={currentPage === totalPages}
+          className={currentPage === totalPages ? btnDisabled : btnInactive}
           aria-label="Página siguiente"
         >
           <ChevronRight className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage >= totalPages}
-          className={currentPage >= totalPages ? btnDisabled : btnInactive}
-          title="Última página"
-          aria-label="Última página"
-        >
-          <ChevronsRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -182,7 +149,9 @@ export function UsuariosTable({
   currentPage = 1,
   pageSize = 10,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  canEdit = true,
+  canDelete = true
 }) {
   const totalItems = usuarios.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -216,7 +185,9 @@ export function UsuariosTable({
                       {formatNombreCompleto(usuario.nombre, usuario.apellidos) || "Usuario"}
                     </p>
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                      {usuario.documento ? `Doc: ${usuario.documento}` : `ID #${usuario.id || usuario.idUsuario}`}
+                      {isCedulaValida(usuario.documento, usuario.tipoDocumento)
+                        ? `Doc: ${usuario.documento}`
+                        : `ID #${usuario.id || usuario.idUsuario} (Doc. pendiente)`}
                     </p>
                   </div>
                 </div>
@@ -314,7 +285,7 @@ export function UsuariosTable({
             onPageChange={onPageChange}
             totalItems={totalItems}
             pageSize={pageSize}
-            onPageSizeChange={onPageSizeChange}
+          onPageSizeChange={onPageSizeChange}
           />
         </div>
       </div>
@@ -381,10 +352,22 @@ export function UsuariosTable({
                     {/* DOCUMENTO */}
                     <td className="px-6 py-4">
                       <div className="text-sm text-slate-600 dark:text-gray-300 whitespace-nowrap">
-                        {usuario.tipoDocumento && (
-                          <span className="text-xs text-gray-400 font-medium mr-1">{usuario.tipoDocumento}</span>
+                        {isCedulaValida(usuario.documento, usuario.tipoDocumento) ? (
+                          <>
+                            {usuario.tipoDocumento && (
+                              <span className="text-xs text-gray-400 font-medium mr-1">{usuario.tipoDocumento}</span>
+                            )}
+                            <span className="font-medium">{usuario.documento}</span>
+                          </>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60"
+                            title="Cédula no registrada o pendiente de validación"
+                          >
+                            <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                            Sin registrar
+                          </span>
                         )}
-                        <span className="font-medium">{usuario.documento || "-"}</span>
                       </div>
                     </td>
 
@@ -441,21 +424,25 @@ export function UsuariosTable({
                             <Eye className="w-4 h-4 stroke-[2]" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEdit(usuario)}
-                          className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Editar usuario"
-                        >
-                          <Edit className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        <button
-                          onClick={() => onChangePassword(usuario)}
-                          className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
-                          title="Cambiar contraseña"
-                        >
-                          <Lock className="w-4 h-4 stroke-[2]" />
-                        </button>
-                        {usuario.rolNombre !== "Administrador" && (
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(usuario)}
+                            className="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Editar usuario"
+                          >
+                            <Edit className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => onChangePassword(usuario)}
+                            className="p-1.5 text-purple-500 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors cursor-pointer"
+                            title="Cambiar contraseña"
+                          >
+                            <Lock className="w-4 h-4 stroke-[2]" />
+                          </button>
+                        )}
+                        {canDelete && usuario.rolNombre !== "Administrador" && (
                           <button
                             onClick={() => onDelete(usuario.id || usuario.idUsuario, usuario.nombre)}
                             className="p-1.5 text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors cursor-pointer"

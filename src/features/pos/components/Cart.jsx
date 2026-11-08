@@ -1,5 +1,5 @@
 import React from "react";
-import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat, UserCheck, Store } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2, X, ChefHat } from "lucide-react";
 
 export function Cart({
   cart,
@@ -11,11 +11,7 @@ export function Cart({
   loading,
   subtotal,
   descuento,
-  discountPercent = 0,
   total,
-  selectedCliente = null,
-  clienteNombre = "",
-  tieneCuenta = false,
   onClose = null
 }) {
   const isEmpty = cart.length === 0;
@@ -52,28 +48,6 @@ export function Cart({
         </div>
       </div>
 
-      {/* Indicador de Cliente Seleccionado al inicio */}
-      <div className="mb-3 p-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 flex items-center justify-between gap-2 shadow-2xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tieneCuenta && selectedCliente ? "bg-red-50 text-[#f05454] dark:bg-red-950/40" : "bg-gray-100 text-gray-500 dark:bg-gray-800"}`}>
-            {tieneCuenta && selectedCliente ? <UserCheck className="w-3.5 h-3.5" /> : <Store className="w-3.5 h-3.5" />}
-          </div>
-          <div className="min-w-0">
-            <span className="text-[9.5px] uppercase tracking-wider font-extrabold text-gray-400 block">
-              {tieneCuenta && selectedCliente ? "Cliente Registrado" : "Cliente Mostrador"}
-            </span>
-            <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
-              {tieneCuenta && selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellidos || ''}`.trim() : (clienteNombre || "Cliente Mostrador")}
-            </p>
-          </div>
-        </div>
-        {discountPercent > 0 && (
-          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black shrink-0">
-            {discountPercent}% OFF
-          </span>
-        )}
-      </div>
-
       {isEmpty ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-[20px] border-2 border-dashed border-[#dbe3ed] dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-12 text-center text-[#75859a] dark:text-gray-400 min-h-[260px]">
           <ShoppingCart className="mb-2 h-10 w-10 text-[#bfcad7] dark:text-gray-600" />
@@ -82,117 +56,124 @@ export function Cart({
         </div>
       ) : (
         <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[380px]">
-          {cart.map((it, idx) => (
-            <div key={`${it.productoId}-${it.varianteId}-${idx}`} className="rounded-[18px] border border-[#e8edf4] dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-bold text-[#1e2b39] dark:text-gray-100 line-clamp-1">{it.nombre}</div>
-                  <div className="mt-0.5 text-[11px] text-[#647489] dark:text-gray-400">
-                    ${Number(it.precio || 0).toLocaleString("es-CO")} c/u
+          {cart.map((it, idx) => {
+            const additionsUnit = (it.adiciones || []).reduce(
+              (s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1),
+              0
+            );
+            const unitPrice = (Number(it.precio) || 0) + additionsUnit;
+            const lineTotal = unitPrice * (Number(it.cantidad) || 1);
+
+            return (
+              <div key={`${it.productoId}-${it.varianteId}-${idx}`} className="rounded-[18px] border border-[#e8edf4] dark:border-gray-800 bg-white dark:bg-gray-900 p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-[#1e2b39] dark:text-gray-100 line-clamp-1">{it.nombre}</div>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => decrement(idx)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 transition hover:bg-[#fde7e7] dark:hover:bg-red-900/50 shrink-0"
-                  aria-label="Eliminar producto"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              {Array.isArray(it.adiciones) && it.adiciones.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {it.adiciones.map((adicion, i) => {
-                    const adName = typeof adicion === "object" ? (adicion.nombre || adicion.nombreAdicion || "Adición") : String(adicion);
-                    const adQty = typeof adicion === "object" && Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
-                    const adPrice = typeof adicion === "object" ? (Number(adicion.precio || 0) * (Number(adicion.cantidad) || 1)) : 0;
-                    return (
-                      <span
-                        key={`${typeof adicion === 'object' ? (adicion.idAdicion || adicion.id || i) : i}-${i}`}
-                        className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
-                      >
-                        <span>+{adQty}{adName}</span>
-                        {adPrice > 0 && (
-                          <span className="opacity-75">(${adPrice.toLocaleString("es-CO")})</span>
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-[#e9edf3] dark:border-gray-700 bg-[#f7fafc] dark:bg-gray-800 px-1 py-0.5">
                   <button
                     type="button"
                     onClick={() => decrement(idx)}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-gray-700 text-[#1f2d3d] dark:text-gray-100 shadow-sm text-xs"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fef2f2] dark:bg-red-900/30 text-[#f05454] dark:text-red-400 transition hover:bg-[#fde7e7] dark:hover:bg-red-900/50 shrink-0 cursor-pointer"
+                    aria-label="Eliminar producto"
                   >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="min-w-[18px] text-center text-xs font-bold text-[#1f2d3d] dark:text-gray-100">{it.cantidad || 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => increment(idx)}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f05454] text-white shadow-sm text-xs"
-                  >
-                    <Plus className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
-                <div className="text-right text-xs font-black text-[#1f2d3d] dark:text-gray-100">
-                  ${Number(
-                    ((Number(it.precio) || 0) +
-                      (it.adiciones || []).reduce(
-                        (s, a) => s + (Number(a.precio) || 0) * (Number(a.cantidad) || 1),
-                        0
-                      )) *
-                      (it.cantidad || 1)
-                  ).toLocaleString("es-CO")}
+                {Array.isArray(it.adiciones) && it.adiciones.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {it.adiciones.map((adicion, i) => {
+                      const adName = typeof adicion === "object" ? (adicion.nombre || adicion.nombreAdicion || "Adición") : String(adicion);
+                      const adQty = typeof adicion === "object" && Number(adicion.cantidad) > 1 ? `${adicion.cantidad}x ` : "";
+                      const adPrice = typeof adicion === "object" ? (Number(adicion.precio || 0) * (Number(adicion.cantidad) || 1)) : 0;
+                      return (
+                        <span
+                          key={`${typeof adicion === 'object' ? (adicion.idAdicion || adicion.id || i) : i}-${i}`}
+                          className="rounded-full bg-[#fef2f2] dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 text-[10px] font-semibold text-[#f05454] dark:text-red-300 flex items-center gap-1"
+                        >
+                          <span>+{adQty}{adName}</span>
+                          {adPrice > 0 && (
+                            <span className="opacity-75">(${adPrice.toLocaleString("es-CO")})</span>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Fila Inferior: Stepper a la izquierda y Precios Apilados a la derecha */}
+                <div className="mt-2.5 flex items-center justify-between gap-2 pt-1 border-t border-gray-100 dark:border-gray-800/60">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-[#e9edf3] dark:border-gray-700 bg-[#f7fafc] dark:bg-gray-800 px-1 py-0.5">
+                    <button
+                      type="button"
+                      onClick={() => decrement(idx)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-gray-700 text-[#1f2d3d] dark:text-gray-100 shadow-sm text-xs cursor-pointer active:scale-95"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="min-w-[18px] text-center text-xs font-bold text-[#1f2d3d] dark:text-gray-100 font-mono">{it.cantidad || 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => increment(idx)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f05454] text-white shadow-sm text-xs cursor-pointer active:scale-95"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  {/* Columna de precios apilados con precio unitario explícito */}
+                  <div className="flex flex-col items-end text-right font-mono tabular-nums shrink-0">
+                    <div className="text-[10.5px] text-gray-500 dark:text-gray-400 font-medium">
+                      Unit: <span className="font-bold text-gray-700 dark:text-gray-200">${unitPrice.toLocaleString("es-CO")}</span>
+                    </div>
+                    {(it.cantidad || 1) > 1 && (
+                      <div className="text-[9.5px] text-gray-400 dark:text-gray-500">
+                        {it.cantidad} × ${unitPrice.toLocaleString("es-CO")}
+                      </div>
+                    )}
+                    <div className="text-xs sm:text-sm font-black text-[#f05454] dark:text-red-400 tracking-tight">
+                      ${lineTotal.toLocaleString("es-CO")}
+                    </div>
+                  </div>
+                </div>
+
+                {it.observacion && (
+                  <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="truncate">{it.observacion}</span>
+                  </div>
+                )}
+
+                <div className="mt-2">
+                  <input
+                    placeholder="Instrucción de cocina..."
+                    className="w-full rounded-lg border border-[#e2e8f0] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 px-2.5 py-1 text-xs text-[#29384d] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-[#f05454]"
+                    value={it.observacion || ""}
+                    onChange={(e) => setItemObservacion(idx, e.target.value)}
+                  />
                 </div>
               </div>
-
-              {it.observacion && (
-                <div className="mt-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[10.5px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                  <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="truncate">{it.observacion}</span>
-                </div>
-              )}
-
-              <div className="mt-2">
-                <input
-                  placeholder="Instrucción de cocina..."
-                  className="w-full rounded-lg border border-[#e2e8f0] dark:border-gray-700 bg-[#f8fafc] dark:bg-gray-800 px-2.5 py-1 text-xs text-[#29384d] dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none transition focus:border-[#f05454]"
-                  value={it.observacion || ""}
-                  onChange={(e) => setItemObservacion(idx, e.target.value)}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      <div className="mt-3 rounded-[18px] bg-white dark:bg-gray-900 p-3 shadow-sm border border-[#edf1f5] dark:border-gray-800">
+      {/* Resumen de totales apilado verticalmente */}
+      <div className="mt-3 rounded-[18px] bg-white dark:bg-gray-900 p-3 shadow-sm border border-[#edf1f5] dark:border-gray-800 font-mono">
         <div className="flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
-          <span>Subtotal</span>
-          <span className="font-semibold text-[#1e2b39] dark:text-gray-100">${Number(subtotal || 0).toLocaleString("es-CO")}</span>
+          <span className="font-sans">Subtotal</span>
+          <span className="font-bold text-[#1e2b39] dark:text-gray-100 tabular-nums">${Number(subtotal || 0).toLocaleString("es-CO")}</span>
         </div>
-        {Number(descuento || 0) > 0 ? (
-          <div className="mt-1.5 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-            <span>Descuento Fidelidad {discountPercent > 0 ? `(${discountPercent}%)` : ""}</span>
-            <span className="font-bold">-${Number(descuento).toLocaleString("es-CO")}</span>
-          </div>
-        ) : (
-          <div className="mt-1.5 flex items-center justify-between text-xs text-[#647489] dark:text-gray-400">
-            <span>Descuento</span>
-            <span className="font-semibold text-[#1e2b39] dark:text-gray-100">$0</span>
+        {Number(descuento) > 0 && (
+          <div className="mt-1.5 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400">
+            <span className="font-sans">Descuento</span>
+            <span className="font-bold tabular-nums">-${Number(descuento || 0).toLocaleString("es-CO")}</span>
           </div>
         )}
         <div className="mt-2.5 flex items-center justify-between border-t border-[#edf1f5] dark:border-gray-800 pt-2 text-sm font-black text-[#1e2b39] dark:text-gray-100">
-          <span>Total</span>
-          <span className="text-[#f05454] dark:text-red-400">${Number(total || 0).toLocaleString("es-CO")}</span>
+          <span className="font-sans">Total</span>
+          <span className="text-[#f05454] dark:text-red-400 tabular-nums text-base">${Number(total || 0).toLocaleString("es-CO")}</span>
         </div>
       </div>
 
@@ -200,10 +181,16 @@ export function Cart({
         type="button"
         onClick={handleProceed}
         disabled={loading || isEmpty}
+        title={isEmpty ? "Agregue al menos un producto a la comanda para continuar" : "Finalizar y cobrar pedido"}
         className="mt-3 w-full rounded-[16px] bg-[#f05454] hover:bg-[#e04545] px-4 py-3 text-xs sm:text-sm font-black text-white shadow-[0_8px_18px_rgba(240,84,84,0.25)] transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer active:scale-98"
       >
         {loading ? "Procesando..." : "Finalizar Pedido"}
       </button>
+      {isEmpty && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-1.5 font-medium">
+          Selecciona productos del menú para habilitar el cobro
+        </p>
+      )}
     </div>
   );
 }
