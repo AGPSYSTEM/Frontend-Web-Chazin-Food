@@ -31,7 +31,7 @@ class TestCart {
   addToCart(item) {
     const cartItemId = item.cartItemId || generateCartItemId(item);
     const prodId = item.id || item.idProducto;
-    const stock = Number(item.stock !== undefined ? item.stock : 9999);
+    const stock = Number(item.stock !== undefined ? item.stock : 0);
     const qtyToAdd = Number(item.cantidad || 1);
 
     const otherLinesQty = this.cart
@@ -63,7 +63,7 @@ class TestCart {
     const target = this.cart.find((it) => it.cartItemId === cartItemId);
     if (!target) return;
     const prodId = target.id || target.idProducto;
-    const stock = Number(target.stock !== undefined ? target.stock : 9999);
+    const stock = Number(target.stock !== undefined ? target.stock : 0);
 
     if (delta > 0) {
       const otherLinesQty = this.cart

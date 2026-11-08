@@ -497,47 +497,8 @@ export const extractPersonalizables = (producto, ficha) => {
     }
   }
 
-  // Si encontramos insumos reales en la receta técnica, retornarlos directamente
-  if (items.length > 0) {
-    return items;
-  }
-
-  // 3. FALLBACK INTELIGENTE: Si el producto aún no tiene ficha en BD, inferir sus ingredientes
-  let allStrings = [];
-  if (producto?.descripcion) {
-    allStrings.push(String(producto.descripcion).toLowerCase());
-  }
-  if (producto?.nombre) {
-    allStrings.push(String(producto.nombre).toLowerCase());
-  }
-  const combined = allStrings.join(" ");
-
-  const FALLBACK_CANDIDATES = [
-    { id: "pan", nombre: "Pan Brioche", icono: "bread", aliases: ["pan", "brioche", "artesanal"] },
-    { id: "carne", nombre: "Carne de Res", icono: "meat", aliases: ["carne", "de res", "carne de res", "beef", "patty"] },
-    { id: "pollo", nombre: "Pechuga de Pollo", icono: "chicken", aliases: ["pollo", "chicken", "pechuga"] },
-    { id: "salchicha", nombre: "Salchicha", icono: "sausage", aliases: ["salchicha", "suiza", "americana", "hot dog", "perro"] },
-    { id: "papas", nombre: "Papas a la Francesa", icono: "fries", aliases: ["papa", "papas", "francesa", "salchipapa"] },
-    { id: "queso", nombre: "Queso Cheddar", icono: "cheese", aliases: ["queso", "cheddar", "mozzarella", "costeño"] },
-    { id: "tocineta", nombre: "Tocineta Ahumada", icono: "bacon", aliases: ["tocineta", "tocino", "bacon"] },
-    { id: "cebolla", nombre: "Cebolla", icono: "onion", aliases: ["cebolla", "onion", "caramelizada"] },
-    { id: "tomate", nombre: "Tomate", icono: "tomato", aliases: ["tomate", "tomato"] },
-    { id: "lechuga", nombre: "Lechuga Batavia", icono: "lettuce", aliases: ["lechuga", "lettuce"] },
-    { id: "suero_costeno", nombre: "Suero Costeño", icono: "suero_costeno", aliases: ["suero", "suero costeño", "suero costeno", "suerito"] },
-    { id: "salsas", nombre: "Salsas de la Casa", icono: "sauce", aliases: ["salsa", "salsas", "sauce", "tártara", "tartara", "bbq"] },
-    { id: "ripio", nombre: "Ripio de Papa", icono: "fries", aliases: ["ripio", "chips"] },
-    { id: "jalapenos", nombre: "Jalapeños", icono: "pepper", aliases: ["jalapeño", "jalapeno", "picante"] },
-    { id: "huevo", nombre: "Huevo de Codorniz", icono: "egg", aliases: ["huevo", "codorniz"] },
-    { id: "champinones", nombre: "Champiñones", icono: "mushroom", aliases: ["champiñón", "champiñon", "champinon", "mushroom"] },
-    { id: "maiz", nombre: "Maíz Tierno", icono: "salad", aliases: ["maiz", "maíz", "choclo"] }
-  ];
-
-  return FALLBACK_CANDIDATES
-    .filter((c) => c.aliases.some((alias) => combined.includes(alias)))
-    .map((c) => ({
-      ...c,
-      esencial: isEssentialIngredient(c.nombre, producto)
-    }));
+  // Retornar exclusivamente los insumos reales de la Ficha Técnica en base de datos
+  return items;
 };
 
 const QUICK_KITCHEN_TAGS = [
@@ -1493,7 +1454,7 @@ export function FastFoodProductModal({
       ? producto.stock
       : producto?.stockActual !== undefined
       ? producto.stockActual
-      : 99
+      : 0
   );
 
   // Toggle remover ingrediente (protegido por lógica humana de cocina)
@@ -1559,7 +1520,7 @@ export function FastFoodProductModal({
             precio: Number(drink.precio || 0),
             cantidad: 1,
             imagen: resolveDrinkImage(drink),
-            stock: Number(drink.stock !== undefined ? drink.stock : 30)
+            stock: Number(drink.stock !== undefined ? drink.stock : 0)
           }
         ];
       }
@@ -2887,7 +2848,7 @@ export function FastFoodProductModal({
                     const selectedObj = selectedDrinks.find((d) => (d.id || d.idProducto) === dId);
                     const isSelected = Boolean(selectedObj);
                     const itemQty = selectedObj?.cantidad || 1;
-                    const dStock = Number(drink.stock !== undefined ? drink.stock : 30);
+                    const dStock = Number(drink.stock !== undefined ? drink.stock : 0);
 
                     return (
                       <div

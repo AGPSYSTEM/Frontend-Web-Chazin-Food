@@ -181,7 +181,7 @@ export default function PosVendedor() {
 
   // Open FastFoodProductModal (el modal anterior completo)
   const handleOpenCustomize = async (producto) => {
-    const prodStock = Number(producto?.stock !== undefined ? producto.stock : 25);
+    const prodStock = Number(producto?.stock !== undefined ? producto.stock : 0);
     const isAgotado = Boolean(producto?.agotado || prodStock <= 0 || producto?.estado === "Inactivo" || producto?.estado === 0);
     if (isAgotado) {
       warning(
@@ -217,7 +217,9 @@ export default function PosVendedor() {
     cantidad,
     adiciones,
     bebidas,
-    observacion
+    observacion,
+    ingredientesRemovidos,
+    personalizaciones
   }) => {
     const displayName = producto.nombrePersonalizado || producto.nombre;
     addProduct({
@@ -234,6 +236,8 @@ export default function PosVendedor() {
         imagen: a.imagen || ""
       })),
       observacion,
+      ingredientesRemovidos: Array.isArray(ingredientesRemovidos) ? ingredientesRemovidos : [],
+      personalizaciones: personalizaciones || {},
       cantidad: Number(cantidad) || 1,
       stock: producto.stock,
       is2x1Promo: Boolean(producto.is2x1Promo),

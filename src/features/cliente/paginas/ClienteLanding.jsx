@@ -73,106 +73,11 @@ const categoriasDefault = [
   { id: 6, nombre: "Acompañamientos", icon: "sides", color: "from-amber-400 to-orange-600" }
 ];
 
-const productosDefault = [
-  { id: 10, idProducto: 10, nombre: "Hamburguesa Clásica Chazin", precio: 18000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Pan brioche artesanal, carne 80/20, tocineta ahumada, queso cheddar, tomate, lechuga y salsas", stock: 25 },
-  { id: 11, idProducto: 11, nombre: "Hamburguesa Doble Carne & Tocineta", precio: 25000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Pan brioche, doble carne 80/20, doble tocineta ahumada, queso cheddar y cebolla blanca", stock: 20 },
-  { id: 12, idProducto: 12, nombre: "Hamburguesa Pollo Crispy Gourmet", precio: 21000, categoria: 3, idCategoriaProducto: 3, imagen: "chicken", descripcion: "Pan brioche, pechuga de pollo crispy, queso mozzarella, lechuga, tomate y salsas", stock: 18 },
-  { id: 28, idProducto: 28, nombre: "Hamburguesa BBQ Bacon Chazin", precio: 22000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne res 150g, abundante salsa BBQ ahumada, tocineta crujiente, doble queso cheddar y cebolla caramelizada", stock: 30 },
-  { id: 29, idProducto: 29, nombre: "Hamburguesa Mexicana Chazin", precio: 23500, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne 150g, guacamole artesanal fresco, rodajas de jalapeños, queso mozzarella y lechuga", stock: 25 },
-  { id: 30, idProducto: 30, nombre: "Hamburguesa Campesina Chazin", precio: 23000, categoria: 3, idCategoriaProducto: 3, imagen: "burger", descripcion: "Carne 150g, queso mozzarella derretido, tocineta ahumada, cebolla salteada, tomate y salsa tártara", stock: 25 },
-  { id: 13, idProducto: 13, nombre: "Perro Caliente Especial Americano", precio: 14000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan perro, salchicha americana, tocineta crujiente, queso mozzarella y ripio", stock: 22 },
-  { id: 14, idProducto: 14, nombre: "Perro Suizo Chazin", precio: 17000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan perro, salchicha suiza ahumada, tocineta, queso mozzarella y cebolla blanca", stock: 20 },
-  { id: 31, idProducto: 31, nombre: "Perro Caliente Mexicano", precio: 16000, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Pan tierno, salchicha americana, guacamole artesanal, salsa cheddar fundido, tocineta y jalapeños", stock: 20 },
-  { id: 32, idProducto: 32, nombre: "Perro Criollo Especial Chazin", precio: 16500, categoria: 1, idCategoriaProducto: 1, imagen: "hotdog", descripcion: "Salchicha americana y suiza ahumada, lluvia de tocineta, queso mozzarella gratinado y suero costeño", stock: 20 },
-  { id: 15, idProducto: 15, nombre: "Salchipapa Salvaje Gourmet", precio: 23000, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas francesas doradas, salchicha americana, salchicha suiza, tocineta y queso", stock: 25 },
-  { id: 33, idProducto: 33, nombre: "Salchipapa Criolla Chazin", precio: 21000, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas a la francesa, salchicha americana, tocineta crujiente, queso mozzarella, cheddar fundido y suero", stock: 25 },
-  { id: 34, idProducto: 34, nombre: "Salchipapa Costeña Chazin", precio: 22500, categoria: 5, idCategoriaProducto: 5, imagen: "fries", descripcion: "Papas francesas doraditas, salchicha suiza ahumada, generoso suero costeño, tocineta y queso mozzarella", stock: 25 },
-  { id: 16, idProducto: 16, nombre: "Combo Pareja Chazin", precio: 38000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 hamburguesas clásicas con queso cheddar, papas a la francesa y 2 Coca-Cola 400ml", stock: 15 },
-  { id: 35, idProducto: 35, nombre: "Combo Personal Chazin", precio: 24500, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "1 Hamburguesa Clásica Chazin + Papas a la Francesa individuales (150g) + 1 Gaseosa 400ml fría", stock: 25 },
-  { id: 36, idProducto: 36, nombre: "Combo Familiar Chazin (4 Personas)", precio: 68000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 Hamburguesas Clásicas + 2 Perros Especiales Americanos + 2 Papas Grandes + 4 Gaseosas 400ml", stock: 15 },
-  { id: 37, idProducto: 37, nombre: "Combo Perro Amigos (2 Personas)", precio: 32000, categoria: 2, idCategoriaProducto: 2, imagen: "combo", descripcion: "2 Perros Especiales Americanos con mozzarella y tocineta + Porción doble de Papas + 2 Bebidas 400ml", stock: 20 },
-  { id: 17, idProducto: 17, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa Coca-Cola sabor original 400ml fría", stock: 60 },
-  { id: 18, idProducto: 18, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Gaseosa sabor manzana Postobón 400ml refrescante", stock: 45 },
-  { id: 19, idProducto: 19, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, categoria: 4, idCategoriaProducto: 4, imagen: "drink", descripcion: "Agua pura de manantial sin gas 500ml", stock: 50 }
-];
+const productosDefault = [];
 
-const eventosDefault = [
-  {
-    id: 2,
-    idEvento: 2,
-    nombreEvento: "Jueves 2x1 de Burger Artesanal",
-    nombre: "Jueves 2x1 de Burger Artesanal",
-    descripcion: "Paga 1 y lleva 2 Hamburguesas Clásicas todos los jueves del mes con salsas de la casa y papas.",
-    fechaInicio: "2026-09-01",
-    fechaFin: "2026-10-31",
-    estado: "Activo",
-    idProducto: 10,
-    tipoEvento: "2x1",
-    icono: "🍔",
-    descuento: "50.00",
-    nuevoPrecio: "18000.00",
-    producto: {
-      id: 10,
-      idProducto: 10,
-      nombre: "Hamburguesa Clásica Chazin",
-      precio: "18000.00",
-      imagen: "/hero-burger.webp"
-    }
-  },
-  {
-    id: 5,
-    idEvento: 5,
-    nombreEvento: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
-    nombre: "🔥 Chazin Burger Fest 2026 - Edición Limitada",
-    descripcion: "Participante oficial en el festival gastronómico del año. Receta conmemorativa de tiempo limitado con $4.000 de ahorro directo, pan brioche artesanal y salsa trufada secreta.",
-    fechaInicio: "2026-09-01",
-    fechaFin: "2026-10-31",
-    estado: "Activo",
-    idProducto: 26,
-    tipoEvento: "EDICION_LIMITADA",
-    icono: "🎉",
-    descuento: "14.28",
-    nuevoPrecio: "24000.00",
-    producto: {
-      id: 26,
-      idProducto: 26,
-      nombre: "Hamburguesa Burger Fest Trufada Chazin (Edición Especial)",
-      precio: "28000.00",
-      imagen: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789011032/xpk8envk39i0hgpu3d5r.jpg"
-    }
-  },
-  {
-    id: 4,
-    idEvento: 4,
-    nombreEvento: "Combo Pareja Festivo",
-    nombre: "Combo Pareja Festivo",
-    descripcion: "Combo Pareja Chazin a precio especial de $34.000 (Ahorro de $4.000) por temporada.",
-    fechaInicio: "2026-09-01",
-    fechaFin: "2026-10-31",
-    estado: "Activo",
-    idProducto: 16,
-    tipoEvento: "COMBO_ESPECIAL",
-    icono: "🎉",
-    descuento: "10.52",
-    nuevoPrecio: "34000.00",
-    producto: {
-      id: 16,
-      idProducto: 16,
-      nombre: "Combo Pareja Chazin",
-      precio: "38000.00",
-      imagen: "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&auto=format&fit=crop&q=80"
-    }
-  }
-];
+const eventosDefault = [];
 
-const adicionesDisponibles = [
-  { idAdicion: 3, idInsumo: 18, nombre: "Extra Tocineta Ahumada (2 tiras)", precio: 3500, stockActual: 30, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1528607929212-2636ec44253e?w=500&auto=format&fit=crop&q=80" },
-  { idAdicion: 4, idInsumo: 19, nombre: "Extra Queso Cheddar (2 lonchas)", precio: 2500, stockActual: 35, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1618160702438-9b02ab6515c9?w=500&auto=format&fit=crop&q=80" },
-  { idAdicion: 5, idInsumo: 21, nombre: "Porción Papas a la Francesa (150g)", precio: 5000, stockActual: 40, tipo: "Acompañamiento", imagen: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&auto=format&fit=crop&q=80" },
-  { idAdicion: 6, idInsumo: 24, nombre: "Porción Cebolla Caramelizada (50g)", precio: 2000, stockActual: 25, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=500&auto=format&fit=crop&q=80" },
-  { idAdicion: 7, idInsumo: 25, nombre: "Jalapeños Picantes Extra (40g)", precio: 2000, stockActual: 30, tipo: "Topping", imagen: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=80" },
-  { idAdicion: 8, idInsumo: 26, nombre: "Salsa Chazin Especial Adicional", precio: 1500, stockActual: 50, tipo: "Salsa", imagen: "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=500&auto=format&fit=crop&q=80" }
-];
+const adicionesDisponibles = [];
 
 export const getAdicionImage = (ad) => {
   if (!ad) return "https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80";
@@ -201,34 +106,7 @@ export const getAdicionImage = (ad) => {
   return "https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80";
 };
 
-const fichasTecnicasDefault = {
-  1: { ingredientes: ["Pan Brioche Artesanal", "Carne de Res 80/20 (150g)", "Tocineta Ahumada", "Queso Cheddar", "Lechuga Batavia", "Tomate Chonto", "Salsas de la Casa"], peso: "350g", tamano: "Regular", calorias: "~650 kcal", tiempoPreparacion: 10, rendimiento: "1 porción (350g)" },
-  2: { ingredientes: ["Pan Brioche Artesanal", "Doble Carne de Res 80/20 (300g)", "Doble Tocineta Ahumada", "Doble Queso Cheddar", "Cebolla Caramelizada", "Salsas de la Casa"], peso: "540g", tamano: "Doble Grande", calorias: "~980 kcal", tiempoPreparacion: 12, rendimiento: "1 porción grande (540g)" },
-  3: { ingredientes: ["Pan Brioche Artesanal", "Pechuga de Pollo Crispy Apanada", "Queso Mozzarella", "Lechuga Batavia", "Tomate Chonto", "Salsa Especial Tártara"], peso: "380g", tamano: "Regular", calorias: "~720 kcal", tiempoPreparacion: 11, rendimiento: "1 porción (380g)" },
-  4: { ingredientes: ["Pan Perro Americano", "Salchicha Americana Premium", "Tocineta Ahumada", "Queso Mozzarella Rallado", "Ripio de Papa", "Salsas de la Casa"], peso: "290g", tamano: "Regular", calorias: "~540 kcal", tiempoPreparacion: 8, rendimiento: "1 porción (290g)" },
-  5: { ingredientes: ["Pan Perro Americano", "Salchicha Suiza Ahumada", "Tocineta Ahumada", "Queso Mozzarella Fundido", "Cebolla Blanca Picada", "Ripio de Papa"], peso: "340g", tamano: "Especial", calorias: "~680 kcal", tiempoPreparacion: 9, rendimiento: "1 porción (340g)" },
-  6: { ingredientes: ["Papas a la Francesa", "Salchicha Americana Picada", "Salchicha Suiza", "Tocineta Crujiente", "Queso Mozzarella Fundido", "Salsas Chazin"], peso: "560g", tamano: "Generosa", calorias: "~890 kcal", tiempoPreparacion: 12, rendimiento: "1 porción generosa (560g)" },
-  7: { ingredientes: ["2 Hamburguesas Clásicas Chazin", "Porción Papas Francesas Grandes", "2 Gaseosas Coca-Cola 400ml"], peso: "1.6 kg", tamano: "Combo Pareja", calorias: "~1800 kcal", tiempoPreparacion: 14, rendimiento: "2 personas (1.6 kg combo)" },
-  8: { ingredientes: ["Agua Carbonatada", "Jarabe de Maíz", "Caramelo Clase IV", "Cafeína"], peso: "400ml", tamano: "Individual", calorias: "170 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  9: { ingredientes: ["Agua Carbonatada", "Saborizante Manzana Postobón", "Azúcar", "Colorantes"], peso: "400ml", tamano: "Individual", calorias: "160 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  10: { ingredientes: ["Agua Manantial Cristal 100% Pura Sin Gas"], peso: "600ml", tamano: "Individual", calorias: "0 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (600ml)" },
-  11: { ingredientes: ["Agua Carbonatada", "Azúcar", "Cafeína", "Extracto de Nuez de Cola"], peso: "400ml", tamano: "Individual", calorias: "165 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  12: { ingredientes: ["Agua Carbonatada", "Sabor Kola Colombiana", "Azúcar"], peso: "400ml", tamano: "Individual", calorias: "170 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  13: { ingredientes: ["Agua Carbonatada", "Sabor Lima-Limón Natural", "Azúcar"], peso: "400ml", tamano: "Individual", calorias: "155 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  14: { ingredientes: ["Agua Carbonatada", "Jugo de Toronja", "Azúcar", "Acidulante"], peso: "400ml", tamano: "Individual", calorias: "160 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  15: { ingredientes: ["Papas Seleccionadas Cortadas a la Francesa", "Sal Marina", "Aceite Vegetal"], peso: "150g", tamano: "Porción", calorias: "380 kcal", tiempoPreparacion: 6, rendimiento: "1 porción (150g)" },
-  16: { ingredientes: ["Agua Carbonatada", "Color Caramelo IV", "Aspartamo", "Acesulfamo K"], peso: "400ml", tamano: "Individual", calorias: "0 kcal", tiempoPreparacion: 1, rendimiento: "1 porción (400ml)" },
-  17: { ingredientes: ["Papas Corral Rústicas Gruesas", "Sal Marina", "Especias"], peso: "220g", tamano: "Grande", calorias: "450 kcal", tiempoPreparacion: 7, rendimiento: "1 porción grande (220g)" },
-  18: { ingredientes: ["Papas Corral Rústicas Medianas", "Sal Marina"], peso: "150g", tamano: "Mediana", calorias: "310 kcal", tiempoPreparacion: 6, rendimiento: "1 porción mediana (150g)" },
-  19: { ingredientes: ["Papas Rústicas en Casco con Piel", "Sal y Pimienta"], peso: "240g", tamano: "Grande", calorias: "420 kcal", tiempoPreparacion: 7, rendimiento: "1 porción grande (240g)" },
-  20: { ingredientes: ["Papas Rústicas en Casco con Piel", "Sal"], peso: "160g", tamano: "Mediana", calorias: "290 kcal", tiempoPreparacion: 6, rendimiento: "1 porción mediana (160g)" },
-  21: { ingredientes: ["Papa Natural Entera Cortada en Espiral", "Páprika", "Sal de Ajo"], peso: "200g", tamano: "Brocheta", calorias: "380 kcal", tiempoPreparacion: 8, rendimiento: "1 porción espiral (200g)" },
-  22: { ingredientes: ["Papas Francesas Crujientes", "Chili con Carne Casero", "Queso Cheddar Fundido"], peso: "320g", tamano: "Cargada", calorias: "680 kcal", tiempoPreparacion: 8, rendimiento: "1 canastilla cargada (320g)" },
-  23: { ingredientes: ["Papas Francesas con Chili y Queso Cheddar", "Gaseosa 400ml"], peso: "720g (combo)", tamano: "Combo", calorias: "820 kcal", tiempoPreparacion: 8, rendimiento: "1 combo individual completo" },
-  24: { ingredientes: ["Papas Francesas Crujientes", "Tocineta Ahumada Picada", "Queso Cheddar Fundido"], peso: "300g", tamano: "Cargada", calorias: "690 kcal", tiempoPreparacion: 7, rendimiento: "1 canastilla cargada (300g)" },
-  25: { ingredientes: ["Papas Francesas con Tocineta y Cheddar", "Gaseosa 400ml"], peso: "700g (combo)", tamano: "Combo", calorias: "830 kcal", tiempoPreparacion: 7, rendimiento: "1 combo individual completo" },
-  26: { ingredientes: ["Pan Brioche Artesanal Sellado", "Carne Angus Premium 200g", "Queso Brie Fundido", "Reducción de Champiñones al Tartufo", "Cebolla Caramelizada"], peso: "430g", tamano: "Gourmet Especial", calorias: "~790 kcal", tiempoPreparacion: 12, rendimiento: "1 hamburguesa gourmet (430g)" }
-};
+const fichasTecnicasDefault = {};
 
 export const OFFICIAL_DRINK_IMAGES = {
   coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
@@ -579,7 +457,7 @@ export function ClienteLanding() {
   };
 
   const handleAddComplemento = (item) => {
-    const itemStock = Number(item.stock !== undefined ? item.stock : 30);
+    const itemStock = Number(item.stock !== undefined ? item.stock : 0);
     if (item.agotado || itemStock <= 0 || item.estado === "Inactivo" || item.estado === 0) {
       warning("Producto agotado por el momento", `Lo sentimos, "${item.nombre}" está agotado en este momento y no está disponible.`);
       return;
@@ -671,7 +549,7 @@ export function ClienteLanding() {
             .filter(p => p.id !== 0 && p.idProducto !== 0 && !p.nombre?.startsWith('__SISTEMA'))
             .map(p => {
               const isInactive = p.estado === 'Inactivo' || p.estado === 0;
-              const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25));
+              const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 0));
               const finalStock = isInactive ? 0 : rawStock;
               return {
                 id: p.id || p.idProducto,
@@ -734,7 +612,8 @@ export function ClienteLanding() {
             idAdicion: a.idAdicion || a.id,
             nombre: a.nombre,
             precio: parseFloat(a.precio || 0),
-            stockActual: a.stockActual || 50,
+            stock: Number(a.stock !== undefined ? a.stock : (a.stockActual !== undefined ? a.stockActual : 0)),
+            stockActual: Number(a.stockActual !== undefined ? a.stockActual : (a.stock !== undefined ? a.stock : 0)),
             tipo: a.tipo || "Adición",
             estado: a.estado !== undefined ? a.estado : 1,
             imagen: (a.imagen && typeof a.imagen === "string" && a.imagen.startsWith("http")) ? a.imagen : getAdicionImage(a)
@@ -921,16 +800,7 @@ export function ClienteLanding() {
     (ad.estado === undefined || ad.estado === 1 || ad.estado === true || ad.estado === "1")
   );
 
-  // Las 3 bebidas oficiales listas para acompañar
-  const fallbackBebidas = [
-    { id: 8, idProducto: 8, nombre: "Gaseosa Coca-Cola 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.coca_cola, stock: 60 },
-    { id: 9, idProducto: 9, nombre: "Gaseosa Manzana Postobón 400ml", precio: 4500, imagen: OFFICIAL_DRINK_IMAGES.manzana, stock: 45 },
-    { id: 10, idProducto: 10, nombre: "Agua Cristal sin Gas 500ml", precio: 3000, imagen: OFFICIAL_DRINK_IMAGES.agua, stock: 50 }
-  ];
-  const bebidasDisponibles = (() => {
-    const list = activeProductos.filter(p => isDrinkProduct(p));
-    return list.length > 0 ? list : fallbackBebidas;
-  })();
+  const bebidasDisponibles = activeProductos.filter(p => isDrinkProduct(p));
 
   // ═══ Complementos INTELIGENTES: recomienda según lo que ya hay en el carrito ═══
   // Categorías consideradas "plato principal / plato fuerte" (NO se sugieren como complemento/antojo)
@@ -1038,7 +908,7 @@ export function ClienteLanding() {
         precio: Number(p.precio),
         badge: getBadge(p),
         imagen: compImg || p.imagen,
-        stock: Number(p.stock !== undefined ? p.stock : 30)
+        stock: Number(p.stock !== undefined ? p.stock : 0)
       };
     };
 
@@ -1265,7 +1135,7 @@ export function ClienteLanding() {
   };
 
   const handleProductClick = async (producto, targetTab = "personalizar") => {
-    const prodStock = Number(producto?.stock !== undefined ? producto.stock : (producto?.stockActual !== undefined ? producto.stockActual : 25));
+    const prodStock = Number(producto?.stock !== undefined ? producto.stock : (producto?.stockActual !== undefined ? producto.stockActual : 0));
     const isAgotado = Boolean(producto?.agotado || prodStock <= 0 || producto?.estado === "Inactivo" || producto?.estado === 0);
 
     if (isAgotado && targetTab !== "resenas") {
@@ -1350,7 +1220,7 @@ export function ClienteLanding() {
             precio: Number(bebida.precio || 0),
             cantidad: 1,
             imagen: bebida.imagen || "drink",
-            stock: Number(bebida.stock !== undefined ? bebida.stock : (bebida.stockActual !== undefined ? bebida.stockActual : 30))
+            stock: Number(bebida.stock !== undefined ? bebida.stock : (bebida.stockActual !== undefined ? bebida.stockActual : 0))
           }
         ]
       });
@@ -1370,7 +1240,7 @@ export function ClienteLanding() {
         bebidasSeleccionadas: currentBebidas.filter(b => (b.id || b.idProducto) !== bebId)
       });
     } else {
-      const stockTot = Number(existing.stock !== undefined ? existing.stock : 30);
+      const stockTot = Number(existing.stock !== undefined ? existing.stock : 0);
       const inCart = getProductQuantityInCart(bebId);
       const maxAvailable = Math.max(0, stockTot - inCart);
       if (delta > 0 && existing.cantidad >= maxAvailable) {
@@ -1455,8 +1325,9 @@ export function ClienteLanding() {
       nombre: prod.nombre,
       precio: basePrice,
       cantidad: productoSeleccionado.cantidad || 1,
-      stock: Number(prod.stock !== undefined ? prod.stock : (prod.stockActual !== undefined ? prod.stockActual : 25)),
+      stock: Number(prod.stock !== undefined ? prod.stock : (prod.stockActual !== undefined ? prod.stockActual : 0)),
       imagen: prod.imagen,
+      ingredientesRemovidos: removidos,
       personalizaciones: personalizacionesList,
       observaciones: personalizacionesStr,
       observacion: personalizacionesStr,
@@ -1480,7 +1351,7 @@ export function ClienteLanding() {
         nombre: b.nombre,
         precio: Number(b.precio),
         cantidad: Number(b.cantidad) || 1,
-        stock: Number(b.stock !== undefined ? b.stock : 30),
+        stock: Number(b.stock !== undefined ? b.stock : 0),
         imagen: resolveDrinkImage(b),
         adiciones: []
       });
@@ -1507,6 +1378,7 @@ export function ClienteLanding() {
     adiciones,
     bebidas,
     personalizaciones,
+    ingredientesRemovidos,
     observacion,
     sabor
   }) => {
@@ -1536,8 +1408,9 @@ export function ClienteLanding() {
       cantidad: Number(cantidad) || 1,
       cantidadCocina: producto.cantidadCocina || (producto.is2x1Promo ? (Number(cantidad) || 1) * 2 : (Number(cantidad) || 1)),
       is2x1Promo: Boolean(producto.is2x1Promo),
-      stock: Number(producto.stock !== undefined ? producto.stock : 25),
+      stock: Number(producto.stock !== undefined ? producto.stock : 0),
       imagen: producto.imagen,
+      ingredientesRemovidos: Array.isArray(ingredientesRemovidos) ? ingredientesRemovidos : [],
       personalizaciones: personalizaciones || [],
       observaciones: observacion || "",
       observacion: observacion || "",
@@ -1576,7 +1449,7 @@ export function ClienteLanding() {
             nombre: isComboProd ? `${b.nombre} (Bebida Extra)` : b.nombre,
             precio: Number(b.precio),
             cantidad: isComboProd ? extraQty : qty,
-            stock: Number(b.stock !== undefined ? b.stock : 30),
+            stock: Number(b.stock !== undefined ? b.stock : 0),
             imagen: resolveDrinkImage(b),
             adiciones: []
           });
@@ -1832,12 +1705,15 @@ export function ClienteLanding() {
             const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
             return {
               id: item.id,
-              idVariante: item.id,
+              idProducto: item.idProducto || item.id,
+              idVariante: item.idVariante || item.id,
               nombre: item.nombre,
               cantidad: item.cantidad,
               precioUnitario: Number(item.precio) || 0,
               total: lineTotal,
               observaciones: item.observacion || item.observaciones || item.especificaciones || "",
+              ingredientesRemovidos: Array.isArray(item.ingredientesRemovidos) ? item.ingredientesRemovidos : [],
+              personalizaciones: item.personalizaciones || {},
               adiciones: (item.adiciones || []).map(a => ({
                 idAdicion: a.idAdicion || a.id,
                 nombre: a.nombre,
@@ -1850,15 +1726,20 @@ export function ClienteLanding() {
         detalles: cart.map(item => {
           const itemAdds = (item.adiciones || []).reduce((s, a) => s + ((Number(a.precio) || 0) * Number(a.cantidad || 1)), 0);
           const lineTotal = ((Number(item.precio) || 0) + itemAdds) * (item.cantidad || 1);
+          const customNote = (item.observacion || item.observaciones || "").trim();
           return {
-            idVariante: item.id || 1,
+            idProducto: item.idProducto || item.id,
+            idVariante: item.idVariante || item.id || 1,
+            nombre: item.nombre,
             cantidad: item.cantidad,
             precioUnitario: Number(item.precio) || 0,
             subtotal: lineTotal,
             idAdiciones: (item.adiciones || []).map(a => a.idAdicion || a.id),
             adiciones: item.adiciones || [],
-            observacion: item.observacion || item.observaciones || "",
-            observaciones: item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : '')
+            ingredientesRemovidos: Array.isArray(item.ingredientesRemovidos) ? item.ingredientesRemovidos : [],
+            personalizaciones: item.personalizaciones || {},
+            observacion: customNote,
+            observaciones: customNote || (item.nombre + (item.adiciones && item.adiciones.length > 0 ? ` (+${item.adiciones.map(a => a.nombre).join(', ')})` : ''))
           };
         })
       };
@@ -2481,7 +2362,7 @@ export function ClienteLanding() {
             const activeEvent = getActiveEvent(producto);
             const hasEvent = Boolean(activeEvent);
             const eventToDisplay = activeEvent;
-            const prodStock = Number(producto.stock !== undefined ? producto.stock : 25);
+            const prodStock = Number(producto.stock !== undefined ? producto.stock : 0);
             const isAgotado = Boolean(producto.agotado || prodStock <= 0 || producto.estado === "Inactivo" || producto.estado === 0);
 
             return (
@@ -2795,7 +2676,7 @@ export function ClienteLanding() {
                 <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
                   {cart.map((item, index) => {
                     const itemKey = item.cartItemId || `${item.id}-${index}`;
-                    const prodStock = Number(item.stock !== undefined ? item.stock : 25);
+                    const prodStock = Number(item.stock !== undefined ? item.stock : 0);
                     const totalInCartForProd = getProductQuantityInCart(item.id || item.idProducto);
                     const isPromoEvent = Boolean(item.isEvento || item.eventoInfo || (item.eventos && item.eventos.length > 0));
                     const additionsUnit = (item.adiciones || []).reduce((sum, a) => sum + ((Number(a.precio) || 0) * (Number(a.cantidad) || 1)), 0);
@@ -3467,7 +3348,7 @@ export function ClienteLanding() {
                     nombre: b.nombre,
                     precio: Number(b.precio || 0),
                     cantidad: Number(b.cantidad || 1),
-                    stock: Number(b.stock !== undefined ? b.stock : 30),
+                    stock: Number(b.stock !== undefined ? b.stock : 0),
                     imagen: resolveDrinkImage(b),
                     esBebida: true,
                     categoria: "Bebidas",

@@ -479,7 +479,7 @@ export function PersonalizarEventoModal({
       cantidad: cantidad,
       cantidadCocina: kitchenPrepQty,
       is2x1Promo: is2x1,
-      stock: Number(selectedProduct.stock || selectedProduct.stockActual || 50),
+      stock: Number(selectedProduct.stock !== undefined ? selectedProduct.stock : (selectedProduct.stockActual !== undefined ? selectedProduct.stockActual : 0)),
       imagen: selectedProduct.imagen,
       isEvento: true,
       eventoInfo: {
@@ -505,7 +505,7 @@ export function PersonalizarEventoModal({
   };
 
   // Stock check
-  const stockTot = Number(selectedProduct?.stock || selectedProduct?.stockActual || 50);
+  const stockTot = Number(selectedProduct?.stock !== undefined ? selectedProduct.stock : (selectedProduct?.stockActual !== undefined ? selectedProduct.stockActual : 0));
   const inCart = getProductQuantityInCart ? getProductQuantityInCart(selectedProduct?.id || selectedProduct?.idProducto) : 0;
   const remainingStock = Math.max(0, stockTot - inCart);
 

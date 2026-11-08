@@ -6,7 +6,7 @@ import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 export default function KioskProductCard({ producto, onSelect }) {
   if (!producto) return null;
 
-  const prodStock = Number(producto.stock !== undefined ? producto.stock : 25);
+  const prodStock = Number(producto.stock !== undefined ? producto.stock : 0);
   const isAgotado = Boolean(producto.agotado || prodStock <= 0 || producto.estado === "Inactivo" || producto.estado === 0);
 
   const now = new Date();

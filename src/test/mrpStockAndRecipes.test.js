@@ -38,7 +38,7 @@ function convertUnits(amount, fromUnit, toUnit) {
 
 function calculateProductStock(ficha, insumosMap) {
   if (!ficha || !Array.isArray(ficha.detalles) || ficha.detalles.length === 0) {
-    return { stockDisponible: 50, hasFicha: false };
+    return { stockDisponible: 0, hasFicha: false };
   }
 
   let minPortions = Infinity;
@@ -60,7 +60,7 @@ function calculateProductStock(ficha, insumosMap) {
     }
   }
 
-  const finalStock = minPortions === Infinity ? 50 : Math.max(0, minPortions);
+  const finalStock = minPortions === Infinity ? 0 : Math.max(0, minPortions);
   return { stockDisponible: finalStock, hasFicha: true };
 }
 

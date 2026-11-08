@@ -2,13 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { posService } from "../servicios/posService";
 
-function findCartItemIndex(cart, productoId, varianteId, adicionIds) {
+function findCartItemIndex(cart, productoId, varianteId, adicionIds, observacion = "", ingredientesRemovidos = []) {
+  const normObs = String(observacion || "").trim().toLowerCase();
+  const normRemoved = Array.isArray(ingredientesRemovidos)
+    ? ingredientesRemovidos.map((r) => String(r).trim().toLowerCase()).sort().join(",")
+    : "";
   return cart.findIndex((it) => {
     if (it.productoId !== productoId) return false;
     if (it.varianteId !== varianteId) return false;
     const existingAdIds = (it.adiciones || []).map((a) => a.id).sort().join(',');
     const newAdIds = (adicionIds || []).slice().sort().join(',');
-    return existingAdIds === newAdIds;
+    if (existingAdIds !== newAdIds) return false;
+    const existingObs = String(it.observacion || "").trim().toLowerCase();
+    const existingRemoved = Array.isArray(it.ingredientesRemovidos)
+      ? it.ingredientesRemovidos.map((r) => String(r).trim().toLowerCase()).sort().join(",")
+      : "";
+    return existingObs === normObs && existingRemoved === normRemoved;
   });
 }
 
@@ -70,7 +79,7 @@ export function usePOS({ initialClienteId = null } = {}) {
           )
           .map(p => {
             const isInactive = p.estado === 'Inactivo' || p.estado === 0;
-            const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 25));
+            const rawStock = Number(p.stock !== undefined ? p.stock : (p.stockActual !== undefined ? p.stockActual : 0));
             const finalStock = isInactive ? 0 : rawStock;
             return {
               ...p,
@@ -100,10 +109,10 @@ export function usePOS({ initialClienteId = null } = {}) {
 
   const total = subtotal - descuento;
 
-  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", cantidad = 1, stock = null, is2x1Promo = false, cantidadCocina = null }) {
+  function addProduct({ productoId, varianteId, nombre, precio, adiciones = [], observacion = "", ingredientesRemovidos = [], personalizaciones = {}, cantidad = 1, stock = null, is2x1Promo = false, cantidadCocina = null }) {
     setCart((prev) => {
       const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === productoId);
-      const prodStock = Number(stock !== null ? stock : (prodMeta?.stock !== undefined ? prodMeta.stock : (prodMeta?.stockActual !== undefined ? prodMeta.stockActual : 9999)));
+      const prodStock = Number(stock !== null ? stock : (prodMeta?.stock !== undefined ? prodMeta.stock : (prodMeta?.stockActual !== undefined ? prodMeta.stockActual : 0)));
 
       const totalInCart = prev
         .filter((it) => it.productoId === productoId)
@@ -115,7 +124,7 @@ export function usePOS({ initialClienteId = null } = {}) {
       }
 
       const adicionIds = (adiciones || []).map((a) => (typeof a === "object" ? `${a.id || a.idAdicion}x${a.cantidad || 1}` : a)).slice();
-      const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds);
+      const idx = findCartItemIndex(prev, productoId, varianteId, adicionIds, observacion, ingredientesRemovidos);
       if (idx >= 0) {
         const newCart = [...prev];
         const newQty = (newCart[idx].cantidad || 0) + qtyToAdd;
@@ -140,6 +149,8 @@ export function usePOS({ initialClienteId = null } = {}) {
           cantidadCocina: cantidadCocina || (is2x1Promo ? qtyToAdd * 2 : qtyToAdd),
           is2x1Promo: Boolean(is2x1Promo),
           observacion,
+          ingredientesRemovidos: Array.isArray(ingredientesRemovidos) ? ingredientesRemovidos : [],
+          personalizaciones: personalizaciones || {},
           stock: prodStock
         }
       ];
@@ -151,7 +162,7 @@ export function usePOS({ initialClienteId = null } = {}) {
       if (!prev[index]) return prev;
       const target = prev[index];
       const prodMeta = (productos || []).find((p) => (p.id || p.idProducto) === target.productoId);
-      const prodStock = Number(target.stock !== undefined ? target.stock : (prodMeta?.stock !== undefined ? prodMeta.stock : 9999));
+      const prodStock = Number(target.stock !== undefined ? target.stock : (prodMeta?.stock !== undefined ? prodMeta.stock : 0));
 
       const totalInCart = prev
         .filter((it) => it.productoId === target.productoId)
@@ -286,6 +297,8 @@ export function usePOS({ initialClienteId = null } = {}) {
               precioUnitario: Number(it.precio) || 0,
               total: lineTotal,
               observaciones: it.observacion || "",
+              ingredientesRemovidos: Array.isArray(it.ingredientesRemovidos) ? it.ingredientesRemovidos : [],
+              personalizaciones: it.personalizaciones || {},
               adiciones: it.adiciones || []
             };
           })
@@ -308,6 +321,8 @@ export function usePOS({ initialClienteId = null } = {}) {
             idAdiciones: (it.adiciones || []).map((a) => a.idAdicion || a.id),
             adiciones: it.adiciones || [],
             observacion: it.observacion || "",
+            ingredientesRemovidos: Array.isArray(it.ingredientesRemovidos) ? it.ingredientesRemovidos : [],
+            personalizaciones: it.personalizaciones || {},
             nombre: it.nombre
           };
         })

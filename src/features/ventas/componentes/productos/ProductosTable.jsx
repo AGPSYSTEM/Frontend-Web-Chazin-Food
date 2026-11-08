@@ -267,7 +267,7 @@ export function ProductosTable({
                     })()}
                   </td>
                   <td className="px-5 py-2.5">
-                    {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 50)) > 0 ? (
+                    {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 0)) > 0 ? (
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                           Number(p.stockDisponible || p.stock) <= 5

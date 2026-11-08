@@ -70,7 +70,7 @@ export function CartProvider({ children }) {
    */
   const checkStockAvailability = (item, qtyToAdd = 1) => {
     const prodId = item.id || item.idProducto;
-    const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 9999));
+    const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 0));
     const inCart = getProductQuantityInCart(prodId);
     const maxAvailable = Math.max(0, stock - inCart);
     return {
@@ -96,7 +96,7 @@ export function CartProvider({ children }) {
       if (!item) continue;
       const cartItemId = item.cartItemId || generateCartItemId(item);
       const prodId = item.id || item.idProducto;
-      const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 9999));
+      const stock = Number(item.stock !== undefined ? item.stock : (item.stockActual !== undefined ? item.stockActual : 0));
       const qtyToAdd = Number(item.cantidad || 1);
 
       // Calculate current total for this product in cart excluding the exact same line item if we are re-adding
@@ -166,7 +166,7 @@ export function CartProvider({ children }) {
       if (!target) return prev;
 
       const prodId = target.id || target.idProducto;
-      const stock = Number(target.stock !== undefined ? target.stock : (target.stockActual !== undefined ? target.stockActual : 9999));
+      const stock = Number(target.stock !== undefined ? target.stock : (target.stockActual !== undefined ? target.stockActual : 0));
       
       if (delta > 0) {
         const otherLinesQty = prev
