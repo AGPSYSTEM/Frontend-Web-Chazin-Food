@@ -353,34 +353,66 @@ export function validateTexto(val = "", campo = "campo", options = {}) {
  */
 export function validateNumeroPositivo(val, campo = "valor", options = {}) {
   const { min = 0.01, max = Infinity, integer = false, allowZero = false } = options;
+  const campoLimpio = String(campo || "valor").trim();
+  const campoDisplay = /^el\s|^la\s|^los\s|^las\s/i.test(campoLimpio) ? campoLimpio : `El ${campoLimpio}`;
+
   if (val === null || val === undefined || String(val).trim() === "") {
-    return { isValid: false, error: `El ${campo} es obligatorio.` };
+    return { isValid: false, error: `${campoDisplay} es obligatorio.` };
   }
-  const num = Number(val);
+
+  const isCurrency = Boolean(
+    options.isCurrency ||
+    campoLimpio.toLowerCase().includes("precio") ||
+    campoLimpio.toLowerCase().includes("costo") ||
+    campoLimpio.toLowerCase().includes("monto") ||
+    campoLimpio.toLowerCase().includes("moneda")
+  );
+
+  let cleanVal = val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (isCurrency) {
+      cleanVal = parseMilesCOP(trimmed, false);
+    } else if (trimmed.includes(".") && (trimmed.match(/\./g) || []).length > 1) {
+      cleanVal = parseMilesCOP(trimmed, false);
+    }
+  }
+
+  const num = Number(cleanVal);
   if (isNaN(num)) {
-    return { isValid: false, error: `El ${campo} debe ser un número válido.` };
+    return { isValid: false, error: `${campoDisplay} debe ser un número válido.` };
   }
   if (allowZero && num === 0) {
     return { isValid: true, error: "" };
   }
+
   if (num < (allowZero ? 0 : min)) {
-    return { isValid: false, error: `El ${campo} debe ser mayor a ${allowZero ? "o igual a 0" : (min > 0.01 ? min - 1 : 0)}.` };
+    const minDisplay = allowZero
+      ? "o igual a 0"
+      : min > 0.01
+      ? isCurrency
+        ? `$${formatMilesCOP(min - 1)}`
+        : formatMilesCOP(min - 1)
+      : 0;
+    return { isValid: false, error: `${campoDisplay} debe ser mayor a ${minDisplay}.` };
   }
   if (num > max) {
-    return { isValid: false, error: `El ${campo} no puede exceder ${max}.` };
+    const formattedMax = Number.isFinite(max) ? formatMilesCOP(max) : max;
+    const maxDisplay = isCurrency ? `$${formattedMax}` : formattedMax;
+    return { isValid: false, error: `${campoDisplay} no puede exceder ${maxDisplay}.` };
   }
   if (integer && !Number.isInteger(num)) {
-    return { isValid: false, error: `El ${campo} debe ser un número entero sin decimales.` };
+    return { isValid: false, error: `${campoDisplay} debe ser un número entero sin decimales.` };
   }
   return { isValid: true, error: "" };
 }
 
 /**
- * Valida precio o moneda
+ * Valida precio o moneda con puntuación de pesos colombianos
  */
 export function validateMoneda(val, campo = "precio", options = {}) {
   const { allowZero = false, max = 100000000 } = options;
-  return validateNumeroPositivo(val, campo, { min: allowZero ? 0 : 50, max, integer: false, allowZero });
+  return validateNumeroPositivo(val, campo, { min: allowZero ? 0 : 50, max, integer: false, allowZero, isCurrency: true });
 }
 
 /**
