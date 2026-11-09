@@ -752,7 +752,8 @@ export function InsumoModal({
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">$</span>
                       <NumberInput
                         min="0"
-                        step="0.01"
+                        step="500"
+                        formatThousands={true}
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
                         onBlur={() => handleBlur("precioUnitario")}
@@ -962,6 +963,8 @@ export function InsumoModal({
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm pointer-events-none">$</span>
                       <NumberInput
                         min="0"
+                        step="500"
+                        formatThousands={true}
                         required
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
@@ -1134,6 +1137,7 @@ export function InsumoModal({
                         <NumberInput
                           min="0"
                           step="100"
+                          formatThousands={true}
                           required={form.esAdicion}
                           value={form.precioAdicion}
                           onChange={(e) => handleNumberInput("precioAdicion", e.target.value)}

@@ -398,6 +398,12 @@ export function formatMilesCOP(val, allowDecimals = false) {
   let str = String(val).trim();
   if (!str) return "";
 
+  if (allowDecimals && (str.endsWith(".") || str.endsWith(","))) {
+    const rawNum = str.slice(0, -1);
+    const intFormatted = rawNum.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${intFormatted || "0"},`;
+  }
+
   if (typeof val === "number") {
     if (!Number.isFinite(val)) return "";
     const intPart = String(Math.trunc(Math.abs(val))).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -439,13 +445,20 @@ export function parseMilesCOP(displayVal = "", allowDecimals = false) {
   if (!str) return "";
 
   if (allowDecimals) {
-    const withoutThousandDots = str.replace(/\./g, "");
-    const parts = withoutThousandDots.split(",");
-    const intDigits = (parts[0] || "").replace(/\D/g, "");
-    if (parts.length > 1) {
+    if (str.includes(",")) {
+      const parts = str.split(",");
+      const intDigits = parts[0].replace(/\./g, "").replace(/\D/g, "");
       const decDigits = parts.slice(1).join("").replace(/\D/g, "").slice(0, 2);
       return `${intDigits || "0"}.${decDigits}`;
     }
+    const dotParts = str.split(".");
+    if (dotParts.length === 2 && dotParts[1].length > 0 && dotParts[1].length <= 2) {
+      const intDigits = dotParts[0].replace(/\D/g, "");
+      const decDigits = dotParts[1].replace(/\D/g, "");
+      return `${intDigits || "0"}.${decDigits}`;
+    }
+    const withoutThousandDots = str.replace(/\./g, "");
+    const intDigits = withoutThousandDots.replace(/\D/g, "");
     return intDigits ? intDigits.replace(/^0+(?=\d)/, "") : "";
   }
 
