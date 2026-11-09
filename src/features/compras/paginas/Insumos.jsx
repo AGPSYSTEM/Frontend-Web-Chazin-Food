@@ -205,6 +205,7 @@ export function Insumos() {
 
   // Filter unified insumos (base + prepared) according to selected type filter
   const itemsToShow = filteredInsumos.filter((item) => {
+    if (searchTerm && searchTerm.trim() !== "") return true;
     if (filterTipo === "Base") return item.tipo !== "Preparado";
     if (filterTipo === "Preparado") return item.tipo === "Preparado";
     return true;

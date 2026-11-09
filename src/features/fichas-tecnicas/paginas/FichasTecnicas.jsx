@@ -9,6 +9,7 @@ import { formatFechaHoraFicha, normalizeFichaWithVersions } from "../utils/ficha
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function FichasTecnicas({ readOnly = false }) {
   const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'preparados'
@@ -112,39 +113,55 @@ export function FichasTecnicas({ readOnly = false }) {
 
   const currentList = activeTab === "productos" ? productos : preparados;
 
-  // Buscador generalizado por todas las columnas y atributos
+  // Buscador multicriterio generalizado por todas las columnas y atributos
   const filtered = currentList.filter((item) => {
-    const term = search.toLowerCase().trim();
-    if (!term) return true;
+    if (!search || !search.trim()) return true;
 
     const isProducto = activeTab === "productos";
-    const itemId = String(item.id || item.idProducto || item.idInsumo || "").toLowerCase();
-    const codigo = String(item.codigo || "").toLowerCase();
-    const nombre = (item.nombre || "").toLowerCase();
-    const cat = (item.categoria || item.categoriaNombre || item.categoria?.nombre || (isProducto ? "Producto" : "Insumo Preparado")).toLowerCase();
-    const estado = String(item.estado || (item.activo === false ? "Inactivo" : "Activo")).toLowerCase();
-    const precio = String(item.precio || "");
-
+    const itemId = String(item.id || item.idProducto || item.idInsumo || "");
     const fichaRaw = fichasMap[`${isProducto ? "producto" : "insumo"}:${itemId}`] || item.fichaTecnica || null;
-    const version = fichaRaw?.versionActual ? `v${fichaRaw.versionActual} version ${fichaRaw.versionActual}`.toLowerCase() : "";
-    const rendimiento = String(fichaRaw?.rendimiento || "").toLowerCase();
-    const tiempo = fichaRaw?.tiempoPreparacion ? `${fichaRaw.tiempoPreparacion} min`.toLowerCase() : "";
-    
     const ingredientesText = Array.isArray(fichaRaw?.detalles || fichaRaw?.insumos)
-      ? (fichaRaw.detalles || fichaRaw.insumos).map(d => d.nombreInsumo || d.insumo?.nombre || d.nombre || "").join(" ").toLowerCase()
+      ? (fichaRaw.detalles || fichaRaw.insumos).map(d => d.nombreInsumo || d.insumo?.nombre || d.nombre || "").join(" ")
       : "";
 
-    return (
-      nombre.includes(term) ||
-      cat.includes(term) ||
-      itemId.includes(term) ||
-      codigo.includes(term) ||
-      estado.includes(term) ||
-      precio.includes(term) ||
-      version.includes(term) ||
-      rendimiento.includes(term) ||
-      tiempo.includes(term) ||
-      ingredientesText.includes(term)
+    const hasFicha = Boolean(fichaRaw);
+    const fichaStatus = hasFicha
+      ? "con_ficha con ficha con_receta con receta"
+      : "sin_ficha sin ficha sin_receta sin receta";
+
+    const hasDesc = Boolean(item.descripcion && String(item.descripcion).trim());
+    const descText = hasDesc ? item.descripcion : "sin_descripcion sin descripcion";
+
+    const hasCat = Boolean((item.categoria || item.categoriaNombre) && String(item.categoria || item.categoriaNombre).trim());
+    const catText = hasCat ? `${item.categoria || ""} ${item.categoriaNombre || ""}` : "sin_categoria sin categoria";
+
+    return matchesSmartSearch(
+      [
+        item.nombre,
+        item.categoria,
+        item.categoriaNombre,
+        catText,
+        item.categoria?.nombre,
+        descText,
+        fichaStatus,
+        isProducto ? "Producto" : "Insumo Preparado",
+        itemId,
+        `#${itemId}`,
+        item.codigo,
+        formatStatusTokens(item.estado !== undefined ? item.estado : (item.activo === false ? "Inactivo" : "Activo")),
+        item.precio,
+        String(item.precio ?? ""),
+        fichaRaw?.versionActual ? `v${fichaRaw.versionActual}` : "",
+        fichaRaw?.versionActual ? `version ${fichaRaw.versionActual}` : "",
+        fichaRaw?.rendimiento,
+        String(fichaRaw?.rendimiento ?? ""),
+        fichaRaw?.rendimiento ? `${fichaRaw.rendimiento} porciones` : "",
+        fichaRaw?.tiempoPreparacion,
+        String(fichaRaw?.tiempoPreparacion ?? ""),
+        fichaRaw?.tiempoPreparacion ? `${fichaRaw.tiempoPreparacion} min minutos` : "",
+        ingredientesText
+      ],
+      search
     );
   });
 

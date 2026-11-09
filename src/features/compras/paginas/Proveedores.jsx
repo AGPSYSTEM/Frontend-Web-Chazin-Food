@@ -8,6 +8,7 @@ import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
 import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProveedoresView";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function Proveedores() {
   const { user } = useAuth();
@@ -83,14 +84,27 @@ export function Proveedores() {
 
   // Show filtered results - include inactive when searching or filter is Todos
   const displayProveedores = viewMode === "papelera"
-    ? papeleraProveedores.filter((p) => {
-      return (
-        searchTerm === "" ||
-        p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.nit?.includes(searchTerm) ||
-        p.contacto?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    })
+    ? papeleraProveedores.filter((p) =>
+      matchesSmartSearch(
+        [
+          p.nombre,
+          p.nit,
+          p.numeroDocumento,
+          p.contacto,
+          p.nombreContacto,
+          p.email,
+          p.correo,
+          p.telefono,
+          p.celular,
+          p.direccion,
+          p.tipoProveedor,
+          p.tipoPersona,
+          p.id,
+          p.idProveedor
+        ],
+        searchTerm
+      )
+    )
     : filteredProveedores;
 
   const statCards = [

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { usuariosService } from "../servicios/usuariosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { isCedulaValida } from "@/shared/utils/validationUtils";
 
 function getIniciales(nombre = "") {
   return nombre.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2);
@@ -60,22 +61,55 @@ export function useUsuarios() {
     const isNotAdmin = (u.rolNombre || u.rol || "").toLowerCase() !== "administrador" && String(u.idRol || u.id_rol) !== "1";
     if (!isNotAdmin) return false;
 
+    const fullName = `${u.nombre || ""} ${u.apellidos || ""}`.trim();
+
+    const hasDoc = isCedulaValida(u.documento, u.tipoDocumento);
+    const docText = hasDoc
+      ? `${u.documento} ${u.tipoDocumento || ""} con_documento con documento con_cedula con cedula`
+      : "sin_documento sin documento sin_registrar sin registrar pendiente documento pendiente sin cedula sin_cedula";
+
+    const hasTel = Boolean(u.telefono && String(u.telefono).trim() && u.telefono !== "-");
+    const telText = hasTel ? `${u.telefono} con_telefono con telefono` : "sin_telefono sin telefono";
+
+    const hasEmail = Boolean(u.email && String(u.email).trim() && u.email !== "-");
+    const emailText = hasEmail ? `${u.email} con_correo con correo con_email con email` : "sin_correo sin correo sin_email sin email";
+
+    const hasDir = Boolean(u.direccion && String(u.direccion).trim() && u.direccion !== "-");
+    const dirText = hasDir ? `${u.direccion} con_direccion con direccion` : "sin_direccion sin direccion";
+
     const matchSearch = matchesSmartSearch(
       [
         u.nombre,
         u.apellidos,
+        fullName,
         u.email,
+        emailText,
         u.documento,
         u.numeroDocumento,
+        docText,
         u.telefono,
+        telText,
+        u.direccion,
+        dirText,
         u.rolNombre,
-        u.rol
+        u.rol,
+        formatStatusTokens(u.estado),
+        u.id,
+        u.idUsuario,
+        `#${u.id || u.idUsuario}`
       ],
       searchTerm
     );
 
-    const matchRol = filterRol === "Todos" || u.rolNombre?.toLowerCase() === filterRol?.toLowerCase();
-    const matchEstado = filterEstado === "Todos" || u.estado?.toLowerCase() === filterEstado?.toLowerCase();
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+    const isActivo = u.estado?.toLowerCase() === "activo" || u.estado === 1 || u.estado === "1";
+    const matchEstadoFiltro =
+      filterEstado === "Todos" ||
+      (filterEstado.toLowerCase() === "activo" && isActivo) ||
+      (filterEstado.toLowerCase() === "inactivo" && !isActivo);
+
+    const matchEstado = !hasSearch ? matchEstadoFiltro : true;
+    const matchRol = !hasSearch ? (filterRol === "Todos" || u.rolNombre?.toLowerCase() === filterRol?.toLowerCase()) : true;
 
     return matchSearch && matchRol && matchEstado;
   });

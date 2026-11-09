@@ -6,6 +6,7 @@ import {
   ArrowRight, ArrowLeft, ArrowUp, ArrowDown
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
@@ -456,10 +457,22 @@ export function FichaTecnicaInsumo({
   // Insumos disponibles filtrados
   const insumosSugeridos = useMemo(() => {
     if (!searchInsumo || !searchInsumo.trim()) return [];
-    const term = searchInsumo.toLowerCase().trim();
     return dbInsumosList
-      .filter(i => (i.nombre || "").toLowerCase().includes(term))
-      .slice(0, 6);
+      .filter(i =>
+        matchesSmartSearch(
+          [
+            i.nombre,
+            i.categoria,
+            i.categoriaNombre,
+            i.unidadMedida,
+            i.id,
+            i.idInsumo,
+            `#${i.id || i.idInsumo}`
+          ],
+          searchInsumo
+        )
+      )
+      .slice(0, 8);
   }, [dbInsumosList, searchInsumo]);
 
   const agregarInsumo = (ins) => {

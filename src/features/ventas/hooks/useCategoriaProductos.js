@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { categoriaProductosService } from "../servicios/categoriaProductosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useCategoriaProductos() {
   const notify = useNotifications();
@@ -25,33 +26,35 @@ export function useCategoriaProductos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-  // Buscador generalizado por todas las columnas (nombre, descripción, ID, unidades/productos, estado inactivo/activo)
+  // Buscador multicriterio generalizado por todas las columnas (nombre, descripción, ID, unidades/productos, estado inactivo/activo)
   const filteredCategorias = useMemo(() => {
     if (!searchTerm || !searchTerm.trim()) return categorias;
-    const term = searchTerm.trim().toLowerCase();
 
     return categorias.filter((c) => {
-      const id = String(c.id || c.idCategoriaProducto || "").toLowerCase();
-      const nombre = (c.nombre || "").toLowerCase();
-      const descripcion = (c.descripcion || "").toLowerCase();
-      const estado = (c.estado || (c.activo === false ? "Inactivo" : "Activo")).toLowerCase();
-      
-      const count = String(c.totalProductos ?? c.cantidadProductos ?? c.productosCount ?? c.productos?.length ?? 0);
-      const unidadesText = `${count} productos ${count} unidades ${count} platillos`.toLowerCase();
+      const count = Number(c.totalProductos ?? c.cantidadProductos ?? c.productosCount ?? c.productos?.length ?? 0);
+      const unidadesText = `${count} productos ${count} unidades ${count} platillos`;
 
-      // Buscar también si coincide con nombres de productos contenidos en la categoría
       const productosNombres = Array.isArray(c.productos)
-        ? c.productos.map((p) => (typeof p === "string" ? p : p.nombre || "")).join(" ").toLowerCase()
+        ? c.productos.map((p) => (typeof p === "string" ? p : p.nombre || "")).join(" ")
         : "";
 
-      return (
-        id.includes(term) ||
-        nombre.includes(term) ||
-        descripcion.includes(term) ||
-        estado.includes(term) ||
-        count === term ||
-        unidadesText.includes(term) ||
-        productosNombres.includes(term)
+      const hasDesc = Boolean(c.descripcion && String(c.descripcion).trim());
+      const descText = hasDesc ? `${c.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+
+      return matchesSmartSearch(
+        [
+          c.nombre,
+          descText,
+          formatStatusTokens(c.estado !== undefined ? c.estado : (c.activo === false ? "Inactivo" : "Activo")),
+          count,
+          String(count),
+          unidadesText,
+          c.id,
+          c.idCategoriaProducto,
+          `#${c.id || c.idCategoriaProducto}`,
+          productosNombres
+        ],
+        searchTerm
       );
     });
   }, [categorias, searchTerm]);

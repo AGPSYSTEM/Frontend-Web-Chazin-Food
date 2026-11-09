@@ -304,9 +304,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       setFilteredInsumos([]);
       setShowInsumoDropdown(false);
     } else {
-      const term = insumoSearch.toLowerCase();
       const results = (insumosBD || []).filter(i => {
-        const match = (i.nombre || "").toLowerCase().includes(term);
+        const match = matchesSmartSearch([i.nombre, i.categoria, i.categoriaNombre, i.id, i.idInsumo], insumoSearch);
         const already = insumosSeleccionados.some(s => String(s.id) === String(i.id || i.idInsumo));
         return match && !already;
       });
@@ -322,9 +321,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       setFilteredProductos([]);
       setShowProductoDropdown(false);
     } else {
-      const term = productoSearch.toLowerCase();
       const results = (productosBD || []).filter(p => {
-        const match = (p.nombre || "").toLowerCase().includes(term) || (p.categoria || "").toLowerCase().includes(term);
+        const match = matchesSmartSearch([p.nombre, p.categoria, p.categoriaNombre, p.id, p.idProducto, p.precio], productoSearch);
         const already = productosSeleccionados.some(s => String(s.id) === String(p.id || p.idProducto));
         return match && !already;
       });

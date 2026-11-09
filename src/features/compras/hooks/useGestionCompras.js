@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { comprasService } from "../servicios/comprasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useGestionCompras() {
   const notify = useNotifications();
@@ -28,18 +28,19 @@ export function useGestionCompras() {
   }, [fetchCompras]);
 
   const filteredCompras = compras.filter((c) => {
-    // 1. Filtro por estado
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
+    // 1. Filtro por estado (anulado si el usuario escribe en el buscador)
     const matchEstado =
       filterEstado === "Todos" ||
       c.estado === filterEstado ||
       (filterEstado === "RECIBIDA" && (c.estado === "COMPLETADA" || c.estado === "RECIBIDA")) ||
       (filterEstado === "CANCELADA" && (c.estado === "CANCELADA" || c.estado === "ANULADA"));
 
-    if (!matchEstado) return false;
+    if (!hasSearch && !matchEstado) return false;
 
     // 2. Filtro de búsqueda exhaustiva
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true;
+    if (!hasSearch) return true;
 
     // Recopilar todos los textos de la compra de manera segura
     const searchTokens = [];
@@ -47,14 +48,18 @@ export function useGestionCompras() {
     // IDs y códigos
     if (c.id !== undefined && c.id !== null) searchTokens.push(String(c.id), `#${c.id}`, `id: ${c.id}`);
     if (c.idCompra !== undefined && c.idCompra !== null) searchTokens.push(String(c.idCompra), `#${c.idCompra}`);
-    if (c.numeroFactura) searchTokens.push(String(c.numeroFactura));
+    if (c.numeroFactura) {
+      searchTokens.push(String(c.numeroFactura));
+    } else {
+      searchTokens.push("sin_factura sin factura");
+    }
 
     // Proveedor
     const provNombre = c.proveedorNombre || (typeof c.proveedor === "string" ? c.proveedor : c.proveedor?.nombre) || "";
-    if (provNombre && provNombre !== "Proveedor Genérico" && provNombre !== "Proveedor Desconocido") {
+    if (provNombre && provNombre !== "Proveedor Genérico" && provNombre !== "Proveedor Desconocido" && provNombre !== "Sin proveedor") {
       searchTokens.push(provNombre);
     } else {
-      searchTokens.push("sin proveedor", "compra directa", "sin prov");
+      searchTokens.push("sin_proveedor sin proveedor compra_directa sin_prov directa");
     }
     if (c.proveedor && typeof c.proveedor === "object") {
       if (c.proveedor.nombreContacto) searchTokens.push(String(c.proveedor.nombreContacto));
@@ -63,16 +68,9 @@ export function useGestionCompras() {
       if (c.proveedor.nit) searchTokens.push(String(c.proveedor.nit));
     }
 
-    // Estado y etiquetas de estado
-    if (c.estado) {
-      searchTokens.push(String(c.estado));
-      const estLower = String(c.estado).toLowerCase();
-      if (estLower.includes("recib") || estLower.includes("comp")) {
-        searchTokens.push("confirmada", "confirmadas", "confirmado", "recibida", "recibidas", "completada");
-      }
-      if (estLower.includes("canc") || estLower.includes("anul")) {
-        searchTokens.push("cancelada", "canceladas", "cancelado", "anulada", "anuladas", "anulado");
-      }
+    // Estado y etiquetas de estado con tokens semánticos
+    if (c.estado !== undefined && c.estado !== null) {
+      searchTokens.push(formatStatusTokens(c.estado));
     }
 
     // Totales y montos numéricos

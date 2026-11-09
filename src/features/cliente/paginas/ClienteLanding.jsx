@@ -25,6 +25,7 @@ import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
 import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
 import { validateNombre, validateDocumento, sanitizeDocumento } from "@/shared/utils/validationUtils";
 import { formatTime12h, formatDateSafe } from "@/shared/utils/dateUtils";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
 const ProductoResenasModal = lazy(() => import("../componentes/ProductoResenasModal").then(m => ({ default: m.ProductoResenasModal })));
@@ -1057,11 +1058,37 @@ export function ClienteLanding() {
   }, [activeProductos]);
 
   const productosFiltrados = useMemo(() => {
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
     const list = activeProductos.filter((p) => {
-      const prodName = (p.nombre || "").toLowerCase();
-      const prodDesc = (p.descripcion || "").toLowerCase();
-      const matchSearch = !searchTerm || prodName.includes(searchTerm.toLowerCase()) || prodDesc.includes(searchTerm.toLowerCase());
+      const precioNum = Number(p.precio || 0);
+      const hasDesc = Boolean(p.descripcion && String(p.descripcion).trim());
+      const descText = hasDesc ? p.descripcion : "sin_descripcion sin descripcion";
+      const hasCat = Boolean((p.categoria || p.categoriaNombre) && String(p.categoria || p.categoriaNombre).trim());
+      const catText = hasCat ? `${p.categoria || ""} ${p.categoriaNombre || ""}` : "sin_categoria sin categoria";
+
+      const matchSearch = matchesSmartSearch(
+        [
+          p.nombre,
+          p.descripcion,
+          descText,
+          p.categoria,
+          p.categoriaNombre,
+          catText,
+          p.precio,
+          String(p.precio ?? ""),
+          precioNum > 0 ? `$${precioNum.toLocaleString("es-CO")}` : "",
+          precioNum > 0 ? `$ ${precioNum.toLocaleString("es-CO")}` : "",
+          p.id,
+          p.idProducto,
+          `#${p.id || p.idProducto}`
+        ],
+        searchTerm
+      );
       if (!matchSearch) return false;
+
+      // Si el usuario escribe en el buscador, la búsqueda prevalece en todo el menú
+      if (hasSearch) return true;
 
       if (!selectedCategoria) return true;
 

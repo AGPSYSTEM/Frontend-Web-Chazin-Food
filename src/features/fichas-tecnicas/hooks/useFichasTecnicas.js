@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useFichasTecnicas() {
   const notify = useNotifications();
@@ -28,35 +29,45 @@ export function useFichasTecnicas() {
   // Buscador generalizado por todas las columnas y atributos de la ficha técnica
   const filteredFichas = useMemo(() => {
     if (!searchTerm || !searchTerm.trim()) return fichas;
-    const term = searchTerm.trim().toLowerCase();
 
     return fichas.filter((f) => {
-      const nombre = (f.nombre || f.productoNombre || f.insumoNombre || "").toLowerCase();
-      const id = String(f.idFichaTecnica || f.id || f.idProducto || f.idInsumo || "").toLowerCase();
-      const tipo = String(f.tipo || (f.idProducto ? "PRODUCTO" : "INSUMO")).toLowerCase();
-      const categoria = (f.categoria || f.categoriaNombre || "").toLowerCase();
-      const rendimiento = String(f.rendimiento || "").toLowerCase();
-      const tiempo = `${f.tiempoPreparacion || ""} min`.toLowerCase();
-      const version = `v${f.versionActual || 1} version ${f.versionActual || 1}`.toLowerCase();
-      const vidaUtil = String(f.vidaUtil || "").toLowerCase();
-      const estado = String(f.estado || (f.vigente !== false ? "Vigente" : "Histórica")).toLowerCase();
-
-      // Buscar también por ingredientes incluidos en los detalles
       const detallesText = Array.isArray(f.detalles || f.insumos)
-        ? (f.detalles || f.insumos).map(d => d.nombreInsumo || d.insumo?.nombre || d.nombre || "").join(" ").toLowerCase()
+        ? (f.detalles || f.insumos).map(d => d.nombreInsumo || d.insumo?.nombre || d.nombre || "").join(" ")
         : "";
 
-      return (
-        nombre.includes(term) ||
-        id.includes(term) ||
-        tipo.includes(term) ||
-        categoria.includes(term) ||
-        rendimiento.includes(term) ||
-        tiempo.includes(term) ||
-        version.includes(term) ||
-        vidaUtil.includes(term) ||
-        estado.includes(term) ||
-        detallesText.includes(term)
+      const hasCat = Boolean((f.categoria || f.categoriaNombre) && String(f.categoria || f.categoriaNombre).trim());
+      const catText = hasCat ? `${f.categoria || ""} ${f.categoriaNombre || ""}` : "sin_categoria sin categoria";
+      const hasDesc = Boolean(f.descripcion && String(f.descripcion).trim());
+      const descText = hasDesc ? f.descripcion : "sin_descripcion sin descripcion";
+
+      return matchesSmartSearch(
+        [
+          f.nombre,
+          f.productoNombre,
+          f.insumoNombre,
+          f.idFichaTecnica,
+          f.id,
+          f.idProducto,
+          f.idInsumo,
+          `#${f.idFichaTecnica || f.id || f.idProducto || f.idInsumo}`,
+          f.tipo || (f.idProducto ? "PRODUCTO" : "INSUMO"),
+          f.categoria,
+          f.categoriaNombre,
+          catText,
+          descText,
+          f.rendimiento,
+          String(f.rendimiento ?? ""),
+          `${f.rendimiento ?? ""} porciones`,
+          f.tiempoPreparacion,
+          String(f.tiempoPreparacion ?? ""),
+          `${f.tiempoPreparacion || ""} min minutos`,
+          `v${f.versionActual || 1}`,
+          `version ${f.versionActual || 1}`,
+          f.vidaUtil,
+          formatStatusTokens(f.estado || (f.vigente !== false ? "Vigente" : "Histórica")),
+          detallesText
+        ],
+        searchTerm
       );
     });
   }, [fichas, searchTerm]);

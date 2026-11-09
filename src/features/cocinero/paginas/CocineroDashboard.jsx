@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 import {
   LogOut,
   ChefHat,
@@ -685,14 +686,18 @@ export function CocineroDashboard() {
   // Filtrado de comandas activas según pestaña, búsqueda y batch seleccionado
   const pedidosFiltrados = useMemo(() => {
     return pedidosActivos.filter((p) => {
-      // 1. Filtro por pestaña de estado
+      const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
+      // 1. Filtro por pestaña de estado (activo solo si no hay búsqueda explícita)
       const isListo = p.estado === "Listo" || p.estadoEntrega === "LISTO";
       const isPreparando = p.estado === "En Preparación" || p.estadoEntrega === "PREPARANDO";
       const isPendiente = !isListo && !isPreparando;
 
-      if (filtroEstado === "Pendiente" && !isPendiente) return false;
-      if (filtroEstado === "En Preparación" && !isPreparando) return false;
-      if (filtroEstado === "Listo" && !isListo) return false;
+      if (!hasSearch) {
+        if (filtroEstado === "Pendiente" && !isPendiente) return false;
+        if (filtroEstado === "En Preparación" && !isPreparando) return false;
+        if (filtroEstado === "Listo" && !isListo) return false;
+      }
 
       // 2. Filtro por producto seleccionado en el Totalizador
       if (filtroProductoBatch) {
@@ -702,13 +707,40 @@ export function CocineroDashboard() {
         if (!hasProd) return false;
       }
 
-      // 3. Filtro por buscador de texto
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const codeMatch = (p.codigo || `VEN-${p.id || p.idVenta}`).toLowerCase().includes(q);
-        const clientMatch = (p.cliente || "").toLowerCase().includes(q);
-        const prodMatch = (p.productos || []).some((pr) => (pr.nombre || "").toLowerCase().includes(q));
-        if (!codeMatch && !clientMatch && !prodMatch) return false;
+      // 3. Filtro por buscador multicriterio de texto
+      if (hasSearch) {
+        const prodsList = (p.productos || [])
+          .map((pr) => {
+            const adics = (pr.adiciones || []).map((a) => (typeof a === "object" ? a.nombre : a)).join(" ");
+            return `${pr.nombre || ""} ${pr.nota || pr.observaciones || ""} ${adics}`;
+          })
+          .join(" ");
+
+        const mesaText = p.mesa ? `mesa ${p.mesa} #${p.mesa}` : "sin_mesa sin mesa para llevar llevar recoger domicilio";
+        const obsText = p.observaciones ? p.observaciones : "sin_observaciones sin observaciones";
+        const clientText = p.cliente ? p.cliente : "sin_cliente sin cliente mostrador";
+
+        return matchesSmartSearch(
+          [
+            p.codigo,
+            p.id,
+            p.idVenta,
+            `#${p.id || p.idVenta}`,
+            `VEN-${p.id || p.idVenta}`,
+            p.cliente,
+            clientText,
+            p.responsable,
+            p.mesa,
+            mesaText,
+            p.tipoEntrega,
+            p.canal,
+            p.observaciones,
+            obsText,
+            formatStatusTokens(p.estado || p.estadoEntrega),
+            prodsList
+          ],
+          searchTerm
+        );
       }
 
       return true;

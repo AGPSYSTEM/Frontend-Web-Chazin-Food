@@ -42,6 +42,8 @@ export function Roles() {
   const totalUsuariosAsignados = roles.reduce((acc, r) => acc + (r.usuarios || 0), 0);
 
   const rolesToDisplay = filteredRoles.filter((r) => {
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+    if (hasSearch) return true;
     if (filterEstado === "Activo") return r.estado === "Activo" || r.estado === 1 || r.estado === "1";
     if (filterEstado === "Inactivo") return r.estado === "Inactivo" || r.estado === 0 || r.estado === "0";
     return true;

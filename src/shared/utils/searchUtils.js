@@ -19,6 +19,57 @@ export function normalizeSearchText(val) {
     .trim();
 }
 
+export const SPANISH_DIGIT_WORDS = {
+  0: "cero",
+  1: "uno",
+  2: "dos",
+  3: "tres",
+  4: "cuatro",
+  5: "cinco",
+  6: "seis",
+  7: "siete",
+  8: "ocho",
+  9: "nueve",
+  10: "diez",
+  11: "once",
+  12: "doce",
+  13: "trece",
+  14: "catorce",
+  15: "quince",
+  16: "dieciseis",
+  17: "diecisiete",
+  18: "dieciocho",
+  19: "diecinueve",
+  20: "veinte"
+};
+
+export const WORD_TO_DIGIT = {
+  cero: "0",
+  uno: "1",
+  una: "1",
+  un: "1",
+  dos: "2",
+  tres: "3",
+  cuatro: "4",
+  cinco: "5",
+  seis: "6",
+  seises: "6",
+  siete: "7",
+  ocho: "8",
+  nueve: "9",
+  diez: "10",
+  once: "11",
+  doce: "12",
+  trece: "13",
+  catorce: "14",
+  quince: "15",
+  dieciseis: "16",
+  diecisiete: "17",
+  dieciocho: "18",
+  diecinueve: "19",
+  veinte: "20"
+};
+
 /**
  * Divide la consulta del usuario en tokens (palabras clave individuales).
  * Ej: "Carlos Hamburguesa Mesa 2" -> ["carlos", "hamburguesa", "mesa", "2"]
@@ -27,6 +78,41 @@ export function tokenizeSearchQuery(query = "") {
   const normalized = normalizeSearchText(query);
   if (!normalized) return [];
   return normalized
+    .replace(/\bsin\s+descripci[oó]n\b/g, "sin_descripcion")
+    .replace(/\bsin\s+categor[ií]a\b/g, "sin_categoria")
+    .replace(/\bsin\s+proveedor\b/g, "sin_proveedor")
+    .replace(/\bsin\s+tel[eé]fono\b/g, "sin_telefono")
+    .replace(/\bsin\s+correo\b/g, "sin_correo")
+    .replace(/\bsin\s+email\b/g, "sin_correo")
+    .replace(/\bsin\s+stock\b/g, "sin_stock")
+    .replace(/\bsin\s+lote[s]?\b/g, "sin_lote")
+    .replace(/\bsin\s+usuario[s]?\b/g, "sin_usuarios")
+    .replace(/\bsin\s+permiso[s]?\b/g, "sin_permisos")
+    .replace(/\bsin\s+m[oó]dulo[s]?\b/g, "sin_modulos")
+    .replace(/\bsin\s+contacto\b/g, "sin_contacto")
+    .replace(/\bsin\s+direcci[oó]n\b/g, "sin_direccion")
+    .replace(/\bsin\s+documento\b/g, "sin_documento")
+    .replace(/\bsin\s+c[eé]dula\b/g, "sin_documento")
+    .replace(/\bsin\s+registrar\b/g, "sin_registrar")
+    .replace(/\bsin\s+ficha(\s+t[eé]cnica)?\b/g, "sin_ficha")
+    .replace(/\bsin\s+receta\b/g, "sin_ficha")
+    .replace(/\bsin\s+factura\b/g, "sin_factura")
+    .replace(/\bsin\s+motivo\b/g, "sin_motivo")
+    .replace(/\bsin\s+iva\b/g, "sin_iva")
+    .replace(/\bcon\s+descripci[oó]n\b/g, "con_descripcion")
+    .replace(/\bcon\s+categor[ií]a\b/g, "con_categoria")
+    .replace(/\bcon\s+proveedor\b/g, "con_proveedor")
+    .replace(/\bcon\s+tel[eé]fono\b/g, "con_telefono")
+    .replace(/\bcon\s+correo\b/g, "con_correo")
+    .replace(/\bcon\s+email\b/g, "con_correo")
+    .replace(/\bcon\s+stock\b/g, "con_stock")
+    .replace(/\bcon\s+lote[s]?\b/g, "con_lote")
+    .replace(/\bcon\s+usuario[s]?\b/g, "con_usuarios")
+    .replace(/\bcon\s+permiso[s]?\b/g, "con_permisos")
+    .replace(/\bcon\s+m[oó]dulo[s]?\b/g, "con_modulos")
+    .replace(/\bcon\s+ficha(\s+t[eé]cnica)?\b/g, "con_ficha")
+    .replace(/\bcon\s+receta\b/g, "con_ficha")
+    .replace(/\bcon\s+iva\b/g, "con_iva")
     .split(/\s+/)
     .filter(Boolean)
     .map((tok) => {
@@ -39,27 +125,302 @@ export function tokenizeSearchQuery(query = "") {
 }
 
 /**
+ * Normaliza y expande cualquier representación de estado a tokens completos de búsqueda.
+ * Soporta booleanos, números (1, 0), strings ('1', '0', 'ACTIVO', 'INACTIVO', 'Recibida', etc.).
+ */
+export function formatStatusTokens(estado) {
+  if (estado === null || estado === undefined || estado === "") return "";
+  
+  const str = String(estado).trim();
+  const lower = str.toLowerCase();
+
+  // Activo / Inactivo
+  if (
+    estado === true ||
+    estado === 1 ||
+    str === "1" ||
+    lower === "activo" ||
+    lower === "activa" ||
+    lower === "habilitado" ||
+    lower === "habilitada" ||
+    lower === "vigente"
+  ) {
+    return "Activo activo activa activos activas habilitado habilitada habilitados habilitadas vigente vigentes 1";
+  }
+
+  if (
+    estado === false ||
+    estado === 0 ||
+    str === "0" ||
+    lower === "inactivo" ||
+    lower === "inactiva" ||
+    lower === "deshabilitado" ||
+    lower === "deshabilitada" ||
+    lower === "inhabilitado" ||
+    lower === "inhabilitada" ||
+    lower === "suspendido" ||
+    lower === "suspendida" ||
+    lower === "no vigente"
+  ) {
+    return "Inactivo inactivo inactiva inactivos inactivas deshabilitado deshabilitada deshabilitados deshabilitadas suspendido suspendida no_vigente 0";
+  }
+
+  // Recibida / Completada / Confirmada
+  if (lower.includes("recib") || lower.includes("comp") || lower.includes("confir")) {
+    return `${str} recibida recibidas recibido recibidos completada completadas completado completados confirmada confirmadas confirmado confirmados`;
+  }
+
+  // Cancelada / Anulada
+  if (lower.includes("canc") || lower.includes("anul")) {
+    return `${str} cancelada canceladas cancelado cancelados anulada anuladas anulado anulados`;
+  }
+
+  // Pendiente / En cola / Espera
+  if (lower.includes("pend") || lower.includes("cola") || lower.includes("espera")) {
+    return `${str} pendiente pendientes en cola en espera`;
+  }
+
+  // En preparación / Preparando / Cocina
+  if (lower.includes("prep") || lower.includes("cocin")) {
+    return `${str} en preparacion preparando cocina cocinando`;
+  }
+
+  // Listo / Preparado
+  if (lower.includes("list")) {
+    return `${str} listo listos lista listas preparado preparada terminada terminado`;
+  }
+
+  // Entregado / Cerrada
+  if (lower.includes("entreg") || lower.includes("cerr")) {
+    return `${str} entregado entregados entregada entregadas cerrado cerrada`;
+  }
+
+  // Vencido / Caducado
+  if (lower.includes("venc") || lower.includes("caduc") || lower.includes("expir")) {
+    return `${str} vencido vencida vencidos vencidas caducado expirado`;
+  }
+
+  // Agotado / Sin stock
+  if (lower.includes("agotad") || lower.includes("sin stock") || lower.includes("sin_stock")) {
+    return `${str} agotado agotada agotados agotadas sin_stock`;
+  }
+
+  return str;
+}
+
+/**
+ * Detecta si el texto de búsqueda contiene una intención explícita de estado
+ * (ej: "inactivo", "activo", "vencido", "cancelada", etc.)
+ */
+export function hasStatusSearchIntent(query = "") {
+  const norm = normalizeSearchText(query);
+  if (!norm) return false;
+  return (
+    /\b(inactiv[oa]?s?|activ[oa]?s?|deshabilitad[oa]?s?|habilitad[oa]?s?|vencid[oa]?s?|vencit[oa]?s?|caducad[oa]?s?|expirad[oa]?s?|agotad[oa]?s?|cancelad[oa]?s?|anulad[oa]?s?|recibid[oa]?s?|completad[oa]?s?|pendient[es]?|preparand[oa]|cocina|list[oa]?s?|entregad[oa]?s?)\b/.test(norm)
+  );
+}
+
+/**
  * Evalúa un token individual contra un corpus normalizado evitando falsos positivos
  * por prefijos negativos (ej: buscar "activo" NO coincide con "inactivo", "regular" NO con "irregular")
- * y soportando coincidencias numéricas con puntos (ej: "13.15" coincide con "1315").
+ * y soportando variaciones morfológicas (singular/plural) y numéricas.
  */
 export function matchTokenInCorpus(corpus = "", token = "") {
   if (!token) return true;
   if (!corpus) return false;
 
-  // Evitar colisiones "activo" vs "inactivo", "activa" vs "inactiva", "regular" vs "irregular", "habilitado" vs "inhabilitado"
-  if (/^(activ[oa]?s?|regular(es)?|habilitad[oa]?s?)$/.test(token)) {
-    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const wordStartRegex = new RegExp(`(^|[^a-z0-9])${escaped}`);
-    return wordStartRegex.test(corpus);
+  // Inactivo / inactivos / inactiva / inactivas / deshabilitado
+  if (/^(inactiv[oa]?s?|deshabilitad[oa]?s?|inhabilitad[oa]?s?|suspendid[oa]?s?)$/.test(token)) {
+    return (
+      corpus.includes("inactiv") ||
+      corpus.includes("deshabilitad") ||
+      corpus.includes("inhabilitad") ||
+      corpus.includes("suspendid")
+    );
   }
 
+  // Activo / activos / activa / activas (NO debe coincidir con "inactivo" ni "deshabilitado")
+  if (/^activ[oa]?s?$/.test(token)) {
+    return /(^|[^a-z0-9])activ/.test(corpus);
+  }
+
+  // Habilitado / habilitada
+  if (/^habilitad[oa]?s?$/.test(token)) {
+    return /(^|[^a-z0-9])habilitad/.test(corpus);
+  }
+
+  // Vigente / vigentes
+  if (/^vigent[es]?$/.test(token)) {
+    return /(^|[^a-z0-9])(vigente|vigentes)/.test(corpus) && !corpus.includes("no_vigente");
+  }
+
+  // Vencido / vencito / caducado / expirado (ESTRICTO: nunca debe coincidir con no vencido ni con agotado)
+  if (/^(vencid[oa]?s?|vencit[oa]?s?|caducad[oa]?s?|expirad[oa]?s?)$/.test(token)) {
+    const hasVencWord =
+      /(^|[^a-z0-9])vencid/.test(corpus) ||
+      /(^|[^a-z0-9])caducad/.test(corpus) ||
+      /(^|[^a-z0-9])expirad/.test(corpus);
+    const hasNegativePrefix = /(^|[^a-z0-9])(no|sin)\s+vencid/.test(corpus);
+    return hasVencWord && !hasNegativePrefix;
+  }
+
+  // Agotado / agotada / agotados / agotadas / sin stock (ESTRICTO: no confundir con vencido)
+  if (/^(agotad[oa]?s?|sin_stock)$/.test(token)) {
+    return corpus.includes("agotad") || corpus.includes("sin_stock");
+  }
+
+  // Lote / lotes (NO debe coincidir con "sin_lote" ni "sinlote")
+  if (/^lot[es]?$/.test(token)) {
+    return (
+      /(^|[^a-z0-9])lot[es]?(\s|#|\d|$)/.test(corpus) &&
+      !/(^|[^a-z0-9])(sin|no)[_ ]?lot/.test(corpus)
+    );
+  }
+
+  // Cancelado / anulado
+  if (/^(cancelad[oa]?s?|anulad[oa]?s?)$/.test(token)) {
+    return corpus.includes("cancelad") || corpus.includes("anulad");
+  }
+
+  // Recibido / completado / confirmado
+  if (/^(recibid[oa]?s?|completad[oa]?s?|confirmad[oa]?s?)$/.test(token)) {
+    return (
+      corpus.includes("recibid") ||
+      corpus.includes("completad") ||
+      corpus.includes("confirmad")
+    );
+  }
+
+  // Pendiente / en cola / espera
+  if (/^(pendient[es]?|en cola|espera)$/.test(token)) {
+    return (
+      corpus.includes("pendient") ||
+      corpus.includes("cola") ||
+      corpus.includes("espera")
+    );
+  }
+
+  // Preparando / preparacion / cocina
+  if (/^(preparand[oa]|preparacion|cocina)$/.test(token)) {
+    return corpus.includes("prepar") || corpus.includes("cocina");
+  }
+
+  // Listo / preparado / terminado
+  if (/^(list[oa]?s?|terminad[oa]?s?)$/.test(token)) {
+    return corpus.includes("list") || corpus.includes("terminad");
+  }
+
+  // Equivalencia bidireccional entre palabras numéricas en español y dígitos (ej: "nueve" <-> "9", "cinco" <-> "5")
+  if (WORD_TO_DIGIT[token]) {
+    const digit = WORD_TO_DIGIT[token];
+    if (corpus.includes(token) || corpus.includes(digit)) {
+      return true;
+    }
+  }
+  if (SPANISH_DIGIT_WORDS[token]) {
+    const word = SPANISH_DIGIT_WORDS[token];
+    if (corpus.includes(token) || corpus.includes(word)) {
+      return true;
+    }
+  }
+
+  // Tokens compuestos negativos "sin ..."
+  if (/^sin_(descripcion|categoria|proveedor|telefono|correo|lote|usuarios|permisos|modulos|iva|contacto|direccion|documento|registrar|ficha|factura|motivo)$/.test(token)) {
+    return corpus.includes(token);
+  }
+
+  // Tokens compuestos positivos "con ..."
+  if (/^con_(descripcion|categoria|proveedor|telefono|correo|lote|usuarios|permisos|modulos|iva|contacto|direccion|documento|ficha|factura)$/.test(token)) {
+    return corpus.includes(token);
+  }
+
+  // Descripción / descripciones (NO debe coincidir si solo tiene "sin_descripcion" o "sin descripcion")
+  if (/^descripci[oó]n(es)?$/.test(token)) {
+    const hasDesc = /(^|[^a-z0-9])descripci/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+descripci/.test(corpus);
+    return hasDesc && !hasNegative;
+  }
+
+  // Proveedor / proveedores (NO debe coincidir si solo tiene "sin_proveedor")
+  if (/^proveedor(es)?$/.test(token)) {
+    const hasProv = /(^|[^a-z0-9])proveedor/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+proveedor/.test(corpus);
+    return hasProv && !hasNegative;
+  }
+
+  // Categoría / categorías (NO debe coincidir si solo tiene "sin_categoria")
+  if (/^categor[ií]a(s)?$/.test(token)) {
+    const hasCat = /(^|[^a-z0-9])categoria/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+categoria/.test(corpus);
+    return hasCat && !hasNegative;
+  }
+
+  // Teléfono / teléfonos (NO debe coincidir si solo tiene "sin_telefono")
+  if (/^tel[eé]fono(s)?$/.test(token)) {
+    const hasTel = /(^|[^a-z0-9])telefono/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+telefono/.test(corpus);
+    return hasTel && !hasNegative;
+  }
+
+  // Correo / email (NO debe coincidir si solo tiene "sin_correo")
+  if (/^(correo|email)(s)?$/.test(token)) {
+    const hasEmail = /(^|[^a-z0-9])(correo|email)/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+(correo|email)/.test(corpus);
+    return hasEmail && !hasNegative;
+  }
+
+  // Contacto / contactos (NO debe coincidir si solo tiene "sin_contacto")
+  if (/^contacto(s)?$/.test(token)) {
+    const hasContacto = /(^|[^a-z0-9])contacto/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+contacto/.test(corpus);
+    return hasContacto && !hasNegative;
+  }
+
+  // Dirección / direcciones (NO debe coincidir si solo tiene "sin_direccion")
+  if (/^direcci[oó]n(es)?$/.test(token)) {
+    const hasDir = /(^|[^a-z0-9])direccion/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+direccion/.test(corpus);
+    return hasDir && !hasNegative;
+  }
+
+  // Documento / documentos (NO debe coincidir si solo tiene "sin_documento")
+  if (/^documento(s)?$/.test(token)) {
+    const hasDoc = /(^|[^a-z0-9])documento/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+documento/.test(corpus);
+    return hasDoc && !hasNegative;
+  }
+
+  // Ficha / fichas (NO debe coincidir si solo tiene "sin_ficha")
+  if (/^ficha(s)?$/.test(token)) {
+    const hasFicha = /(^|[^a-z0-9])ficha/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+ficha/.test(corpus);
+    return hasFicha && !hasNegative;
+  }
+
+  // Factura / facturas (NO debe coincidir si solo tiene "sin_factura")
+  if (/^factura(s)?$/.test(token)) {
+    const hasFact = /(^|[^a-z0-9])factura/.test(corpus);
+    const hasNegative = /(^|[^a-z0-9])(sin|no)[_ ]+factura/.test(corpus);
+    return hasFact && !hasNegative;
+  }
+
+  // Coincidencia directa exacta de substring
   if (corpus.includes(token)) return true;
 
-  // Coincidencia numérica parcial cuando el usuario escribe puntos separadores (ej: "13.15" -> "1315")
-  if (/^\d[\d.]*\d$/.test(token) && token.includes(".")) {
-    const cleanDigits = token.replace(/\./g, "");
-    const corpusWithoutDots = corpus.replace(/(?<=\d)\.(?=\d)/g, "");
+  // Variación plural en español (ej: "hamburguesas" coincide con "hamburguesa", "proveedores" con "proveedor")
+  if (token.endsWith("es") && token.length > 3) {
+    const singular = token.slice(0, -2);
+    if (corpus.includes(singular)) return true;
+  }
+  if (token.endsWith("s") && token.length > 2) {
+    const singular = token.slice(0, -1);
+    if (corpus.includes(singular)) return true;
+  }
+
+  // Coincidencia numérica parcial cuando el usuario escribe puntos o comas separadoras (ej: "13.15" -> "1315", "5.000" -> "5000")
+  if (/^\d[\d.,]*\d$/.test(token) && /[.,]/.test(token)) {
+    const cleanDigits = token.replace(/[.,]/g, "");
+    const corpusWithoutDots = corpus.replace(/(?<=\d)[.,](?=\d)/g, "");
     if (cleanDigits && corpusWithoutDots.includes(cleanDigits)) {
       return true;
     }
@@ -70,7 +431,7 @@ export function matchTokenInCorpus(corpus = "", token = "") {
 
 /**
  * Buscador inteligente reutilizable para cualquier módulo (Usuarios, Roles, Insumos, Categorías, Proveedores, Productos, etc.)
- * @param {Array<string|number|boolean|null|undefined>} fields Lista de valores indexables del registro
+ * @param {Array<any>} fields Lista de valores indexables del registro
  * @param {string} query Texto de búsqueda ingresado por el usuario
  */
 export function matchesSmartSearch(fields = [], query = "") {
@@ -78,16 +439,53 @@ export function matchesSmartSearch(fields = [], query = "") {
   if (tokens.length === 0) return true;
 
   const expandedParts = [];
-  for (const field of fields) {
-    if (field === null || field === undefined || field === "") continue;
-    const str = String(field);
-    expandedParts.push(str);
-    // Indexar también dígitos limpios cuando hay separadores (documentos, teléfonos, precios)
-    if (/\d/.test(str) && /[.\-\s$]/.test(str)) {
-      const digits = str.replace(/\D/g, "");
-      if (digits.length >= 2) expandedParts.push(digits);
+
+  const extractValues = (item) => {
+    if (item === null || item === undefined || item === "") return;
+    if (Array.isArray(item)) {
+      item.forEach(extractValues);
+      return;
     }
-  }
+    if (typeof item === "object") {
+      Object.values(item).forEach(extractValues);
+      return;
+    }
+
+    const str = String(item).trim();
+    if (!str) return;
+
+    expandedParts.push(str);
+
+    // Si es un número (stock, precio, cantidad, id, módulos), indexar como entero, palabra en español y con formato
+    if (typeof item === "number" && !isNaN(item)) {
+      expandedParts.push(String(item));
+      if (SPANISH_DIGIT_WORDS[item]) {
+        expandedParts.push(SPANISH_DIGIT_WORDS[item]);
+      }
+      if (item >= 1000) {
+        expandedParts.push(item.toLocaleString("es-CO"));
+      }
+    }
+
+    // Si es un string con un número entero del 0 al 20, indexar también su palabra en español
+    if (typeof item === "string" && /\d/.test(str)) {
+      const matchNum = str.match(/\b([0-9]|1[0-9]|20)\b/);
+      if (matchNum) {
+        const n = Number(matchNum[1]);
+        if (SPANISH_DIGIT_WORDS[n]) {
+          expandedParts.push(SPANISH_DIGIT_WORDS[n]);
+        }
+      }
+    }
+
+    // Indexar también dígitos limpios cuando hay separadores (documentos, teléfonos, precios, códigos)
+    if (/\d/.test(str) && /[.\-\s$,#]/.test(str)) {
+      const digits = str.replace(/\D/g, "");
+      if (digits.length >= 1) expandedParts.push(digits);
+    }
+  };
+
+  fields.forEach(extractValues);
 
   const corpus = normalizeSearchText(expandedParts.join(" "));
   return tokens.every((token) => matchTokenInCorpus(corpus, token));
@@ -247,8 +645,12 @@ export function buildVentaSearchCorpus(v = {}) {
   // 8. Estado del Pedido / Venta
   const estadoStr = String(v.estado || "");
   const estadoEntregaStr = String(v.estadoEntrega || "");
-  if (estadoStr) parts.push(estadoStr);
-  if (estadoEntregaStr) parts.push(estadoEntregaStr);
+  if (v.estado !== undefined && v.estado !== null) {
+    parts.push(formatStatusTokens(v.estado));
+  }
+  if (v.estadoEntrega) {
+    parts.push(formatStatusTokens(v.estadoEntrega));
+  }
 
   const eLower = `${estadoStr} ${estadoEntregaStr}`.toLowerCase();
   if (eLower.includes("pend")) parts.push("pendiente", "en espera");
@@ -342,14 +744,20 @@ export function buildClienteSearchCorpus(c = {}) {
   if (apellidos) parts.push(apellidos);
 
   // Email
-  if (c.email) parts.push(c.email);
+  if (c.email) {
+    parts.push(c.email);
+  } else {
+    parts.push("sin_correo sin correo sin_email sin email");
+  }
 
   // Teléfono
   const rawTel = String(c.telefono || "");
-  if (rawTel) {
+  if (rawTel && rawTel !== "-") {
     parts.push(rawTel);
     const cleanTel = rawTel.replace(/\D/g, "");
     if (cleanTel) parts.push(cleanTel);
+  } else {
+    parts.push("sin_telefono sin telefono");
   }
 
   // Documento
@@ -358,10 +766,16 @@ export function buildClienteSearchCorpus(c = {}) {
     parts.push(rawDoc);
     const cleanDoc = rawDoc.replace(/\D/g, "");
     if (cleanDoc) parts.push(cleanDoc);
+  } else {
+    parts.push("sin_documento sin documento sin_cedula sin cedula sin_registrar sin registrar");
   }
 
   // Dirección
-  if (c.direccion) parts.push(c.direccion);
+  if (c.direccion && c.direccion !== "-") {
+    parts.push(c.direccion);
+  } else {
+    parts.push("sin_direccion sin direccion");
+  }
 
   // Fidelidad
   const clientTipo = c.tipo || (c.esVip ? "VIP" : "Nuevo");
@@ -370,8 +784,7 @@ export function buildClienteSearchCorpus(c = {}) {
   }
 
   // Estado
-  const rawEstado = String(c.estado || (c.activo === false ? "Inactivo" : "Activo"));
-  parts.push(rawEstado);
+  parts.push(formatStatusTokens(c.estado !== undefined ? c.estado : (c.activo === false ? "Inactivo" : "Activo")));
 
   // Compras
   const comprasCount = Number(c.compras ?? 0);
@@ -425,24 +838,27 @@ export function matchVentaMultiCriteria(venta, criteria = {}) {
     if (!allTokensMatch) return false;
   }
 
-  // 2. Filtro por Estado
+  // 2. Filtro por Estado (con anulación inteligente si la búsqueda especifica un estado)
   if (filterEstado && filterEstado !== "Todos") {
-    const estadoStr = String(venta.estado || "").toLowerCase();
-    const estadoEntrega = String(venta.estadoEntrega || "").toLowerCase();
-    const target = filterEstado.toLowerCase();
+    const hasStatusIntent = hasStatusSearchIntent(searchTerm);
+    if (!hasStatusIntent) {
+      const estadoStr = String(venta.estado || "").toLowerCase();
+      const estadoEntrega = String(venta.estadoEntrega || "").toLowerCase();
+      const target = filterEstado.toLowerCase();
 
-    if (target === "pendiente") {
-      if (!estadoStr.includes("pend") && !estadoEntrega.includes("pend")) return false;
-    } else if (target === "en preparación" || target === "preparando" || target === "en preparacion") {
-      if (!estadoStr.includes("prepar") && !estadoEntrega.includes("prepar")) return false;
-    } else if (target === "listo") {
-      if (!estadoStr.includes("list") && !estadoEntrega.includes("list")) return false;
-    } else if (target === "completada" || target === "entregado") {
-      if (!estadoStr.includes("complet") && !estadoStr.includes("entreg") && !estadoEntrega.includes("entreg") && !estadoEntrega.includes("list")) return false;
-    } else if (target === "anulada" || target === "cancelada" || target === "cancelado") {
-      if (!estadoStr.includes("anul") && !estadoStr.includes("cancel") && !estadoEntrega.includes("cancel")) return false;
-    } else {
-      if (!estadoStr.includes(target) && !estadoEntrega.includes(target)) return false;
+      if (target === "pendiente") {
+        if (!estadoStr.includes("pend") && !estadoEntrega.includes("pend")) return false;
+      } else if (target === "en preparación" || target === "preparando" || target === "en preparacion") {
+        if (!estadoStr.includes("prepar") && !estadoEntrega.includes("prepar")) return false;
+      } else if (target === "listo") {
+        if (!estadoStr.includes("list") && !estadoEntrega.includes("list")) return false;
+      } else if (target === "completada" || target === "entregado") {
+        if (!estadoStr.includes("complet") && !estadoStr.includes("entreg") && !estadoEntrega.includes("entreg") && !estadoEntrega.includes("list")) return false;
+      } else if (target === "anulada" || target === "cancelada" || target === "cancelado") {
+        if (!estadoStr.includes("anul") && !estadoStr.includes("cancel") && !estadoEntrega.includes("cancel")) return false;
+      } else {
+        if (!estadoStr.includes(target) && !estadoEntrega.includes(target)) return false;
+      }
     }
   }
 
@@ -553,10 +969,23 @@ export function matchClienteMultiCriteria(cliente, criteria = {}) {
     if (clientTipo.toLowerCase() !== filterTipo.toLowerCase()) return false;
   }
 
-  // 3. Filtro por Estado (Activo / Inactivo)
+  // 3. Filtro por Estado (Activo / Inactivo con anulación inteligente por búsqueda)
   if (filterEstado && filterEstado !== "Todos") {
-    const estado = String(cliente.estado || (cliente.activo === false ? "Inactivo" : "Activo")).toLowerCase();
-    if (estado !== filterEstado.toLowerCase()) return false;
+    const hasStatusIntent = hasStatusSearchIntent(searchTerm);
+    if (!hasStatusIntent) {
+      const isActivo =
+        cliente.estado === "Activo" ||
+        cliente.estado === 1 ||
+        cliente.estado === "1" ||
+        cliente.activo === true ||
+        (cliente.activo === undefined &&
+          cliente.estado !== "Inactivo" &&
+          cliente.estado !== 0 &&
+          cliente.estado !== "0");
+
+      if (filterEstado.toLowerCase() === "activo" && !isActivo) return false;
+      if (filterEstado.toLowerCase() === "inactivo" && isActivo) return false;
+    }
   }
 
   // 4. Filtro por Compras Mínimas

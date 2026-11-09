@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 import {
   Search,
   Calendar,
@@ -68,27 +69,60 @@ export function HistorialComandasLista({
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     return pedidos.filter((p) => {
+      const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
       const orderDate = p.fechaVenta ? new Date(p.fechaVenta) : (p.fecha ? new Date(p.fecha) : null);
       const orderDateStr = orderDate && !isNaN(orderDate.getTime()) ? orderDate.toISOString().split("T")[0] : "";
 
-      // 1. Date filter
-      if (filtroFecha === "hoy" && orderDateStr !== todayStr) return false;
-      if (filtroFecha === "ayer" && orderDateStr !== yesterdayStr) return false;
-      if (filtroFecha === "semana" && orderDate && orderDate < weekAgo) return false;
+      // 1. Date filter (anulado si hay búsqueda activa para permitir encontrar registros históricos)
+      if (!hasSearch) {
+        if (filtroFecha === "hoy" && orderDateStr !== todayStr) return false;
+        if (filtroFecha === "ayer" && orderDateStr !== yesterdayStr) return false;
+        if (filtroFecha === "semana" && orderDate && orderDate < weekAgo) return false;
 
-      // 2. Channel filter
-      if (filtroCanal !== "todos") {
-        const canal = (p.tipoEntrega || p.mesa || "").toLowerCase();
-        if (!canal.includes(filtroCanal.toLowerCase())) return false;
+        // 2. Channel filter
+        if (filtroCanal !== "todos") {
+          const canal = (p.tipoEntrega || p.mesa || "").toLowerCase();
+          if (!canal.includes(filtroCanal.toLowerCase())) return false;
+        }
       }
 
-      // 3. Search query
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase().trim();
-        const code = (p.codigo || `VEN-${p.id || p.idVenta}`).toLowerCase();
-        const client = (p.cliente || p.responsable || "").toLowerCase();
-        const prods = (p.productos || []).some((pr) => (pr.nombre || "").toLowerCase().includes(q));
-        if (!code.includes(q) && !client.includes(q) && !prods) return false;
+      // 3. Search query multicriterio
+      if (hasSearch) {
+        const prodsList = (p.productos || [])
+          .map((pr) => {
+            const adics = (pr.adiciones || []).map((a) => (typeof a === "object" ? a.nombre : a)).join(" ");
+            return `${pr.nombre || ""} ${pr.nota || pr.observaciones || ""} ${adics}`;
+          })
+          .join(" ");
+
+        const mesaText = p.mesa ? `mesa ${p.mesa} #${p.mesa}` : "sin_mesa sin mesa para llevar llevar recoger domicilio";
+        const obsText = p.observaciones ? p.observaciones : "sin_observaciones sin observaciones";
+        const clientText = p.cliente ? p.cliente : "sin_cliente sin cliente mostrador";
+
+        return matchesSmartSearch(
+          [
+            p.codigo,
+            p.id,
+            p.idVenta,
+            `#${p.id || p.idVenta}`,
+            `VEN-${p.id || p.idVenta}`,
+            p.cliente,
+            clientText,
+            p.responsable,
+            p.mesa,
+            mesaText,
+            p.tipoEntrega,
+            p.canal,
+            p.observaciones,
+            obsText,
+            p.total ? String(p.total) : "",
+            formatStatusTokens(p.estado || p.estadoEntrega),
+            orderDateStr,
+            prodsList
+          ],
+          searchTerm
+        );
       }
 
       return true;

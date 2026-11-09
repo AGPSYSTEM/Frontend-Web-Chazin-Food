@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { productosService } from "../servicios/productosService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useProductos() {
   const notify = useNotifications();
@@ -79,16 +79,37 @@ export function useProductos() {
         } catch (_) {}
       }
 
+      const isAgotado = (p.stock || 0) === 0;
+      const stockStatus = isAgotado
+        ? "Agotado agotada sin_stock sin stock cero 0 agotados agotadas"
+        : "disponible en stock en_stock suficiente";
+
+      const precioNum = Number(p.precio || 0);
+
+      const hasDesc = Boolean(p.descripcion && String(p.descripcion).trim());
+      const descText = hasDesc ? `${p.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+      const hasCat = Boolean((p.categoria || p.categoriaNombre) && String(p.categoria || p.categoriaNombre).trim());
+      const catText = hasCat ? `${p.categoria || ""} ${p.categoriaNombre || ""} con_categoria con categoria` : "sin_categoria sin categoria";
+
       const matchSearch = matchesSmartSearch(
         [
           p.nombre,
           p.codigo,
           p.id,
           p.idProducto,
+          `#${p.id || p.idProducto}`,
           p.categoria,
-          p.descripcion,
+          p.categoriaNombre,
+          catText,
+          descText,
           p.precio,
-          p.estado,
+          String(p.precio ?? ""),
+          precioNum > 0 ? `$${precioNum.toLocaleString("es-CO")}` : "",
+          precioNum > 0 ? `$ ${precioNum.toLocaleString("es-CO")}` : "",
+          formatStatusTokens(p.estado),
+          stockStatus,
+          p.stock,
+          String(p.stock ?? ""),
           p.stock !== undefined ? `${p.stock} unidades` : "",
           p.ventas !== undefined ? `${p.ventas} ventas` : "",
           variantesText,
@@ -98,8 +119,15 @@ export function useProductos() {
         searchTerm
       );
 
-      const matchCategoria = filterCategoria === "Todas" || p.categoria === filterCategoria;
-      const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
+      const hasSearch = Boolean(searchTerm && searchTerm.trim());
+      const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
+      const matchEstadoFiltro =
+        filterEstado === "Todos" ||
+        (filterEstado === "Activo" && isActivo) ||
+        (filterEstado === "Inactivo" && !isActivo);
+
+      const matchEstado = !hasSearch ? matchEstadoFiltro : true;
+      const matchCategoria = !hasSearch ? (filterCategoria === "Todas" || p.categoria === filterCategoria) : true;
 
       return matchSearch && matchCategoria && matchEstado;
     });

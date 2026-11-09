@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   X,
   Bell,
@@ -31,23 +32,28 @@ export function TrazabilidadProveedoresModal({
   const restauradosCount = eventos.filter((e) => e.tipo === "Restaurado").length;
 
   const filteredEventos = eventos.filter((e) => {
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
     let matchType = true;
     if (filterType === "Creados") matchType = e.tipo === "Creado";
     else if (filterType === "Editados") matchType = e.tipo === "Editado";
     else if (filterType === "Eliminados") matchType = e.tipo === "Eliminado" || e.tipo === "Inactivado";
     else if (filterType === "Restaurados") matchType = e.tipo === "Restaurado";
 
-    if (!matchType) return false;
+    if (!hasSearch && !matchType) return false;
+    if (!hasSearch) return true;
 
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase().trim();
-    return (
-      (e.nombre && e.nombre.toLowerCase().includes(q)) ||
-      (e.descripcion && e.descripcion.toLowerCase().includes(q)) ||
-      (e.tipo && e.tipo.toLowerCase().includes(q)) ||
-      (e.motivo && e.motivo.toLowerCase().includes(q)) ||
-      (e.usuarioNombre && e.usuarioNombre.toLowerCase().includes(q)) ||
-      (e.fecha && e.fecha.toLowerCase().includes(q))
+    return matchesSmartSearch(
+      [
+        e.nombre,
+        e.descripcion,
+        e.tipo,
+        e.motivo,
+        e.usuarioNombre,
+        e.fecha,
+        e.id
+      ],
+      searchTerm
     );
   });
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   X,
   Bell,
@@ -94,7 +95,9 @@ export function TrazabilidadModal({
   const restauradosCount = eventos.filter(isEventRestaurado).length;
 
   const filteredEventos = eventos.filter((e) => {
-    // Type filter
+    const hasSearch = Boolean(searchTrazabilidad && searchTrazabilidad.trim());
+
+    // Type filter (anulado si el usuario busca específicamente para no limitar resultados)
     let matchType = true;
     if (filterType === "Reabastecimientos") matchType = isEventReabastecimiento(e);
     else if (filterType === "Cancelaciones") matchType = isEventCancelacion(e);
@@ -103,29 +106,32 @@ export function TrazabilidadModal({
     else if (filterType === "Eliminados") matchType = isEventEliminado(e);
     else if (filterType === "Restaurados") matchType = isEventRestaurado(e);
 
-    if (!matchType) return false;
+    if (!hasSearch && !matchType) return false;
 
-    // Search query filter
-    if (!searchTrazabilidad.trim()) return true;
-    const q = searchTrazabilidad.toLowerCase().trim();
+    if (!hasSearch) return true;
 
-    const matchesIntent =
-      (isEventEliminado(e) && (q.includes("elimin") || q.includes("papelera") || q.includes("borra"))) ||
-      (isEventEditado(e) && (q.includes("edit") || q.includes("modif") || q.includes("actualiz"))) ||
-      (isEventCreado(e) && (q.includes("crea") || q.includes("nuev") || q.includes("regist"))) ||
-      (isEventRestaurado(e) && (q.includes("restaur") || q.includes("recuper"))) ||
-      (isEventReabastecimiento(e) && (q.includes("reabastec") || q.includes("compra") || q.includes("entrad"))) ||
-      (isEventCancelacion(e) && (q.includes("cancel") || q.includes("anul") || q.includes("revers")));
+    const actionKeywords = [
+      isEventEliminado(e) ? "eliminado eliminada eliminacion papelera borrado borrada" : "",
+      isEventEditado(e) ? "editado editada edicion modificacion modificado actualizado" : "",
+      isEventCreado(e) ? "creado creada creacion nuevo nueva registrado registrada" : "",
+      isEventRestaurado(e) ? "restaurado restaurada restauracion recuperado" : "",
+      isEventReabastecimiento(e) ? "reabastecimiento compra entrada ingreso" : "",
+      isEventCancelacion(e) ? "cancelacion cancelada cancelado anulacion anulado reversado" : ""
+    ].join(" ");
 
-    return (
-      matchesIntent ||
-      (e.nombre && e.nombre.toLowerCase().includes(q)) ||
-      (e.descripcion && e.descripcion.toLowerCase().includes(q)) ||
-      (e.tipo && e.tipo.toLowerCase().includes(q)) ||
-      (e.tipoRaw && e.tipoRaw.toLowerCase().includes(q)) ||
-      (e.motivo && e.motivo.toLowerCase().includes(q)) ||
-      (e.usuarioNombre && e.usuarioNombre.toLowerCase().includes(q)) ||
-      (e.fecha && e.fecha.toLowerCase().includes(q))
+    return matchesSmartSearch(
+      [
+        e.nombre,
+        e.descripcion,
+        e.tipo,
+        e.tipoRaw,
+        e.motivo,
+        e.usuarioNombre,
+        e.fecha,
+        e.id,
+        actionKeywords
+      ],
+      searchTrazabilidad
     );
   });
 

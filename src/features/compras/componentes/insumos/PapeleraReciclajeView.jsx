@@ -13,14 +13,38 @@ export function PapeleraReciclajeView({
 
   const filteredInsumos = papeleraInsumos.filter((item) =>
     matchesSmartSearch(
-      [item.nombre, item.categoria, item.categoriaNombre, item.descripcion, item.unidadMedida],
+      [
+        item.nombre,
+        item.categoria,
+        item.categoriaNombre,
+        item.descripcion,
+        item.unidadMedida,
+        item.id,
+        item.idInsumo,
+        `#${item.id || item.idInsumo}`,
+        item.stock,
+        String(item.stock ?? ""),
+        item.precioUnitario,
+        String(item.precioUnitario ?? "")
+      ],
       searchTrash
     )
   );
 
   const filteredPreparados = papeleraPreparados.filter((item) =>
     matchesSmartSearch(
-      [item.nombre, item.descripcion, item.unidadMedida],
+      [
+        item.nombre,
+        item.descripcion,
+        item.unidadMedida,
+        item.id,
+        item.idInsumo,
+        `#${item.id || item.idInsumo}`,
+        item.stock,
+        String(item.stock ?? ""),
+        item.precio,
+        String(item.precio ?? "")
+      ],
       searchTrash
     )
   );

@@ -6,6 +6,7 @@ import {
   recordLocalOrderTransition,
   getLocalOrderTransition
 } from "../utils/tiempoProduccionUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useGestionProduccion() {
   const { user } = useAuth();
@@ -68,10 +69,7 @@ export function useGestionProduccion() {
 
   // Buscador generalizado que busca por TODAS las columnas y atributos (Ítems 8, 17, 20 y Comandas)
   const filteredOrdenes = ordenes.filter((o) => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return filterEstado === "Todos" || o.estado === filterEstado;
-    }
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
 
     const prodsString = Array.isArray(o.productos)
       ? o.productos
@@ -84,27 +82,44 @@ export function useGestionProduccion() {
           .join(" ")
       : "";
 
-    const matchSearch =
-      (o.codigo && o.codigo.toLowerCase().includes(term)) ||
-      (o.id && String(o.id).includes(term)) ||
-      (o.platilloNombre && o.platilloNombre.toLowerCase().includes(term)) ||
-      (o.cliente && o.cliente.toLowerCase().includes(term)) ||
-      (o.responsable && o.responsable.toLowerCase().includes(term)) ||
-      (o.cocinero && o.cocinero.toLowerCase().includes(term)) ||
-      (o.estado && o.estado.toLowerCase().includes(term)) ||
-      (o.horaInicio && o.horaInicio.toLowerCase().includes(term)) ||
-      (o.horaEstado && o.horaEstado.toLowerCase().includes(term)) ||
-      (o.fecha && o.fecha.toLowerCase().includes(term)) ||
-      (o.tiempo && o.tiempo.toLowerCase().includes(term)) ||
-      (o.mesa && o.mesa.toLowerCase().includes(term)) ||
-      (o.tipo && o.tipo.toLowerCase().includes(term)) ||
-      (o.cantidad && String(o.cantidad).includes(term)) ||
-      (o.prioridad && `turno #${o.prioridad}`.includes(term)) ||
-      (o.observaciones && o.observaciones.toLowerCase().includes(term)) ||
-      prodsString.toLowerCase().includes(term);
+    const hasObs = Boolean(o.observaciones && String(o.observaciones).trim());
+    const obsText = hasObs ? o.observaciones : "sin_observaciones sin observaciones";
+    const hasMesa = Boolean(o.mesa && String(o.mesa).trim());
+    const mesaText = hasMesa ? `mesa ${o.mesa} #${o.mesa}` : "sin_mesa sin mesa para llevar llevar recoger domicilio";
+    const hasCook = Boolean((o.cocinero || o.responsable) && String(o.cocinero || o.responsable).trim());
+    const cookText = hasCook ? `${o.cocinero || ""} ${o.responsable || ""}` : "sin_cocinero sin cocinero sin_responsable sin responsable";
 
-    const matchEstado = filterEstado === "Todos" || o.estado === filterEstado;
+    const matchSearch = matchesSmartSearch(
+      [
+        o.codigo,
+        o.id,
+        String(o.id ?? ""),
+        `#${o.id}`,
+        o.platilloNombre,
+        o.cliente,
+        o.responsable,
+        o.cocinero,
+        cookText,
+        formatStatusTokens(o.estado),
+        o.horaInicio,
+        o.horaEstado,
+        o.fecha,
+        o.tiempo,
+        o.mesa,
+        mesaText,
+        o.tipo,
+        o.cantidad,
+        String(o.cantidad ?? ""),
+        `${o.cantidad ?? 0} unidades`,
+        o.prioridad ? `turno #${o.prioridad}` : "",
+        o.observaciones,
+        obsText,
+        prodsString
+      ],
+      searchTerm
+    );
 
+    const matchEstado = !hasSearch ? (filterEstado === "Todos" || o.estado === filterEstado) : true;
     return matchSearch && matchEstado;
   });
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { rolesService } from "../servicios/rolesService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useConfirm } from "@/shared/context/ConfirmContext";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 import { validateNombreRol } from "@/shared/utils/validationUtils";
 import { AlertTriangle, AlertCircle } from "lucide-react";
 
@@ -30,9 +30,56 @@ export function useRoles() {
     fetchRoles();
   }, [fetchRoles]);
 
-  const filteredRoles = roles.filter((r) =>
-    matchesSmartSearch([r.nombre, r.descripcion, r.estado], searchTerm)
-  );
+  const filteredRoles = roles.filter((r) => {
+    const permisosText = Array.isArray(r.permisos)
+      ? r.permisos.map((p) => (typeof p === "string" ? p : p.nombre || p.permiso || "")).join(" ")
+      : "";
+
+    const privilegiosGranularesCount = (r.permisos || []).filter((p) => {
+      const name = typeof p === "string" ? p : p.nombre || p.permiso || "";
+      return name.includes(":");
+    }).length;
+
+    const modulosBaseCount = (r.permisos || []).filter((p) => {
+      const name = typeof p === "string" ? p : p.nombre || p.permiso || "";
+      return !name.includes(":") && name !== "Vendedor";
+    }).length;
+
+    const hasDesc = Boolean(r.descripcion && String(r.descripcion).trim());
+    const descText = hasDesc ? `${r.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+
+    const numUsuarios = r.usuarios ?? 0;
+    const usuariosText = numUsuarios === 0
+      ? "0 usuarios sin_usuarios sin usuarios"
+      : `${numUsuarios} usuarios ${numUsuarios} usuario`;
+
+    const modulosText = modulosBaseCount === 0
+      ? "0 módulos 0 modulos sin_modulos sin modulos sin_permisos sin permisos"
+      : `${modulosBaseCount} módulos ${modulosBaseCount} modulos ${modulosBaseCount} módulo ${modulosBaseCount} modulo`;
+
+    return matchesSmartSearch(
+      [
+        r.nombre,
+        descText,
+        formatStatusTokens(r.estado),
+        r.id,
+        r.idRol,
+        `#${r.id || r.idRol}`,
+        numUsuarios,
+        String(numUsuarios),
+        usuariosText,
+        modulosBaseCount,
+        String(modulosBaseCount),
+        modulosText,
+        privilegiosGranularesCount,
+        String(privilegiosGranularesCount),
+        `${privilegiosGranularesCount} privilegios`,
+        `${privilegiosGranularesCount} privilegio`,
+        permisosText
+      ],
+      searchTerm
+    );
+  });
 
   const createRol = async (nombre, descripcion, permisos = []) => {
     try {

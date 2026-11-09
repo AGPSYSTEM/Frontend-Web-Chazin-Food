@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { categoriaInsumosService } from "../servicios/categoriaInsumosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
 
 export function useCategoriaInsumos() {
   const notify = useNotifications();
@@ -29,24 +29,27 @@ export function useCategoriaInsumos() {
 
   const filteredCategorias = categorias.filter((c) => {
     const isActivo = c.estado === "Activo" || c.estado === 1 || c.estado === "1";
-    if (filterEstado !== "Todos") {
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+
+    if (!hasSearch && filterEstado !== "Todos") {
       if (filterEstado === "Activo" && !isActivo) return false;
       if (filterEstado === "Inactivo" && isActivo) return false;
     }
 
-    const count = c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0);
-    const estadoStr = isActivo ? "Activo" : "Inactivo";
-    const estadoKeywords = isActivo ? "activo activa habilitado habilitada" : "inactivo inactiva deshabilitado deshabilitada";
+    const count = Number(c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0));
     const insumosNames = Array.isArray(c.insumos)
       ? c.insumos.map((i) => (typeof i === "object" ? i.nombre : String(i))).join(" ")
       : "";
 
+    const hasDesc = Boolean(c.descripcion && String(c.descripcion).trim());
+    const descText = hasDesc ? `${c.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+
     return matchesSmartSearch(
       [
         c.nombre,
-        c.descripcion,
-        estadoStr,
-        estadoKeywords,
+        descText,
+        formatStatusTokens(c.estado),
+        count,
         String(count),
         `${count} insumos`,
         `${count} insumo`,

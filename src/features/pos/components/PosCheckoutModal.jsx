@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   X,
   Store,
@@ -121,16 +122,25 @@ export function PosCheckoutModal({
   const isClientValid = Boolean(clienteNombre && clienteNombre.trim().length >= 2);
   const isFormValid = isClientValid && isPaymentValid;
 
-  // Direct search matching (cedula, telefono, nombre, email)
+  // Direct multicriteria search matching (cedula, telefono, nombre, email, id)
   const filteredClientes = clientSearchTerm.trim()
     ? clientesList.filter((c) => {
-        const search = clientSearchTerm.toLowerCase().trim();
-        const fullName = `${c.nombre || ""} ${c.apellidos || ""}`.toLowerCase();
-        const phone = String(c.telefono || "").toLowerCase();
-        const email = String(c.email || "").toLowerCase();
-        const doc = String(c.documento || c.cedula || c.identificacion || "").toLowerCase();
-
-        return fullName.includes(search) || phone.includes(search) || email.includes(search) || doc.includes(search);
+        return matchesSmartSearch(
+          [
+            c.nombre,
+            c.apellidos,
+            `${c.nombre || ""} ${c.apellidos || ""}`.trim(),
+            c.telefono,
+            c.email,
+            c.documento,
+            c.cedula,
+            c.identificacion,
+            c.id,
+            c.idCliente,
+            `#${c.id || c.idCliente}`
+          ],
+          clientSearchTerm
+        );
       })
     : [];
 

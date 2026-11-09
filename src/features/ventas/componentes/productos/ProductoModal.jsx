@@ -15,6 +15,7 @@ import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { validateTexto, validateNumeroPositivo } from "@/shared/utils/validationUtils";
 import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export const isSizeVariantName = (name = "") => {
   const vn = String(name || "").toLowerCase();
@@ -446,14 +447,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const productosComboFiltrados = useMemo(() => {
     let list = todosProductosCatalogo || [];
-    if (filtroCatCombo && filtroCatCombo !== "todas") {
+    const hasSearch = Boolean(busquedaComboProd && busquedaComboProd.trim());
+
+    if (!hasSearch && filtroCatCombo && filtroCatCombo !== "todas") {
       list = list.filter(p => (p.categoria || p.categoriaNombre) === filtroCatCombo);
     }
-    if (busquedaComboProd && busquedaComboProd.trim()) {
-      const q = busquedaComboProd.toLowerCase().trim();
+    if (hasSearch) {
       list = list.filter(p => 
-        (p.nombre && p.nombre.toLowerCase().includes(q)) ||
-        (p.categoria && p.categoria.toLowerCase().includes(q))
+        matchesSmartSearch(
+          [
+            p.nombre,
+            p.codigo,
+            p.categoria,
+            p.categoriaNombre,
+            p.id,
+            p.idProducto,
+            `#${p.id || p.idProducto}`,
+            p.precio,
+            String(p.precio ?? "")
+          ],
+          busquedaComboProd
+        )
       );
     }
     return list;

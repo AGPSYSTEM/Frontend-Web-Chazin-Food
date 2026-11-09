@@ -5,7 +5,7 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { normalizeFichaWithVersions } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
-import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, hasStatusSearchIntent } from "@/shared/utils/searchUtils";
 
 export function useInsumos() {
   const notify = useNotifications();
@@ -153,13 +153,13 @@ export function useInsumos() {
     const isAgotado = (item.stock || 0) === 0;
     const isBajo = (item.stock || 0) <= (item.stockMinimo || 0) && (item.stock || 0) > 0;
     const stockStatus = isAgotado
-      ? "Agotado agotada stock agotado sin stock cero 0 disponible reabastecer"
+      ? "Agotado agotada stock agotado sin stock sin_stock cero 0 reabastecer"
       : isBajo
-      ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento"
+      ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento disponible en stock"
       : "Normal disponible en stock suficiente";
     const esAdicionStr = (item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1")
       ? "Adición Adicion adicion es adicion adicionable si sí"
-      : "No sin adicion";
+      : "estandar ingrediente base";
 
     const todayStr = new Date().toISOString().split("T")[0];
 
@@ -195,14 +195,14 @@ export function useInsumos() {
         );
       });
     } else {
-      lotesTokensArr.push("sin lote sin lotes");
+      lotesTokensArr.push("sin_lote sin_lotes");
     }
 
     const insumoDirectoVencido = item.fechaVencimiento && item.fechaVencimiento <= todayStr;
     const estaVencido = tieneLoteVencido || insumoDirectoVencido;
     const vencimientoKeywords = estaVencido
       ? "lote vencido lotes vencidos vencido vencida vencitos vencito caducado caducada expirado expirada vencimiento inactivado reabastecer reabastecimiento"
-      : "vigente no vencido activo";
+      : "vigente fresco al dia buen_estado";
 
     let fechaVencFormatted = "";
     if (item.fechaVencimiento) {
@@ -238,44 +238,57 @@ export function useInsumos() {
     const precioNum = Number(item.precioUnitario || item.costo || item.precio || 0);
     const precioAdicionNum = Number(item.precioAdicion || 0);
 
+    const hasDesc = Boolean(item.descripcion && String(item.descripcion).trim());
+    const descText = hasDesc ? `${item.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+    const hasCat = Boolean((item.categoria || item.categoriaNombre) && String(item.categoria || item.categoriaNombre).trim());
+    const catText = hasCat ? `${item.categoria || ""} ${item.categoriaNombre || ""} con_categoria con categoria` : "sin_categoria sin categoria";
+    const hasProv = Boolean((item.proveedor || item.proveedorNombre) && String(item.proveedor || item.proveedorNombre).trim());
+    const provText = hasProv ? `${item.proveedor || ""} ${item.proveedorNombre || ""} con_proveedor con proveedor` : "sin_proveedor sin proveedor";
+
     const matchSearch = matchesSmartSearch(
       [
         item.nombre,
         item.categoria,
         item.categoriaNombre,
+        catText,
         item.categoria?.nombre,
         item.idCategoriaInsumo,
         item.proveedor,
         item.proveedorNombre,
+        provText,
         item.proveedor?.nombre,
         item.proveedor?.contacto,
         item.proveedor?.telefono,
         item.proveedor?.email,
         item.proveedor?.nit,
-        item.estado,
-        item.estado === "Activo" ? "activo activa habilitado habilitada" : "inactivo inactiva deshabilitado deshabilitada",
+        formatStatusTokens(item.estado),
         item.tipo,
         isPrep ? "Insumo Preparado Preparado receta" : "Insumo Base Base ingrediente",
-        item.descripcion,
+        descText,
         item.unidadMedida,
         item.id,
         item.idInsumo,
         `#${item.id || item.idInsumo}`,
+        item.stock,
         String(item.stock ?? ""),
         item.stock !== undefined && item.stock !== null ? `${item.stock} ${item.unidadMedida || ""}` : "",
         `stock ${item.stock ?? ""}`,
+        item.stockMinimo,
         String(item.stockMinimo ?? ""),
         `minimo ${item.stockMinimo ?? ""}`,
+        item.stockMaximo,
         String(item.stockMaximo ?? ""),
         `maximo ${item.stockMaximo ?? ""}`,
+        precioNum,
         String(precioNum),
         `$${precioNum.toLocaleString("es-CO")}`,
         `$ ${precioNum.toLocaleString("es-CO")}`,
+        precioAdicionNum > 0 ? precioAdicionNum : "",
         precioAdicionNum > 0 ? String(precioAdicionNum) : "",
         precioAdicionNum > 0 ? `$${precioAdicionNum.toLocaleString("es-CO")}` : "",
         stockStatus,
         esAdicionStr,
-        item.incluyeIva ? "con iva incluye iva gravado" : "sin iva exento",
+        item.incluyeIva ? "con iva incluye iva gravado" : "exento sin_impuesto no_gravado",
         item.fechaExpedicion || "",
         item.fechaVencimiento || "",
         fechaVencFormatted,
@@ -287,12 +300,16 @@ export function useInsumos() {
       searchTerm
     );
 
+    const hasSearch = Boolean(searchTerm && searchTerm.trim());
+    const isItemActivo = item.estado === "Activo" || item.estado === 1 || item.estado === "1";
+    const matchEstadoFiltro =
+      filterEstado === "Todos" ||
+      (filterEstado === "Activo" && isItemActivo) ||
+      (filterEstado === "Inactivo" && !isItemActivo);
+
+    // Si el usuario escribe en el buscador, la búsqueda prevalece para encontrar registros inmediatamente
+    const matchEstado = !hasSearch ? matchEstadoFiltro : true;
     const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
-    
-    // Si el usuario busca explícitamente términos como vencido/inactivo o un lote, no lo bloqueamos por estado
-    const normalizedQuery = (searchTerm || "").toLowerCase();
-    const queryOverridesEstado = normalizedQuery.includes("vencid") || normalizedQuery.includes("vencit") || normalizedQuery.includes("inactiv");
-    const matchEstado = filterEstado === "Todos" || item.estado === filterEstado || queryOverridesEstado;
 
     return matchSearch && matchCategoria && matchEstado;
   });

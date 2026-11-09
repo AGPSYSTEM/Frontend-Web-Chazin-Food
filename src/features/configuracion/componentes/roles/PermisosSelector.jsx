@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   Check,
   X,
@@ -132,17 +133,16 @@ export function PermisosSelector({ value = [], onChange, scrollable = false }) {
     return { modulosActivos, privilegiosActivos };
   }, [stateMap]);
 
-  // Filtrado de grupos y submódulos según búsqueda
+  // Filtrado de grupos y submódulos según búsqueda multicriterio
   const gruposFiltrados = useMemo(() => {
     if (!searchFilter.trim()) return GRUPOS_PERMISOS;
-    const q = searchFilter.toLowerCase();
 
     return GRUPOS_PERMISOS.map((g) => {
       if (!g.isGroup) {
-        return g.nombre.toLowerCase().includes(q) ? g : null;
+        return matchesSmartSearch([g.nombre, g.descripcion], searchFilter) ? g : null;
       }
-      const matchedSubs = g.subPermisos.filter((s) => s.nombre.toLowerCase().includes(q) || s.descripcion?.toLowerCase().includes(q));
-      if (matchedSubs.length > 0 || g.nombre.toLowerCase().includes(q)) {
+      const matchedSubs = g.subPermisos.filter((s) => matchesSmartSearch([s.nombre, s.descripcion], searchFilter));
+      if (matchedSubs.length > 0 || matchesSmartSearch([g.nombre, g.descripcion], searchFilter)) {
         return {
           ...g,
           subPermisos: matchedSubs.length > 0 ? matchedSubs : g.subPermisos

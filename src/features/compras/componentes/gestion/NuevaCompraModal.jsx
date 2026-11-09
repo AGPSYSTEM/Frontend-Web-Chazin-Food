@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   X,
   ShoppingCart,
@@ -512,8 +513,29 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     : insumos;
 
   const filteredInsumos = (() => {
-    const q = search.toLowerCase().trim();
-    const filterList = (list) => (q ? list.filter((i) => i.nombre?.toLowerCase().includes(q)) : list);
+    const filterList = (list) =>
+      search.trim()
+        ? list.filter((i) =>
+            matchesSmartSearch(
+              [
+                i.nombre,
+                i.categoria,
+                i.categoriaNombre,
+                i.descripcion,
+                i.id,
+                i.idInsumo,
+                `#${i.id || i.idInsumo}`,
+                i.stock,
+                String(i.stock ?? ""),
+                i.unidadMedida,
+                i.precioUnitario,
+                String(i.precioUnitario ?? "")
+              ],
+              search
+            )
+          )
+        : list;
+
     if (insumosAsociados.length > 0 && selectedProveedorId) {
       return [
         ...filterList(insumosAsociados).map((i) => ({ ...i, _highlight: true })),
