@@ -56,26 +56,45 @@ export function useProveedores() {
   const activosProveedores = proveedores.filter((p) => p.estado === "Activo" || p.estado === 1);
 
   const filteredProveedores = proveedores.filter((p) => {
+    const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
+    const estadoStr = isActivo ? "Activo" : "Inactivo";
+    const estadoKeywords = isActivo ? "activo activa habilitado habilitada" : "inactivo inactiva deshabilitado suspendido";
+    const esJuridica = p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 || p.tipoDocumento === "NIT";
+    const docLabel = esJuridica ? "NIT" : "CC";
+    const tipoPersonaStr = esJuridica ? "Jurídica Juridica Persona Jurídica" : "Natural Persona Natural";
+
     const matchSearch = matchesSmartSearch(
       [
         p.nombre,
         p.nit,
         p.numeroDocumento,
+        p.documento,
+        docLabel,
+        `${docLabel}: ${p.nit || p.numeroDocumento || ""}`,
         p.contacto,
         p.nombreContacto,
         p.email,
         p.correo,
         p.telefono,
+        p.celular,
         p.direccion,
         p.tipoProveedor,
+        p.tipoProveedorNombre,
         p.tipoPersona,
-        p.estado
+        tipoPersonaStr,
+        estadoStr,
+        estadoKeywords,
+        p.id,
+        p.idProveedor,
+        `#${p.id || p.idProveedor}`,
+        p.descripcion,
+        p.observaciones
       ],
       searchTerm
     );
 
-    const matchEstado = filterEstado === "Todos" || p.estado === filterEstado;
-    const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo;
+    const matchEstado = filterEstado === "Todos" || p.estado === filterEstado || (filterEstado === "Activo" && isActivo) || (filterEstado === "Inactivo" && !isActivo);
+    const matchTipo = filterTipo === "Todos" || p.tipoPersona === filterTipo || (filterTipo === "Jurídica" && esJuridica) || (filterTipo === "Natural" && !esJuridica);
     return matchSearch && matchEstado && matchTipo;
   });
 

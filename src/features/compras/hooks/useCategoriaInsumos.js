@@ -8,6 +8,7 @@ export function useCategoriaInsumos() {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterEstado, setFilterEstado] = useState("Todos");
 
   const fetchCategorias = useCallback(async () => {
     try {
@@ -26,19 +27,33 @@ export function useCategoriaInsumos() {
     fetchCategorias();
   }, [fetchCategorias]);
 
-    const filteredCategorias = categorias.filter((c) => {
+  const filteredCategorias = categorias.filter((c) => {
+    const isActivo = c.estado === "Activo" || c.estado === 1 || c.estado === "1";
+    if (filterEstado !== "Todos") {
+      if (filterEstado === "Activo" && !isActivo) return false;
+      if (filterEstado === "Inactivo" && isActivo) return false;
+    }
+
     const count = c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0);
-    const estadoKeywords = c.estado === "Activo" ? "activo activa habilitado" : "inactivo inactiva deshabilitado";
+    const estadoStr = isActivo ? "Activo" : "Inactivo";
+    const estadoKeywords = isActivo ? "activo activa habilitado habilitada" : "inactivo inactiva deshabilitado deshabilitada";
+    const insumosNames = Array.isArray(c.insumos)
+      ? c.insumos.map((i) => (typeof i === "object" ? i.nombre : String(i))).join(" ")
+      : "";
+
     return matchesSmartSearch(
       [
         c.nombre,
         c.descripcion,
-        c.estado,
+        estadoStr,
         estadoKeywords,
         String(count),
         `${count} insumos`,
+        `${count} insumo`,
         c.id,
-        c.idCategoriaInsumo
+        c.idCategoriaInsumo,
+        `#${c.id || c.idCategoriaInsumo}`,
+        insumosNames
       ],
       searchTerm
     );
@@ -91,6 +106,8 @@ export function useCategoriaInsumos() {
     loading,
     searchTerm,
     setSearchTerm,
+    filterEstado,
+    setFilterEstado,
     refetch: fetchCategorias,
     createCategoria,
     updateCategoria,

@@ -16,6 +16,7 @@ export function useInsumos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
+  const [insumosVencidos, setInsumosVencidos] = useState([]);
 
   // Traceability & Papelera State from backend
   const [eventos, setEventos] = useState([]);
@@ -83,9 +84,20 @@ export function useInsumos() {
         };
       });
 
-      setInsumos([...baseMapped, ...prepMapped]);
+      const allInsumos = [...baseMapped, ...prepMapped];
+      setInsumos(allInsumos);
       setCategorias(categoriasData || []);
       setProveedores(proveedoresData || []);
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const vencidos = allInsumos.filter((i) => {
+        const tieneLoteVencido = (i.lotes || []).some(
+          (l) => l.estado === "VENCIDO" || (l.fechaVencimiento && l.fechaVencimiento <= todayStr)
+        );
+        const insumoVencido = i.fechaVencimiento && i.fechaVencimiento <= todayStr;
+        return (tieneLoteVencido || insumoVencido) && (i.estado === "Inactivo" || i.stock <= 0 || tieneLoteVencido);
+      });
+      setInsumosVencidos(vencidos);
 
       await fetchTrazabilidad();
     } catch (err) {
@@ -137,19 +149,44 @@ export function useInsumos() {
   }, [fetchInsumos, fetchPapelera]);
 
   const filteredInsumos = insumos.filter((item) => {
+    const isPrep = item.tipo === "Preparado";
+    const isAgotado = (item.stock || 0) === 0;
+    const isBajo = (item.stock || 0) <= (item.stockMinimo || 0) && (item.stock || 0) > 0;
+    const stockStatus = isAgotado ? "Agotado stock agotado" : isBajo ? "Bajo stock bajo" : "Normal stock normal";
+    const esAdicionStr = (item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1") ? "Adición Adicion sí si" : "No";
+    const lotesTokens = (item.lotes || []).map((l) => `${l.numeroLote || ""} ${l.fechaVencimiento || ""} ${l.estado || ""}`).join(" ");
+    const ingredientesTokens = (item.ingredientes || []).map((ing) => `${ing.nombre || ""} ${ing.cantidad || ""} ${ing.unidadMedida || ""}`).join(" ");
+    const precioNum = Number(item.precioUnitario || item.costo || item.precio || 0);
+
     const matchSearch = matchesSmartSearch(
       [
         item.nombre,
         item.categoria,
         item.categoriaNombre,
+        item.categoria?.nombre,
         item.proveedor,
         item.proveedorNombre,
         item.estado,
+        item.estado === "Activo" ? "activo activa habilitado" : "inactivo inactiva deshabilitado",
         item.tipo,
+        isPrep ? "Insumo Preparado Preparado" : "Insumo Base Base",
         item.descripcion,
         item.unidadMedida,
         item.id,
-        item.idInsumo
+        item.idInsumo,
+        `#${item.id || item.idInsumo}`,
+        String(item.stock ?? ""),
+        item.stock !== undefined && item.stock !== null ? `${item.stock} ${item.unidadMedida || ""}` : "",
+        String(item.stockMinimo ?? ""),
+        String(item.stockMaximo ?? ""),
+        String(precioNum),
+        `$${precioNum.toLocaleString("es-CO")}`,
+        stockStatus,
+        esAdicionStr,
+        item.precioAdicion ? String(item.precioAdicion) : "",
+        item.fechaVencimiento || "",
+        lotesTokens,
+        ingredientesTokens
       ],
       searchTerm
     );
@@ -423,6 +460,7 @@ export function useInsumos() {
     setFilterCategoria,
     filterEstado,
     setFilterEstado,
+    insumosVencidos,
     eventos,
     unreadCount,
     papeleraInsumos,

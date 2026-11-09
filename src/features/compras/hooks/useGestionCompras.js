@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { comprasService } from "../servicios/comprasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export function useGestionCompras() {
   const notify = useNotifications();
@@ -142,10 +143,8 @@ export function useGestionCompras() {
       }
     }
 
-    // Comparar término(s) de búsqueda contra los datos recopilados
-    const fullHaystack = searchTokens.join(" ").toLowerCase();
-    const searchWords = term.split(/\s+/).filter(Boolean);
-    return searchWords.every((word) => fullHaystack.includes(word));
+    // Comparar término(s) de búsqueda con normalización y multi-token inteligente
+    return matchesSmartSearch(searchTokens, searchTerm);
   });
 
   const createCompra = async (data) => {

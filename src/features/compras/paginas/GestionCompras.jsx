@@ -161,7 +161,7 @@ export function GestionCompras() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -204,7 +204,7 @@ export function GestionCompras() {
       </div>
 
       {/* Filter and Action Bar Box - En una sola línea */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-4 sm:p-5 border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4">
         {/* Search Input */}
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -218,7 +218,7 @@ export function GestionCompras() {
         </div>
 
         {/* Filter Dropdown & Primary Action Button */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
           <select
             value={filterEstado}
             onChange={(e) => setFilterEstado(e.target.value)}

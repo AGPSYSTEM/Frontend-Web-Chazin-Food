@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Plus, Search, Bell, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Search, Bell, Download, FileSpreadsheet, FileText, AlertTriangle, ShoppingCart, Filter } from "lucide-react";
 import { useInsumos } from "../hooks/useInsumos";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 import { InsumosStatsCards } from "../componentes/insumos/InsumosStatsCards";
 import { InsumosTable } from "../componentes/insumos/InsumosTable";
 import { InsumoModal } from "../componentes/insumos/InsumoModal";
@@ -14,6 +16,8 @@ import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export function Insumos() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const notify = useNotifications();
   const canCreate = hasPrivilege(user, "Insumos", "crear");
   const canEdit = hasPrivilege(user, "Insumos", "editar");
   const canDelete = hasPrivilege(user, "Insumos", "eliminar");
@@ -28,6 +32,9 @@ export function Insumos() {
     setSearchTerm,
     filterCategoria,
     setFilterCategoria,
+    filterEstado,
+    setFilterEstado,
+    insumosVencidos = [],
     eventos,
     unreadCount,
     papeleraInsumos,
@@ -42,6 +49,17 @@ export function Insumos() {
     resetUnreadCount,
     toggleEstadoInsumo
   } = useInsumos();
+
+  const alertShownRef = useRef(false);
+  useEffect(() => {
+    if (insumosVencidos && insumosVencidos.length > 0 && !alertShownRef.current) {
+      alertShownRef.current = true;
+      notify.warning(
+        "Alerta de Vencimiento de Lote",
+        `${insumosVencidos.length === 1 ? `"${insumosVencidos[0].nombre}"` : `${insumosVencidos.length} insumos`} tienen lote(s) vencido(s) y se han inactivado. Dirígete a Compras para reabastecer.`
+      );
+    }
+  }, [insumosVencidos, notify]);
 
   const [viewMode, setViewMode] = useState("activos"); // "activos" | "papelera"
   const [filterTipo, setFilterTipo] = useState("Todos los tipos");
@@ -229,7 +247,7 @@ export function Insumos() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -242,6 +260,52 @@ export function Insumos() {
 
       {/* 4 Stat Cards Grid */}
       <InsumosStatsCards insumos={insumos} />
+
+      {/* Alerta de Lotes Vencidos / Insumos Inactivados (#5) */}
+      {insumosVencidos && insumosVencidos.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6 stroke-[2.3]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                <span>¡Alerta de Vencimiento de Lote!</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 uppercase tracking-wider">
+                  {insumosVencidos.length} {insumosVencidos.length === 1 ? "insumo inactivado" : "insumos inactivados"}
+                </span>
+              </h3>
+              <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                {insumosVencidos.length === 1 ? (
+                  <>
+                    El insumo <strong className="font-bold underline">{insumosVencidos[0].nombre}</strong> ha cumplido la fecha de vencimiento de su lote y fue inactivado automáticamente. Debe reabastecerse en el módulo de compras.
+                  </>
+                ) : (
+                  <>
+                    Los insumos <strong className="font-bold">{insumosVencidos.map((i) => i.nombre).slice(0, 3).join(", ")}{insumosVencidos.length > 3 ? ` y ${insumosVencidos.length - 3} más` : ""}</strong> han cumplido la fecha de vencimiento de su lote y fueron inactivados automáticamente.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              navigate("/compras/gestion", {
+                state: {
+                  openNuevaCompra: true,
+                  initialInsumo: insumosVencidos[0]
+                }
+              });
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-red-500 to-[#F05454] hover:from-red-600 hover:to-[#d84343] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md shadow-red-500/20 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer w-full sm:w-auto"
+          >
+            <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
+            <span>Reabastecer en Compras</span>
+          </button>
+        </div>
+      )}
 
       {/* VIEW MODE: PAPELERA */}
       {viewMode === "papelera" ? (
@@ -289,13 +353,23 @@ export function Insumos() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar insumo..."
+                placeholder="Buscar insumo por nombre, categoría, lote, estado, código o precio..."
                 className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-colors placeholder:text-gray-400 outline-none"
               />
             </div>
 
             {/* Filter Dropdowns, Trazabilidad & Primary Action Button */}
             <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap">
+              <select
+                value={filterEstado}
+                onChange={(e) => setFilterEstado(e.target.value)}
+                className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-red-500/50 cursor-pointer w-full sm:w-auto outline-none font-medium"
+              >
+                <option value="Todos">Todos los estados</option>
+                <option value="Activo">Activos</option>
+                <option value="Inactivo">Inactivos</option>
+              </select>
+
               <select
                 value={filterCategoria}
                 onChange={(e) => setFilterCategoria(e.target.value)}
@@ -348,11 +422,25 @@ export function Insumos() {
           </div>
 
           {/* Active Filter Badges / Identificación de Filtros (#55) */}
-          {(filterTipo !== "Todos los tipos" || filterCategoria !== "Todas" || searchTerm.trim() !== "") && (
+          {(filterEstado !== "Todos" || filterTipo !== "Todos" || filterCategoria !== "Todas" || searchTerm.trim() !== "") && (
             <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
-              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider">
+              <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
+                <Filter className="w-3.5 h-3.5" />
                 Filtros activos:
               </span>
+              {filterEstado !== "Todos" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium">
+                  <span>Estado: {filterEstado}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterEstado("Todos")}
+                    className="hover:text-emerald-900 cursor-pointer font-bold ml-0.5"
+                    title="Quitar filtro"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
               {filterTipo !== "Todos los tipos" && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-[#F05454] border border-red-200 dark:border-red-900/60 font-medium">
                   <span>Tipo: {filterTipo}</span>
@@ -395,6 +483,7 @@ export function Insumos() {
               <button
                 type="button"
                 onClick={() => {
+                  setFilterEstado("Todos");
                   setFilterTipo("Todos los tipos");
                   setFilterCategoria("Todas");
                   setSearchTerm("");
@@ -416,6 +505,11 @@ export function Insumos() {
               onDelete={handleDeleteItem}
               onView={(item) => setViewingInsumo(item)}
               onToggleEstado={toggleEstadoInsumo}
+              onReabastecer={(item) =>
+                navigate("/compras/gestion", {
+                  state: { openNuevaCompra: true, initialInsumo: item }
+                })
+              }
               canEdit={canEdit}
               canDelete={canDelete}
             />

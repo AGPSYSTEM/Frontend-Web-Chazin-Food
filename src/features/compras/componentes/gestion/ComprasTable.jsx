@@ -36,20 +36,20 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto xl:overflow-x-hidden scroll-smooth focus:outline-none">
+        <table className="w-full text-left border-collapse table-auto">
           <thead>
-            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-6 py-4">Factura / Compra</th>
-              <th className="px-6 py-4">Proveedor</th>
-              <th className="px-6 py-4">Fecha</th>
-              <th className="px-6 py-4">Ítems</th>
-              <th className="px-6 py-4">Total</th>
-              <th className="px-6 py-4 text-center">Estado</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
+            <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th className="px-3.5 sm:px-4 py-3.5">Factura / Compra</th>
+              <th className="px-3.5 sm:px-4 py-3.5">Proveedor</th>
+              <th className="px-3.5 sm:px-4 py-3.5">Fecha</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center">Ítems</th>
+              <th className="px-3.5 sm:px-4 py-3.5">Total</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center">Estado</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center w-24">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs sm:text-sm">
             {totalRecords === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
@@ -69,35 +69,35 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
 
                 return (
                   <tr key={c.id || c.idCompra} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    <td className="px-3.5 sm:px-4 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                           estaCancelada
                             ? "bg-red-50 dark:bg-red-900/30 text-red-400"
                             : estaRecibida
                             ? "bg-green-50 dark:bg-green-900/30 text-green-600"
                             : "bg-red-50 dark:bg-red-900/30 text-[#F05454]"
                         }`}>
-                          <FileText className="w-5 h-5" />
+                          <FileText className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="font-semibold text-gray-900 dark:text-gray-100">
                             {c.numeroFactura || `OC-${String(c.id || c.idCompra).padStart(4, "0")}`}
                           </div>
-                          <div className="text-xs text-gray-400 font-mono">ID: #{c.id || c.idCompra}</div>
+                          <div className="text-[11px] text-gray-400 font-mono">ID: #{c.id || c.idCompra}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
+                    <td className="px-3.5 sm:px-4 py-3.5 font-medium text-gray-900 dark:text-gray-100">
                       {c.proveedorNombre && c.proveedorNombre !== "Sin proveedor" && c.proveedorNombre !== "Proveedor Genérico" && c.proveedorNombre !== "Proveedor Desconocido" ? (
                         c.proveedorNombre
                       ) : (
-                        <span className="text-gray-400 italic font-normal text-xs bg-gray-50 dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700 inline-block">
+                        <span className="text-gray-400 italic font-normal text-xs bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-lg border border-gray-100 dark:border-gray-700 inline-block">
                           Sin proveedor
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300 text-xs">
+                    <td className="px-3.5 sm:px-4 py-3.5 text-gray-600 dark:text-gray-300 text-xs">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {fecha
@@ -109,9 +109,9 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
                           : "Sin fecha"}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3.5 sm:px-4 py-3.5 text-center">
                       {numItems > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
                           <ShoppingCart className="w-3 h-3" />
                           {numItems} {numItems === 1 ? "ítem" : "ítems"}
                         </span>
@@ -119,23 +119,23 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-gray-100">
+                    <td className="px-3.5 sm:px-4 py-3.5 font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
                       ${Number(c.total || 0).toLocaleString("es-CO")}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${estadoInfo.cls}`}>
+                    <td className="px-3.5 sm:px-4 py-3.5 text-center">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${estadoInfo.cls}`}>
                           {estadoInfo.label}
                         </span>
                         {c.fechaCancelacion && (
-                          <span className="text-[10px] text-gray-400 font-mono" title="Fecha y hora de devolución / cancelación">
+                          <span className="text-[9px] text-gray-400 font-mono" title="Fecha y hora de devolución / cancelación">
                             {new Date(c.fechaCancelacion).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" })} {new Date(c.fechaCancelacion).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
+                    <td className="px-3.5 sm:px-4 py-3.5 text-center">
+                      <div className="inline-flex items-center justify-center gap-1">
                         {!estaCancelada && onCancelar && (
                           <button
                             onClick={() => onCancelar(c.id || c.idCompra)}

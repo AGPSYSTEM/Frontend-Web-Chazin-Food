@@ -79,15 +79,6 @@ export function TrazabilidadProveedoresModal({
               <span>Papelera</span>
             </button>
 
-            {onClearAll && eventos.length > 0 && (
-              <button
-                onClick={onClearAll}
-                className="text-[#F05454] hover:text-red-600 text-xs font-semibold transition-colors"
-              >
-                Limpiar todo
-              </button>
-            )}
-
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 transition-colors"

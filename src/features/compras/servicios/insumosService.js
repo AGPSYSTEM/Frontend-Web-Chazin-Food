@@ -5,6 +5,10 @@ export const insumosService = {
     return await apiClient.get("/insumos");
   },
 
+  checkVencimientos: async () => {
+    return await apiClient.get("/insumos/check-vencimientos");
+  },
+
   getCategorias: async () => {
     return await apiClient.get("/categorias-insumo");
   },

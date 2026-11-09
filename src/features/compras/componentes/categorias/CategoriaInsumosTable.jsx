@@ -16,54 +16,52 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEd
   const paginatedCategorias = categorias.slice(startIndex, startIndex + pageSize);
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+    <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
+      <div className="overflow-x-auto lg:overflow-x-hidden focus:outline-none">
+        <table className="w-full text-left border-collapse table-auto">
           <thead>
-            <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-sm font-bold text-[#1e293b] dark:text-gray-200">
-              {/* <th className="px-6 py-4 w-[13%] text-left">ID</th> */}
-              <th className="px-6 py-4 w-[17%] text-left">Nombre</th>
-              <th className="px-6 py-4 w-[17%] text-left">Descripción</th>
-              <th className="px-6 py-4 w-[17%] text-left">Insumos</th>
-              <th className="px-6 py-4 w-[17%] text-left">Estado</th>
-              <th className="px-6 py-4 w-[19%] text-left">Acciones</th>
+            <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-bold text-[#1e293b] dark:text-gray-200 uppercase tracking-wider">
+              <th className="px-4 sm:px-6 py-3.5 w-[28%] text-left">Nombre</th>
+              <th className="px-4 sm:px-6 py-3.5 w-[32%] text-left">Descripción</th>
+              <th className="px-4 sm:px-6 py-3.5 w-[15%] text-center">Insumos</th>
+              <th className="px-4 sm:px-6 py-3.5 w-[13%] text-center">Estado</th>
+              <th className="px-4 sm:px-6 py-3.5 w-[12%] text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs sm:text-sm">
             {totalRecords === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   No se encontraron categorías de insumos
                 </td>
               </tr>
             ) : (
               paginatedCategorias.map((c, index) => (
                 <tr key={c.id ?? `cat-${index}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                
-                  <td className="px-6 py-4 font-bold text-[#1e293b] dark:text-gray-100 whitespace-nowrap text-left">
+                  <td className="px-4 sm:px-6 py-3.5 font-bold text-[#1e293b] dark:text-gray-100 text-left">
                     {c.nombre}
                   </td>
-                  <td className="px-6 py-4 text-slate-600 dark:text-gray-300 font-normal text-left">
-                    {c.descripcion || "-"}
+                  <td className="px-4 sm:px-6 py-3.5 text-slate-600 dark:text-gray-300 font-normal text-left">
+                    <span className="line-clamp-2">{c.descripcion || "-"}</span>
                   </td>
-                  <td className="px-6 py-4 text-left">
-                    <span className="inline-flex items-center justify-center min-w-[32px] h-8 px-2.5 rounded-full bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-medium text-sm">
+                  <td className="px-4 sm:px-6 py-3.5 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-semibold text-xs">
                       {c.insumosCount ?? c.cantidad ?? (c.insumos?.length || 0)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-left">
+                  <td className="px-4 sm:px-6 py-3.5 text-center">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        c.estado === "Activo"
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        c.estado === "Activo" || c.estado === 1 || c.estado === "1"
                           ? "bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                           : "bg-red-100/80 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                       }`}
                     >
-                      {c.estado}
+                      {c.estado === 1 || c.estado === "1" ? "Activo" : c.estado || "Activo"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-left">
-                    <div className="flex items-center gap-3">
+                  <td className="px-4 sm:px-6 py-3.5 text-center">
+                    <div className="flex items-center justify-center gap-2.5">
                       {canEdit && (
                         <button
                           onClick={() => onEdit(c)}

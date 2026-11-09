@@ -252,9 +252,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const validateHeaderField = (name, value) => {
     switch (name) {
       case "numeroFactura":
-        return validateTexto(value, "El número de factura", 2, 50);
+        return validateTexto(value, "El número de factura", { min: 2, max: 50 })?.error || null;
       case "fechaFactura":
-        return validateRequerido(value, "La fecha de la factura");
+        return validateRequerido(value, "La fecha de la factura")?.error || null;
       default:
         return null;
     }
@@ -282,18 +282,18 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const validateNuevoInsumoField = (name, value, currentForm = nuevoInsumoForm) => {
     switch (name) {
       case "nombre":
-        return validateTexto(value, "El nombre del insumo", 2, 80);
+        return validateTexto(value, "El nombre del insumo", { min: 2, max: 80 })?.error || null;
       case "idCategoriaInsumo":
         return value ? null : "Selecciona una categoría para el insumo.";
       case "precioUnitario":
-        return validateNumeroPositivo(value, "El precio unitario", true);
+        return validateNumeroPositivo(value, "El precio unitario", { allowZero: true })?.error || null;
       case "stock":
-        return validateNumeroPositivo(value, "El stock inicial", true);
+        return validateNumeroPositivo(value, "El stock inicial", { allowZero: true })?.error || null;
       case "stockMinimo":
-        return validateNumeroPositivo(value, "El stock mínimo", true);
+        return validateNumeroPositivo(value, "El stock mínimo", { allowZero: true })?.error || null;
       case "precioAdicion":
         if (currentForm.esAdicion) {
-          return validateNumeroPositivo(value, "El precio de venta de la adición", false);
+          return validateNumeroPositivo(value, "El precio de venta de la adición", { allowZero: false })?.error || null;
         }
         return null;
       default:
@@ -1347,82 +1347,59 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     )}
                   </div>
 
-                  {/* Categoría y Proveedor */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>
-                        Categoría <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={String(nuevoInsumoForm.idCategoriaInsumo || "")}
-                        onBlur={() => handleNuevoInsumoBlur("idCategoriaInsumo")}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const selectedCat = categorias.find(
-                            (c) => String(c.id || c.idCategoriaInsumo) === String(val)
-                          );
-                          const catNom = selectedCat?.nombre || "";
-                          const esSalsa = isSalsaItem(nuevoInsumoForm.nombre, catNom);
-                          const updated = {
-                            ...nuevoInsumoForm,
-                            idCategoriaInsumo: val,
-                            categoria: catNom,
-                            esAdicion: esSalsa ? true : nuevoInsumoForm.esAdicion,
-                            precioAdicion:
-                              esSalsa && (!nuevoInsumoForm.precioAdicion || Number(nuevoInsumoForm.precioAdicion) <= 0)
-                                ? "1500"
-                                : nuevoInsumoForm.precioAdicion,
-                          };
-                          setNuevoInsumoForm(updated);
-                          if (nuevoInsumoTouched.idCategoriaInsumo) {
-                            const err = validateNuevoInsumoField("idCategoriaInsumo", val, updated);
-                            setNuevoInsumoErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
-                          }
-                        }}
-                        className={`${inputCls} cursor-pointer ${
-                          (nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo
-                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
-                            : ""
-                        }`}
-                      >
-                        <option value="">Seleccionar categoría</option>
-                        {categorias.map((c) => {
-                          const catId = c.id || c.idCategoriaInsumo;
-                          return (
-                            <option key={catId || c.nombre} value={String(catId)}>
-                              {c.nombre}
-                            </option>
-                          );
-                        })}
-                      </select>
-                      {(nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo && (
-                        <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                          {nuevoInsumoErrors.idCategoriaInsumo}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className={labelCls}>Proveedor Asignado</label>
-                      <select
-                        value={String(nuevoInsumoForm.idProveedor || "")}
-                        onChange={(e) =>
-                          setNuevoInsumoForm((prev) => ({ ...prev, idProveedor: e.target.value }))
+                  {/* Categoría */}
+                  <div>
+                    <label className={labelCls}>
+                      Categoría <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={String(nuevoInsumoForm.idCategoriaInsumo || "")}
+                      onBlur={() => handleNuevoInsumoBlur("idCategoriaInsumo")}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const selectedCat = categorias.find(
+                          (c) => String(c.id || c.idCategoriaInsumo) === String(val)
+                        );
+                        const catNom = selectedCat?.nombre || "";
+                        const esSalsa = isSalsaItem(nuevoInsumoForm.nombre, catNom);
+                        const updated = {
+                          ...nuevoInsumoForm,
+                          idCategoriaInsumo: val,
+                          categoria: catNom,
+                          esAdicion: esSalsa ? true : nuevoInsumoForm.esAdicion,
+                          precioAdicion:
+                            esSalsa && (!nuevoInsumoForm.precioAdicion || Number(nuevoInsumoForm.precioAdicion) <= 0)
+                              ? "1500"
+                              : nuevoInsumoForm.precioAdicion,
+                        };
+                        setNuevoInsumoForm(updated);
+                        if (nuevoInsumoTouched.idCategoriaInsumo) {
+                          const err = validateNuevoInsumoField("idCategoriaInsumo", val, updated);
+                          setNuevoInsumoErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
                         }
-                        className={`${inputCls} cursor-pointer`}
-                      >
-                        <option value="">Sin proveedor asignado</option>
-                        {proveedores.map((p) => {
-                          const provId = p.id || p.idProveedor;
-                          return (
-                            <option key={provId} value={String(provId)}>
-                              {p.nombre} {p.nit ? `(${p.nit})` : ""}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
+                      }}
+                      className={`${inputCls} cursor-pointer ${
+                        (nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo
+                          ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                          : ""
+                      }`}
+                    >
+                      <option value="">Seleccionar categoría</option>
+                      {categorias.map((c) => {
+                        const catId = c.id || c.idCategoriaInsumo;
+                        return (
+                          <option key={catId || c.nombre} value={String(catId)}>
+                            {c.nombre}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {(nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo && (
+                      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {nuevoInsumoErrors.idCategoriaInsumo}
+                      </p>
+                    )}
                   </div>
 
                   {/* Unidad de Medida y Precio de Compra */}
