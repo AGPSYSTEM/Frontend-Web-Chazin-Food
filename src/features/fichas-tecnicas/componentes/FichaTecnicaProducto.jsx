@@ -22,7 +22,7 @@ import {
 } from "../utils/costoUtils";
 
 const FASES_DEFAULT = [
-  { id: "p1", fase: "Alistamiento / Mise en place", descripcion: "Selección, pesaje, lavado y porcionado de insumos requeridos." },
+  { id: "p1", fase: "Alistamiento / Mise & place", descripcion: "Selección, pesaje, lavado y porcionado de insumos requeridos." },
   { id: "p2", fase: "Cocción / Procesamiento térmico", descripcion: "Cocción de proteínas y preparación térmica de ingredientes." },
   { id: "p3", fase: "Ensamblaje y Montaje", descripcion: "Montaje secuencial de base, ingredientes, salsas y presentación final." },
   { id: "p4", fase: "Control de Calidad y Empaque", descripcion: "Verificación de temperatura, apariencia visual y empaque térmico para despacho." }
@@ -47,6 +47,7 @@ function desglosarProcedimiento(texto) {
     const match = l.match(/^(?:(?:\d+[\.\)-]|Paso\s*\d+:?))\s*(?:([^:]+):)?\s*(.*)$/i);
     if (match) {
       let faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
+      faseNombre = faseNombre.replace(/mise\s+en\s+place/gi, "Mise & place");
       faseNombre = faseNombre.replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${parsed.length + 1}`;
       const desc = match[2] ? match[2].trim() : "";
       parsed.push({

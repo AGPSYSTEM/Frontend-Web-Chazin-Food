@@ -4,6 +4,7 @@ import { FichaTecnicaInsumo } from "@/features/fichas-tecnicas/componentes/Ficha
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { validateTexto, validateMoneda } from "@/shared/utils/validationUtils";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 
 const baseInputCls = "w-full px-4 py-2.5 border rounded-xl transition-all duration-150 text-sm placeholder:text-gray-400 outline-none";
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm placeholder:text-gray-400";
@@ -294,9 +295,10 @@ export function InsumoPreparadoModal({
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <input
-                    type="number"
+                  <NumberInput
                     min="0"
+                    step="500"
+                    formatThousands={true}
                     required
                     value={precio}
                     onChange={(e) => handlePrecioChange(e.target.value)}

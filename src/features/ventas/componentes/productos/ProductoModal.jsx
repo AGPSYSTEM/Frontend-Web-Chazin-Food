@@ -2345,7 +2345,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       Bebida Comercial / Insumo Terminado
                     </h3>
                     <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                      Las gaseosas, aguas embotelladas, jugos industriales y refrescos comprados a proveedores no requieren receta culinaria ni mise-en-place.
+                      Las gaseosas, aguas embotelladas, jugos industriales y refrescos comprados a proveedores no requieren receta culinaria ni mise & place.
                     </p>
                   </div>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-100/80 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-bold">

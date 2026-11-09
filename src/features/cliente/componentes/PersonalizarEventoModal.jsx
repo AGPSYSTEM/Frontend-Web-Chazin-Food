@@ -529,7 +529,7 @@ export function PersonalizarEventoModal({
         ESTRUCTURA DE TAMAÑO ESTABLE Y FLUIDA:
         - max-w-2xl w-full: espacio amplio y estilizado idéntico a FastFoodProductModal.
         - max-h-[92vh] sm:h-[90vh] sm:max-h-[860px]: fija la altura total de forma consistente y fluida en móvil y escritorio.
-        - flex flex-col: el modal no cambia ni salta de tamaño al pasar a "Mise en place" o a otra pestaña.
+        - flex flex-col: el modal no cambia ni salta de tamaño al pasar a "Mise & place" o a otra pestaña.
       */}
       <div className="bg-white dark:bg-gray-900 rounded-3xl sm:rounded-[32px] max-w-2xl w-full shadow-2xl flex flex-col max-h-[94vh] sm:h-[90vh] sm:max-h-[860px] border border-gray-100 dark:border-gray-800 overflow-hidden relative transition-colors">
         
@@ -859,7 +859,7 @@ export function PersonalizarEventoModal({
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                       <ChefHat className="w-4 h-4 text-red-500" />
-                      Mise en Place & Personalización
+                      Mise & Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Variante e ingredientes personalizables:

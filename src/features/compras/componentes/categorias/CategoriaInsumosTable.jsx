@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(10);
@@ -39,7 +40,23 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEd
               paginatedCategorias.map((c, index) => (
                 <tr key={c.id ?? `cat-${index}`} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-4 sm:px-6 py-3.5 font-bold text-[#1e293b] dark:text-gray-100 text-left">
-                    {c.nombre}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/40 flex items-center justify-center shrink-0 overflow-hidden text-[#F05454] shadow-2xs">
+                        {c.icon && typeof c.icon === "string" && (c.icon.startsWith("http") || c.icon.startsWith("/")) ? (
+                          <img src={c.icon} alt={c.nombre} className="w-full h-full object-cover" />
+                        ) : (
+                          <FoodIcon name={c.icon || c.nombre || "bread"} category={c.nombre} size={20} stroke={1.75} />
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-bold text-[#1e293b] dark:text-gray-100 block">
+                          {c.nombre}
+                        </span>
+                        <span className="text-[11px] text-gray-400 font-normal">
+                          ID #{c.id || c.idCategoriaInsumo}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 sm:px-6 py-3.5 text-slate-600 dark:text-gray-300 font-normal text-left">
                     <span className="line-clamp-2">{c.descripcion || "-"}</span>

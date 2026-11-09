@@ -991,7 +991,7 @@ export function FastFoodProductModal({
     });
   }, [allAdiciones, isPapaOrAccompaniment]);
 
-  // Insumos personalizables (Mise en place)
+  // Insumos personalizables (Mise & place)
   const personalizables = useMemo(
     () => extractPersonalizables(producto, liveFicha),
     [producto, liveFicha]
@@ -2271,7 +2271,7 @@ export function FastFoodProductModal({
                     >
                       <ChefHat className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">
-                        {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise en Place"}
+                        {customizableIngredients.length > 0 ? `Personalizar (${customizableIngredients.length})` : "Mise & Place"}
                       </span>
                       {removedIngredients.length > 0 && (
                         <span className="shrink-0 min-w-[16px] px-1 py-0.5 rounded-full bg-[#f05454] text-white text-[9.5px] flex items-center justify-center font-black leading-none whitespace-nowrap">
@@ -2572,7 +2572,7 @@ export function FastFoodProductModal({
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                       <ChefHat className="w-4 h-4 text-red-500" />
-                      Mise en Place & Personalización
+                      Mise & Place & Personalización
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Variante e ingredientes personalizables:

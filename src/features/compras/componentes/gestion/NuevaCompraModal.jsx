@@ -28,6 +28,7 @@ import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { isSalsaItem } from "../insumos/InsumoModal";
 import { validateTexto, validateNumeroPositivo, validateRequerido } from "@/shared/utils/validationUtils";
+import { NumberInput } from "@/shared/components/ui/NumberInput";
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
@@ -1009,19 +1010,17 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div>
                         <label className={labelCls}>Cantidad *</label>
-                        <input
-                          type="number"
+                        <NumberInput
                           min="0.01"
-                          step="0.01"
+                          step="1"
+                          formatThousands={true}
+                          allowDecimals={true}
                           placeholder="0"
                           value={configurando.cantidad}
-                          onKeyDown={(e) => {
-                            if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); // #78: Bloquear letra e
-                          }}
                           onChange={(e) =>
                             setConfigurando((c) => ({ ...c, cantidad: e.target.value }))
                           }
-                          className={inputCls + " text-xs"}
+                          className={inputCls + " text-xs font-semibold"}
                           autoFocus
                         />
                       </div>
@@ -1029,19 +1028,16 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                         <label className={labelCls}>
                           <DollarSign className="inline w-3 h-3" /> Precio Unit. *
                         </label>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
+                        <NumberInput
+                          min="0"
+                          step="1000"
+                          formatThousands={true}
                           placeholder="0"
                           value={configurando.precioUnitario}
-                          onKeyDown={(e) => {
-                            if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault(); // #78: Bloquear letra e
-                          }}
                           onChange={(e) =>
                             setConfigurando((c) => ({ ...c, precioUnitario: e.target.value }))
                           }
-                          className={inputCls + " text-xs"}
+                          className={inputCls + " text-xs font-semibold"}
                         />
                       </div>
                     </div>
@@ -1426,16 +1422,13 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     <div>
                       <label className={labelCls}>Precio Unitario / Costo</label>
                       <div className="relative">
-                        <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="number"
+                        <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+                        <NumberInput
                           min="0"
-                          step="0.01"
+                          step="1000"
+                          formatThousands={true}
                           placeholder="0"
                           value={nuevoInsumoForm.precioUnitario}
-                          onKeyDown={(e) => {
-                            if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
-                          }}
                           onBlur={() => handleNuevoInsumoBlur("precioUnitario")}
                           onChange={(e) => handleNuevoInsumoChange("precioUnitario", e.target.value)}
                           className={`${inputCls} pl-8 ${
@@ -1612,16 +1605,13 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           Precio de Venta como Adición <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
-                          <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="number"
+                          <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+                          <NumberInput
                             min="0"
                             step="100"
+                            formatThousands={true}
                             placeholder="1500"
                             value={nuevoInsumoForm.precioAdicion}
-                            onKeyDown={(e) => {
-                              if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
-                            }}
                             onBlur={() => handleNuevoInsumoBlur("precioAdicion")}
                             onChange={(e) => handleNuevoInsumoChange("precioAdicion", e.target.value)}
                             className={`${inputCls} pl-8 ${

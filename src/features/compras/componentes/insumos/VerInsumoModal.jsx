@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import {
   X,
   Package,
@@ -108,13 +109,48 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
           <div className="flex items-center gap-3.5">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-              esPreparado
-                ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300"
-                : "bg-red-100 dark:bg-red-900/40 text-[#F05454]"
-            }`}>
-              {esPreparado ? <FlaskConical className="w-6 h-6 stroke-[2.2]" /> : <Package className="w-6 h-6 stroke-[2.2]" />}
-            </div>
+            {(() => {
+              const rawImg = insumo.imagen || insumo.foto || "";
+              const isUrl = Boolean(rawImg && (rawImg.startsWith("http") || rawImg.startsWith("/") || rawImg.startsWith("data:")));
+              const esAdic = insumo.esAdicion === 1 || insumo.esAdicion === true || insumo.esAdicion === "1";
+              return (
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border shadow-xs ${
+                  esPreparado
+                    ? "bg-purple-100 dark:bg-purple-900/40 border-purple-200/60 text-purple-600 dark:text-purple-300"
+                    : esAdic
+                    ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200/60 text-purple-600 dark:text-purple-300"
+                    : "bg-red-50 dark:bg-red-950/40 border-red-200/60 text-[#F05454]"
+                }`}>
+                  {isUrl ? (
+                    <img
+                      src={rawImg}
+                      alt={insumo.nombre}
+                      className="w-full h-full object-cover rounded-2xl"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        const fallback = e.currentTarget.nextElementSibling;
+                        if (fallback) fallback.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ display: isUrl ? "none" : "flex" }}
+                  >
+                    {esPreparado ? (
+                      <FlaskConical className="w-6 h-6 stroke-[2.2]" />
+                    ) : (
+                      <FoodIcon
+                        name={rawImg || insumo.nombre}
+                        category={typeof insumo.categoria === "string" ? insumo.categoria : insumo.categoriaNombre || ""}
+                        size={24}
+                        className={esAdic ? "text-purple-600 dark:text-purple-300" : "text-[#F05454]"}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
