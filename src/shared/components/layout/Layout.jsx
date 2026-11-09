@@ -270,21 +270,6 @@ export function Layout() {
               </li>
             )}
 
-            {/* Usuarios */}
-            {showUsuarios && (
-              <li>
-                <button onClick={() => handleSectionClick("usuarios", usuariosExpanded)} title="Usuarios" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
-                  <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
-                  {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                </button>
-                {usuariosExpanded && (
-                  <ul className="ml-8 mt-1 space-y-1">
-                    {usuariosItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
-                  </ul>
-                )}
-              </li>
-            )}
-
             {/* Configuración */}
             {showConfig && (
               <li>
@@ -295,6 +280,21 @@ export function Layout() {
                 {configExpanded && (
                   <ul className="ml-8 mt-1 space-y-1">
                     {configItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
+                  </ul>
+                )}
+              </li>
+            )}
+
+            {/* Usuarios */}
+            {showUsuarios && (
+              <li>
+                <button onClick={() => handleSectionClick("usuarios", usuariosExpanded)} title="Usuarios" className={`w-full flex items-center justify-between px-3 py-3 rounded-lg transition-all ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
+                  <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
+                  {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+                {usuariosExpanded && (
+                  <ul className="ml-8 mt-1 space-y-1">
+                    {usuariosItems.map(({ to, label }) => <li key={to}><Link to={to} className={`block px-4 py-2 rounded-lg text-sm transition-all ${isActive(to) ? "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>{label}</Link></li>)}
                   </ul>
                 )}
               </li>
@@ -427,34 +427,6 @@ export function Layout() {
             </Link>
           )}
 
-          {showUsuarios && (
-            <div className="w-full">
-              <button
-                onClick={() => handleMobileSectionClick("usuarios", usuariosExpanded)}
-                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
-              >
-                <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
-                {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </button>
-              {usuariosExpanded && (
-                <ul className="ml-8 mt-1 space-y-0.5">
-                  {usuariosItems.map(({ to, label }) => (
-                    <li key={to}>
-                      <Link
-                        to={to}
-                        onClick={handleNavClick}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive(to) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
-                      >
-                        <Users className="w-4 h-4 shrink-0" />
-                        {label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
           {showConfig && (
             <div className="w-full">
               <button
@@ -481,6 +453,34 @@ export function Layout() {
                       </li>
                     );
                   })}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {showUsuarios && (
+            <div className="w-full">
+              <button
+                onClick={() => handleMobileSectionClick("usuarios", usuariosExpanded)}
+                className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-colors ${isInSection("/configuracion/usuarios") ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20" : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              >
+                <div className="flex items-center gap-3"><Users className="w-5 h-5 shrink-0" /><span className="font-medium">Usuarios</span></div>
+                {usuariosExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+              {usuariosExpanded && (
+                <ul className="ml-8 mt-1 space-y-0.5">
+                  {usuariosItems.map(({ to, label }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        onClick={handleNavClick}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive(to) ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 font-medium" : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>
