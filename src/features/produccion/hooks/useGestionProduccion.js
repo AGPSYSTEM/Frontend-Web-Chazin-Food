@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { produccionService } from "../servicios/produccionService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import {
+  recordLocalOrderTransition,
+  getLocalOrderTransition
+} from "../utils/tiempoProduccionUtils";
 
 export function useGestionProduccion() {
   const { user } = useAuth();
@@ -15,7 +19,33 @@ export function useGestionProduccion() {
     try {
       if (!isSilent) setLoading(true);
       const data = await produccionService.getOrdenes();
-      setOrdenes(data || []);
+      const merged = (data || []).map((o) => {
+        const local = getLocalOrderTransition(o.id || o.idVenta);
+        if (!local) return o;
+
+        const mergedTiempos = {
+          ...(o.tiemposEstados || {}),
+          ...(local.tiemposEstados || {})
+        };
+
+        // Si el usuario marcó "Despachado" y un backend anterior lo mapeó a "Entregado" sin haber marcado "Entregado" aún
+        let resolvedEstado = o.estado;
+        if (
+          local.estadoActual === "Despachado" &&
+          !local.tiemposEstados?.entregado &&
+          (o.estado === "Entregado" || o.estado === "Listo")
+        ) {
+          resolvedEstado = "Despachado";
+        }
+
+        return {
+          ...o,
+          estado: resolvedEstado,
+          tiemposEstados: mergedTiempos,
+          fechaCambioEstado: local.updatedAt || o.fechaCambioEstado
+        };
+      });
+      setOrdenes(merged);
     } catch (err) {
       console.error(err);
       if (!isSilent) {
@@ -44,8 +74,15 @@ export function useGestionProduccion() {
     }
 
     const prodsString = Array.isArray(o.productos)
-      ? o.productos.map(p => `${p.nombre || ''} ${p.observaciones || ''} ${(p.adiciones || []).map(a => typeof a === 'object' ? a.nombre : a).join(' ')}`).join(' ')
-      : '';
+      ? o.productos
+          .map(
+            (p) =>
+              `${p.nombre || ""} ${p.observaciones || ""} ${(p.adiciones || [])
+                .map((a) => (typeof a === "object" ? a.nombre : a))
+                .join(" ")}`
+          )
+          .join(" ")
+      : "";
 
     const matchSearch =
       (o.codigo && o.codigo.toLowerCase().includes(term)) ||
@@ -86,7 +123,7 @@ export function useGestionProduccion() {
   const updateEstado = async (id, nuevoEstado, extraData = {}) => {
     try {
       const cookName = user?.nombre
-        ? `${user.nombre} ${user.apellidos || ''}`.trim()
+        ? `${user.nombre} ${user.apellidos || ""}`.trim()
         : "Chef en Turno";
 
       const payload = {
@@ -95,17 +132,44 @@ export function useGestionProduccion() {
         responsableCocina: extraData?.cocinero || cookName
       };
 
+      const targetOrder = ordenes.find((o) => String(o.id || o.idVenta) === String(id)) || null;
+      const recordedLocal = recordLocalOrderTransition(id, nuevoEstado, targetOrder);
+
+      // Actualización optimista inmediata con el registro exacto de hora del nuevo estado
+      setOrdenes((prev) =>
+        prev.map((o) => {
+          if (String(o.id || o.idVenta) !== String(id)) return o;
+          return {
+            ...o,
+            estado: nuevoEstado,
+            cocinero: payload.cocinero,
+            responsableCocina: payload.responsableCocina,
+            fechaCambioEstado: recordedLocal?.updatedAt || new Date().toISOString(),
+            tiemposEstados: {
+              ...(o.tiemposEstados || {}),
+              ...(recordedLocal?.tiemposEstados || {})
+            }
+          };
+        })
+      );
+
       await produccionService.updateEstadoOrden(id, nuevoEstado, payload);
       if (extraData?.checklistPreparacion) {
         if (extraData.pedidoCompleto) {
-          notify.success("Pedido Completo (✅)", `La orden pasó a "${nuevoEstado}" con todos los productos verificados.`);
+          notify.success(
+            "Pedido Completo (✅)",
+            `La orden pasó a "${nuevoEstado}" con todos los productos verificados.`
+          );
         } else {
-          notify.warning("Pedido Incompleto Registrado", `La orden pasó a "${nuevoEstado}" registrando las novedades del checklist.`);
+          notify.warning(
+            "Pedido Incompleto Registrado",
+            `La orden pasó a "${nuevoEstado}" registrando las novedades del checklist.`
+          );
         }
       } else {
         notify.success("Estado Actualizado", `La orden pasó a estado "${nuevoEstado}"`);
       }
-      await fetchOrdenes();
+      await fetchOrdenes(true);
       return true;
     } catch (err) {
       notify.error("Error", err.message || "Error al actualizar estado");

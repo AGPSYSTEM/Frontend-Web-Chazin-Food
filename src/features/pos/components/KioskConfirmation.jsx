@@ -20,8 +20,12 @@ export default function KioskConfirmation({ orderId, orderData, onReset }) {
     return () => clearInterval(timer);
   }, [onReset]);
 
-  // Format order number cleanly: e.g. #065
-  const formattedNumber = orderId ? `#${String(orderId).padStart(3, "0")}` : "#001";
+  // Format order number cleanly and coherently with Ventas, Producción y Cocina (e.g. #VEN-0368)
+  const rawOrderStr = String(orderId || "VEN-0001").trim().replace(/^#+/, "");
+  const formattedNumber = rawOrderStr.toUpperCase().startsWith("VEN-")
+    ? `#${rawOrderStr.toUpperCase()}`
+    : `#VEN-${rawOrderStr.slice(-4).padStart(4, "0")}`;
+  const shortTicketDigits = rawOrderStr.replace(/\D/g, "").slice(-4).padStart(4, "0") || "0001";
 
   return (
     <div className="relative min-h-screen w-full bg-linear-to-b from-emerald-50 via-white to-red-50 flex flex-col justify-between items-center p-6 sm:p-12 select-none overflow-hidden">
@@ -64,16 +68,20 @@ export default function KioskConfirmation({ orderId, orderData, onReset }) {
           className="mt-6 w-full p-6 sm:p-8 rounded-3xl bg-white border-4 border-dashed border-[#A91B2E] shadow-2xl relative overflow-hidden"
         >
           <span className="text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-[#A91B2E] bg-red-50 px-4 py-1 rounded-full border border-red-200">
-            NÚMERO DE ORDEN
+            NÚMERO DE ORDEN (CÓDIGO UNIFICADO)
           </span>
 
-          <div className="my-2 text-7xl sm:text-9xl font-black text-[#A91B2E] tracking-tight leading-none">
+          <div className="my-3 text-5xl sm:text-7xl font-black text-[#A91B2E] tracking-tight leading-none font-mono">
             {formattedNumber}
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-extrabold mb-1">
+            <span>Turno en Barra / Cocina: #{shortTicketDigits}</span>
           </div>
 
           <div className="flex items-center justify-center gap-2 text-sm sm:text-base font-extrabold text-gray-700 mt-2">
             <UtensilsCrossed className="w-5 h-5 text-amber-500" />
-            <span>Retira en barra cuando tu número aparezca en pantalla</span>
+            <span>Retira en barra cuando tu código {formattedNumber} aparezca en pantalla</span>
           </div>
 
           {orderData?.clienteNombre && (
@@ -119,4 +127,3 @@ export default function KioskConfirmation({ orderId, orderData, onReset }) {
     </div>
   );
 }
-

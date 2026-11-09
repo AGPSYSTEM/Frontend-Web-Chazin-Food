@@ -251,10 +251,17 @@ export function usePOS({ initialClienteId = null } = {}) {
         observacion = ""
       } = checkoutData;
 
+      const codigoPedidoGenerado =
+        checkoutData.codigoPedido ||
+        checkoutData.numeroVenta ||
+        `VEN-${String(Date.now()).slice(-4)}`;
+
       const payload = {
         idUsuario: idUsuario ?? authenticatedUserId,
         idCliente: checkoutData.idCliente || clienteId,
         clienteNombre,
+        codigoPedido: codigoPedidoGenerado,
+        numeroVenta: codigoPedidoGenerado,
         tipoVenta: "PUNTO_DE_VENTA",
         tipoEntrega,
         direccion,
@@ -267,6 +274,8 @@ export function usePOS({ initialClienteId = null } = {}) {
         total: checkoutData.total !== undefined ? checkoutData.total : total,
         observacion: observacion || observacionOrden,
         observaciones: {
+          codigoPedido: codigoPedidoGenerado,
+          numeroVenta: codigoPedidoGenerado,
           tipoEntrega,
           direccion,
           metodoPago,
@@ -329,8 +338,16 @@ export function usePOS({ initialClienteId = null } = {}) {
       };
 
       const res = await posService.createVenta(payload);
+      const enrichedRes =
+        res && typeof res === "object"
+          ? {
+              ...res,
+              codigoPedido: res.codigoPedido || res.numeroVenta || res.codigo || codigoPedidoGenerado,
+              numeroVenta: res.numeroVenta || res.codigoPedido || res.codigo || codigoPedidoGenerado
+            }
+          : { codigoPedido: codigoPedidoGenerado, numeroVenta: codigoPedidoGenerado };
       setCart([]);
-      return res;
+      return enrichedRes;
     } catch (e) {
       console.error(e);
       setError(e);

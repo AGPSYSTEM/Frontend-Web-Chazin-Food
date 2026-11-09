@@ -52,7 +52,8 @@ import { TotalizadorCocina } from "../componentes/TotalizadorCocina";
 import {
   formatColombiaTime,
   formatColombiaDate,
-  resolveOrderTimings
+  resolveOrderTimings,
+  recordLocalOrderTransition
 } from "@/features/produccion/utils/tiempoProduccionUtils";
 
 /**
@@ -455,6 +456,8 @@ export function CocineroDashboard() {
 
     setTimeout(async () => {
       try {
+        const targetObj = pedidos.find((p) => String(p.id) === String(orderId) || String(p.idVenta) === String(orderId));
+        recordLocalOrderTransition(orderId, "Entregado", targetObj);
         await produccionService.updateEstadoOrden(orderId, "Entregado");
         setPedidos((prev) =>
           prev.map((p) =>
@@ -549,6 +552,7 @@ export function CocineroDashboard() {
     }
 
     try {
+      recordLocalOrderTransition(id, nuevoEstado, pedObj);
       await produccionService.updateEstadoOrden(id, nuevoEstado);
       setPedidos((prev) =>
         prev.map((p) =>

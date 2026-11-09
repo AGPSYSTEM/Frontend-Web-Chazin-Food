@@ -285,9 +285,9 @@ export function ProduccionTable({
                       )}
                     </td>
 
-                    {/* Estado de Cocina + HORA DEL ESTADO (Requisitos 2 y 5) */}
+                    {/* Estado de Cocina + HISTORIAL ACUMULATIVO DE HORA POR CADA ESTADO (Requisitos 2 y 5) */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-1.5">
                         <span
                           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
                             o.estado === "En Preparación"
@@ -304,14 +304,41 @@ export function ProduccionTable({
                           {o.estado === "En Cola" && <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
                           {o.estado === "En Preparación" && <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
                           {(o.estado === "Listo" || o.estado === "Listos") && <Check className="w-3 h-3 text-green-600 dark:text-green-400" />}
+                          {o.estado === "Despachado" && <ArrowRight className="w-3 h-3 text-purple-600 dark:text-purple-400" />}
                           {o.estado === "Entregado" && <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
                           <span>{o.estado}</span>
                         </span>
-                        {/* Hora contextual del estado actual en zona horaria Colombia (America/Bogota) */}
-                        <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1 bg-gray-50 dark:bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-200/60 dark:border-gray-700/60">
-                          <Clock className="w-2.5 h-2.5 text-gray-400" />
-                          <span>{timings.etiquetaHoraEstado}</span>
-                        </span>
+
+                        {/* Registro acumulativo de tiempos por cada estado alcanzado en zona horaria Colombia */}
+                        <div className="flex flex-col items-stretch gap-0.5 bg-gray-50/90 dark:bg-gray-800/70 px-2 py-1 rounded-lg border border-gray-200/70 dark:border-gray-700/70 min-w-[142px] text-left">
+                          {Array.isArray(timings.estadosAlcanzados) && timings.estadosAlcanzados.length > 0 ? (
+                            timings.estadosAlcanzados.map((st) => (
+                              <div
+                                key={st.key}
+                                className={`flex items-center justify-between gap-2 text-[10px] font-mono leading-tight ${
+                                  st.current
+                                    ? "font-extrabold text-gray-900 dark:text-white"
+                                    : "font-semibold text-gray-500 dark:text-gray-400"
+                                }`}
+                              >
+                                <span className="inline-flex items-center gap-1">
+                                  {st.current ? (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#F05454] shrink-0" />
+                                  ) : (
+                                    <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0 stroke-[3]" />
+                                  )}
+                                  <span>{st.label}:</span>
+                                </span>
+                                <span>{st.hora}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5 text-gray-400" />
+                              <span>{timings.etiquetaHoraEstado}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 

@@ -237,6 +237,46 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
             </div>
           </div>
 
+          {/* Trazabilidad Acumulativa de Tiempos por Estado (En Cola -> Preparación -> Listo -> Despachado -> Entregado) */}
+          {Array.isArray(timings.cronologiaEstados) && timings.cronologiaEstados.length > 0 && (
+            <div className="bg-white dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs">
+              <p className="text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#F05454]" />
+                <span>Registro de Hora por cada Actualización de Estado</span>
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {timings.cronologiaEstados.map((st) => (
+                  <div
+                    key={st.key}
+                    className={`p-2.5 rounded-xl border text-xs transition-all ${
+                      st.current
+                        ? "bg-red-50/70 dark:bg-red-950/30 border-[#F05454] text-gray-900 dark:text-white shadow-2xs"
+                        : st.reached
+                        ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/70 text-gray-800 dark:text-gray-200"
+                        : "bg-gray-50/60 dark:bg-gray-800/40 border-gray-200/60 dark:border-gray-700/50 text-gray-400 dark:text-gray-500"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-tight truncate">
+                        {st.fullLabel}
+                      </span>
+                      {st.current ? (
+                        <span className="w-2 h-2 rounded-full bg-[#F05454] shrink-0" />
+                      ) : st.reached ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      ) : (
+                        <Clock className="w-3 h-3 text-gray-300 dark:text-gray-600 shrink-0" />
+                      )}
+                    </div>
+                    <p className="font-mono font-extrabold text-xs">
+                      {st.reached && st.hora ? st.hora : "Pendiente"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Sección Platillos a Preparar con Despliegue Interactivo */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

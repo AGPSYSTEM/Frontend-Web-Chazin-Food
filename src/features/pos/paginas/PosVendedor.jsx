@@ -322,10 +322,13 @@ export default function PosVendedor() {
   // Step 2: Confirmation Screen
   if (kioskStep === "confirmation") {
     const orderNumber =
-      lastCreatedOrder?.idVenta ||
-      lastCreatedOrder?.id ||
-      lastCreatedOrder?.data?.idVenta ||
-      "042";
+      lastCreatedOrder?.codigoPedido ||
+      lastCreatedOrder?.numeroVenta ||
+      lastCreatedOrder?.codigo ||
+      lastCreatedOrder?.data?.codigoPedido ||
+      lastCreatedOrder?.data?.numeroVenta ||
+      lastCreatedOrder?.data?.codigo ||
+      (lastCreatedOrder?.idVenta ? `VEN-${String(lastCreatedOrder.idVenta).slice(-4).padStart(4, "0")}` : "VEN-0042");
 
     return (
       <KioskConfirmation
