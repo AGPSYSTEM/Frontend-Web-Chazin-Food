@@ -17,7 +17,7 @@ export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEd
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto lg:overflow-x-hidden focus:outline-none">
+      <div className="overflow-x-auto focus:outline-none">
         <table className="w-full text-left border-collapse table-auto">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-xs font-bold text-[#1e293b] dark:text-gray-200 uppercase tracking-wider">

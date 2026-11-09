@@ -36,17 +36,17 @@ export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesand
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto xl:overflow-x-hidden scroll-smooth focus:outline-none">
+      <div className="overflow-x-auto focus:outline-none">
         <table className="w-full text-left border-collapse table-auto">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              <th className="px-3.5 sm:px-4 py-3.5">Factura / Compra</th>
-              <th className="px-3.5 sm:px-4 py-3.5">Proveedor</th>
-              <th className="px-3.5 sm:px-4 py-3.5">Fecha</th>
-              <th className="px-3.5 sm:px-4 py-3.5 text-center">Ítems</th>
-              <th className="px-3.5 sm:px-4 py-3.5">Total</th>
-              <th className="px-3.5 sm:px-4 py-3.5 text-center">Estado</th>
-              <th className="px-3.5 sm:px-4 py-3.5 text-center w-24">Acciones</th>
+              <th className="px-3.5 sm:px-4 py-3.5 w-[22%]">Factura / Compra</th>
+              <th className="px-3.5 sm:px-4 py-3.5 w-[25%]">Proveedor</th>
+              <th className="px-3.5 sm:px-4 py-3.5 w-[15%]">Fecha</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center w-[10%]">Ítems</th>
+              <th className="px-3.5 sm:px-4 py-3.5 w-[14%]">Total</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center w-[8%]">Estado</th>
+              <th className="px-3.5 sm:px-4 py-3.5 text-center w-[6%]">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs sm:text-sm">

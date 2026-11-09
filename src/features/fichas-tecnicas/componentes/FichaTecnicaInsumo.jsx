@@ -3,7 +3,7 @@ import {
   Plus, Trash2, ShieldCheck, Clock, Layers, AlertCircle, ChevronDown, ChevronUp, 
   FileText, Check, Package, X, Search, Minus, FlaskConical, Scale, Leaf, 
   History, Calendar, CheckCircle2, Thermometer, Award, Info, Sparkles,
-  ArrowRight, ArrowLeft
+  ArrowRight, ArrowLeft, ArrowUp, ArrowDown
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { insumosService } from "@/features/compras/servicios/insumosService";
@@ -19,6 +19,59 @@ import {
 const inputCls = "w-full px-3.5 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454]/30 focus:border-[#F05454] text-xs font-medium transition shadow-2xs outline-none";
 const labelCls = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide";
 const requiredMark = <span className="text-red-500"> *</span>;
+
+const FASES_DEFAULT = [
+  { id: "p1", fase: "Alistamiento / Mise en place", descripcion: "Selección, pesaje, lavado y porcionado de insumos requeridos." },
+  { id: "p2", fase: "Cocción / Procesamiento térmico", descripcion: "Cocción de proteínas y preparación térmica de ingredientes." },
+  { id: "p3", fase: "Ensamblaje y Montaje", descripcion: "Montaje secuencial de base, ingredientes, salsas y presentación final." },
+  { id: "p4", fase: "Control de Calidad y Empaque", descripcion: "Verificación de temperatura, apariencia visual y empaque térmico para despacho." }
+];
+
+function desglosarProcedimiento(texto) {
+  if (!texto || !String(texto).trim()) {
+    return FASES_DEFAULT.map((f, i) => ({ ...f, id: `fase-${i}-${Date.now()}` }));
+  }
+  const str = String(texto).trim();
+  const lineas = str.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const parsed = [];
+
+  for (let l of lineas) {
+    const match = l.match(/^(?:(?:\d+[\.\)-]|Paso\s*\d+:?))\s*(?:([^:]+):)?\s*(.*)$/i);
+    if (match) {
+      let faseNombre = match[1] ? match[1].trim() : `Paso ${parsed.length + 1}`;
+      faseNombre = faseNombre.replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${parsed.length + 1}`;
+      const desc = match[2] ? match[2].trim() : "";
+      parsed.push({
+        id: `p-${Date.now()}-${parsed.length}-${Math.random().toString(36).slice(2, 6)}`,
+        fase: faseNombre,
+        descripcion: desc
+      });
+    } else {
+      if (parsed.length > 0) {
+        parsed[parsed.length - 1].descripcion += (parsed[parsed.length - 1].descripcion ? "\n" : "") + l;
+      } else {
+        parsed.push({
+          id: `p-${Date.now()}-0`,
+          fase: "Proceso Inicial",
+          descripcion: l
+        });
+      }
+    }
+  }
+
+  return parsed.length > 0 ? parsed : FASES_DEFAULT.map((f, i) => ({ ...f, id: `fase-${i}-${Date.now()}` }));
+}
+
+function serializarPasos(pasos) {
+  if (!Array.isArray(pasos) || pasos.length === 0) return "";
+  return pasos
+    .filter(p => p && p.descripcion && String(p.descripcion).trim())
+    .map((p, idx) => {
+      const cleanFase = (p.fase || `Paso ${idx + 1}`).replace(/^\d+[\.\-\)]\s*/, "").trim() || `Paso ${idx + 1}`;
+      return `${idx + 1}. ${cleanFase}: ${String(p.descripcion).trim()}`;
+    })
+    .join("\n");
+}
 
 // Limpia snapshots para evitar anidamiento recursivo (_prevFicha._prevFicha...)
 const sanitizeSnapshot = (snap) => {
@@ -52,6 +105,7 @@ export function FichaTecnicaInsumo({
   const [dbInsumosList, setDbInsumosList] = useState([]);
   const [insumos, setInsumos] = useState([]);
   const [procedimiento, setProcedimiento] = useState("");
+  const [pasosProceso, setPasosProceso] = useState(FASES_DEFAULT);
   const [tiempoPreparacion, setTiempoPreparacion] = useState("");
   const [rendimiento, setRendimiento] = useState("1 receta base");
   const [especificaciones, setEspecificaciones] = useState("");
@@ -129,6 +183,71 @@ export function FichaTecnicaInsumo({
     if (touched[field]) {
       const err = validateField(field, val);
       setErrors((prev) => ({ ...prev, [field]: err }));
+    }
+  };
+
+  const agregarPaso = () => {
+    clearRestoredCommitFlag();
+    const nuevoPaso = {
+      id: `p-${Date.now()}-${pasosProceso.length}`,
+      fase: `Paso ${pasosProceso.length + 1}`,
+      descripcion: ""
+    };
+    const copia = [...pasosProceso, nuevoPaso];
+    setPasosProceso(copia);
+    const serialized = serializarPasos(copia);
+    setProcedimiento(serialized);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: validateField("procedimiento", serialized) }));
+    }
+  };
+
+  const eliminarPaso = (idx) => {
+    clearRestoredCommitFlag();
+    const copia = pasosProceso.filter((_, i) => i !== idx);
+    setPasosProceso(copia);
+    const serialized = serializarPasos(copia);
+    setProcedimiento(serialized);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: validateField("procedimiento", serialized) }));
+    }
+  };
+
+  const actualizarPaso = (idx, campo, valor) => {
+    clearRestoredCommitFlag();
+    const copia = pasosProceso.map((p, i) => (i === idx ? { ...p, [campo]: valor } : p));
+    setPasosProceso(copia);
+    const serialized = serializarPasos(copia);
+    setProcedimiento(serialized);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: validateField("procedimiento", serialized) }));
+    }
+  };
+
+  const moverPaso = (idx, direccion) => {
+    const targetIdx = idx + direccion;
+    if (targetIdx < 0 || targetIdx >= pasosProceso.length) return;
+    clearRestoredCommitFlag();
+    const copia = [...pasosProceso];
+    const temp = copia[idx];
+    copia[idx] = copia[targetIdx];
+    copia[targetIdx] = temp;
+    setPasosProceso(copia);
+    const serialized = serializarPasos(copia);
+    setProcedimiento(serialized);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: validateField("procedimiento", serialized) }));
+    }
+  };
+
+  const aplicarFasesEstandar = () => {
+    clearRestoredCommitFlag();
+    const copia = FASES_DEFAULT.map((f, i) => ({ ...f, id: `fase-${i}-${Date.now()}` }));
+    setPasosProceso(copia);
+    const serialized = serializarPasos(copia);
+    setProcedimiento(serialized);
+    if (touched.procedimiento) {
+      setErrors((prev) => ({ ...prev, procedimiento: validateField("procedimiento", serialized) }));
     }
   };
 
@@ -262,7 +381,10 @@ export function FichaTecnicaInsumo({
       };
     }));
 
-    setProcedimiento(f.procedimiento || f.descripcion || "");
+    const rawProc = f.procedimiento || f.descripcion || "";
+    const parsedPasos = desglosarProcedimiento(rawProc);
+    setPasosProceso(parsedPasos);
+    setProcedimiento(rawProc || serializarPasos(parsedPasos));
     setTiempoPreparacion(f.tiempoPreparacion ? String(f.tiempoPreparacion) : "15");
     setRendimiento(f.rendimiento || "1 receta base");
     setEspecificaciones(f.especificaciones || "");
@@ -308,7 +430,9 @@ export function FichaTecnicaInsumo({
   const handleRestoreVersion = (snapshot) => {
     const restoredState = buildRestoredVersionState(snapshot, "INSUMO_PREPARADO", insumoId);
     setInsumos(restoredState.insumos);
-    setProcedimiento(restoredState.procedimiento);
+    const parsedPasos = desglosarProcedimiento(restoredState.procedimiento);
+    setPasosProceso(parsedPasos);
+    setProcedimiento(restoredState.procedimiento || serializarPasos(parsedPasos));
     setTiempoPreparacion(restoredState.tiempoPreparacion);
     setRendimiento(restoredState.rendimiento);
     setEspecificaciones(restoredState.especificaciones);
@@ -561,13 +685,23 @@ export function FichaTecnicaInsumo({
         </div>
 
         {procedimiento && (
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-2 text-xs">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-3 text-xs">
             <h4 className="font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">
-              Procedimiento de Elaboración
+              Fases Secuenciales de Elaboración
             </h4>
-            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
-              {procedimiento}
-            </p>
+            <div className="space-y-2">
+              {desglosarProcedimiento(procedimiento).map((paso, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 p-2 rounded-xl bg-gray-50/60 dark:bg-gray-750/50 border border-gray-100 dark:border-gray-700/60">
+                  <span className="w-5 h-5 rounded-md bg-rose-100 text-[#F05454] dark:bg-rose-950/60 dark:text-rose-300 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="font-bold text-gray-800 dark:text-gray-200">{paso.fase}</div>
+                    <div className="text-gray-600 dark:text-gray-300 whitespace-pre-line leading-relaxed">{paso.descripcion}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -591,7 +725,8 @@ export function FichaTecnicaInsumo({
     { 
       id: "proceso", 
       label: "Elaboración & Parámetros", 
-      icon: Clock 
+      icon: Clock,
+      count: pasosProceso.length
     },
     { 
       id: "calidad", 
@@ -872,10 +1007,12 @@ export function FichaTecnicaInsumo({
         {/* ============================================================ */}
         {activeTab === "proceso" && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Parámetros Operativos */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Parámetros Operativos Centrados y Alineados */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
               <div>
-                <label className={labelCls}>Tiempo de Preparación (min){requiredMark}</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide min-h-[1.25rem] flex items-center">
+                  Tiempo Preparación (min){requiredMark}
+                </label>
                 <div className="relative">
                   <Clock className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -892,7 +1029,9 @@ export function FichaTecnicaInsumo({
               </div>
 
               <div>
-                <label className={labelCls}>Rendimiento / Cantidad Obtenida{requiredMark}</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide min-h-[1.25rem] flex items-center">
+                  Rendimiento / Porciones{requiredMark}
+                </label>
                 <div className="relative">
                   <Scale className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -901,14 +1040,16 @@ export function FichaTecnicaInsumo({
                     onChange={(e) => handleFieldChange("rendimiento", setRendimiento, e.target.value)}
                     onBlur={() => handleBlur("rendimiento", rendimiento)}
                     className={`${getInputClass("rendimiento")} pl-9`}
-                    placeholder="Ej. 2 Litros (20 porciones)"
+                    placeholder="Ej. 1 receta base"
                   />
                 </div>
                 <FieldError msg={touched.rendimiento && errors.rendimiento} />
               </div>
 
               <div>
-                <label className={labelCls}>Vida Útil Almacenado{requiredMark}</label>
+                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 uppercase tracking-wide min-h-[1.25rem] flex items-center">
+                  Vida Útil Almacenado{requiredMark}
+                </label>
                 <div className="relative">
                   <Leaf className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -924,19 +1065,97 @@ export function FichaTecnicaInsumo({
               </div>
             </div>
 
-            {/* Procedimiento */}
-            <div>
-              <label className={labelCls}>
-                Procedimiento de Elaboración Paso a Paso{requiredMark}
-              </label>
-              <textarea
-                rows={5}
-                value={procedimiento}
-                onChange={(e) => handleFieldChange("procedimiento", setProcedimiento, e.target.value)}
-                onBlur={() => handleBlur("procedimiento", procedimiento)}
-                placeholder="1. Pesar y medir los insumos base.&#10;2. Mezclar a velocidad media hasta emulsión homogénea.&#10;3. Envasar en recipientes estériles, rotular con fecha y almacenar a 2°C - 4°C."
-                className={`${getInputClass("procedimiento")} resize-none text-xs`}
-              />
+            {/* Fases Culinarias Secuenciales Enumeradas */}
+            <div className="pt-2 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-gray-100 dark:border-gray-800">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200">
+                    Fases Secuenciales de Cocina ({pasosProceso.length})
+                  </h4>
+                  <p className="text-[11px] text-gray-400">Instrucciones ordenadas para el equipo de cocina.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={aplicarFasesEstandar}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/40 cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Fases Estándar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={agregarPaso}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#F05454] hover:bg-[#d84343] cursor-pointer shadow-2xs transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Agregar Paso</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de Pasos */}
+              <div className="space-y-2.5">
+                {pasosProceso.map((paso, idx) => (
+                  <div
+                    key={paso.id || idx}
+                    className="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-150 dark:border-gray-755 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="w-6 h-6 rounded-lg bg-rose-100 text-[#F05454] dark:bg-rose-950/60 dark:text-rose-300 text-xs font-black flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={paso.fase}
+                          onChange={(e) => actualizarPaso(idx, "fase", e.target.value)}
+                          placeholder="Nombre de la fase (ej. Alistamiento, Cocción)"
+                          className="w-full sm:max-w-xs px-2.5 py-1 text-xs font-bold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:ring-1 focus:ring-[#F05454]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moverPaso(idx, -1)}
+                          disabled={idx === 0}
+                          className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 rounded cursor-pointer"
+                          title="Subir paso"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moverPaso(idx, 1)}
+                          disabled={idx === pasosProceso.length - 1}
+                          className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 rounded cursor-pointer"
+                          title="Bajar paso"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        {pasosProceso.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => eliminarPaso(idx)}
+                            className="p-1 text-gray-400 hover:text-red-500 rounded cursor-pointer"
+                            title="Eliminar paso"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={paso.descripcion}
+                      onChange={(e) => actualizarPaso(idx, "descripcion", e.target.value)}
+                      rows={2}
+                      placeholder={`Describe detalladamente las instrucciones para "${paso.fase || 'esta fase'}"...`}
+                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-[#F05454]/30 focus:border-[#F05454] resize-none"
+                    />
+                  </div>
+                ))}
+              </div>
               <FieldError msg={touched.procedimiento && errors.procedimiento} />
             </div>
 
@@ -954,10 +1173,12 @@ export function FichaTecnicaInsumo({
                 type="button"
                 onClick={() => {
                   setTouched(prev => ({ ...prev, tiempoPreparacion: true, rendimiento: true, vidaUtil: true, procedimiento: true }));
+                  const serialized = serializarPasos(pasosProceso);
+                  setProcedimiento(serialized);
                   const tErr = validateField("tiempoPreparacion", tiempoPreparacion);
                   const rErr = validateField("rendimiento", rendimiento);
                   const vErr = validateField("vidaUtil", vidaUtil);
-                  const pErr = validateField("procedimiento", procedimiento);
+                  const pErr = validateField("procedimiento", serialized);
                   if (tErr || rErr || vErr || pErr) {
                     setErrors(prev => ({
                       ...prev,
@@ -966,7 +1187,7 @@ export function FichaTecnicaInsumo({
                       vidaUtil: vErr,
                       procedimiento: pErr
                     }));
-                    notify.warning("Parámetros incompletos", "Por favor completa el tiempo, rendimiento y procedimiento de elaboración.");
+                    notify.warning("Parámetros incompletos", "Por favor completa el tiempo, rendimiento y las fases de elaboración.");
                     return;
                   }
                   setActiveTab("calidad");

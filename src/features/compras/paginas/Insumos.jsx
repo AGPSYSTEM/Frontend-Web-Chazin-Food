@@ -247,7 +247,7 @@ export function Insumos() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -422,7 +422,7 @@ export function Insumos() {
           </div>
 
           {/* Active Filter Badges / Identificación de Filtros (#55) */}
-          {(filterEstado !== "Todos" || filterTipo !== "Todos" || filterCategoria !== "Todas" || searchTerm.trim() !== "") && (
+          {(filterEstado !== "Todos" || (filterTipo !== "Todos los tipos" && filterTipo !== "Todos") || filterCategoria !== "Todas" || (searchTerm && searchTerm.trim() !== "")) && (
             <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
               <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5" />

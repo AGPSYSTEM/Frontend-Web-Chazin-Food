@@ -19,20 +19,20 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto xl:overflow-x-hidden scroll-smooth focus:outline-none">
+      <div className="overflow-x-auto focus:outline-none">
         <table className="w-full text-left border-collapse table-auto">
           <thead>
             <tr className="bg-[#f8fafc] dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-[#1e293b] dark:text-gray-200 tracking-wider uppercase">
-              <th className="px-3.5 py-3 w-12 text-center">ID</th>
-              <th className="px-3.5 py-3 min-w-[190px]">NOMBRE</th>
-              <th className="px-3.5 py-3">CATEGORÍA</th>
-              <th className="px-3.5 py-3">CANTIDAD</th>
-              <th className="px-3.5 py-3 text-center">CANT. MÍNIMA</th>
-              <th className="px-3.5 py-3 text-center">CANT. MÁXIMA</th>
-              <th className="px-3.5 py-3">PRECIO / COSTO</th>
-              <th className="px-3.5 py-3 text-center">STOCK</th>
-              <th className="px-3.5 py-3 text-center">ESTADO</th>
-              <th className="px-3.5 py-3 text-center w-28">ACCIONES</th>
+              <th className="px-2.5 py-3 w-10 text-center">ID</th>
+              <th className="px-3 py-3 text-left">NOMBRE</th>
+              <th className="px-2.5 py-3 text-left">CATEGORÍA</th>
+              <th className="px-2 py-3 text-center">CANTIDAD</th>
+              <th className="px-2 py-3 text-center">MÍN.</th>
+              <th className="px-2 py-3 text-center">MÁX.</th>
+              <th className="px-2.5 py-3 text-left">PRECIO / COSTO</th>
+              <th className="px-2 py-3 text-center">STOCK</th>
+              <th className="px-2 py-3 text-center">ESTADO</th>
+              <th className="px-2 py-3 text-center w-24">ACCIONES</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs sm:text-sm">
@@ -62,25 +62,25 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
 
                 return (
                   <tr key={i.id || i.idInsumo || index} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-3.5 py-3 text-gray-500 dark:text-gray-400 font-medium text-center">
+                    <td className="px-2.5 py-2.5 text-gray-500 dark:text-gray-400 font-medium text-center text-xs">
                       {i.id || i.idInsumo || startIndex + index + 1}
                     </td>
-                    <td className="px-3.5 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                           isPreparado 
                             ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
                             : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                         }`}>
-                          {isPreparado ? <ChefHat className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                          {isPreparado ? <ChefHat className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
                         </div>
-                        <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-[#1e293b] dark:text-gray-100 truncate">
+                            <span className="font-bold text-[#1e293b] dark:text-gray-100 text-xs sm:text-sm truncate">
                               {i.nombre}
                             </span>
                             {isPreparado && (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
                                 <ChefHat className="w-2.5 h-2.5 text-purple-500" />
                                 <span>Preparado</span>
                               </span>
@@ -98,7 +98,7 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
                             )}
                           </div>
                           {(i.esAdicion === 1 || i.esAdicion === true || i.esAdicion === "1") && (
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 mt-0.5">
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                 <Sparkles className="w-2.5 h-2.5 text-purple-500" />
                                 <span>Adición (+${Number(i.precioAdicion || 0).toLocaleString("es-CO")})</span>
@@ -108,29 +108,29 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
                         </div>
                       </div>
                     </td>
-                    <td className="px-3.5 py-3 text-gray-600 dark:text-gray-300 text-xs">
+                    <td className="px-2.5 py-2.5 text-gray-600 dark:text-gray-300 text-xs">
                       {isPreparado 
                         ? (i.categoriaNombre || (typeof i.categoria === "string" ? i.categoria : "Preparado Interno")) 
                         : (typeof i.categoria === "string" ? i.categoria : (i.categoriaNombre || i.categoria?.nombre || "Sin categoría"))}
                     </td>
-                    <td className="px-3.5 py-3 font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                    <td className="px-2 py-2.5 font-semibold text-gray-900 dark:text-gray-100 text-center whitespace-nowrap text-xs">
                       {i.stock ?? 0} {i.unidadMedida || "und"}
                     </td>
-                    <td className="px-3.5 py-3 text-gray-700 dark:text-gray-300 font-medium text-center whitespace-nowrap text-xs">
+                    <td className="px-2 py-2.5 text-gray-700 dark:text-gray-300 font-medium text-center whitespace-nowrap text-xs">
                       {i.stockMinimo !== undefined && i.stockMinimo !== null ? i.stockMinimo : 0} {i.unidadMedida || "und"}
                     </td>
-                    <td className="px-3.5 py-3 text-gray-700 dark:text-gray-300 font-medium text-center whitespace-nowrap text-xs">
+                    <td className="px-2 py-2.5 text-gray-700 dark:text-gray-300 font-medium text-center whitespace-nowrap text-xs">
                       {i.stockMaximo !== undefined && i.stockMaximo !== null ? i.stockMaximo : 100} {i.unidadMedida || "und"}
                     </td>
-                    <td className="px-3.5 py-3 text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
+                    <td className="px-2.5 py-2.5 text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap text-xs">
                       ${Number(i.precioUnitario || i.costo || 0).toLocaleString("es-CO")}
                     </td>
-                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${stockBadgeClass}`}>
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${stockBadgeClass}`}>
                         {stockLabel}
                       </span>
                     </td>
-                    <td className="px-3.5 py-3 text-center whitespace-nowrap">
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                         i.estado === "Activo"
                           ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
@@ -139,8 +139,8 @@ export function InsumosTable({ insumos = [], onEdit, onDelete, onView, onToggleE
                         {i.estado || "Activo"}
                       </span>
                     </td>
-                    <td className="px-3.5 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                    <td className="px-2 py-2.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
                         {onReabastecer && (estaVencido || isAgotado || isBajo) && (
                           <button
                             onClick={() => onReabastecer(i)}

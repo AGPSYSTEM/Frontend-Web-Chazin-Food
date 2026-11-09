@@ -84,13 +84,13 @@ export function Proveedores() {
   // Show filtered results - include inactive when searching or filter is Todos
   const displayProveedores = viewMode === "papelera"
     ? papeleraProveedores.filter((p) => {
-        return (
-          searchTerm === "" ||
-          p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.nit?.includes(searchTerm) ||
-          p.contacto?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      })
+      return (
+        searchTerm === "" ||
+        p.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.nit?.includes(searchTerm) ||
+        p.contacto?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    })
     : filteredProveedores;
 
   const statCards = [
@@ -137,7 +137,7 @@ export function Proveedores() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 w-full max-w-full space-y-6">
       {/* Top Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -285,7 +285,7 @@ export function Proveedores() {
           </div>
 
           {/* Active Filter Badges */}
-          {(filterEstado !== "Todos" || filterTipo !== "Todos" || searchTerm.trim() !== "") && (
+          {(filterEstado !== "Todos" || filterTipo !== "Todos" || (searchTerm && searchTerm.trim() !== "")) && (
             <div className="flex items-center gap-2 flex-wrap text-xs px-2 py-1">
               <span className="text-gray-500 dark:text-gray-400 font-semibold text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <Filter className="w-3.5 h-3.5" />

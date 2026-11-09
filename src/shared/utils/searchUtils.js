@@ -26,7 +26,16 @@ export function normalizeSearchText(val) {
 export function tokenizeSearchQuery(query = "") {
   const normalized = normalizeSearchText(query);
   if (!normalized) return [];
-  return normalized.split(/\s+/).filter(Boolean);
+  return normalized
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((tok) => {
+      // Normalizar variaciones o errores fonéticos/tipográficos comunes (ej: "vencito" -> "vencido")
+      if (tok === "vencito" || tok === "vencitos") {
+        return tok.replace(/cito/, "cido");
+      }
+      return tok;
+    });
 }
 
 /**
