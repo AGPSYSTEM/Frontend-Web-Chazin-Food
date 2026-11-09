@@ -4,6 +4,7 @@ import { formatNombreCompleto } from "@/shared/utils/validationUtils";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import FoodIcon from "@/shared/components/ui/FoodIcon";
 import { isVentaFisicaOPos } from "../../servicios/ventasService";
+import { resolveHybridDeliveryEstimate, formatColombiaTime } from "@/features/produccion/utils/tiempoProduccionUtils";
 
 function formatDateSafe(dateVal, fallback = "Hoy") {
   if (!dateVal) return fallback;
@@ -17,14 +18,8 @@ function formatDateSafe(dateVal, fallback = "Hoy") {
 }
 
 function formatTimeSafe(dateVal, fallbackHorario = "12:30 PM") {
-  if (dateVal) {
-    try {
-      const d = new Date(dateVal);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "2-digit", minute: "2-digit", hour12: true });
-      }
-    } catch (e) {}
-  }
+  const col = formatColombiaTime(dateVal);
+  if (col) return col;
   return fallbackHorario;
 }
 
@@ -180,15 +175,32 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                     </div>
                   </td>
 
-                  {/* Entrega & Tiempo Estimado Integrados */}
+                  {/* Entrega & Tiempo Estimado Integrados (Híbrido: Automático + Manual) */}
                   <td className="px-2.5 py-2.5 whitespace-nowrap align-middle">
-                    <div className="flex flex-col items-start gap-1">
-                      {getEntregaBadge(v.tipoEntrega)}
-                      <span className="inline-flex items-center gap-1 text-[10.5px] font-medium text-gray-500 dark:text-gray-400">
-                        <Clock className="w-2.5 h-2.5 text-amber-500 shrink-0" />
-                        <span>{v.tiempoEstimadoEntrega || (v.tipoEntrega === 'Domicilio' ? '35 - 45 min' : '15 - 20 min')}</span>
-                      </span>
-                    </div>
+                    {(() => {
+                      const hybridEst = resolveHybridDeliveryEstimate(v);
+                      return (
+                        <div className="flex flex-col items-start gap-1">
+                          {getEntregaBadge(v.tipoEntrega)}
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10.5px] font-semibold ${
+                              hybridEst.effectiveEstimate === "Entregado"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : hybridEst.effectiveEstimate.toLowerCase().includes("listo")
+                                ? "text-blue-600 dark:text-blue-400"
+                                : "text-gray-600 dark:text-gray-300"
+                            }`}
+                            title={hybridEst.detalleCalculo}
+                          >
+                            <Clock className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                            <span>{hybridEst.effectiveEstimate}</span>
+                            <span className="text-[9px] text-gray-400 font-bold">
+                              {hybridEst.isManual ? "(Manual)" : "(Auto)"}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* Método de Pago */}

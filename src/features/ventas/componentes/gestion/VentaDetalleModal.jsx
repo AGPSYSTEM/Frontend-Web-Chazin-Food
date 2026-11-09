@@ -26,6 +26,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { formatTime12h } from "@/shared/utils/dateUtils";
 import { ventasService, isVentaFisicaOPos } from "../../servicios/ventasService";
+import { resolveHybridDeliveryEstimate } from "@/features/produccion/utils/tiempoProduccionUtils";
 
 /**
  * Validador en tiempo real de tiempo estimado (Control Exacto)
@@ -128,12 +129,10 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
     }
   }
 
-  const initialTiempo =
-    venta?.tiempoEstimadoEntrega ||
-    obsMeta.tiempoEstimadoEntrega ||
-    (String(venta?.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min");
+  const hybridInfo = useMemo(() => resolveHybridDeliveryEstimate(venta || {}), [venta]);
 
-  const [tiempoEstimado, setTiempoEstimado] = useState(initialTiempo);
+  const [tiempoEstimado, setTiempoEstimado] = useState(hybridInfo.effectiveEstimate);
+  const [modoTiempo, setModoTiempo] = useState(hybridInfo.mode || "AUTO");
   const [isUpdatingTiempo, setIsUpdatingTiempo] = useState(false);
   const [tiempoActualizadoMsg, setTiempoActualizadoMsg] = useState(false);
   const [tiempoValidationTouched, setTiempoValidationTouched] = useState(false);
@@ -142,33 +141,34 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
   useEffect(() => {
     if (venta) {
-      setTiempoEstimado(
-        venta.tiempoEstimadoEntrega ||
-        obsMeta.tiempoEstimadoEntrega ||
-        (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "35-45 min" : "15-20 min")
-      );
+      const resolved = resolveHybridDeliveryEstimate(venta);
+      setTiempoEstimado(resolved.effectiveEstimate);
+      setModoTiempo(resolved.mode || "AUTO");
     }
   }, [venta]);
 
   if (!isOpen || !venta) return null;
 
-  const handleSaveTiempo = async (nuevoTiempo) => {
-    const valor = nuevoTiempo || tiempoEstimado;
-    const validation = validateTiempoEstimado(valor);
+  const handleSaveTiempo = async (nuevoTiempo, nextModo = "MANUAL") => {
+    const isAutoSwitch = nextModo === "AUTO" || nuevoTiempo === "AUTO";
+    const valorMostrar = isAutoSwitch ? hybridInfo.estimate : (nuevoTiempo || tiempoEstimado);
+    const validation = validateTiempoEstimado(valorMostrar);
     if (!validation.isValid) {
       setTiempoValidationTouched(true);
       return;
     }
     const ventaId = venta.id || venta.idVenta;
-    if (!valor || !ventaId) return;
+    if (!valorMostrar || !ventaId) return;
     setIsUpdatingTiempo(true);
     try {
+      const valorGuardar = isAutoSwitch ? "AUTO" : valorMostrar;
       if (onUpdateTiempoEntrega) {
-        await onUpdateTiempoEntrega(ventaId, valor);
+        await onUpdateTiempoEntrega(ventaId, valorGuardar);
       } else {
-        await ventasService.updateTiempoEntrega(ventaId, valor);
+        await ventasService.updateTiempoEntrega(ventaId, valorGuardar);
       }
-      setTiempoEstimado(valor);
+      setTiempoEstimado(valorMostrar);
+      setModoTiempo(isAutoSwitch ? "AUTO" : "MANUAL");
       setTiempoActualizadoMsg(true);
       setTimeout(() => setTiempoActualizadoMsg(false), 2500);
     } catch (e) {
@@ -180,6 +180,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
   const handleToggleAprox = () => {
     setTiempoValidationTouched(true);
+    setModoTiempo("MANUAL");
     const current = (tiempoEstimado || "").trim();
     if (/^aprox\.?\s*/i.test(current)) {
       setTiempoEstimado(current.replace(/^aprox\.?\s*/i, "").trim());
@@ -497,25 +498,56 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
               </div>
             </div>
 
-            {/* Control y Seguimiento del Tiempo Estimado (Item 124 con Validación en Vivo) */}
+            {/* Control y Seguimiento del Tiempo Estimado (Híbrido: Automático Inteligente + Control Manual) */}
             <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl p-4 col-span-2 space-y-3 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                  <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
+              <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 flex-wrap">
+                    <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                        modoTiempo === "AUTO"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                          : "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                      }`}
+                    >
+                      {modoTiempo === "AUTO" ? "⚡ Automático" : "✋ Manual"}
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-indigo-800/80 dark:text-indigo-300/80 font-medium">
+                    {hybridInfo.detalleCalculo}
+                  </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors ${
+                <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors shrink-0 ${
                   tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-red-600 text-white"
                 }`}>
                   ⏱ {tiempoEstimado || "Sin definir"}
                 </span>
               </div>
 
-              {/* Botones de ajuste rápido y constructor */}
+              {/* Botones de ajuste rápido: Modo Automático + Presets Manuales */}
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mr-1">
                   Ajustar:
                 </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTiempoValidationTouched(false);
+                    handleSaveTiempo("AUTO", "AUTO");
+                  }}
+                  disabled={isUpdatingTiempo}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border flex items-center gap-1 ${
+                    modoTiempo === "AUTO"
+                      ? "bg-emerald-600 text-white border-emerald-700 shadow-xs"
+                      : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100"
+                  }`}
+                  title="Sincronizar automáticamente con las fichas técnicas de los productos y el estado real en cocina"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Auto ({hybridInfo.estimate})</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleToggleAprox}
@@ -534,11 +566,11 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                     type="button"
                     onClick={() => {
                       setTiempoValidationTouched(true);
-                      handleSaveTiempo(preset);
+                      handleSaveTiempo(preset, "MANUAL");
                     }}
                     disabled={isUpdatingTiempo}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      tiempoEstimado === preset
+                      modoTiempo === "MANUAL" && tiempoEstimado === preset
                         ? "bg-indigo-600 text-white shadow-xs"
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600"
                     }`}
@@ -557,6 +589,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                       value={tiempoEstimado}
                       onChange={(e) => {
                         setTiempoValidationTouched(true);
+                        setModoTiempo("MANUAL");
                         setTiempoEstimado(e.target.value);
                       }}
                       onBlur={() => setTiempoValidationTouched(true)}
@@ -570,7 +603,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleSaveTiempo(tiempoEstimado)}
+                    onClick={() => handleSaveTiempo(tiempoEstimado, "MANUAL")}
                     disabled={isUpdatingTiempo || !tiempoValidation.isValid}
                     className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0 ${
                       !tiempoValidation.isValid || isUpdatingTiempo
@@ -593,19 +626,24 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
                 {/* Feedback en vivo: Indicadores de formato válido o alerta de error */}
                 {tiempoValidation.isValid ? (
-                  <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Formato válido:</span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {tiempoValidation.tags.map((t) => (
-                        <span
-                          key={t}
-                          className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
-                        >
-                          {t}
-                        </span>
-                      ))}
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Formato válido:</span>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {tiempoValidation.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                    <span className="text-[10px] font-bold text-emerald-800/80 dark:text-emerald-300/80">
+                      {modoTiempo === "AUTO" ? "Sincronizado con Cocina y Recetas" : "Ajuste manual activo"}
+                    </span>
                   </div>
                 ) : (
                   <div className="flex items-start gap-1.5 text-[11px] text-red-700 dark:text-red-300 bg-red-50/90 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-800/60 animate-in fade-in duration-150">

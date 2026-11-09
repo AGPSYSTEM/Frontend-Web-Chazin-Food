@@ -1,7 +1,7 @@
 /**
- * Utilidades centralizadas de sincronización de tiempos para Gestión de Producción y Cocina (KDS)
- * Garantiza zona horaria America/Bogota (UTC-5), cálculo real de tiempo de cocción multi-producto
- * y cronómetro en vivo por etapa del pedido.
+ * Utilidades centralizadas de sincronización de tiempos para Gestión de Producción, Ventas y Cocina (KDS)
+ * Garantiza zona horaria America/Bogota (UTC-5), cálculo real de tiempo de cocción multi-producto,
+ * estimación híbrida (Automática Inteligente + Manual) y cronómetro en vivo por etapa del pedido.
  */
 
 export function formatColombiaTime(dateInput) {
@@ -88,7 +88,7 @@ export function calculateOrderPrepTime(productosList = [], fallbackPlatilloNombr
     const rawRecetaMin =
       p.receta?.tiempoPreparacionMin ||
       parseInt(String(p.receta?.tiempoPreparacion || p.tiempoPreparacion || ""), 10);
-    const min = inferProductPrepMinutes(p.nombre, rawRecetaMin);
+    const min = inferProductPrepMinutes(p.nombre || p.nombreProducto, rawRecetaMin);
     return {
       ...p,
       tiempoPreparacionMin: min,
@@ -109,8 +109,212 @@ export function calculateOrderPrepTime(productosList = [], fallbackPlatilloNombr
   return { totalMin: maxDrinkMin, formatted: `${maxDrinkMin} min` };
 }
 
+/**
+ * Calcula automáticamente el Tiempo Estimado de Entrega / Despacho según:
+ * 1) Fichas técnicas reales de todos los productos del pedido
+ * 2) Modalidad de entrega (En Mesa/Local vs. Domicilio)
+ * 3) Estado actual en Cocina/Producción y minutos ya transcurridos en preparación
+ */
+export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now()) {
+  let obsMeta = {};
+  if (typeof order.observaciones === "string" && order.observaciones.trim().startsWith("{")) {
+    try {
+      obsMeta = JSON.parse(order.observaciones);
+    } catch (e) {
+      obsMeta = {};
+    }
+  }
+
+  const productosList =
+    Array.isArray(order.productos) && order.productos.length > 0
+      ? order.productos
+      : Array.isArray(obsMeta.productos) && obsMeta.productos.length > 0
+      ? obsMeta.productos
+      : [];
+
+  const prep = calculateOrderPrepTime(productosList, order.platilloNombre);
+
+  const rawTipo = String(
+    order.tipoEntrega || order.tipo || obsMeta.tipoEntrega || order.mesa || order.tipoVenta || ""
+  ).toLowerCase();
+  const esDomicilio = rawTipo.includes("domicilio") || rawTipo.includes("delivery");
+
+  const rawEstado = String(order.estadoEntrega || order.estado || "PENDIENTE").toUpperCase();
+  let estadoCocina = "En Cola";
+  if (rawEstado.includes("ENTREGADO") || rawEstado.includes("COMPLETAD")) {
+    estadoCocina = "Entregado";
+  } else if (rawEstado.includes("DESPACHADO")) {
+    estadoCocina = "Despachado";
+  } else if (rawEstado.includes("LISTO")) {
+    estadoCocina = "Listo";
+  } else if (rawEstado.includes("PREPARANDO") || rawEstado.includes("PREPARACIÓN") || rawEstado.includes("PREPARACION")) {
+    estadoCocina = "En Preparación";
+  }
+
+  const fechaColombia = formatColombiaDate(order.fechaVenta || order.fecha);
+  const hoyColombia = formatColombiaDate(new Date(nowMs));
+  const esDeHoy = fechaColombia === hoyColombia;
+
+  // 1. Si ya fue entregado
+  if (estadoCocina === "Entregado") {
+    return {
+      estimate: "Entregado",
+      prepMin: prep.totalMin,
+      prepFormatted: prep.formatted,
+      esDomicilio,
+      estadoCocina,
+      detalleCalculo: `Pedido entregado (${prep.formatted} cocción base)`
+    };
+  }
+
+  // 2. Si ya fue despachado
+  if (estadoCocina === "Despachado") {
+    return {
+      estimate: esDomicilio ? "En camino" : "Listo para entrega",
+      prepMin: prep.totalMin,
+      prepFormatted: prep.formatted,
+      esDomicilio,
+      estadoCocina,
+      detalleCalculo: esDomicilio ? "Pedido despachado en ruta de domicilio" : "Pedido listo en barra/mesa"
+    };
+  }
+
+  // 3. Si ya está LISTO en cocina
+  if (estadoCocina === "Listo") {
+    if (esDomicilio) {
+      return {
+        estimate: "15-20 min",
+        prepMin: prep.totalMin,
+        prepFormatted: prep.formatted,
+        esDomicilio,
+        estadoCocina,
+        detalleCalculo: "Cocción terminada (Listo) • Restan 15-20 min de ruta a domicilio"
+      };
+    }
+    return {
+      estimate: "Listo para entrega",
+      prepMin: prep.totalMin,
+      prepFormatted: prep.formatted,
+      esDomicilio,
+      estadoCocina,
+      detalleCalculo: "Cocción terminada en cocina • Listo para entregar en mesa/barra"
+    };
+  }
+
+  // 4. Si está En Preparación: descontar minutos ya cocinados si es de hoy
+  let remainingPrepMin = prep.totalMin;
+  let elapsedCookingMin = 0;
+
+  if (estadoCocina === "En Preparación" && esDeHoy) {
+    const refIso = order.fechaInicioPreparacion || obsMeta.fechaInicioPreparacion || order.fechaCambioEstado || obsMeta.fechaCambioEstado || order.fechaVenta;
+    if (refIso) {
+      const refDate = new Date(refIso);
+      if (!isNaN(refDate.getTime())) {
+        elapsedCookingMin = Math.max(0, Math.floor((nowMs - refDate.getTime()) / 60000));
+        if (elapsedCookingMin <= 60) {
+          remainingPrepMin = Math.max(2, prep.totalMin - elapsedCookingMin);
+        }
+      }
+    }
+  }
+
+  // 5. Calcular rango según modalidad y minutos restantes de cocción
+  let minRange;
+  let maxRange;
+
+  if (esDomicilio) {
+    minRange = remainingPrepMin + 15;
+    maxRange = remainingPrepMin + 25;
+  } else if (prep.totalMin <= 2) {
+    // Pedido exclusivo de bebidas en local
+    minRange = 2;
+    maxRange = 5;
+  } else {
+    minRange = remainingPrepMin + 3;
+    maxRange = remainingPrepMin + 8;
+  }
+
+  const estimate = `${minRange}-${maxRange} min`;
+  const modalidadTxt = esDomicilio ? "Domicilio (+15-25 min ruta)" : prep.totalMin <= 2 ? "Servicio rápido bebidas" : "En Mesa (+3-8 min servicio)";
+  const progresoTxt =
+    estadoCocina === "En Preparación" && elapsedCookingMin > 0 && elapsedCookingMin <= 60
+      ? ` • En cocción (${elapsedCookingMin} min transcurridos)`
+      : ` • ${estadoCocina}`;
+
+  return {
+    estimate,
+    prepMin: prep.totalMin,
+    prepFormatted: prep.formatted,
+    esDomicilio,
+    estadoCocina,
+    detalleCalculo: `Cocción receta: ${prep.formatted} + ${modalidadTxt}${progresoTxt}`
+  };
+}
+
+/**
+ * Resuelve el Tiempo Estimado en modo Híbrido (Automático + Manual):
+ * - Si el usuario fijó manualmente un tiempo (modoTiempoEntrega === 'MANUAL' o valor personalizado distinto al genérico)
+ *   y la orden aún no está entregada, respeta el ajuste manual, pero expone también el cálculo automático.
+ * - Si está en modo Automático (por defecto), devuelve siempre el cálculo automático sincronizado en tiempo real.
+ */
+export function resolveHybridDeliveryEstimate(order = {}, nowMs = Date.now()) {
+  const autoInfo = calculateAutomaticDeliveryEstimate(order, nowMs);
+
+  let obsMeta = {};
+  if (typeof order.observaciones === "string" && order.observaciones.trim().startsWith("{")) {
+    try {
+      obsMeta = JSON.parse(order.observaciones);
+    } catch (e) {
+      obsMeta = {};
+    }
+  }
+
+  const savedTime = String(order.tiempoEstimadoEntrega || obsMeta.tiempoEstimadoEntrega || "").trim();
+  const savedMode = String(order.modoTiempoEntrega || obsMeta.modoTiempoEntrega || "").toUpperCase();
+
+  // Detectar si el valor guardado era simplemente el placeholder genérico antiguo ("15 - 20 min" o "30 - 45 min")
+  const normSaved = savedTime.toLowerCase().replace(/\s+/g, "");
+  const isGenericDefault =
+    !savedTime ||
+    normSaved === "15-20min" ||
+    normSaved === "30-45min" ||
+    normSaved === "35-45min";
+
+  // Si la orden ya fue entregada o está lista en local, el estado real de cocina prevalece
+  if (autoInfo.estadoCocina === "Entregado") {
+    return {
+      ...autoInfo,
+      effectiveEstimate: "Entregado",
+      isManual: false,
+      mode: "AUTO",
+      savedManualValue: savedTime || null
+    };
+  }
+
+  const isExplicitManual = savedMode === "MANUAL" || (!savedMode && !isGenericDefault);
+
+  if (isExplicitManual && savedTime) {
+    return {
+      ...autoInfo,
+      effectiveEstimate: savedTime,
+      isManual: true,
+      mode: "MANUAL",
+      savedManualValue: savedTime
+    };
+  }
+
+  return {
+    ...autoInfo,
+    effectiveEstimate: autoInfo.estimate,
+    isManual: false,
+    mode: "AUTO",
+    savedManualValue: null
+  };
+}
+
 export function resolveOrderTimings(order = {}, nowMs = Date.now()) {
   const prep = calculateOrderPrepTime(order.productos, order.platilloNombre);
+  const hybridDelivery = resolveHybridDeliveryEstimate(order, nowMs);
 
   const historial = Array.isArray(order.historialEstados) ? order.historialEstados : [];
   const entryPreparando = historial.find((h) => {
@@ -238,20 +442,14 @@ export function resolveOrderTimings(order = {}, nowMs = Date.now()) {
     }
   }
 
-  const esDomicilio =
-    String(order.tipo || "").toLowerCase().includes("domicilio") ||
-    String(order.mesa || "").toLowerCase().includes("domicilio");
-
-  const tiempoEstimadoEntrega =
-    order.tiempoEstimadoEntrega ||
-    (esDomicilio
-      ? `${prep.totalMin + 20} - ${prep.totalMin + 30} min`
-      : `${prep.totalMin + 3} - ${prep.totalMin + 8} min`);
-
   return {
     tiempoPreparacion: prep.formatted,
     tiempoMinutos: prep.totalMin,
-    tiempoEstimadoEntrega,
+    tiempoEstimadoEntrega: hybridDelivery.effectiveEstimate,
+    tiempoAutomaticoSugerido: hybridDelivery.estimate,
+    detalleCalculoTiempo: hybridDelivery.detalleCalculo,
+    modoTiempoEntrega: hybridDelivery.mode,
+    isTiempoManual: hybridDelivery.isManual,
     fechaColombia,
     esDeHoy,
     horaPedido,
