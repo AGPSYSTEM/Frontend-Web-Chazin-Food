@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ventasService } from "../servicios/ventasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { matchVentaMultiCriteria } from "@/shared/utils/searchUtils";
+import { recordLocalDeliveryTimeMode } from "@/features/produccion/utils/tiempoProduccionUtils";
 
 export function useGestionVentas() {
   const notify = useNotifications();
@@ -186,10 +187,30 @@ export function useGestionVentas() {
     }
   };
 
-  const updateTiempoEntrega = async (id, tiempoEstimado) => {
+  const updateTiempoEntrega = async (id, tiempoEstimado, modo = "MANUAL") => {
     try {
-      await ventasService.updateTiempoEntrega(id, tiempoEstimado);
-      notify.success("Tiempo estimado actualizado", `El tiempo de entrega/recogida se fijó en ${tiempoEstimado}`);
+      const modoNormalizado = String(modo || "MANUAL").toUpperCase() === "AUTO" ? "AUTO" : "MANUAL";
+      recordLocalDeliveryTimeMode(id, modoNormalizado, tiempoEstimado);
+      setVentas((prev) =>
+        prev.map((v) =>
+          (v.id || v.idVenta) === id
+            ? { ...v, tiempoEstimadoEntrega: tiempoEstimado, modoTiempoEntrega: modoNormalizado }
+            : v
+        )
+      );
+      await ventasService.updateTiempoEntrega(id, tiempoEstimado, modoNormalizado);
+      if (modoNormalizado === "AUTO") {
+        notify.success(
+          "Modo Automático activado",
+          `El tiempo estimado se sincronizó automáticamente en ${tiempoEstimado} según receta y cocina.`
+        );
+      } else {
+        notify.success(
+          "Tiempo manual guardado",
+          `El tiempo de entrega/despacho se fijó manualmente en ${tiempoEstimado}.`
+        );
+      }
+      await fetchVentas();
       await fetchVentas();
       return true;
     } catch (err) {

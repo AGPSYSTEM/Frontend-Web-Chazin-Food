@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import {
@@ -73,6 +73,12 @@ export function GestionVentas() {
   const [historialViewMode, setHistorialViewMode] = useState("cards"); // "cards" | "table"
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
+
+  const activeVentaDetail = useMemo(() => {
+    if (!selectedVentaDetail) return null;
+    const targetId = selectedVentaDetail.id || selectedVentaDetail.idVenta;
+    return ventas.find((v) => (v.id || v.idVenta) === targetId) || selectedVentaDetail;
+  }, [ventas, selectedVentaDetail]);
 
   const periodLabelMap = {
     hoy: "Hoy",
@@ -515,7 +521,7 @@ export function GestionVentas() {
       <VentaDetalleModal
         isOpen={!!selectedVentaDetail}
         onClose={() => setSelectedVentaDetail(null)}
-        venta={selectedVentaDetail}
+        venta={activeVentaDetail}
         onUpdateTiempoEntrega={canEdit ? updateTiempoEntrega : null}
         onAprobarPago={canEdit ? aprobarPago : null}
         canEdit={canEdit}

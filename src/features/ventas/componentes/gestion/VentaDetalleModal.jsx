@@ -26,7 +26,7 @@ import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 import { formatTime12h } from "@/shared/utils/dateUtils";
 import { ventasService, isVentaFisicaOPos } from "../../servicios/ventasService";
-import { resolveHybridDeliveryEstimate } from "@/features/produccion/utils/tiempoProduccionUtils";
+import { resolveHybridDeliveryEstimate, recordLocalDeliveryTimeMode } from "@/features/produccion/utils/tiempoProduccionUtils";
 
 /**
  * Validador en tiempo real de tiempo estimado (Control Exacto)
@@ -142,7 +142,11 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
   useEffect(() => {
     if (venta) {
       const resolved = resolveHybridDeliveryEstimate(venta);
-      setTiempoEstimado(resolved.effectiveEstimate);
+      const safeEstimate =
+        resolved.effectiveEstimate && !/^(auto|automatico|automático)$/i.test(String(resolved.effectiveEstimate).trim())
+          ? resolved.effectiveEstimate
+          : resolved.estimate;
+      setTiempoEstimado(safeEstimate);
       setModoTiempo(resolved.mode || "AUTO");
     }
   }, [venta]);
@@ -150,25 +154,37 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
   if (!isOpen || !venta) return null;
 
   const handleSaveTiempo = async (nuevoTiempo, nextModo = "MANUAL") => {
-    const isAutoSwitch = nextModo === "AUTO" || nuevoTiempo === "AUTO";
-    const valorMostrar = isAutoSwitch ? hybridInfo.estimate : (nuevoTiempo || tiempoEstimado);
-    const validation = validateTiempoEstimado(valorMostrar);
-    if (!validation.isValid) {
-      setTiempoValidationTouched(true);
-      return;
+    const isAutoSwitch = nextModo === "AUTO" || String(nuevoTiempo || "").toUpperCase() === "AUTO";
+    const cleanNuevo = String(nuevoTiempo || "").trim();
+    const valorMostrar = isAutoSwitch
+      ? hybridInfo.estimate
+      : cleanNuevo && !/^(auto|automatico|automático)$/i.test(cleanNuevo)
+      ? cleanNuevo
+      : tiempoEstimado && !/^(auto|automatico|automático)$/i.test(tiempoEstimado)
+      ? tiempoEstimado
+      : hybridInfo.estimate;
+
+    if (!isAutoSwitch) {
+      const validation = validateTiempoEstimado(valorMostrar);
+      if (!validation.isValid) {
+        setTiempoValidationTouched(true);
+        return;
+      }
     }
+
     const ventaId = venta.id || venta.idVenta;
     if (!valorMostrar || !ventaId) return;
     setIsUpdatingTiempo(true);
     try {
-      const valorGuardar = isAutoSwitch ? "AUTO" : valorMostrar;
+      const modoFinal = isAutoSwitch ? "AUTO" : "MANUAL";
+      recordLocalDeliveryTimeMode(ventaId, modoFinal, valorMostrar);
       if (onUpdateTiempoEntrega) {
-        await onUpdateTiempoEntrega(ventaId, valorGuardar);
+        await onUpdateTiempoEntrega(ventaId, valorMostrar, modoFinal);
       } else {
-        await ventasService.updateTiempoEntrega(ventaId, valorGuardar);
+        await ventasService.updateTiempoEntrega(ventaId, valorMostrar, modoFinal);
       }
       setTiempoEstimado(valorMostrar);
-      setModoTiempo(isAutoSwitch ? "AUTO" : "MANUAL");
+      setModoTiempo(modoFinal);
       setTiempoActualizadoMsg(true);
       setTimeout(() => setTiempoActualizadoMsg(false), 2500);
     } catch (e) {
@@ -498,13 +514,13 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
               </div>
             </div>
 
-            {/* Control y Seguimiento del Tiempo Estimado (Híbrido: Automático Inteligente + Control Manual) */}
-            <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl p-4 col-span-2 space-y-3 shadow-2xs">
+            {/* Control y Seguimiento del Tiempo Estimado (Switch Híbrido: Automático Inteligente vs Manual Exacto) */}
+            <div className="bg-gradient-to-br from-indigo-50/80 to-blue-50/70 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-2xl p-4 col-span-2 space-y-3.5 shadow-2xs">
               <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
                 <div className="space-y-0.5">
                   <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 flex-wrap">
                     <Timer className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span>Tiempo Estimado de Entrega / Despacho (Control Exacto)</span>
+                    <span>Tiempo Estimado de Entrega / Despacho</span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
                         modoTiempo === "AUTO"
@@ -519,139 +535,201 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                     {hybridInfo.detalleCalculo}
                   </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition-colors shrink-0 ${
-                  tiempoValidation.isValid ? "bg-indigo-600 text-white" : "bg-red-600 text-white"
-                }`}>
-                  ⏱ {tiempoEstimado || "Sin definir"}
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-black shadow-xs transition-colors shrink-0 ${
+                    modoTiempo === "AUTO"
+                      ? "bg-emerald-600 text-white"
+                      : tiempoValidation.isValid
+                      ? "bg-indigo-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  ⏱ {modoTiempo === "AUTO" ? hybridInfo.estimate : tiempoEstimado || hybridInfo.estimate}
                 </span>
               </div>
 
-              {/* Botones de ajuste rápido: Modo Automático + Presets Manuales */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mr-1">
-                  Ajustar:
-                </span>
+              {/* Switch Principal: Automático vs Manual */}
+              <div className="bg-white/90 dark:bg-gray-900/80 p-1 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 grid grid-cols-2 gap-1 shadow-2xs">
                 <button
                   type="button"
+                  disabled={isUpdatingTiempo}
                   onClick={() => {
                     setTiempoValidationTouched(false);
-                    handleSaveTiempo("AUTO", "AUTO");
+                    setModoTiempo("AUTO");
+                    setTiempoEstimado(hybridInfo.estimate);
+                    handleSaveTiempo(hybridInfo.estimate, "AUTO");
                   }}
-                  disabled={isUpdatingTiempo}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer border flex items-center gap-1 ${
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     modoTiempo === "AUTO"
-                      ? "bg-emerald-600 text-white border-emerald-700 shadow-xs"
-                      : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-700"
                   }`}
-                  title="Sincronizar automáticamente con las fichas técnicas de los productos y el estado real en cocina"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Auto ({hybridInfo.estimate})</span>
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>⚡ Automático ({hybridInfo.estimate})</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleToggleAprox}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                    tiempoValidation.tags.includes("Aproximado")
-                      ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
-                      : "bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  disabled={isUpdatingTiempo}
+                  onClick={() => {
+                    setModoTiempo("MANUAL");
+                    const cleanCurrent =
+                      tiempoEstimado && !/^(auto|automatico|automático)$/i.test(String(tiempoEstimado).trim())
+                        ? tiempoEstimado
+                        : hybridInfo.savedManualValue || hybridInfo.estimate;
+                    setTiempoEstimado(cleanCurrent);
+                  }}
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    modoTiempo === "MANUAL"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-gray-600 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700"
                   }`}
-                  title="Alternar prefijo 'Aprox.'"
                 >
-                  + Aprox.
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>✋ Manual (Control Exacto)</span>
                 </button>
-                {["15-20 min", "25-35 min", "45 min", "1 hora", "1 h 15 min", "Listo para entrega"].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => {
-                      setTiempoValidationTouched(true);
-                      handleSaveTiempo(preset, "MANUAL");
-                    }}
-                    disabled={isUpdatingTiempo}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      modoTiempo === "MANUAL" && tiempoEstimado === preset
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600"
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
               </div>
 
-              {/* Input manual con validación reactiva */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={tiempoEstimado}
-                      onChange={(e) => {
-                        setTiempoValidationTouched(true);
-                        setModoTiempo("MANUAL");
-                        setTiempoEstimado(e.target.value);
-                      }}
-                      onBlur={() => setTiempoValidationTouched(true)}
-                      placeholder="Ej: Aprox. 35 min, 1 hora, 1 h 20 min..."
-                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none transition-colors ${
-                        !tiempoValidation.isValid
-                          ? "border-red-500 bg-red-50/40 text-red-900 dark:bg-red-950/20 dark:text-red-100 focus:ring-2 focus:ring-red-400/50"
-                          : "bg-white dark:bg-gray-800 border-emerald-500 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-400/50"
-                      }`}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSaveTiempo(tiempoEstimado, "MANUAL")}
-                    disabled={isUpdatingTiempo || !tiempoValidation.isValid}
-                    className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                      !tiempoValidation.isValid || isUpdatingTiempo
-                        ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
-                    }`}
-                  >
-                    {isUpdatingTiempo ? (
-                      <span>Guardando...</span>
-                    ) : tiempoActualizadoMsg ? (
-                      <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span>¡Guardado!</span>
-                      </>
-                    ) : (
-                      <span>Guardar</span>
-                    )}
-                  </button>
-                </div>
-
-                {/* Feedback en vivo: Indicadores de formato válido o alerta de error */}
-                {tiempoValidation.isValid ? (
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>Formato válido:</span>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {tiempoValidation.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-800/80 dark:text-emerald-300/80">
-                      {modoTiempo === "AUTO" ? "Sincronizado con Cocina y Recetas" : "Ajuste manual activo"}
+              {modoTiempo === "AUTO" ? (
+                /* Vista de Modo Automático Activo */
+                <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl p-3 space-y-2 animate-in fade-in duration-150">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                      🍳 Receta: {hybridInfo.prepFormatted}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                      🛵 {hybridInfo.esDomicilio ? "Domicilio (+15-25 min)" : hybridInfo.prepMin <= 2 ? "Servicio rápido (+1-4 min)" : "En Mesa (+3-8 min)"}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                      🔥 Estado cocina: {hybridInfo.estadoCocina}
                     </span>
                   </div>
-                ) : (
-                  <div className="flex items-start gap-1.5 text-[11px] text-red-700 dark:text-red-300 bg-red-50/90 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-800/60 animate-in fade-in duration-150">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                    <span>{tiempoValidation.error}</span>
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-emerald-800 dark:text-emerald-200 font-semibold">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>
+                        Sincronizado automáticamente en <strong>{hybridInfo.estimate}</strong> según ficha técnica y cocina.
+                      </span>
+                    </div>
+                    {isUpdatingTiempo && (
+                      <span className="text-[10px] font-black text-emerald-700 animate-pulse">Sincronizando...</span>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                /* Vista de Modo Manual (Control Exacto) */
+                <div className="space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mr-1">
+                      Ajuste rápido:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleToggleAprox}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                        tiempoValidation.tags.includes("Aproximado")
+                          ? "bg-amber-500 text-white border-amber-600 shadow-2xs"
+                          : "bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      }`}
+                      title="Alternar prefijo 'Aprox.'"
+                    >
+                      + Aprox.
+                    </button>
+                    {["15-20 min", "25-35 min", "45 min", "1 hora", "1 h 15 min", "Listo para entrega"].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setTiempoValidationTouched(true);
+                          setTiempoEstimado(preset);
+                          handleSaveTiempo(preset, "MANUAL");
+                        }}
+                        disabled={isUpdatingTiempo}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          tiempoEstimado === preset
+                            ? "bg-indigo-600 text-white shadow-xs"
+                            : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600"
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Input manual con validación reactiva */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={tiempoEstimado}
+                          onChange={(e) => {
+                            setTiempoValidationTouched(true);
+                            setModoTiempo("MANUAL");
+                            setTiempoEstimado(e.target.value);
+                          }}
+                          onBlur={() => setTiempoValidationTouched(true)}
+                          placeholder="Ej: Aprox. 35 min, 1 hora, 1 h 20 min..."
+                          className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none transition-colors ${
+                            !tiempoValidation.isValid
+                              ? "border-red-500 bg-red-50/40 text-red-900 dark:bg-red-950/20 dark:text-red-100 focus:ring-2 focus:ring-red-400/50"
+                              : "bg-white dark:bg-gray-800 border-indigo-400 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-400/50"
+                          }`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveTiempo(tiempoEstimado, "MANUAL")}
+                        disabled={isUpdatingTiempo || !tiempoValidation.isValid}
+                        className={`px-3.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                          !tiempoValidation.isValid || isUpdatingTiempo
+                            ? "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+                            : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                        }`}
+                      >
+                        {isUpdatingTiempo ? (
+                          <span>Guardando...</span>
+                        ) : tiempoActualizadoMsg ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>¡Guardado!</span>
+                          </>
+                        ) : (
+                          <span>Guardar</span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Feedback en vivo: Indicadores de formato válido o alerta de error */}
+                    {tiempoValidation.isValid ? (
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 animate-in fade-in duration-150 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Formato válido:</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {tiempoValidation.tags.map((t) => (
+                              <span
+                                key={t}
+                                className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[9.5px] font-black px-1.5 py-0.5 rounded-md"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">
+                          ✋ Ajuste manual activo
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-1.5 text-[11px] text-red-700 dark:text-red-300 bg-red-50/90 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-800/60 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                        <span>{tiempoValidation.error}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Detalles adicionales de Pago si existen */}

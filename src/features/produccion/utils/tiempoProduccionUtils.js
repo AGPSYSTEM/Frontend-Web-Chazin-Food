@@ -5,6 +5,38 @@
  */
 
 const LOCAL_TRANSITIONS_STORAGE_KEY = "chazin_tiempos_estados_v2";
+const LOCAL_DELIVERY_MODE_STORAGE_KEY = "chazin_modo_tiempo_entrega_v1";
+
+export function recordLocalDeliveryTimeMode(orderId, mode = "AUTO", customTime = null) {
+  if (!orderId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_DELIVERY_MODE_STORAGE_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    const key = String(orderId);
+    const normalizedMode = String(mode || "AUTO").toUpperCase() === "MANUAL" ? "MANUAL" : "AUTO";
+    store[key] = {
+      mode: normalizedMode,
+      value: customTime ? String(customTime).trim() : null,
+      updatedAt: new Date().toISOString()
+    };
+    window.localStorage.setItem(LOCAL_DELIVERY_MODE_STORAGE_KEY, JSON.stringify(store));
+    return store[key];
+  } catch (e) {
+    return null;
+  }
+}
+
+export function getLocalDeliveryTimeMode(orderId) {
+  if (!orderId || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_DELIVERY_MODE_STORAGE_KEY);
+    if (!raw) return null;
+    const store = JSON.parse(raw);
+    return store[String(orderId)] || null;
+  } catch (e) {
+    return null;
+  }
+}
 
 export function formatColombiaTime(dateInput) {
   if (!dateInput) return null;
@@ -217,8 +249,11 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
   const esDomicilio = rawTipo.includes("domicilio") || rawTipo.includes("delivery");
 
   const localCache = getLocalOrderTransition(order.id || order.idVenta);
+  const serverEstadoRaw = String(order.estadoEntrega || order.estado || obsMeta.estadoCocina || "").toUpperCase();
   const rawEstado = String(
-    order.estado || localCache?.estadoActual || obsMeta.estadoCocina || order.estadoEntrega || "PENDIENTE"
+    serverEstadoRaw.includes("ENTREGAD") || serverEstadoRaw.includes("COMPLETAD")
+      ? serverEstadoRaw
+      : localCache?.estadoActual || order.estadoEntrega || obsMeta.estadoCocina || order.estado || "PENDIENTE"
   ).toUpperCase();
 
   let estadoCocina = "En Cola";
@@ -231,10 +266,6 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
   } else if (rawEstado.includes("PREPARANDO") || rawEstado.includes("PREPARACIÓN") || rawEstado.includes("PREPARACION")) {
     estadoCocina = "En Preparación";
   }
-
-  const fechaColombia = formatColombiaDate(order.fechaVenta || order.fecha);
-  const hoyColombia = formatColombiaDate(new Date(nowMs));
-  const esDeHoy = fechaColombia === hoyColombia;
 
   if (estadoCocina === "Entregado") {
     return {
@@ -279,40 +310,18 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
     };
   }
 
-  let remainingPrepMin = prep.totalMin;
-  let elapsedCookingMin = 0;
-
-  if (estadoCocina === "En Preparación" && esDeHoy) {
-    const refIso =
-      localCache?.tiemposEstados?.enPreparacion?.fecha ||
-      order.fechaInicioPreparacion ||
-      obsMeta.fechaInicioPreparacion ||
-      order.fechaCambioEstado ||
-      obsMeta.fechaCambioEstado ||
-      order.fechaVenta;
-    if (refIso) {
-      const refDate = new Date(refIso);
-      if (!isNaN(refDate.getTime())) {
-        elapsedCookingMin = Math.max(0, Math.floor((nowMs - refDate.getTime()) / 60000));
-        if (elapsedCookingMin <= 60) {
-          remainingPrepMin = Math.max(2, prep.totalMin - elapsedCookingMin);
-        }
-      }
-    }
-  }
-
   let minRange;
   let maxRange;
 
   if (esDomicilio) {
-    minRange = remainingPrepMin + 15;
-    maxRange = remainingPrepMin + 25;
+    minRange = prep.totalMin + 15;
+    maxRange = prep.totalMin + 25;
   } else if (prep.totalMin <= 2) {
     minRange = 2;
     maxRange = 5;
   } else {
-    minRange = remainingPrepMin + 3;
-    maxRange = remainingPrepMin + 8;
+    minRange = prep.totalMin + 3;
+    maxRange = prep.totalMin + 8;
   }
 
   const estimate = `${minRange}-${maxRange} min`;
@@ -321,10 +330,6 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
     : prep.totalMin <= 2
     ? "Servicio rápido bebidas"
     : "En Mesa (+3-8 min servicio)";
-  const progresoTxt =
-    estadoCocina === "En Preparación" && elapsedCookingMin > 0 && elapsedCookingMin <= 60
-      ? ` • En cocción (${elapsedCookingMin} min transcurridos)`
-      : ` • ${estadoCocina}`;
 
   return {
     estimate,
@@ -332,7 +337,7 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
     prepFormatted: prep.formatted,
     esDomicilio,
     estadoCocina,
-    detalleCalculo: `Cocción receta: ${prep.formatted} + ${modalidadTxt}${progresoTxt}`
+    detalleCalculo: `Cocción receta: ${prep.formatted} + ${modalidadTxt} • Estado: ${estadoCocina}`
   };
 }
 
@@ -348,15 +353,28 @@ export function resolveHybridDeliveryEstimate(order = {}, nowMs = Date.now()) {
     }
   }
 
-  const savedTime = String(order.tiempoEstimadoEntrega || obsMeta.tiempoEstimadoEntrega || "").trim();
-  const savedMode = String(order.modoTiempoEntrega || obsMeta.modoTiempoEntrega || "").toUpperCase();
+  const orderId = order.id || order.idVenta;
+  const localMode = getLocalDeliveryTimeMode(orderId);
 
-  const normSaved = savedTime.toLowerCase().replace(/\s+/g, "");
+  const rawSavedTime = String(order.tiempoEstimadoEntrega || obsMeta.tiempoEstimadoEntrega || "").trim();
+  const normSaved = rawSavedTime.toLowerCase().replace(/\s+/g, "");
+  const isCorruptedAutoLiteral =
+    normSaved === "auto" ||
+    normSaved === "automatico" ||
+    normSaved === "automático";
+
+  const savedTime = isCorruptedAutoLiteral ? "" : rawSavedTime;
+  const serverMode = isCorruptedAutoLiteral
+    ? "AUTO"
+    : String(order.modoTiempoEntrega || obsMeta.modoTiempoEntrega || "").toUpperCase();
+
+  const normAutoEstimate = String(autoInfo.estimate || "").toLowerCase().replace(/\s+/g, "");
   const isGenericDefault =
     !savedTime ||
     normSaved === "15-20min" ||
     normSaved === "30-45min" ||
-    normSaved === "35-45min";
+    normSaved === "35-45min" ||
+    normSaved === normAutoEstimate;
 
   if (autoInfo.estadoCocina === "Entregado") {
     return {
@@ -368,7 +386,30 @@ export function resolveHybridDeliveryEstimate(order = {}, nowMs = Date.now()) {
     };
   }
 
-  const isExplicitManual = savedMode === "MANUAL" || (!savedMode && !isGenericDefault);
+  if (localMode) {
+    if (localMode.mode === "MANUAL") {
+      const manualVal =
+        localMode.value && !/^(auto|automatico|automático)$/i.test(localMode.value.trim())
+          ? localMode.value.trim()
+          : savedTime || autoInfo.estimate;
+      return {
+        ...autoInfo,
+        effectiveEstimate: manualVal,
+        isManual: true,
+        mode: "MANUAL",
+        savedManualValue: manualVal
+      };
+    }
+    return {
+      ...autoInfo,
+      effectiveEstimate: autoInfo.estimate,
+      isManual: false,
+      mode: "AUTO",
+      savedManualValue: null
+    };
+  }
+
+  const isExplicitManual = serverMode === "MANUAL" || (!serverMode && !isGenericDefault);
 
   if (isExplicitManual && savedTime) {
     return {
