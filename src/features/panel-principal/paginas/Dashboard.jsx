@@ -158,21 +158,21 @@ function CustomProductoTooltip({ active, payload }) {
           {nombre}
         </p>
         <p className="font-extrabold text-[#10B981] text-sm">
-          Unidades : {qty} {qty === 1 ? "venta" : "ventas"}
+          Unidades vendidas: {qty} {qty === 1 ? "unidad" : "unidades"}
         </p>
         {totalVentas > 0 && (
           <p className="font-bold text-teal-600 dark:text-teal-400 text-xs">
-            Total en ventas: ${totalVentas.toLocaleString("es-CO")} COP
+            Total facturado: ${totalVentas.toLocaleString("es-CO")} COP
           </p>
         )}
         {unitPrice > 0 && (
           <p className="text-gray-600 dark:text-gray-300 text-xs font-medium">
-            Precio unitario: ${unitPrice.toLocaleString("es-CO")} c/u
+            Precio unitario: ${unitPrice.toLocaleString("es-CO")} COP c/u
           </p>
         )}
         {pct > 0 && (
           <p className="text-amber-600 dark:text-amber-400 text-xs font-semibold">
-            Representación: {pct}% del volumen de ventas
+            Representación: {pct}% del total de platos vendidos
           </p>
         )}
       </div>
@@ -215,26 +215,28 @@ export function Dashboard() {
 
   const totalPopularesUnidades = finalPopulares.reduce((acc, p) => acc + (Number(p.ventas || p.cantidad) || 0), 0);
 
-  const enrichedPopulares = finalPopulares.map((p) => {
-    const cleanName = (p.nombre || "").replace(/\s*\(.*?\)/g, "").replace(/\s*-\s*base/i, "").trim();
-    const cleanKey = cleanName.toLowerCase();
-    const qty = Number(p.ventas || p.cantidad || 0);
+  const enrichedPopulares = finalPopulares
+    .map((p) => {
+      const cleanName = (p.nombre || "").replace(/\s*\(.*?\)/g, "").replace(/\s*-\s*base/i, "").trim();
+      const cleanKey = cleanName.toLowerCase();
+      const qty = Number(p.ventas || p.cantidad || 0);
 
-    const refPrice = defaultProductPrices[cleanKey] || (cleanKey.includes("hamburguesa") ? 18000 : cleanKey.includes("perro") ? 14000 : cleanKey.includes("gaseosa") ? 4500 : 15000);
-    const unitPrice = Number(p.precioUnitario > 0 ? p.precioUnitario : refPrice);
-    const totalIngresos = Number(p.ingresos > 0 ? p.ingresos : (qty * unitPrice));
-    const pct = Number(p.porcentaje > 0 ? p.porcentaje : (totalPopularesUnidades > 0 ? Math.round((qty / totalPopularesUnidades) * 100) : 0));
+      const refPrice = defaultProductPrices[cleanKey] || (cleanKey.includes("hamburguesa") ? 18000 : cleanKey.includes("perro") ? 14000 : cleanKey.includes("gaseosa") ? 4500 : 15000);
+      const unitPrice = Number(p.precioUnitario > 0 ? p.precioUnitario : refPrice);
+      const totalIngresos = Number(p.ingresos > 0 ? p.ingresos : (qty * unitPrice));
+      const pct = totalPopularesUnidades > 0 ? Number(((qty / totalPopularesUnidades) * 100).toFixed(1)) : 0;
 
-    return {
-      ...p,
-      nombreLimpio: cleanName,
-      nombreShort: cleanName,
-      ventas: qty,
-      precioUnitario: unitPrice,
-      ingresos: totalIngresos,
-      porcentaje: pct
-    };
-  });
+      return {
+        ...p,
+        nombreLimpio: cleanName,
+        nombreShort: cleanName,
+        ventas: qty,
+        precioUnitario: unitPrice,
+        ingresos: totalIngresos,
+        porcentaje: pct
+      };
+    })
+    .sort((a, b) => b.ventas - a.ventas);
   const finalAlertas = Array.isArray(alertasStock) && alertasStock.length > 0 ? alertasStock : defaultAlertasStock;
 
   const periods = [
@@ -480,9 +482,13 @@ export function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#374151" : "#f1f5f9"} />
                 <XAxis dataKey="mes" tick={{ fill: axisColorMuted, fontSize: 11 }} />
                 <YAxis
-                  tick={{ fill: axisColorMuted, fontSize: 11 }}
-                  width={60}
-                  tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`}
+                  tick={{ fill: axisColorMuted, fontSize: 10 }}
+                  width={85}
+                  tickFormatter={(val) => {
+                    if (!val || val === 0) return "$ 0";
+                    if (val >= 1000000) return `$ ${(val / 1000000).toLocaleString("es-CO", { maximumFractionDigits: 1 })}M COP`;
+                    return `$ ${val.toLocaleString("es-CO")}`;
+                  }}
                 />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -528,7 +534,7 @@ export function Dashboard() {
                   type="number"
                   tick={{ fontSize: 10, fill: axisColorMuted }}
                   label={{
-                    value: "Cantidad de unidades vendidas",
+                    value: "Unidades vendidas (número de productos)",
                     position: "insideBottom",
                     offset: -16,
                     fill: axisColorMuted,
@@ -584,7 +590,7 @@ export function Dashboard() {
         <div className="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">Stock crítico</h2>
+              <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">Stock bajo</h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">Insumos activos con existencia mínima requerida</p>
             </div>
             <Link
@@ -631,18 +637,18 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Ventas Recientes - Hora del estado dinámica (Ítem 36) */}
+        {/* Prioridad / Platos en Curso - Con hora aproximada de entrega */}
         <div className="bg-white dark:bg-gray-900 p-4 sm:p-6 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">Ventas Recientes</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Estado del flujo operativo con hora exacta</p>
+              <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">Prioridad / Platos en Curso</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Órdenes activas en cocina y prioridad con hora estimada de entrega</p>
             </div>
             <Link
-              to="/ventas/gestion-ventas"
+              to="/produccion/gestion-produccion"
               className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1 hover:underline font-bold"
             >
-              Ver todas <ChevronRight className="w-3.5 h-3.5" />
+              Ver cocina <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -687,6 +693,18 @@ export function Dashboard() {
 
                 const horaEstado = getHoraCambioEstado(venta);
 
+                const getHoraAproxEntrega = (v) => {
+                  if (v.horaEstimadaEntrega) return formatTime12h(v.horaEstimadaEntrega);
+                  if (v.tiempoEstimadoEntrega) return formatTime12h(v.tiempoEstimadoEntrega);
+                  const base = v.createdAt || v.fechaVenta || v.fecha;
+                  const d = base ? new Date(base) : new Date();
+                  if (isNaN(d.getTime())) return "20-25 min";
+                  const deliveryDate = new Date(d.getTime() + 25 * 60 * 1000);
+                  return formatTime12h(deliveryDate);
+                };
+
+                const horaEntregaAprox = getHoraAproxEntrega(venta);
+
                 return (
                   <div
                     key={venta.id || index}
@@ -697,7 +715,7 @@ export function Dashboard() {
                         <p className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
                           {venta.codigoPedido || venta.numeroVenta || `#${String(venta.id).padStart(4, '0')}`}
                         </p>
-                        {/* Estado y Hora del cambio de estado (Ítems 36 y 85) */}
+                        {/* Estado y Hora del cambio de estado */}
                         <div className="inline-flex items-center gap-1.5 flex-wrap">
                           <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs ${badgeStyle}`}>
                             <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
@@ -705,11 +723,20 @@ export function Dashboard() {
                           </span>
                           <span
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/80 px-2 py-0.5 rounded-full border border-gray-200/60 dark:border-gray-700/60"
-                            title="Hora del cambio de estado"
+                            title="Hora de actualización de estado"
                           >
                             <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                             <span>{horaEstado}</span>
                           </span>
+                          {/* Hora Aproximada de Entrega */}
+                          {!isCompletado && !isAnulado && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 shadow-2xs"
+                              title="Hora aproximada de entrega del pedido"
+                            >
+                              <span>⏱️ Entrega aprox: {horaEntregaAprox}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">

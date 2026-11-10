@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
-  User,
+  User, FileText,
   Package,
   TrendingUp,
   Award,
@@ -1405,7 +1405,7 @@ export function ClientePerfil() {
             {/* Metric 1: Total Invertido */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Total Invertido</span>
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Total Compras</span>
                 <DollarSign className="w-4 h-4" />
               </div>
               <div>
@@ -1430,21 +1430,7 @@ export function ClientePerfil() {
               </div>
             </div>
 
-            {/* Metric 3: Total Pedidos */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between text-blue-500 mb-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Pedidos Totales</span>
-                <Package className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400">
-                  {stats.totalPedidosCount}
-                </p>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">órdenes realizadas</p>
-              </div>
-            </div>
-
-            {/* Metric 4: Platillos Disfrutados */}
+            {/* Metric 3: Platillos Disfrutados */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between text-orange-500 mb-2">
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Platillos</span>
@@ -1458,7 +1444,7 @@ export function ClientePerfil() {
               </div>
             </div>
 
-            {/* Metric 5: Ticket Promedio */}
+            {/* Metric 4: Ticket Promedio */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between text-purple-500 mb-2">
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Ticket Promedio</span>
@@ -1469,6 +1455,20 @@ export function ClientePerfil() {
                   ${stats.ticketPromedio.toLocaleString("es-CO")}
                 </p>
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">por cada pedido</p>
+              </div>
+            </div>
+
+            {/* Metric 5: Total Pedidos (Pedidos a lo último) */}
+            <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between text-blue-500 mb-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Pedidos Totales</span>
+                <Package className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+                  {stats.totalPedidosCount}
+                </p>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5">órdenes realizadas</p>
               </div>
             </div>
           </div>
@@ -1489,17 +1489,6 @@ export function ClientePerfil() {
             </button>
 
             <button
-              onClick={() => setTab("pedidos")}
-              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "pedidos"
-                  ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
-                  : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                }`}
-            >
-              <Package className="w-4 h-4 shrink-0" />
-              <span>Mis Pedidos ({pedidos.length})</span>
-            </button>
-
-            <button
               onClick={() => setTab("editar")}
               className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "editar"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
@@ -1508,6 +1497,17 @@ export function ClientePerfil() {
             >
               <Edit2 className="w-4 h-4 shrink-0" />
               <span>Editar Datos</span>
+            </button>
+
+            <button
+              onClick={() => setTab("pedidos")}
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "pedidos"
+                  ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
+                  : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+            >
+              <Package className="w-4 h-4 shrink-0" />
+              <span>Mis Pedidos ({pedidos.length})</span>
             </button>
           </div>
 
@@ -1942,6 +1942,87 @@ export function ClientePerfil() {
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* ── Documento de Identidad (Primero en el formulario, inmutable si ya está registrado) ── */}
+                    <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-[#f05454]" />
+                          <span>Documento de Identidad</span>
+                          <span className="text-red-500">*</span>
+                        </label>
+                        {tieneCedulaRegistrada ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>Dato verificado (Inmutable)</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            Pendiente
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                            Tipo Doc.
+                          </label>
+                          <select
+                            value={form.tipoDocumento}
+                            onChange={handleTipoDocChange}
+                            disabled={tieneCedulaRegistrada}
+                            className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+                              tieneCedulaRegistrada
+                                ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                                : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-400 cursor-pointer"
+                            }`}
+                          >
+                            {TIPOS_DOCUMENTO.map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1 flex items-center justify-between">
+                            <span>N.° Documento ({docConfig.helper})</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              name="numeroDocumento"
+                              value={form.numeroDocumento}
+                              onBlur={() => handleBlur("numeroDocumento")}
+                              onChange={handleChange}
+                              readOnly={tieneCedulaRegistrada}
+                              disabled={tieneCedulaRegistrada}
+                              inputMode={docConfig.numericOnly ? "numeric" : "text"}
+                              placeholder={docConfig.helper}
+                              className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+                                tieneCedulaRegistrada
+                                  ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                                  : touched.numeroDocumento && errors.numeroDocumento
+                                  ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                  : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-red-400"
+                              }`}
+                            />
+                            {tieneCedulaRegistrada && (
+                              <Lock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                            )}
+                          </div>
+                          <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
+                        </div>
+                      </div>
+                      {tieneCedulaRegistrada && (
+                        <p className="text-[10.5px] text-gray-400 dark:text-gray-500 italic">
+                          Por seguridad y validación fiscal, el documento de identidad queda inmutable una vez registrado.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Nombres y Apellidos */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Nombre */}
                       <div>
@@ -1999,52 +2080,6 @@ export function ClientePerfil() {
                         />
                       </div>
                       <FieldError msg={touched.email ? errors.email : ""} />
-                    </div>
-
-                    {/* Documento */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                          Tipo Documento
-                        </label>
-                        <select
-                          value={form.tipoDocumento}
-                          onChange={handleTipoDocChange}
-                          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 cursor-pointer"
-                        >
-                          {TIPOS_DOCUMENTO.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
-                          <span>
-                            N.° Documento <span className="text-red-500">*</span>
-                            <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
-                          </span>
-                          {!tieneCedulaRegistrada && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                              Pendiente
-                            </span>
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          name="numeroDocumento"
-                          value={form.numeroDocumento}
-                          onBlur={() => handleBlur("numeroDocumento")}
-                          onChange={handleChange}
-                          inputMode={docConfig.numericOnly ? "numeric" : "text"}
-                          placeholder={docConfig.helper}
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                            }`}
-                        />
-                        <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
-                      </div>
                     </div>
 
                     {/* Teléfono */}

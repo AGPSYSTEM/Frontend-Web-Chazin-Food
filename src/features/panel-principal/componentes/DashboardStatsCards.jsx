@@ -35,7 +35,7 @@ export function DashboardStatsCards({ stats = {} }) {
       color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30"
     },
     {
-      title: "Stock Crítico",
+      title: "Stock Bajo",
       value: stats.insumosBajoStock ?? 0,
       change: (stats.insumosBajoStock ?? 0) > 0 ? "Insumos bajo mínimo" : "Inventario óptimo",
       isPositive: (stats.insumosBajoStock ?? 0) === 0,

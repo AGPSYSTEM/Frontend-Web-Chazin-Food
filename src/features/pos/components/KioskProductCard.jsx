@@ -145,33 +145,33 @@ export default function KioskProductCard({ producto, onSelect }) {
         </h3>
 
         {/* Pricing & CTA Button area (Tactile fast-food action button) */}
-        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-[#A91B2E] dark:text-red-400">
-              {formatPrice(finalPrice)}
-            </span>
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-end justify-between gap-1.5">
+          <div className="flex flex-col justify-end min-w-0 flex-1">
             {discountPercent > 0 && (
-              <span className="text-sm font-bold text-gray-400 dark:text-gray-500 line-through">
+              <span className="text-[11px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 line-through leading-none mb-0.5 truncate">
                 {formatPrice(originalPrice)}
               </span>
             )}
+            <span className="text-xl sm:text-2xl font-black text-[#A91B2E] dark:text-red-400 leading-tight">
+              {formatPrice(finalPrice)}
+            </span>
           </div>
 
           <div
-            className={`flex items-center gap-1.5 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs transition-all ${
+            className={`shrink-0 flex items-center justify-center gap-1.5 text-white text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl shadow-xs transition-all whitespace-nowrap min-w-[78px] ${
               isAgotado
-                ? "bg-gray-500 dark:bg-gray-700"
-                : "bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 group-hover:scale-105 active:scale-95"
+                ? "bg-gray-500 dark:bg-gray-700 cursor-not-allowed opacity-90"
+                : "bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 group-hover:scale-105 active:scale-95 cursor-pointer"
             }`}
           >
             {isAgotado ? (
               <>
-                <Ban className="w-3.5 h-3.5" />
+                <Ban className="w-3.5 h-3.5 shrink-0" />
                 <span>Agotado</span>
               </>
             ) : (
               <>
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <Plus className="w-3.5 h-3.5 stroke-[3] shrink-0" />
                 <span>Pedir</span>
               </>
             )}

@@ -288,6 +288,74 @@ export function MiPerfilModal({ isOpen, onClose }) {
         <div className="overflow-y-auto flex-1">
           {tab === "datos" && (
             <form onSubmit={handleSubmitDatos} className="p-5 space-y-4" noValidate>
+              {/* Documento (Primero en el formulario, inmutable si ya está registrado) */}
+              <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-[#f05454]" />
+                    <span>Documento de Identidad</span>
+                    <span className="text-red-500">*</span>
+                  </label>
+                  {user?.numeroDocumento || user?.documento ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>Dato verificado (Inmutable)</span>
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="grid grid-cols-5 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Tipo Doc.</label>
+                    <select
+                      name="tipoDocumento"
+                      value={form.tipoDocumento}
+                      onChange={handleChange}
+                      disabled={Boolean(user?.numeroDocumento || user?.documento)}
+                      className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+                        user?.numeroDocumento || user?.documento
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                          : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-[#f05454]/40 cursor-pointer"
+                      }`}
+                    >
+                      {TIPOS_DOCUMENTO.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                      N.º Documento ({docConfig.helper})
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        name="numeroDocumento"
+                        value={form.numeroDocumento}
+                        onBlur={() => handleBlur("numeroDocumento")}
+                        onChange={handleChange}
+                        readOnly={Boolean(user?.numeroDocumento || user?.documento)}
+                        disabled={Boolean(user?.numeroDocumento || user?.documento)}
+                        inputMode={docConfig.numericOnly ? "numeric" : "text"}
+                        placeholder={docConfig.helper}
+                        className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+                          user?.numeroDocumento || user?.documento
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                            : errors.numeroDocumento
+                            ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#f05454]/40"
+                        }`}
+                      />
+                      {(user?.numeroDocumento || user?.documento) && (
+                        <Lock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                      )}
+                    </div>
+                    <FieldError msg={errors.numeroDocumento} />
+                  </div>
+                </div>
+              </div>
+
               {/* Nombre */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -343,43 +411,6 @@ export function MiPerfilModal({ isOpen, onClose }) {
                   />
                 </div>
                 <FieldError msg={errors.email} />
-              </div>
-
-              {/* Documento */}
-              <div className="grid grid-cols-5 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">Tipo Doc.</label>
-                  <select
-                    name="tipoDocumento"
-                    value={form.tipoDocumento}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition cursor-pointer"
-                  >
-                    {TIPOS_DOCUMENTO.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-span-3">
-                  <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1.5">
-                    N.º Documento
-                    <span className="ml-1 text-gray-400 font-normal">({docConfig.helper})</span>
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      name="numeroDocumento"
-                      value={form.numeroDocumento}
-                      onBlur={() => handleBlur("numeroDocumento")}
-                      onChange={handleChange}
-                      inputMode={docConfig.numericOnly ? "numeric" : "text"}
-                      placeholder={docConfig.helper}
-                      className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm font-medium bg-gray-50 dark:bg-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40 transition ${errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700"}`}
-                    />
-                  </div>
-                  <FieldError msg={errors.numeroDocumento} />
-                </div>
               </div>
 
               {/* Teléfono */}

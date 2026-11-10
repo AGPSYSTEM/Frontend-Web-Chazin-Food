@@ -448,7 +448,7 @@ export function PosCheckoutModal({
                     type="text"
                     value={clientSearchTerm}
                     onChange={(e) => setClientSearchTerm(e.target.value)}
-                    placeholder="Escribe cédula, teléfono o nombre del cliente..."
+                    placeholder="Buscar por cédula / documento o nombre del cliente..."
                     className="w-full pl-9 pr-8 py-2.5 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-[#f05454]/40"
                     autoFocus
                   />
@@ -469,7 +469,7 @@ export function PosCheckoutModal({
                     <div className="p-3.5 bg-gray-50 dark:bg-gray-750/50 rounded-xl text-center space-y-1 border border-dashed border-gray-200 dark:border-gray-700">
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5">
                         <Search className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Búsqueda rápida por teléfono, cédula o nombre</span>
+                        <span>Búsqueda rápida por documento (cédula) o nombre</span>
                       </p>
                       <p className="text-[11px] text-gray-400">
                         Escribe para verificar si el cliente tiene cuenta activa y aplicar su descuento de fidelidad.
@@ -491,6 +491,8 @@ export function PosCheckoutModal({
                       const isInactive = isClientInactive(c);
                       const hasAccount = Boolean(c.idUsuario || c.usuario || c.tieneCuenta);
                       const hasActiveAccount = hasAccount && !isInactive;
+                      const docVal = c.documento || c.cedula || c.numeroDocumento || c.identificacion;
+                      const docTipo = c.tipoDocumento || "C.C.";
 
                       return (
                         <div
@@ -510,6 +512,15 @@ export function PosCheckoutModal({
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
+                                {docVal ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 text-[10.5px] font-black border border-blue-200 dark:border-blue-800 shrink-0">
+                                    {docTipo} {docVal}
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-400 text-[9.5px] font-medium shrink-0">
+                                    Sin doc.
+                                  </span>
+                                )}
                                 <p className={`text-xs font-bold truncate ${isInactive ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-gray-100"}`}>
                                   {cNombre}
                                 </p>
@@ -570,6 +581,15 @@ export function PosCheckoutModal({
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
+                        {(() => {
+                          const selDocVal = selectedCliente.documento || selectedCliente.cedula || selectedCliente.numeroDocumento || selectedCliente.identificacion;
+                          const selDocTipo = selectedCliente.tipoDocumento || "C.C.";
+                          return selDocVal ? (
+                            <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 text-[11px] font-black border border-blue-200 dark:border-blue-800 shrink-0">
+                              {selDocTipo} {selDocVal}
+                            </span>
+                          ) : null;
+                        })()}
                         <h5 className="text-sm font-black text-gray-900 dark:text-gray-100">
                           {selectedCliente.nombre} {selectedCliente.apellidos || ''}
                         </h5>
