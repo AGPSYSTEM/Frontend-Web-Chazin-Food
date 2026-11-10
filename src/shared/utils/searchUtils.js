@@ -78,6 +78,8 @@ export function tokenizeSearchQuery(query = "") {
   const normalized = normalizeSearchText(query);
   if (!normalized) return [];
   return normalized
+    .replace(/(?:^|\s)(?:id\s*[:#-]?\s*|#\s*)(\d+)(?=\s|$|[^\w#])/gi, " #$1 ")
+    .replace(/(?:^|\s)(?:usuario\s*[:#-]?\s*|user\s*[:#-]?\s*)(\d+)(?=\s|$|[^\w#])/gi, " user_$1 ")
     .replace(/\bsin\s+descripci[oó]n\b/g, "sin_descripcion")
     .replace(/\bsin\s+categor[ií]a\b/g, "sin_categoria")
     .replace(/\bsin\s+proveedor\b/g, "sin_proveedor")
@@ -238,6 +240,20 @@ export function hasStatusSearchIntent(query = "") {
 export function matchTokenInCorpus(corpus = "", token = "") {
   if (!token) return true;
   if (!corpus) return false;
+
+  // Búsqueda específica por ID con '#' (ej: #1, #2, #25)
+  if (/^#\d+$/.test(token)) {
+    const idNum = token.slice(1);
+    const regex = new RegExp(`(^|[^a-z0-9])(?:id\\s*#?|#)${idNum}(?![0-9])`, "i");
+    return regex.test(corpus);
+  }
+
+  // Búsqueda específica por usuario vinculado (ej: user_4, user_27)
+  if (/^user_\d+$/.test(token)) {
+    const uNum = token.slice(5);
+    const regex = new RegExp(`(^|[^a-z0-9])(?:usuario\\s*#?|user_)${uNum}(?![0-9])`, "i");
+    return regex.test(corpus);
+  }
 
   // Inactivo / inactivos / inactiva / inactivas / deshabilitado
   if (/^(inactiv[oa]?s?|deshabilitad[oa]?s?|inhabilitad[oa]?s?|suspendid[oa]?s?)$/.test(token)) {

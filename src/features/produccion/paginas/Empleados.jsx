@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, Users, Briefcase, CheckCircle2, XCircle, Download, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Search, Users, Briefcase, CheckCircle2, XCircle, Download, Trash2, RotateCcw, X } from "lucide-react";
 import { useEmpleados } from "../hooks/useEmpleados";
 import { EmpleadosTable } from "../componentes/empleados/EmpleadosTable";
 import { EmpleadoModal } from "../componentes/empleados/EmpleadoModal";
@@ -290,9 +290,19 @@ export function Empleados() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por documento, nombre, cargo, salario (ej: 1.300.000), teléfono, correo..."
-            className="w-full pl-11 pr-4 py-2.5 bg-gray-50/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all outline-none"
+            placeholder="Buscar por ID, documento, nombre, cargo, salario (ej: 1.300.000), teléfono, correo..."
+            className="w-full pl-11 pr-10 py-2.5 bg-gray-50/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all outline-none"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
+              title="Limpiar búsqueda"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Filtros a la Derecha */}

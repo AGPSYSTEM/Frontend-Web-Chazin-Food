@@ -91,6 +91,22 @@ export function useEmpleados() {
 
       if (!searchTerm || !searchTerm.trim()) return true;
 
+      const rawQuery = searchTerm.trim();
+
+      // 1. Detección directa de ID explícito (ej: "ID # 1", "id # 1", "ID 1", "id 1", "#1", "# 1", "id#1", "ID: 1")
+      const idMatch = rawQuery.match(/^(?:id\s*[:#-]?\s*|#\s*)(\d+)$/i);
+      if (idMatch) {
+        const targetId = Number(idMatch[1]);
+        return emp.idEmpleado === targetId;
+      }
+
+      // 2. Detección de Usuario vinculado (ej: "Usuario #4", "usuario 4", "usuario #27")
+      const userMatch = rawQuery.match(/^(?:usuario\s*[:#-]?\s*|user\s*[:#-]?\s*)(\d+)$/i);
+      if (userMatch) {
+        const targetUserId = Number(userMatch[1]);
+        return emp.idUsuario === targetUserId;
+      }
+
       const numSalario = Number(emp.salario) || 0;
       const formattedSalario = numSalario > 0 ? Math.round(numSalario).toLocaleString("es-CO") : "";
       const currencySalario = numSalario > 0 ? `$ ${formattedSalario}` : "";
@@ -125,6 +141,11 @@ export function useEmpleados() {
           emp.direccion,
           emp.tipoContrato,
           emp.turno,
+          emp.idUsuario ? `Usuario #${emp.idUsuario}` : "",
+          emp.idUsuario ? `user_${emp.idUsuario}` : "",
+          emp.nombreUsuario || "",
+          emp.usuario?.nombreUsuario || "",
+          emp.usuario?.correo || "",
           isActivo ? "Activo" : "Inactivo",
           emp.fechaContratacion,
           fechaContratoStr,
@@ -139,7 +160,7 @@ export function useEmpleados() {
           `COP ${formattedSalario}`,
           "COP Mensual"
         ],
-        searchTerm
+        rawQuery
       );
     });
   }, [empleados, filterEstado, filterCargo, searchTerm]);
