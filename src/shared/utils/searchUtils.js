@@ -130,7 +130,7 @@ export function tokenizeSearchQuery(query = "") {
  */
 export function formatStatusTokens(estado) {
   if (estado === null || estado === undefined || estado === "") return "";
-  
+
   const str = String(estado).trim();
   const lower = str.toLowerCase();
 
