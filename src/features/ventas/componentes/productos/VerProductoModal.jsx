@@ -1,4 +1,4 @@
-import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles, CheckCircle2, Edit, Clock, Thermometer, Award, Info, UtensilsCrossed } from "lucide-react";
+import { X, Package, PlusCircle, ChefHat, Zap, Star, MessageSquare, Layers, Sparkles, CheckCircle2, Edit, Clock, Thermometer, Award, Info, UtensilsCrossed, Copy } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { normalizeFichaWithVersions, formatFechaHoraFicha } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
@@ -10,7 +10,7 @@ import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { formatTipoEvento, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
 
-export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
+export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicate }) {
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [loadingFicha, setLoadingFicha] = useState(false);
   const [resenasData, setResenasData] = useState({ promedio: 0, total: 0, resenas: [] });
@@ -736,6 +736,20 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit }) {
 
           {/* Footer Action */}
           <div className="flex items-center justify-end gap-3 pt-2">
+            {onDuplicate && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onDuplicate(producto);
+                }}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2 shadow-sm"
+                title="Duplicar este producto"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Duplicar</span>
+              </button>
+            )}
             {onEdit && (
               <button
                 type="button"

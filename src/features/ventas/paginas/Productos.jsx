@@ -38,6 +38,7 @@ export function Productos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
   const [isViewMode, setIsViewMode] = useState(false);
+  const [isDuplicateMode, setIsDuplicateMode] = useState(false);
   const [editingFichaProducto, setEditingFichaProducto] = useState(null);
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
@@ -82,24 +83,68 @@ export function Productos() {
   const handleOpenCreate = () => {
     setEditingProducto(null);
     setIsViewMode(false);
+    setIsDuplicateMode(false);
     setModalOpen(true);
   };
 
   const handleOpenEdit = (p) => {
     setEditingProducto(p);
     setIsViewMode(false);
+    setIsDuplicateMode(false);
     setModalOpen(true);
   };
 
   const handleOpenView = (p) => {
     setEditingProducto(p);
     setIsViewMode(true);
+    setIsDuplicateMode(false);
+    setModalOpen(true);
+  };
+
+  const handleOpenDuplicate = (p) => {
+    // Generar nombre sugerido sin colisiones de nombre único
+    const cleanBase = (p.nombre || "").replace(/\s*\(Copia(\s*\d+)?\)$/i, "").trim();
+    const existingNames = new Set((productos || []).map((prod) => (prod.nombre || "").trim().toLowerCase()));
+
+    let candidateName = `${cleanBase} (Copia)`;
+    let counter = 2;
+    while (existingNames.has(candidateName.toLowerCase())) {
+      candidateName = `${cleanBase} (Copia ${counter})`;
+      counter++;
+    }
+
+    const cloned = {
+      ...p,
+      id: null,
+      idProducto: null,
+      nombre: candidateName,
+      originalNombre: p.nombre,
+      isDuplicate: true,
+      tieneVentas: false,
+      ventas: 0,
+      variantes: (p.variantes || []).map((v) => ({
+        ...v,
+        idVariante: null,
+        idProducto: null
+      })),
+      fichaTecnica: p.fichaTecnica
+        ? {
+            ...p.fichaTecnica,
+            idFichaTecnica: null,
+            idProducto: null
+          }
+        : null
+    };
+
+    setEditingProducto(cloned);
+    setIsDuplicateMode(true);
+    setIsViewMode(false);
     setModalOpen(true);
   };
 
   const handleSave = async (form) => {
     let ok = false;
-    if (editingProducto) {
+    if (editingProducto && !isDuplicateMode) {
       ok = await updateProducto(editingProducto.id, form);
     } else {
       ok = await createProducto(form);
@@ -107,6 +152,7 @@ export function Productos() {
     if (ok) {
       setModalOpen(false);
       setEditingProducto(null);
+      setIsDuplicateMode(false);
     }
   };
 
@@ -247,6 +293,7 @@ export function Productos() {
           onEdit={handleOpenEdit}
           onDelete={deleteProducto}
           onView={handleOpenView}
+          onDuplicate={handleOpenDuplicate}
           onCreateEvento={handleCreateEvento}
           onEditFicha={(p) => setEditingFichaProducto(p)}
           canEdit={canEdit}
@@ -254,14 +301,18 @@ export function Productos() {
         />
       )}
 
-      {/* Producto Modal (Create/Edit) */}
+      {/* Producto Modal (Create/Edit/Duplicate) */}
       {!isViewMode && (
         <ProductoModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => {
+            setModalOpen(false);
+            setIsDuplicateMode(false);
+          }}
           onSave={handleSave}
           producto={editingProducto}
           categorias={categorias}
+          isDuplicate={isDuplicateMode}
         />
       )}
 
@@ -269,9 +320,13 @@ export function Productos() {
       {isViewMode && (
         <VerProductoModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => {
+            setModalOpen(false);
+            setIsDuplicateMode(false);
+          }}
           producto={editingProducto}
           onEdit={canEdit ? (prod) => handleOpenEdit(prod) : undefined}
+          onDuplicate={canEdit ? handleOpenDuplicate : undefined}
         />
       )}
 

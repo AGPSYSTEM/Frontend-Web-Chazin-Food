@@ -12,7 +12,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Lock,
-  FileText
+  FileText,
+  Copy
 } from "lucide-react";
 import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -83,6 +84,7 @@ export function ProductosTable({
   onEdit,
   onDelete,
   onView,
+  onDuplicate,
   onCreateEvento,
   onEditFicha,
   canEdit = true,
@@ -335,6 +337,17 @@ export function ProductosTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+
+                      {/* Duplicar producto (Ítem 125) */}
+                      {canEdit && (
+                        <button
+                          onClick={() => onDuplicate && onDuplicate(p)}
+                          title="Duplicar producto (crear nuevo plato a partir de este)"
+                          className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      )}
 
                       {/* Solo editar Ficha Técnica (solo aplica a platos cocinados, nunca a combos ni bebidas comerciales) */}
                       {canEdit && !p.esCombo && !p.configuracionCombo?.esCombo && !isProductDrink(p) && (

@@ -3,7 +3,7 @@ import {
   X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, 
   Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText, 
   Search, Check, ChevronDown, ChevronRight, CheckCircle2, PackageCheck, 
-  Info, Eye, ArrowRight, ArrowLeft
+  Info, Eye, ArrowRight, ArrowLeft, Copy
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
@@ -69,9 +69,10 @@ export const getDefaultDrinkImageForFlavor = (flavorName = "", prodName = "") =>
 const inputCls = "w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-xs sm:text-sm";
 const labelCls = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
 
-export function ProductoModal({ isOpen, onClose, onSave, producto = null, categorias = [] }) {
+export function ProductoModal({ isOpen, onClose, onSave, producto = null, categorias = [], isDuplicate = false }) {
   const notify = useNotifications();
-  const isEditing = !!producto;
+  const isCloning = Boolean(isDuplicate || producto?.isDuplicate);
+  const isEditing = Boolean(producto && !isCloning);
   const tieneVentasProtegido = Boolean(isEditing && (producto?.tieneVentas || Number(producto?.ventas || 0) > 0));
 
   // Paso actual del proceso de creación (1: Datos Básicos, 2: Variantes, 3: Complementos/Combo)
@@ -876,7 +877,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             }
           }
           return {
-            idVariante: v.idVariante || null,
+            idVariante: isCloning ? null : (v.idVariante || null),
             nombre: v.nombre.trim(),
             precio: basePrice,
             imagen: varImg || null
@@ -905,12 +906,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           : fichaTecnica
           ? {
               ...fichaTecnica,
+              idFichaTecnica: isCloning ? null : fichaTecnica.idFichaTecnica,
+              idProducto: isCloning ? null : fichaTecnica.idProducto,
               datosEntidad: {
                 ...entityDataActual,
                 imagen: finalImageUrl,
                 precio: basePrice
               },
-              _prevDatosEntidad: prevEntityDataInicial
+              _prevDatosEntidad: isCloning ? null : prevEntityDataInicial
             }
           : null
       });
@@ -970,8 +973,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-gray-900 dark:text-gray-100 tracking-tight">
-                  {isEditing ? "Editar Producto" : "Nuevo Producto"}
+                <h2 className="text-lg font-black text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-2">
+                  <span>{isCloning ? "Duplicar Producto" : isEditing ? "Editar Producto" : "Nuevo Producto"}</span>
+                  {isCloning && (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                      Copia Nueva
+                    </span>
+                  )}
                 </h2>
                 <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                   configCombo.esCombo
@@ -1169,6 +1177,23 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           {activeStep === 1 && (
             <div className="space-y-5 animate-in fade-in duration-150">
               
+              {/* Alerta de Modo Duplicación (Ítem 125) */}
+              {isCloning && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-3 text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider text-[11px]">
+                      Modo Duplicación de Producto
+                    </p>
+                    <p className="text-amber-800 dark:text-amber-300 leading-relaxed">
+                      Estás creando un nuevo producto a partir de <strong>"{producto?.originalNombre || producto?.nombre}"</strong>. Todos los campos, ficha técnica, ingredientes y variantes han sido precargados. Puedes editarlos como desees antes de guardar.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Candado de ventas si aplica */}
               {tieneVentasProtegido && (
                 <div className="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 flex items-start gap-3 text-xs">
@@ -2510,7 +2535,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 ) : (
                   <Check className="w-4 h-4 stroke-[3]" />
                 )}
-                <span>{isEditing ? "Guardar Cambios" : "Crear Producto"}</span>
+                <span>{isCloning ? "Crear Copia del Producto" : isEditing ? "Guardar Cambios" : "Crear Producto"}</span>
               </button>
             </div>
           </div>
