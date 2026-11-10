@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Calendar, Clock, AlertTriangle, CheckCircle, PackageX, User, Phone, Mail, FileText, Check, Ban, CheckCheck } from "lucide-react";
+import { X, Calendar, Clock, AlertTriangle, CheckCircle, PackageX, User, Phone, Mail, FileText, Check, Ban, CheckCheck, AlertCircle } from "lucide-react";
+import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function DevolucionDetalleModal({
   devolucion,
@@ -10,7 +11,9 @@ export function DevolucionDetalleModal({
   onCompletar,
   canManage = true
 }) {
+  const notify = useNotifications();
   const [submitting, setSubmitting] = useState(false);
+  const [rechazoError, setRechazoError] = useState("");
   const [showRechazoInput, setShowRechazoInput] = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [showCompletarInput, setShowCompletarInput] = useState(false);
@@ -43,13 +46,23 @@ export function DevolucionDetalleModal({
   };
 
   const handleRechazar = async () => {
-    if (!motivoRechazo.trim()) return;
+    if (!motivoRechazo.trim()) {
+      setRechazoError("El motivo del rechazo es obligatorio.");
+      notify.warning("Motivo Requerido", "Por favor ingresa la justificación del rechazo según las políticas.");
+      return;
+    }
+    if (motivoRechazo.trim().length < 5) {
+      setRechazoError("El motivo debe tener al menos 5 caracteres.");
+      notify.warning("Justificación Insuficiente", "El motivo debe contener al menos 5 caracteres.");
+      return;
+    }
     try {
       setSubmitting(true);
-      await onRechazar(devolucion.idDevolucion, motivoRechazo);
+      await onRechazar(devolucion.idDevolucion, motivoRechazo.trim());
+      notify.success("Devolución Rechazada", "La devolución fue rechazada conforme a la política.");
       onClose();
     } catch (err) {
-      console.error(err);
+      notify.error("Error", err.message || "Error al rechazar la devolución");
     } finally {
       setSubmitting(false);
     }
@@ -288,11 +301,22 @@ export function DevolucionDetalleModal({
               </span>
               <textarea
                 value={motivoRechazo}
-                onChange={(e) => setMotivoRechazo(e.target.value)}
+                onChange={(e) => {
+                  setMotivoRechazo(e.target.value);
+                  if (rechazoError) setRechazoError("");
+                }}
                 placeholder="Explique el motivo por el cual la devolución es rechazada de acuerdo con las políticas..."
                 rows={3}
-                className="w-full text-xs p-3 rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-rose-500"
+                className={`w-full text-xs p-3 rounded-xl border outline-none transition-all bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 ${
+                  rechazoError ? "border-rose-500 focus:ring-2 focus:ring-rose-400" : "border-rose-300 dark:border-rose-800 focus:ring-2 focus:ring-rose-500"
+                }`}
               />
+              {rechazoError && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{rechazoError}</span>
+                </p>
+              )}
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
