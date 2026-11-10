@@ -2,6 +2,27 @@ import { useState, useEffect } from "react";
 import { X, User, Briefcase, Phone, Mail, MapPin, DollarSign, Calendar, Clock, FileText, ShieldCheck, Plus, List } from "lucide-react";
 import { usuariosService } from "@/features/configuracion/servicios/usuariosService";
 
+// Helper robusto para extraer y limpiar la dirección
+function extractCleanDireccion(raw) {
+  if (!raw) return "";
+  if (typeof raw === "object" && raw !== null) {
+    return raw.direccion ? extractCleanDireccion(raw.direccion) : "";
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && parsed.direccion !== undefined) {
+          return extractCleanDireccion(parsed.direccion);
+        }
+      } catch (_) {}
+    }
+    return trimmed;
+  }
+  return String(raw).trim();
+}
+
 export function EmpleadoModal({
   isOpen,
   onClose,
@@ -60,7 +81,7 @@ export function EmpleadoModal({
         numeroDocumento: empleado.numeroDocumento || "",
         telefono: empleado.telefono || "",
         correo: empleado.correo || "",
-        direccion: empleado.direccion || "",
+        direccion: extractCleanDireccion(empleado.direccion) || "",
         cargo: currentCargo,
         fechaContratacion: empleado.fechaContratacion
           ? new Date(empleado.fechaContratacion).toISOString().split("T")[0]
@@ -74,7 +95,22 @@ export function EmpleadoModal({
 
       setIsCustomCargo(!isBaseOrAvailable);
     } else {
-      setForm(initialForm);
+      let defaultDir = "";
+      try {
+        const savedUser = JSON.parse(localStorage.getItem("chazin_user") || "{}");
+        if (savedUser) {
+          const raw =
+            savedUser.direccion ||
+            (savedUser.clienteInfo ? savedUser.clienteInfo.direccion : "") ||
+            (savedUser.cliente ? savedUser.cliente.direccion : "");
+          defaultDir = extractCleanDireccion(raw);
+        }
+      } catch (_) {}
+
+      setForm({
+        ...initialForm,
+        direccion: defaultDir
+      });
       setIsCustomCargo(false);
     }
     setErrors({});
@@ -82,13 +118,53 @@ export function EmpleadoModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+
+      // Si ingresa o cambia correo, autocompletar datos vacíos incluyendo dirección
+      if (name === "correo" && value && value.includes("@")) {
+        const found = usuariosSistema.find(
+          (u) => (u.email || u.correo || "").toLowerCase() === value.trim().toLowerCase()
+        );
+        if (found) {
+          const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
+          const dirLimpia = extractCleanDireccion(rawDir);
+          if (dirLimpia && !prev.direccion) next.direccion = dirLimpia;
+          if (!prev.nombre && found.nombre) next.nombre = found.nombre;
+          if (!prev.apellidos && (found.apellidos || found.apellido)) next.apellidos = found.apellidos || found.apellido;
+          if (!prev.telefono && found.telefono) next.telefono = found.telefono;
+          if (!prev.numeroDocumento && (found.numeroDocumento || found.documento)) {
+            next.numeroDocumento = found.numeroDocumento || found.documento;
+          }
+          if (!prev.idUsuario && found.idUsuario) next.idUsuario = found.idUsuario;
+        }
+      }
+
+      // Si ingresa número de documento, autocompletar si coincide con un usuario registrado
+      if (name === "numeroDocumento" && value && value.trim().length >= 6) {
+        const found = usuariosSistema.find(
+          (u) => String(u.numeroDocumento || u.documento || u.idUsuario || "").trim() === value.trim()
+        );
+        if (found) {
+          const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
+          const dirLimpia = extractCleanDireccion(rawDir);
+          if (dirLimpia && !prev.direccion) next.direccion = dirLimpia;
+          if (!prev.nombre && found.nombre) next.nombre = found.nombre;
+          if (!prev.apellidos && (found.apellidos || found.apellido)) next.apellidos = found.apellidos || found.apellido;
+          if (!prev.telefono && found.telefono) next.telefono = found.telefono;
+          if (!prev.correo && (found.email || found.correo)) next.correo = found.email || found.correo;
+          if (!prev.idUsuario && found.idUsuario) next.idUsuario = found.idUsuario;
+        }
+      }
+
+      return next;
+    });
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
-  // Vincular usuario seleccionado con autocompletado inteligente
+  // Vincular usuario seleccionado con autocompletado inteligente (incluye dirección)
   const handleSelectUsuario = (e) => {
     const id = e.target.value;
     if (!id) {
@@ -111,15 +187,20 @@ export function EmpleadoModal({
         cargoMapped = found.rol || found.rolNombre;
       }
 
+      // Extraer y limpiar dirección del usuario o cliente asociado
+      const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
+      const dirLimpia = extractCleanDireccion(rawDir);
+
       setForm((prev) => ({
         ...prev,
         idUsuario: found.idUsuario,
         nombre: found.nombre || prev.nombre,
-        apellidos: found.apellidos || prev.apellidos,
+        apellidos: found.apellidos || found.apellido || prev.apellidos,
         tipoDocumento: found.tipoDocumento || prev.tipoDocumento || "C.C.",
-        numeroDocumento: found.numeroDocumento || prev.numeroDocumento,
+        numeroDocumento: found.numeroDocumento || found.documento || prev.numeroDocumento,
         telefono: found.telefono || prev.telefono,
         correo: found.email || found.correo || prev.correo,
+        direccion: dirLimpia || prev.direccion,
         cargo: cargoMapped
       }));
       setIsCustomCargo(false);
