@@ -28,6 +28,7 @@ const ClientePerfil = lazy(() => import("@/features/cliente/paginas/ClientePerfi
 const CocineroDashboard = lazy(() => import("@/features/cocinero/paginas/CocineroDashboard").then(m => ({ default: m.CocineroDashboard })));
 const FichasTecnicas = lazy(() => import("@/features/fichas-tecnicas/paginas/FichasTecnicas").then(m => ({ default: m.FichasTecnicas })));
 const GestionProduccion = lazy(() => import("@/features/produccion/paginas/GestionProduccion").then(m => ({ default: m.GestionProduccion })));
+const Empleados = lazy(() => import("@/features/produccion/paginas/Empleados").then(m => ({ default: m.Empleados })));
 const PosVendedor = lazy(() => import("@/features/pos/paginas/PosVendedor"));
 
 /**
@@ -43,6 +44,8 @@ const PERMISSION_ROUTE_MAP = {
   "Categoría Productos":   { path: "ventas/categoria-productos", element: <CategoriaProductos /> },
   "Productos":             { path: "ventas/productos",           element: <Productos /> },
   "Fichas Técnicas":       { path: "ventas/fichas-tecnicas",     element: <FichasTecnicas /> },
+  "Empleados":             { path: "produccion/empleados",       element: <Empleados /> },
+  "Gestión de Empleados":  { path: "produccion/empleados",       element: <Empleados /> },
   "Gestión de Producción": { path: "produccion/gestion",         element: <GestionProduccion /> },
   "Clientes":              { path: "ventas/clientes",            element: <Clientes /> },
   "Gestión de Ventas":     { path: "ventas/gestion-ventas",      element: <GestionVentas /> },
@@ -161,6 +164,7 @@ export function AppRoutes() {
             <Route path="produccion/gestion" element={<GestionProduccion />} />
             <Route path="ventas/categoria-productos" element={<CategoriaProductos />} />
             <Route path="ventas/productos" element={<Productos />} />
+            <Route path="produccion/empleados" element={<Empleados />} />
             <Route path="ventas/clientes" element={<Clientes />} />
             <Route path="ventas/gestion-ventas" element={<GestionVentas />} />
             <Route path="ventas/pos" element={<PosVendedor />} />

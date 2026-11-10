@@ -122,12 +122,13 @@ export function Layout() {
 
   const allProduccionItems = [
     { to: "/ventas/categoria-productos", label: "Categoría Productos", perm: "Categoría Productos" },
-    { to: "/ventas/productos", label: "Productos", perm: "Productos" },
+    { to: "/ventas/productos", label: "Productos Terminados", perm: "Productos" },
+    { to: "/produccion/empleados", label: "Gestión de Empleados", perm: "Empleados" },
     { to: "/produccion/gestion", label: "Gestión de Producción", perm: "Gestión de Producción" }
   ];
   const produccionItems = isVendedor
     ? allProduccionItems
-    : allProduccionItems.filter(i => hasPerm(i.perm));
+    : allProduccionItems.filter(i => hasPerm(i.perm) || (i.perm === "Empleados" && hasPerm("Producción")));
   const showProduccion = isVendedor || hasPerm("Producción") || produccionItems.length > 0;
   const produccionPaths = produccionItems.map((i) => i.to);
 
@@ -158,8 +159,9 @@ export function Layout() {
     if (path.startsWith("/ventas/gestion-ventas") || path.startsWith("/ventas/detalle")) return "Gestión de Ventas";
     if (path.startsWith("/ventas/clientes")) return "Clientes";
     if (path.startsWith("/produccion/gestion")) return "Gestión de Producción";
+    if (path.startsWith("/produccion/empleados")) return "Gestión de Empleados";
     if (path.startsWith("/ventas/categoria-productos")) return "Categoría Productos";
-    if (path.startsWith("/ventas/productos")) return "Productos";
+    if (path.startsWith("/ventas/productos")) return "Productos Terminados";
     if (path.startsWith("/compras/categoria-insumos")) return "Categoría Insumos";
     if (path.startsWith("/compras/insumos")) return "Insumos";
     if (path.startsWith("/compras/proveedores")) return "Proveedores";
@@ -206,7 +208,7 @@ export function Layout() {
     },
     {
       to: "/ventas/productos",
-      label: "Productos",
+      label: "Productos Terminados",
       icon: UtensilsCrossed,
       iconColor: "text-emerald-500",
       isActive: (p) => p === "/ventas/productos"
