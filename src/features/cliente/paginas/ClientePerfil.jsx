@@ -49,7 +49,8 @@ import {
   Eye,
   EyeOff,
   Lock,
-  X
+  X,
+  RotateCcw
 } from "lucide-react";
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
@@ -59,6 +60,8 @@ import { useNotifications } from "@/shared/hooks/useNotifications";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+import { devolucionesService } from "@/features/ventas/servicios/devolucionesService";
+import { SolicitarDevolucionModal } from "@/features/ventas/componentes/devoluciones/SolicitarDevolucionModal";
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 import { useCart } from "@/shared/context/CartContext";
 import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
@@ -172,6 +175,9 @@ export function ClientePerfil() {
 
   const [pedidos, setPedidos] = useState([]);
   const [loadingPedidos, setLoadingPedidos] = useState(true);
+  const [solicitarDevolucionOpen, setSolicitarDevolucionOpen] = useState(false);
+  const [pedidoParaDevolucion, setPedidoParaDevolucion] = useState(null);
+  const [misDevoluciones, setMisDevoluciones] = useState([]);
   const [saving, setSaving] = useState(false);
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
 
@@ -279,7 +285,7 @@ export function ClientePerfil() {
             if (typeof matched.observaciones === "object" && matched.observaciones !== null) {
               matchedObs = matched.observaciones;
             } else if (typeof matched.observaciones === "string" && matched.observaciones.startsWith("{")) {
-              try { matchedObs = JSON.parse(matched.observaciones); } catch (e) {}
+              try { matchedObs = JSON.parse(matched.observaciones); } catch (e) { }
             }
           }
 
@@ -301,8 +307,12 @@ export function ClientePerfil() {
           localOrd.estado = currentEstado;
           mergedPedidos.push({
             id: matched.idVenta || matched.id || localOrd.id,
+            idVenta: matched.idVenta || matched.id || localOrd.id,
+            idCliente: matched.idCliente || user?.idCliente,
             numeroVenta: matched.numeroVenta || matchedObs.codigoPedido || localOrd.numeroVenta,
             fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString("es-CO") : localOrd.fecha,
+            fechaVenta: matched.fechaVenta || localOrd.fechaVenta || null,
+            detalles: matched.detalles || localOrd.detalles || [],
             items,
             subtotal: matched.subtotal || localOrd.subtotal || localOrd.total,
             total: matched.total || localOrd.total,
@@ -316,8 +326,12 @@ export function ClientePerfil() {
         } else {
           mergedPedidos.push({
             id: localOrd.id,
+            idVenta: localOrd.idVenta || localOrd.id,
+            idCliente: localOrd.idCliente || user?.idCliente,
             numeroVenta: localOrd.numeroVenta,
             fecha: localOrd.fecha,
+            fechaVenta: localOrd.fechaVenta || localOrd.createdAt || null,
+            detalles: localOrd.detalles || [],
             items: localOrd.items || [],
             subtotal: localOrd.subtotal || localOrd.total,
             total: localOrd.total,
@@ -353,7 +367,7 @@ export function ClientePerfil() {
             if (typeof o.observaciones === "object" && o.observaciones !== null) {
               oObs = o.observaciones;
             } else if (typeof o.observaciones === "string" && o.observaciones.startsWith("{")) {
-              try { oObs = JSON.parse(o.observaciones); } catch (e) {}
+              try { oObs = JSON.parse(o.observaciones); } catch (e) { }
             }
           }
 
@@ -376,8 +390,11 @@ export function ClientePerfil() {
             }));
           } else if (o.detalles && Array.isArray(o.detalles)) {
             items = o.detalles.map((d) => ({
-              nombre: d.producto?.nombre || d.nombreProducto || "Producto",
+              idDetalleVenta: d.idDetalleVenta,
+              idVariante: d.idVariante || d.variante?.idVariante,
+              nombre: d.variante?.producto?.nombre || d.producto?.nombre || d.nombreProducto || "Producto",
               cantidad: Number(d.cantidad) || 1,
+              precioUnitario: Number(d.precioUnitario) || 0,
               precio: Number(d.precioUnitario) || 0,
               adiciones: d.adiciones || [],
               personalizaciones: d.personalizaciones || [],
@@ -393,8 +410,12 @@ export function ClientePerfil() {
 
           mergedPedidos.push({
             id: o.idVenta || o.id,
+            idVenta: o.idVenta || o.id,
+            idCliente: o.idCliente || user?.idCliente,
             numeroVenta: o.numeroVenta || oObs.codigoPedido || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
             fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString("es-CO") : "Reciente",
+            fechaVenta: o.fechaVenta || null,
+            detalles: o.detalles || [],
             items,
             subtotal: Number(o.subtotal) || Number(o.total) || 0,
             total: Number(o.total) || 0,
@@ -415,6 +436,60 @@ export function ClientePerfil() {
       setLoadingPedidos(false);
     }
   }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
+
+  const fetchMisDevoluciones = useCallback(async () => {
+    try {
+      const data = await devolucionesService.getMisDevoluciones(user?.idCliente);
+      setMisDevoluciones(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn("No se pudieron cargar devoluciones del cliente:", err);
+    }
+  }, [user?.idCliente]);
+
+  useEffect(() => {
+    fetchMisDevoluciones();
+  }, [fetchMisDevoluciones]);
+
+  const getDevolucionInfo = useCallback((ped) => {
+    if (!ped) return null;
+    const idVenta = ped.idVenta || ped.id;
+    const existing = misDevoluciones.find(
+      (d) => Number(d.idVenta) === Number(idVenta) || (d.venta && Number(d.venta.idVenta) === Number(idVenta))
+    );
+
+    const fechaRaw = ped.fechaVenta || ped.fechaCreacion || ped.createdAt || ped.fecha;
+    let diffHours = 0;
+    if (fechaRaw) {
+      const parsed = new Date(fechaRaw);
+      if (!isNaN(parsed.getTime())) {
+        diffHours = (Date.now() - parsed.getTime()) / (1000 * 60 * 60);
+      }
+    }
+    const cumplePlazo = isNaN(diffHours) ? true : diffHours <= 48;
+
+    const est = String(ped.estado || "").toLowerCase();
+    const esCompletado = est.includes("completad") || est.includes("listo") || est.includes("entregad");
+
+    return {
+      existing,
+      cumplePlazo,
+      horasRestantes: Math.max(0, Math.round(48 - diffHours)),
+      esCompletado,
+      puedeSolicitar: esCompletado && cumplePlazo && (!existing || existing.estado === "RECHAZADA")
+    };
+  }, [misDevoluciones]);
+
+  const handleCrearDevolucionCliente = async (formData) => {
+    try {
+      const res = await devolucionesService.createDevolucion(formData);
+      success("¡Solicitud de Devolución Enviada!", `Hemos recibido tu solicitud ${res.codigoDevolucion || ""} para el pedido.`);
+      await fetchMisDevoluciones();
+      await fetchPedidos();
+    } catch (err) {
+      notifyError("Error al solicitar devolución", err.message || "No fue posible procesar tu solicitud.");
+      throw err;
+    }
+  };
 
   // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
   useEffect(() => {
@@ -511,7 +586,7 @@ export function ClientePerfil() {
     setShowPassConfirm(next);
   };
 
-// Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
+  // Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
 
   const handlePassSubmit = async (e) => {
     e.preventDefault();
@@ -702,23 +777,23 @@ export function ClientePerfil() {
     fidelidad.tipo && fidelidad.tipo !== "Nuevo"
       ? fidelidad.tipo
       : realOrdersCount >= 9
-      ? "VIP"
-      : realOrdersCount >= 6
-      ? "Frecuente"
-      : realOrdersCount >= 3
-      ? "Regular"
-      : (fidelidad.tipo || user?.tipo || "Nuevo");
+        ? "VIP"
+        : realOrdersCount >= 6
+          ? "Frecuente"
+          : realOrdersCount >= 3
+            ? "Regular"
+            : (fidelidad.tipo || user?.tipo || "Nuevo");
 
   const descuentoPorcentaje =
     fidelidad.descuentoPorcentaje !== undefined && fidelidad.descuentoPorcentaje > 0
       ? fidelidad.descuentoPorcentaje
       : tipoFidelidad === "VIP"
-      ? 15
-      : tipoFidelidad === "Frecuente"
-      ? 10
-      : tipoFidelidad === "Regular"
-      ? 5
-      : 0;
+        ? 15
+        : tipoFidelidad === "Frecuente"
+          ? 10
+          : tipoFidelidad === "Regular"
+            ? 5
+            : 0;
 
   const comprasCiclo =
     fidelidad.comprasCiclo !== undefined && fidelidad.comprasCiclo > 0
@@ -790,8 +865,8 @@ export function ClientePerfil() {
         pct > 33
           ? "from-emerald-500 to-teal-500"
           : pct > 12
-          ? "from-amber-500 to-orange-500"
-          : "from-red-500 to-rose-600 animate-pulse";
+            ? "from-amber-500 to-orange-500"
+            : "from-red-500 to-rose-600 animate-pulse";
 
       return {
         esNuevo: false,
@@ -1143,15 +1218,14 @@ export function ClientePerfil() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1 space-y-6">
         {/* ── Hero Profile & Loyalty Card ── */}
         <div
-          className={`rounded-3xl p-6 sm:p-8 border shadow-md relative overflow-hidden transition-all ${
-            tipoFidelidad === "VIP"
+          className={`rounded-3xl p-6 sm:p-8 border shadow-md relative overflow-hidden transition-all ${tipoFidelidad === "VIP"
               ? "bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-orange-500/20 border-amber-300 dark:border-amber-700/80"
               : tipoFidelidad === "Frecuente"
-              ? "bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/15 border-indigo-200 dark:border-indigo-800/80"
-              : tipoFidelidad === "Regular"
-              ? "bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-red-500/15 border-orange-200 dark:border-orange-800/80"
-              : "bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-850 border-gray-200/90 dark:border-gray-800"
-          }`}
+                ? "bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/15 border-indigo-200 dark:border-indigo-800/80"
+                : tipoFidelidad === "Regular"
+                  ? "bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-red-500/15 border-orange-200 dark:border-orange-800/80"
+                  : "bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-850 border-gray-200/90 dark:border-gray-800"
+            }`}
         >
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/40 dark:bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -1159,15 +1233,14 @@ export function ClientePerfil() {
             {/* User Info Left */}
             <div className="flex items-center gap-4 sm:gap-5">
               <div
-                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-md border shrink-0 overflow-hidden relative ${
-                  tipoFidelidad === "VIP"
+                className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-md border shrink-0 overflow-hidden relative ${tipoFidelidad === "VIP"
                     ? "bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 border-amber-200"
                     : tipoFidelidad === "Frecuente"
-                    ? "bg-gradient-to-tr from-indigo-500 to-purple-500 text-white border-indigo-300"
-                    : tipoFidelidad === "Regular"
-                    ? "bg-gradient-to-tr from-orange-500 to-amber-500 text-white border-orange-300"
-                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
-                }`}
+                      ? "bg-gradient-to-tr from-indigo-500 to-purple-500 text-white border-indigo-300"
+                      : tipoFidelidad === "Regular"
+                        ? "bg-gradient-to-tr from-orange-500 to-amber-500 text-white border-orange-300"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+                  }`}
               >
                 {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
                   <img src={avatarUrl} alt={userName} className="w-full h-full object-cover rounded-3xl" />
@@ -1221,8 +1294,8 @@ export function ClientePerfil() {
                     {comprasFaltantes === 0
                       ? <><span>¡Meta alcanzada!</span> <Sparkles className="w-3.5 h-3.5 text-amber-500 inline" /></>
                       : tipoFidelidad === "VIP"
-                      ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? "compra" : "compras"}`
-                      : `Faltan ${comprasFaltantes} para ${siguienteNivel}`}
+                        ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? "compra" : "compras"}`
+                        : `Faltan ${comprasFaltantes} para ${siguienteNivel}`}
                   </span>
                 </div>
 
@@ -1233,11 +1306,10 @@ export function ClientePerfil() {
                     return (
                       <div
                         key={step}
-                        className={`h-2.5 rounded-full transition-all ${
-                          isCompleted
+                        className={`h-2.5 rounded-full transition-all ${isCompleted
                             ? "bg-gradient-to-r from-orange-500 to-[#f05454] shadow-xs"
                             : "bg-gray-200 dark:bg-gray-700"
-                        }`}
+                          }`}
                       />
                     );
                   })}
@@ -1407,11 +1479,10 @@ export function ClientePerfil() {
           <div className="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setTab("fidelidad")}
-              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
-                tab === "fidelidad"
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "fidelidad"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-              }`}
+                }`}
             >
               <Crown className="w-4 h-4 shrink-0" />
               <span>Fidelidad & Hábitos</span>
@@ -1419,11 +1490,10 @@ export function ClientePerfil() {
 
             <button
               onClick={() => setTab("pedidos")}
-              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
-                tab === "pedidos"
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "pedidos"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-              }`}
+                }`}
             >
               <Package className="w-4 h-4 shrink-0" />
               <span>Mis Pedidos ({pedidos.length})</span>
@@ -1431,11 +1501,10 @@ export function ClientePerfil() {
 
             <button
               onClick={() => setTab("editar")}
-              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${
-                tab === "editar"
+              className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "editar"
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-              }`}
+                }`}
             >
               <Edit2 className="w-4 h-4 shrink-0" />
               <span>Editar Datos</span>
@@ -1705,15 +1774,14 @@ export function ClientePerfil() {
                               {ped.numeroVenta || `Pedido #${ped.id}`}
                             </span>
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                                ped.estado === "Completada" || ped.estado === "Listo"
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${ped.estado === "Completada" || ped.estado === "Listo"
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
                                   : ped.estado === "En Preparación"
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
-                                  : ped.estado === "Anulada"
-                                  ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                              }`}
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                                    : ped.estado === "Anulada"
+                                      ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                                      : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                                }`}
                             >
                               {ped.estado}
                             </span>
@@ -1745,14 +1813,45 @@ export function ClientePerfil() {
                               </p>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedPedidoDetalle(ped)}
-                            className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-[#f05454] hover:text-white text-gray-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-                          >
-                            <Receipt className="w-3.5 h-3.5" />
-                            <span>Ver detalle</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const devInfo = getDevolucionInfo(ped);
+                              if (!devInfo) return null;
+                              if (devInfo.existing) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                    <RotateCcw className="w-3 h-3" />
+                                    Devolución: {devInfo.existing.estado}
+                                  </span>
+                                );
+                              }
+                              if (devInfo.puedeSolicitar) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPedidoParaDevolucion(ped);
+                                      setSolicitarDevolucionOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                                    title="Solicitar devolución según políticas de la empresa (máx 2 días)"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Devolución</span>
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPedidoDetalle(ped)}
+                              className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-[#f05454] hover:text-white text-gray-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                              <span>Ver detalle</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1800,29 +1899,26 @@ export function ClientePerfil() {
 
                       {/* Checklist dinámico interactivo con progreso en vivo */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
-                          form.numeroDocumento && form.numeroDocumento.length >= 6
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.numeroDocumento && form.numeroDocumento.length >= 6
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
-                        }`}>
+                          }`}>
                           {form.numeroDocumento && form.numeroDocumento.length >= 6 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
                           <span className="truncate">Cédula: {form.numeroDocumento && form.numeroDocumento.length >= 6 ? 'Lista ✓' : 'Falta registrar'}</span>
                         </div>
 
-                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
-                          form.telefono && form.telefono.length >= 7
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.telefono && form.telefono.length >= 7
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
-                        }`}>
+                          }`}>
                           {form.telefono && form.telefono.length >= 7 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
                           <span className="truncate">Teléfono: {form.telefono && form.telefono.length >= 7 ? 'Listo ✓' : 'Falta registrar'}</span>
                         </div>
 
-                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${
-                          form.direccion && form.direccion.length >= 5
+                        <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.direccion && form.direccion.length >= 5
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
-                        }`}>
+                          }`}>
                           {form.direccion && form.direccion.length >= 5 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
                           <span className="truncate">Dirección: {form.direccion && form.direccion.length >= 5 ? 'Lista ✓' : 'Falta registrar'}</span>
                         </div>
@@ -1859,9 +1955,8 @@ export function ClientePerfil() {
                           onBlur={() => handleBlur("nombre")}
                           onChange={handleChange}
                           placeholder="Tu nombre"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
-                            touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                          }`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                            }`}
                         />
                         <FieldError msg={touched.nombre ? errors.nombre : ""} />
                       </div>
@@ -1878,9 +1973,8 @@ export function ClientePerfil() {
                           onBlur={() => handleBlur("apellidos")}
                           onChange={handleChange}
                           placeholder="Tus apellidos"
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
-                            touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                          }`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                            }`}
                         />
                         <FieldError msg={touched.apellidos ? errors.apellidos : ""} />
                       </div>
@@ -1900,9 +1994,8 @@ export function ClientePerfil() {
                           onBlur={() => handleBlur("email")}
                           onChange={handleChange}
                           placeholder="tu@correo.com"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
-                            touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                          }`}
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                            }`}
                         />
                       </div>
                       <FieldError msg={touched.email ? errors.email : ""} />
@@ -1947,9 +2040,8 @@ export function ClientePerfil() {
                           onChange={handleChange}
                           inputMode={docConfig.numericOnly ? "numeric" : "text"}
                           placeholder={docConfig.helper}
-                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
-                            touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                          }`}
+                          className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.numeroDocumento && errors.numeroDocumento ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                            }`}
                         />
                         <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
                       </div>
@@ -1975,9 +2067,8 @@ export function ClientePerfil() {
                           onChange={handleChange}
                           inputMode="numeric"
                           placeholder="Ej: 3001234567"
-                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${
-                            touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                          }`}
+                          className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+                            }`}
                         />
                       </div>
                       <FieldError msg={touched.telefono ? errors.telefono : ""} />
@@ -2082,11 +2173,10 @@ export function ClientePerfil() {
                                 setPassErrors((prev) => ({ ...prev, passwordActual: "" }));
                               }}
                               placeholder="Tu contraseña actual"
-                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
-                                passTouched.passwordActual && passErrors.passwordActual
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordActual && passErrors.passwordActual
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                              }`}
+                                }`}
                             />
                             <button
                               type="button"
@@ -2117,11 +2207,10 @@ export function ClientePerfil() {
                                 setPassErrors((prev) => ({ ...prev, passwordNueva: "" }));
                               }}
                               placeholder="Mínimo 6 caracteres"
-                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
-                                passTouched.passwordNueva && passErrors.passwordNueva
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordNueva && passErrors.passwordNueva
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                              }`}
+                                }`}
                             />
                             <button
                               type="button"
@@ -2150,11 +2239,10 @@ export function ClientePerfil() {
                                 setPassErrors((prev) => ({ ...prev, passwordConfirm: "" }));
                               }}
                               placeholder="Repite la contraseña"
-                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${
-                                passTouched.passwordConfirm && passErrors.passwordConfirm
+                              className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordConfirm && passErrors.passwordConfirm
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
-                              }`}
+                                }`}
                             />
                             <button
                               type="button"
@@ -2298,11 +2386,10 @@ export function ClientePerfil() {
                         <button
                           type="button"
                           onClick={() => setAvatarFilter("todos")}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${
-                            avatarFilter === "todos"
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${avatarFilter === "todos"
                               ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
                               : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                          }`}
+                            }`}
                         >
                           Todos ({ALL_AVATAR_ITEMS.length})
                         </button>
@@ -2311,11 +2398,10 @@ export function ClientePerfil() {
                             key={cat.name}
                             type="button"
                             onClick={() => setAvatarFilter(cat.name)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${
-                              avatarFilter === cat.name
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${avatarFilter === cat.name
                                 ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
                                 : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                            }`}
+                              }`}
                           >
                             {cat.name} ({cat.avatars.length})
                           </button>
@@ -2331,11 +2417,10 @@ export function ClientePerfil() {
                               key={item.slug}
                               type="button"
                               onClick={() => handleSelectPresetAvatar(item.slug)}
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer relative group ${
-                                isSelected
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer relative group ${isSelected
                                   ? "bg-red-500/15 border-2 border-[#f05454] shadow-xs text-[#f05454] scale-105"
                                   : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
-                              }`}
+                                }`}
                               title={item.label}
                             >
                               <FoodIcon name={item.slug} size={18} />
@@ -2468,15 +2553,14 @@ export function ClientePerfil() {
                 <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
                   <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Estado del Pedido</span>
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${
-                      selectedPedidoDetalle.estado === "Completada" || selectedPedidoDetalle.estado === "Listo"
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${selectedPedidoDetalle.estado === "Completada" || selectedPedidoDetalle.estado === "Listo"
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
                         : selectedPedidoDetalle.estado === "En Preparación"
-                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
-                        : selectedPedidoDetalle.estado === "Anulada"
-                        ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                    }`}
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                          : selectedPedidoDetalle.estado === "Anulada"
+                            ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                      }`}
                   >
                     <Clock className="w-3 h-3" />
                     {selectedPedidoDetalle.estado}
@@ -2500,13 +2584,13 @@ export function ClientePerfil() {
                 <p className="font-medium text-gray-800 dark:text-gray-200 pl-5">
                   {typeof selectedPedidoDetalle.direccion === "string" && selectedPedidoDetalle.direccion.trim().startsWith("{")
                     ? (() => {
-                        try {
-                          const p = JSON.parse(selectedPedidoDetalle.direccion);
-                          return p.direccion || "Medellín, Antioquia";
-                        } catch (e) {
-                          return "Medellín, Antioquia";
-                        }
-                      })()
+                      try {
+                        const p = JSON.parse(selectedPedidoDetalle.direccion);
+                        return p.direccion || "Medellín, Antioquia";
+                      } catch (e) {
+                        return "Medellín, Antioquia";
+                      }
+                    })()
                     : (selectedPedidoDetalle.direccion || "Medellín, Antioquia")}
                 </p>
                 {Boolean(extractCleanSpecifications(selectedPedidoDetalle.especificaciones)) && (
@@ -2577,6 +2661,51 @@ export function ClientePerfil() {
                 </div>
               </div>
 
+              {/* Devolución Action / Status */}
+              {(() => {
+                const devInfo = getDevolucionInfo(selectedPedidoDetalle);
+                if (!devInfo) return null;
+
+                if (devInfo.existing) {
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                          <RotateCcw className="w-4 h-4 text-amber-600" />
+                          Devolución Registrada
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+                          {devInfo.existing.estado}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                        Motivo: <strong>{devInfo.existing.motivo}</strong> · Solución: <strong>{devInfo.existing.tipoResolucion}</strong>
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (devInfo.puedeSolicitar) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedPedidoDetalle;
+                        setSelectedPedidoDetalle(null);
+                        setPedidoParaDevolucion(target);
+                        setSolicitarDevolucionOpen(true);
+                      }}
+                      className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-98"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Solicitar Devolución (Política de 2 días)</span>
+                    </button>
+                  );
+                }
+
+                return null;
+              })()}
+
               {/* Close Button */}
               <button
                 type="button"
@@ -2588,6 +2717,17 @@ export function ClientePerfil() {
             </div>
           </div>
         )}
+
+        {/* Modal de Solicitud de Devolución para el Cliente */}
+        <SolicitarDevolucionModal
+          isOpen={solicitarDevolucionOpen}
+          onClose={() => {
+            setSolicitarDevolucionOpen(false);
+            setPedidoParaDevolucion(null);
+          }}
+          pedido={pedidoParaDevolucion}
+          onSubmit={handleCrearDevolucionCliente}
+        />
       </main>
     </div>
   );

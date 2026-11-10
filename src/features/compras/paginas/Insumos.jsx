@@ -56,7 +56,7 @@ export function Insumos() {
       alertShownRef.current = true;
       notify.warning(
         "Alerta de Vencimiento de Lote",
-        `${insumosVencidos.length === 1 ? `"${insumosVencidos[0].nombre}"` : `${insumosVencidos.length} insumos`} tienen lote(s) vencido(s) y se han inactivado. Dirígete a Compras para reabastecer.`
+        `${insumosVencidos.length === 1 ? `"${insumosVencidos[0].nombre}"` : `${insumosVencidos.length} insumos`} tienen lote(s) vencido(s) y se han inactivado. Dirígete a Compras para registrar la compra.`
       );
     }
   }, [insumosVencidos, notify]);
@@ -226,7 +226,20 @@ export function Insumos() {
     setModalInsumoOpen(true);
   };
 
-  const handleDeleteItem = async (id, nombre, tipo) => {
+  const handleDeleteItem = async (id, nombre, tipo, bloqueoInfo) => {
+    // Buscar si el insumo tiene stock o compras
+    const insumoTarget = insumos.find((ins) => (ins.id || ins.idInsumo) === id);
+    const stockVal = insumoTarget ? Number(insumoTarget.stock || 0) : 0;
+    const tieneCompras = insumoTarget ? Boolean(insumoTarget.tieneCompras || (insumoTarget.totalCompras && insumoTarget.totalCompras > 0)) : false;
+
+    if (bloqueoInfo?.noSePuedeEliminar || stockVal > 0 || tieneCompras) {
+      const msg = stockVal > 0
+        ? `No se puede eliminar el insumo "${nombre}" porque cuenta con un stock activo de ${stockVal} ${insumoTarget?.unidadMedida || 'und'}. Para eliminarlo, su stock debe ser 0.`
+        : `No se puede eliminar el insumo "${nombre}" porque ya fue asociado a compras registradas en el historial.`;
+      notify.warning("Acción no permitida", msg);
+      return;
+    }
+
     if (tipo === "Preparado") {
       await deletePreparado(id, nombre);
     } else {
@@ -279,11 +292,11 @@ export function Insumos() {
               <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-0.5 leading-relaxed">
                 {insumosVencidos.length === 1 ? (
                   <>
-                    El insumo <strong className="font-bold underline">{insumosVencidos[0].nombre}</strong> ha cumplido la fecha de vencimiento de su lote y fue inactivado automáticamente. Debe reabastecerse en el módulo de compras.
+                    El insumo <strong className="font-bold underline">{insumosVencidos[0].nombre}</strong> ha cumplido la fecha de vencimiento de su lote y fue inactivado automáticamente. Debe registrarse una compra en el módulo de compras.
                   </>
                 ) : (
                   <>
-                    Los insumos <strong className="font-bold">{insumosVencidos.map((i) => i.nombre).slice(0, 3).join(", ")}{insumosVencidos.length > 3 ? ` y ${insumosVencidos.length - 3} más` : ""}</strong> han cumplido la fecha de vencimiento de su lote y fueron inactivados automáticamente.
+                    Los insumos <strong className="font-bold">{insumosVencidos.map((i) => i.nombre).slice(0, 3).join(", ")}{insumosVencidos.length > 3 ? ` y ${insumosVencidos.length - 3} más` : ""}</strong> han cumplido la fecha de vencimiento de su lote y fueron inactivados automáticamente. Debe registrarse una compra en el módulo de compras.
                   </>
                 )}
               </p>
@@ -303,7 +316,7 @@ export function Insumos() {
             className="px-5 py-2.5 bg-gradient-to-r from-red-500 to-[#F05454] hover:from-red-600 hover:to-[#d84343] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md shadow-red-500/20 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer w-full sm:w-auto"
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
-            <span>Reabastecer en Compras</span>
+            <span>Registrar compra</span>
           </button>
         </div>
       )}
@@ -506,6 +519,11 @@ export function Insumos() {
               onDelete={handleDeleteItem}
               onView={(item) => setViewingInsumo(item)}
               onToggleEstado={toggleEstadoInsumo}
+              onRegistrarCompra={(item) =>
+                navigate("/compras/gestion", {
+                  state: { openNuevaCompra: true, initialInsumo: item }
+                })
+              }
               onReabastecer={(item) =>
                 navigate("/compras/gestion", {
                   state: { openNuevaCompra: true, initialInsumo: item }
@@ -540,9 +558,9 @@ export function Insumos() {
         onEdit={
           canEdit
             ? (ins) => {
-                setViewingInsumo(null);
-                handleOpenEdit(ins);
-              }
+              setViewingInsumo(null);
+              handleOpenEdit(ins);
+            }
             : undefined
         }
       />

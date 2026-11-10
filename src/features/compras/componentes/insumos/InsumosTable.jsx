@@ -23,6 +23,7 @@ export function InsumosTable({
   onDelete,
   onView,
   onToggleEstado,
+  onRegistrarCompra,
   onReabastecer,
   canEdit = true,
   canDelete = true
@@ -56,13 +57,12 @@ export function InsumosTable({
 
     return (
       <div
-        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border shadow-2xs ${
-          isPreparado
+        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border shadow-2xs ${isPreparado
             ? "bg-purple-100 dark:bg-purple-900/30 border-purple-200/60 dark:border-purple-800/60 text-purple-600 dark:text-purple-400"
             : esAdicion
-            ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200/50 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
-            : "bg-gray-100 dark:bg-gray-800 border-gray-200/60 dark:border-gray-700/60 text-gray-600 dark:text-gray-300"
-        }`}
+              ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200/50 dark:border-purple-800/50 text-purple-600 dark:text-purple-400"
+              : "bg-gray-100 dark:bg-gray-800 border-gray-200/60 dark:border-gray-700/60 text-gray-600 dark:text-gray-300"
+          }`}
       >
         {isUrl ? (
           <img
@@ -111,7 +111,7 @@ export function InsumosTable({
               <th className="px-2 py-2.5 w-10 text-center">ID</th>
               <th className="px-2.5 py-2.5 min-w-[150px]">NOMBRE</th>
               <th className="px-2 py-2.5">CATEGORÍA</th>
-              <th className="px-2 py-2.5 whitespace-nowrap">CANTIDAD</th>
+              <th className="px-2 py-2.5 whitespace-nowrap">STOCK</th>
               <th
                 className="px-1.5 py-2.5 text-center whitespace-nowrap"
                 title="Cantidad Mínima de Alerta"
@@ -130,7 +130,7 @@ export function InsumosTable({
               >
                 PRECIO / UND
               </th>
-              <th className="px-1.5 py-2.5 text-center whitespace-nowrap">STOCK</th>
+              <th className="px-1.5 py-2.5 text-center whitespace-nowrap" title="Estado del Nivel de Stock">ESTADO STOCK</th>
               <th className="px-1.5 py-2.5 text-center whitespace-nowrap">ESTADO</th>
               <th className="px-2 py-2.5 text-center w-24">ACCIONES</th>
             </tr>
@@ -163,25 +163,35 @@ export function InsumosTable({
                 const stockLabel = isAgotado
                   ? "Agotado"
                   : isBajo
-                  ? "Bajo"
-                  : "Normal";
+                    ? "Bajo"
+                    : "Normal";
                 const stockBadgeClass = isAgotado
                   ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                   : isBajo
-                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                  : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300";
+                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300";
 
                 const catNombre = isPreparado
                   ? i.categoriaNombre ||
-                    (typeof i.categoria === "string"
-                      ? i.categoria
-                      : "Preparado Interno")
+                  (typeof i.categoria === "string"
+                    ? i.categoria
+                    : "Preparado Interno")
                   : typeof i.categoria === "string"
-                  ? i.categoria
-                  : i.categoriaNombre || i.categoria?.nombre || "Sin categoría";
+                    ? i.categoria
+                    : i.categoriaNombre || i.categoria?.nombre || "Sin categoría";
 
                 const esAdicion =
                   i.esAdicion === 1 || i.esAdicion === true || i.esAdicion === "1";
+
+                const stockNum = Number(i.stock || 0);
+                const tieneStockActivo = stockNum > 0;
+                const tieneCompras = Boolean(i.tieneCompras || (i.totalCompras && i.totalCompras > 0));
+                const noSePuedeEliminar = tieneStockActivo || tieneCompras || i.puedeEliminarse === false;
+                const motivoBloqueoEliminacion = tieneStockActivo
+                  ? `No se puede eliminar: cuenta con stock activo (${stockNum} ${i.unidadMedida || 'und'}). El stock debe ser 0 para eliminarlo.`
+                  : tieneCompras
+                    ? "No se puede eliminar: ya fue asociado a compras registradas en el historial."
+                    : "No se puede eliminar este insumo.";
 
                 return (
                   <tr
@@ -217,10 +227,10 @@ export function InsumosTable({
                             {(i.estado === "Inactivo" ||
                               i.estado === 0 ||
                               i.estado === "0") && (
-                              <span className="px-1 py-0.2 rounded-full text-[9px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
-                                Inactivo
-                              </span>
-                            )}
+                                <span className="px-1 py-0.2 rounded-full text-[9px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 shrink-0">
+                                  Inactivo
+                                </span>
+                              )}
                           </div>
                           {esAdicion && (
                             <div className="flex items-center gap-1">
@@ -269,21 +279,20 @@ export function InsumosTable({
                     </td>
                     <td className="px-1.5 py-2 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          i.estado === "Activo"
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${i.estado === "Activo"
                             ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                             : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                        }`}
+                          }`}
                       >
                         {i.estado || "Activo"}
                       </span>
                     </td>
                     <td className="px-2 py-2 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
-                        {onReabastecer && (estaVencido || isAgotado || isBajo) && (
+                        {(onRegistrarCompra || onReabastecer) && (estaVencido || isAgotado || isBajo) && (
                           <button
-                            onClick={() => onReabastecer(i)}
-                            title="Reabastecer insumo en Compras"
+                            onClick={() => (onRegistrarCompra || onReabastecer)(i)}
+                            title="Registrar compra del insumo"
                             className="p-1 rounded-lg text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors cursor-pointer"
                           >
                             <ShoppingCart className="w-3.5 h-3.5" />
@@ -297,11 +306,10 @@ export function InsumosTable({
                                 ? "Inactivar insumo"
                                 : "Activar insumo"
                             }
-                            className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                              i.estado === "Activo"
+                            className={`p-1 rounded-lg transition-colors cursor-pointer ${i.estado === "Activo"
                                 ? "text-emerald-600 dark:text-emerald-400 hover:text-amber-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                                 : "text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800"
-                            }`}
+                              }`}
                           >
                             <Power className="w-3.5 h-3.5 stroke-[2.2]" />
                           </button>
@@ -325,15 +333,27 @@ export function InsumosTable({
                           </button>
                         )}
                         {canDelete && (
-                          <button
-                            onClick={() =>
-                              onDelete(i.id || i.idInsumo, i.nombre, i.tipo)
-                            }
-                            title="Eliminar insumo"
-                            className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
-                          </button>
+                          noSePuedeEliminar ? (
+                            <button
+                              onClick={() =>
+                                onDelete(i.id || i.idInsumo, i.nombre, i.tipo, { noSePuedeEliminar, motivoBloqueoEliminacion })
+                              }
+                              title={motivoBloqueoEliminacion}
+                              className="text-gray-300 dark:text-gray-600 hover:text-amber-500 dark:hover:text-amber-400 transition-colors p-1 cursor-not-allowed"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 stroke-[1.8] opacity-50" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                onDelete(i.id || i.idInsumo, i.nombre, i.tipo)
+                              }
+                              title="Eliminar insumo"
+                              className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
+                            </button>
+                          )
                         )}
                       </div>
                     </td>

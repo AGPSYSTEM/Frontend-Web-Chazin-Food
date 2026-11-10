@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { comprasService } from "../servicios/comprasService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, rankSearchResults, normalizeSearchText } from "@/shared/utils/searchUtils";
 
 export function useGestionCompras() {
   const notify = useNotifications();
@@ -27,123 +27,151 @@ export function useGestionCompras() {
     fetchCompras();
   }, [fetchCompras]);
 
-  const filteredCompras = compras.filter((c) => {
+  const filteredCompras = useMemo(() => {
     const hasSearch = Boolean(searchTerm && searchTerm.trim());
 
-    // 1. Filtro por estado (anulado si el usuario escribe en el buscador)
-    const matchEstado =
-      filterEstado === "Todos" ||
-      c.estado === filterEstado ||
-      (filterEstado === "RECIBIDA" && (c.estado === "COMPLETADA" || c.estado === "RECIBIDA")) ||
-      (filterEstado === "CANCELADA" && (c.estado === "CANCELADA" || c.estado === "ANULADA"));
+    const list = compras.filter((c) => {
+      // 1. Filtro por estado (anulado si el usuario escribe en el buscador)
+      const matchEstado =
+        filterEstado === "Todos" ||
+        c.estado === filterEstado ||
+        (filterEstado === "RECIBIDA" && (c.estado === "COMPLETADA" || c.estado === "RECIBIDA")) ||
+        (filterEstado === "CANCELADA" && (c.estado === "CANCELADA" || c.estado === "ANULADA"));
 
-    if (!hasSearch && !matchEstado) return false;
+      if (!hasSearch && !matchEstado) return false;
 
-    // 2. Filtro de búsqueda exhaustiva
-    if (!hasSearch) return true;
+      // 2. Filtro de búsqueda exhaustiva
+      if (!hasSearch) return true;
 
-    // Recopilar todos los textos de la compra de manera segura
-    const searchTokens = [];
+      // Recopilar todos los textos de la compra de manera segura
+      const searchTokens = [];
 
-    // IDs y códigos
-    if (c.id !== undefined && c.id !== null) searchTokens.push(String(c.id), `#${c.id}`, `id: ${c.id}`);
-    if (c.idCompra !== undefined && c.idCompra !== null) searchTokens.push(String(c.idCompra), `#${c.idCompra}`);
-    if (c.numeroFactura) {
-      searchTokens.push(String(c.numeroFactura));
-    } else {
-      searchTokens.push("sin_factura sin factura");
-    }
+      // IDs y códigos
+      if (c.id !== undefined && c.id !== null) searchTokens.push(String(c.id), `#${c.id}`, `id: ${c.id}`);
+      if (c.idCompra !== undefined && c.idCompra !== null) searchTokens.push(String(c.idCompra), `#${c.idCompra}`);
+      if (c.numeroFactura) {
+        searchTokens.push(String(c.numeroFactura));
+      } else {
+        searchTokens.push("sin_factura sin factura");
+      }
 
-    // Proveedor
-    const provNombre = c.proveedorNombre || (typeof c.proveedor === "string" ? c.proveedor : c.proveedor?.nombre) || "";
-    if (provNombre && provNombre !== "Proveedor Genérico" && provNombre !== "Proveedor Desconocido" && provNombre !== "Sin proveedor") {
-      searchTokens.push(provNombre);
-    } else {
-      searchTokens.push("sin_proveedor sin proveedor compra_directa sin_prov directa");
-    }
-    if (c.proveedor && typeof c.proveedor === "object") {
-      if (c.proveedor.nombreContacto) searchTokens.push(String(c.proveedor.nombreContacto));
-      if (c.proveedor.telefono) searchTokens.push(String(c.proveedor.telefono));
-      if (c.proveedor.correo) searchTokens.push(String(c.proveedor.correo));
-      if (c.proveedor.nit) searchTokens.push(String(c.proveedor.nit));
-    }
+      // Proveedor
+      const provNombre = c.proveedorNombre || (typeof c.proveedor === "string" ? c.proveedor : c.proveedor?.nombre) || "";
+      if (provNombre && provNombre !== "Proveedor Genérico" && provNombre !== "Proveedor Desconocido" && provNombre !== "Sin proveedor") {
+        searchTokens.push(provNombre);
+      } else {
+        searchTokens.push("sin_proveedor sin proveedor compra_directa sin_prov directa");
+      }
+      if (c.proveedor && typeof c.proveedor === "object") {
+        if (c.proveedor.nombreContacto) searchTokens.push(String(c.proveedor.nombreContacto));
+        if (c.proveedor.telefono) searchTokens.push(String(c.proveedor.telefono));
+        if (c.proveedor.correo) searchTokens.push(String(c.proveedor.correo));
+        if (c.proveedor.nit) searchTokens.push(String(c.proveedor.nit));
+      }
 
-    // Estado y etiquetas de estado con tokens semánticos
-    if (c.estado !== undefined && c.estado !== null) {
-      searchTokens.push(formatStatusTokens(c.estado));
-    }
+      // Estado y etiquetas de estado con tokens semánticos
+      if (c.estado !== undefined && c.estado !== null) {
+        searchTokens.push(formatStatusTokens(c.estado));
+      }
 
-    // Totales y montos numéricos
-    if (c.total !== undefined && c.total !== null) {
-      const totNum = Number(c.total);
-      searchTokens.push(
-        String(c.total),
-        String(totNum),
-        totNum.toLocaleString("es-CO"),
-        `$${totNum.toLocaleString("es-CO")}`,
-        String(Math.round(totNum))
-      );
-    }
-    if (c.subtotal) searchTokens.push(String(c.subtotal));
-    if (c.iva) searchTokens.push(String(c.iva));
-
-    // Fechas (compra, factura, cancelación)
-    const procesarFecha = (f) => {
-      if (!f) return;
-      searchTokens.push(String(f));
-      const d = new Date(f);
-      if (!isNaN(d.getTime())) {
+      // Totales y montos numéricos
+      if (c.total !== undefined && c.total !== null) {
+        const totNum = Number(c.total);
         searchTokens.push(
-          d.toLocaleDateString("es-CO"),
-          d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" }),
-          d.toLocaleDateString("es-CO", { month: "long" })
+          String(c.total),
+          String(totNum),
+          totNum.toLocaleString("es-CO"),
+          `$${totNum.toLocaleString("es-CO")}`,
+          String(Math.round(totNum))
         );
       }
-    };
-    procesarFecha(c.fechaCompra);
-    procesarFecha(c.fechaFactura);
-    procesarFecha(c.fechaCancelacion);
+      if (c.subtotal) searchTokens.push(String(c.subtotal));
+      if (c.iva) searchTokens.push(String(c.iva));
 
-    // Insumos y lotes incluidos en la compra
-    if (Array.isArray(c.detalles)) {
-      c.detalles.forEach((d) => {
-        if (d.insumo?.nombre) searchTokens.push(d.insumo.nombre);
-        if (d.insumoNombre) searchTokens.push(d.insumoNombre);
-        if (d.nombre) searchTokens.push(d.nombre);
-        if (d.insumo?.unidadMedida) searchTokens.push(d.insumo.unidadMedida);
-        if (d.numeroLote) searchTokens.push(String(d.numeroLote));
-        if (d.cantidad) searchTokens.push(String(d.cantidad));
-        if (d.precioUnitario) searchTokens.push(String(d.precioUnitario));
-        if (Array.isArray(d.lotes)) {
-          d.lotes.forEach((l) => {
-            if (l.numeroLote) searchTokens.push(String(l.numeroLote));
-          });
+      // Fechas (compra, factura, cancelación)
+      const procesarFecha = (f) => {
+        if (!f) return;
+        searchTokens.push(String(f));
+        const d = new Date(f);
+        if (!isNaN(d.getTime())) {
+          searchTokens.push(
+            d.toLocaleDateString("es-CO"),
+            d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" }),
+            d.toLocaleDateString("es-CO", { month: "long" })
+          );
         }
-      });
-    }
+      };
+      procesarFecha(c.fechaCompra);
+      procesarFecha(c.fechaFactura);
+      procesarFecha(c.fechaCancelacion);
 
-    if (Array.isArray(c.lotes)) {
-      c.lotes.forEach((l) => {
-        if (l.numeroLote) searchTokens.push(String(l.numeroLote));
-      });
-    }
-
-    // Motivo de cancelación y usuario responsable
-    if (c.motivoCancelacion) searchTokens.push(String(c.motivoCancelacion));
-    if (c.usuarioCancelacionNombre) searchTokens.push(String(c.usuarioCancelacionNombre));
-    if (c.detallesCancelacion) {
-      if (typeof c.detallesCancelacion === "string") {
-        searchTokens.push(c.detallesCancelacion);
-      } else if (typeof c.detallesCancelacion === "object") {
-        if (c.detallesCancelacion.motivoGeneral) searchTokens.push(String(c.detallesCancelacion.motivoGeneral));
-        if (c.detallesCancelacion.observaciones) searchTokens.push(String(c.detallesCancelacion.observaciones));
-        if (c.detallesCancelacion.tipoOperacion) searchTokens.push(String(c.detallesCancelacion.tipoOperacion));
+      // Insumos y lotes incluidos en la compra
+      if (Array.isArray(c.detalles)) {
+        c.detalles.forEach((d) => {
+          if (d.insumo?.nombre) searchTokens.push(d.insumo.nombre);
+          if (d.insumoNombre) searchTokens.push(d.insumoNombre);
+          if (d.nombre) searchTokens.push(d.nombre);
+          if (d.insumo?.unidadMedida) searchTokens.push(d.insumo.unidadMedida);
+          if (d.numeroLote) searchTokens.push(String(d.numeroLote));
+          if (d.cantidad) searchTokens.push(String(d.cantidad));
+          if (d.precioUnitario) searchTokens.push(String(d.precioUnitario));
+          if (Array.isArray(d.lotes)) {
+            d.lotes.forEach((l) => {
+              if (l.numeroLote) searchTokens.push(String(l.numeroLote));
+            });
+          }
+        });
       }
+
+      if (Array.isArray(c.lotes)) {
+        c.lotes.forEach((l) => {
+          if (l.numeroLote) searchTokens.push(String(l.numeroLote));
+        });
+      }
+
+      // Motivo de cancelación y usuario responsable
+      if (c.motivoCancelacion) searchTokens.push(String(c.motivoCancelacion));
+      if (c.usuarioCancelacionNombre) searchTokens.push(String(c.usuarioCancelacionNombre));
+      if (c.detallesCancelacion) {
+        if (typeof c.detallesCancelacion === "string") {
+          searchTokens.push(c.detallesCancelacion);
+        } else if (typeof c.detallesCancelacion === "object") {
+          if (c.detallesCancelacion.motivoGeneral) searchTokens.push(String(c.detallesCancelacion.motivoGeneral));
+          if (c.detallesCancelacion.observaciones) searchTokens.push(String(c.detallesCancelacion.observaciones));
+          if (c.detallesCancelacion.tipoOperacion) searchTokens.push(String(c.detallesCancelacion.tipoOperacion));
+        }
+      }
+
+      // Comparar término(s) de búsqueda con normalización y multi-token inteligente
+      return matchesSmartSearch(searchTokens, searchTerm);
+    });
+
+    if (!hasSearch) {
+      return list;
     }
 
-    // Comparar término(s) de búsqueda con normalización y multi-token inteligente
-    return matchesSmartSearch(searchTokens, searchTerm);
-  });
+    return rankSearchResults(list, searchTerm, (c, normQuery) => {
+      let extra = 0;
+      const numFac = normalizeSearchText(c.numeroFactura || "");
+      if (numFac) {
+        if (numFac === normQuery) extra += 2500;
+        else if (numFac.startsWith(normQuery)) extra += 1500;
+        else if (numFac.includes(normQuery)) extra += 800;
+      }
+
+      const idComp = String(c.id || c.idCompra || "");
+      if (idComp === normQuery || `#${idComp}` === normQuery) extra += 2000;
+
+      const provNombre = normalizeSearchText(c.proveedorNombre || (typeof c.proveedor === "string" ? c.proveedor : c.proveedor?.nombre) || "");
+      if (provNombre) {
+        if (provNombre === normQuery) extra += 1800;
+        else if (provNombre.startsWith(normQuery)) extra += 1000;
+        else if (provNombre.includes(normQuery)) extra += 500;
+      }
+
+      return extra;
+    });
+  }, [compras, filterEstado, searchTerm]);
 
   const createCompra = async (data) => {
     try {

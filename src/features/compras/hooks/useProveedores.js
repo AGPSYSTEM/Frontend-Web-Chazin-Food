@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
-import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, rankSearchResults, normalizeSearchText } from "@/shared/utils/searchUtils";
 
 export function useProveedores() {
   const notify = useNotifications();
@@ -55,71 +55,112 @@ export function useProveedores() {
   // Active suppliers (estado === "Activo" or estado === 1)
   const activosProveedores = proveedores.filter((p) => p.estado === "Activo" || p.estado === 1);
 
-  const filteredProveedores = proveedores.filter((p) => {
-    const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
-    const esJuridica = p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 || p.tipoDocumento === "NIT";
-    const docLabel = esJuridica ? "NIT" : "CC";
-    const tipoPersonaStr = esJuridica ? "Jurídica Juridica Persona Jurídica" : "Natural Persona Natural";
-
-    const hasDesc = Boolean((p.descripcion || p.observaciones) && String(p.descripcion || p.observaciones).trim());
-    const descText = hasDesc ? `${p.descripcion || ""} ${p.observaciones || ""} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
-
-    const hasTel = Boolean((p.telefono || p.celular) && String(p.telefono || p.celular).trim() && p.telefono !== "N/A");
-    const telText = hasTel ? `${p.telefono || ""} ${p.celular || ""} con_telefono con telefono` : "sin_telefono sin telefono";
-
-    const hasEmail = Boolean((p.email || p.correo) && String(p.email || p.correo).trim() && p.email !== "N/A");
-    const emailText = hasEmail ? `${p.email || ""} ${p.correo || ""} con_correo con correo con_email con email` : "sin_correo sin correo sin_email sin email";
-
-    const hasContacto = Boolean((p.contacto || p.nombreContacto) && String(p.contacto || p.nombreContacto).trim() && p.contacto !== "N/A");
-    const contactoText = hasContacto ? `${p.contacto || ""} ${p.nombreContacto || ""} con_contacto con contacto` : "sin_contacto sin contacto";
-
-    const hasDireccion = Boolean(p.direccion && String(p.direccion).trim() && p.direccion !== "N/A");
-    const direccionText = hasDireccion ? `${p.direccion} con_direccion con direccion` : "sin_direccion sin direccion";
-
-    const matchSearch = matchesSmartSearch(
-      [
-        p.nombre,
-        p.nit,
-        p.numeroDocumento,
-        p.documento,
-        docLabel,
-        `${docLabel}: ${p.nit || p.numeroDocumento || ""}`,
-        p.contacto,
-        p.nombreContacto,
-        contactoText,
-        p.email,
-        p.correo,
-        emailText,
-        p.telefono,
-        p.celular,
-        telText,
-        p.direccion,
-        direccionText,
-        p.tipoProveedor,
-        p.tipoProveedorNombre,
-        p.tipoPersona,
-        tipoPersonaStr,
-        formatStatusTokens(p.estado),
-        p.id,
-        p.idProveedor,
-        `#${p.id || p.idProveedor}`,
-        p.descripcion,
-        p.observaciones,
-        descText
-      ],
-      searchTerm
-    );
-
+  const filteredProveedores = useMemo(() => {
     const hasSearch = Boolean(searchTerm && searchTerm.trim());
-    const matchEstadoFiltro =
-      filterEstado === "Todos" ||
-      (filterEstado === "Activo" && isActivo) ||
-      (filterEstado === "Inactivo" && !isActivo);
 
-    const matchEstado = !hasSearch ? matchEstadoFiltro : true;
-    const matchTipo = !hasSearch ? (filterTipo === "Todos" || p.tipoPersona === filterTipo || (filterTipo === "Jurídica" && esJuridica) || (filterTipo === "Natural" && !esJuridica)) : true;
-    return matchSearch && matchEstado && matchTipo;
-  });
+    const baseFiltered = proveedores.filter((p) => {
+      const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
+      const esJuridica = p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 || p.tipoDocumento === "NIT";
+      const docLabel = esJuridica ? "NIT" : "CC";
+      const tipoPersonaStr = esJuridica ? "Jurídica Juridica Persona Jurídica" : "Natural Persona Natural";
+
+      const hasDesc = Boolean((p.descripcion || p.observaciones) && String(p.descripcion || p.observaciones).trim());
+      const descText = hasDesc ? `${p.descripcion || ""} ${p.observaciones || ""} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+
+      const hasTel = Boolean((p.telefono || p.celular) && String(p.telefono || p.celular).trim() && p.telefono !== "N/A");
+      const telText = hasTel ? `${p.telefono || ""} ${p.celular || ""} con_telefono con telefono` : "sin_telefono sin telefono";
+
+      const hasEmail = Boolean((p.email || p.correo) && String(p.email || p.correo).trim() && p.email !== "N/A");
+      const emailText = hasEmail ? `${p.email || ""} ${p.correo || ""} con_correo con correo con_email con email` : "sin_correo sin correo sin_email sin email";
+
+      const hasContacto = Boolean((p.contacto || p.nombreContacto) && String(p.contacto || p.nombreContacto).trim() && p.contacto !== "N/A");
+      const contactoText = hasContacto ? `${p.contacto || ""} ${p.nombreContacto || ""} con_contacto con contacto` : "sin_contacto sin contacto";
+
+      const hasDireccion = Boolean(p.direccion && String(p.direccion).trim() && p.direccion !== "N/A");
+      const direccionText = hasDireccion ? `${p.direccion} con_direccion con direccion` : "sin_direccion sin direccion";
+
+      const clasifArr = Array.isArray(p.clasificacion) ? p.clasificacion : Array.isArray(p.tiposProveedor) ? p.tiposProveedor : [];
+      const clasifText = clasifArr.join(" ");
+
+      const matchSearch = matchesSmartSearch(
+        [
+          p.nombre,
+          p.nit,
+          p.numeroDocumento,
+          p.documento,
+          docLabel,
+          `${docLabel}: ${p.nit || p.numeroDocumento || ""}`,
+          p.contacto,
+          p.nombreContacto,
+          contactoText,
+          p.email,
+          p.correo,
+          emailText,
+          p.telefono,
+          p.celular,
+          telText,
+          p.direccion,
+          direccionText,
+          p.tipoProveedor,
+          p.tipoProveedorNombre,
+          clasifText,
+          p.tipoPersona,
+          tipoPersonaStr,
+          formatStatusTokens(p.estado),
+          p.id,
+          p.idProveedor,
+          `#${p.id || p.idProveedor}`,
+          p.descripcion,
+          p.observaciones,
+          descText
+        ],
+        searchTerm
+      );
+
+      const matchEstadoFiltro =
+        filterEstado === "Todos" ||
+        (filterEstado === "Activo" && isActivo) ||
+        (filterEstado === "Inactivo" && !isActivo);
+
+      const matchEstado = !hasSearch ? matchEstadoFiltro : true;
+      const matchTipo = !hasSearch ? (filterTipo === "Todos" || p.tipoPersona === filterTipo || (filterTipo === "Jurídica" && esJuridica) || (filterTipo === "Natural" && !esJuridica)) : true;
+      return matchSearch && matchEstado && matchTipo;
+    });
+
+    if (!hasSearch) {
+      return baseFiltered;
+    }
+
+    return rankSearchResults(baseFiltered, searchTerm, (p, normQuery, tokens) => {
+      let extra = 0;
+      const esJuridica = p.tipoPersona === "Jurídica" || p.idTipoDocumento === 3 || p.tipoDocumento === "NIT";
+
+      // Coincidencia con NIT o documento exacto
+      const nitStr = normalizeSearchText(p.nit || p.numeroDocumento || p.documento || "");
+      if (nitStr) {
+        if (nitStr === normQuery) extra += 1500;
+        else if (nitStr.startsWith(normQuery)) extra += 800;
+        else if (nitStr.includes(normQuery)) extra += 400;
+      }
+
+      // Coincidencia con contacto
+      const contactoStr = normalizeSearchText(p.contacto || p.nombreContacto || "");
+      if (contactoStr) {
+        if (contactoStr === normQuery) extra += 1000;
+        else if (contactoStr.startsWith(normQuery)) extra += 600;
+        else if (contactoStr.includes(normQuery)) extra += 300;
+      }
+
+      // Tipo persona
+      if (tokens.some((t) => t.includes("juridic"))) {
+        if (esJuridica) extra += 900;
+      } else if (tokens.some((t) => t === "natural")) {
+        if (!esJuridica) extra += 900;
+      }
+
+      return extra;
+    });
+  }, [proveedores, searchTerm, filterEstado, filterTipo]);
 
   const createProveedor = async (data) => {
     try {
@@ -265,4 +306,3 @@ export function useProveedores() {
     resetUnreadCount
   };
 }
-

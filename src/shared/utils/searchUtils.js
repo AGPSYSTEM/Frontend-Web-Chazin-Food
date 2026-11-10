@@ -503,6 +503,79 @@ export function matchesSmartSearch(fields = [], query = "") {
 }
 
 /**
+ * Calcula un puntaje de relevancia para ordenar los resultados de búsqueda.
+ * Permite que coincidencias exactas, prefijos, atributos clave (ej: "adición", "lote vencido")
+ * aparezcan de primero en los resultados.
+ */
+export function scoreSearchRelevance(item, query, customScorer) {
+  if (!query || !query.trim() || !item) return 0;
+  const normalizedQuery = normalizeSearchText(query);
+  const tokens = tokenizeSearchQuery(query);
+  if (tokens.length === 0) return 0;
+
+  let score = 0;
+
+  if (typeof customScorer === "function") {
+    score += Number(customScorer(item, normalizedQuery, tokens) || 0);
+  }
+
+  // Nombre / Identificador principal
+  const nombre = normalizeSearchText(item.nombre || item.name || item.razonSocial || item.nombreCompleto || item.factura || item.numeroFactura || "");
+  if (nombre) {
+    if (nombre === normalizedQuery) {
+      score += 1500;
+    } else if (nombre.startsWith(normalizedQuery)) {
+      score += 800;
+    } else {
+      const words = nombre.split(/\s+/);
+      if (words.includes(normalizedQuery)) {
+        score += 500;
+      } else if (nombre.includes(normalizedQuery)) {
+        score += 300;
+      }
+    }
+
+    tokens.forEach((tok) => {
+      if (nombre.startsWith(tok)) score += 200;
+      else if (nombre.includes(tok)) score += 100;
+    });
+  }
+
+  // ID exacto
+  const idStr = String(item.id || item.idInsumo || item.idCompra || item.idProveedor || item.idCategoria || item.idCategoriaInsumo || item.idProducto || "");
+  if (idStr && (idStr === normalizedQuery || `#${idStr}` === normalizedQuery)) {
+    score += 1200;
+  }
+
+  return score;
+}
+
+/**
+ * Ordena un conjunto de registros filtrados por su puntuación de relevancia
+ * de modo que los resultados más afines a la búsqueda aparezcan en los primeros lugares.
+ */
+export function rankSearchResults(items = [], query = "", customScorer) {
+  if (!query || !query.trim() || !Array.isArray(items) || items.length === 0) {
+    return items;
+  }
+
+  const scored = items.map((item, originalIndex) => ({
+    item,
+    originalIndex,
+    score: scoreSearchRelevance(item, query, customScorer)
+  }));
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return a.originalIndex - b.originalIndex;
+  });
+
+  return scored.map((s) => s.item);
+}
+
+/**
  * Meses en español para búsqueda por nombre de mes
  */
 const MESES_ES = [
@@ -568,7 +641,7 @@ export function buildVentaSearchCorpus(v = {}) {
   // Dirección y ubicación
   let obsMeta = {};
   if (typeof v.observaciones === "string" && v.observaciones.trim().startsWith("{")) {
-    try { obsMeta = JSON.parse(v.observaciones); } catch (e) {}
+    try { obsMeta = JSON.parse(v.observaciones); } catch (e) { }
   } else if (typeof v.observaciones === "object" && v.observaciones) {
     obsMeta = v.observaciones;
   }
@@ -705,7 +778,7 @@ export function buildVentaSearchCorpus(v = {}) {
         parts.push(ampm, isPm ? "tarde" : "manana");
         if (hours24 >= 18) parts.push("noche");
       }
-    } catch (e) {}
+    } catch (e) { }
   }
   if (v.horario) parts.push(String(v.horario));
   if (v.fechaFormatted) parts.push(String(v.fechaFormatted));

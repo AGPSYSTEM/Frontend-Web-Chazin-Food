@@ -134,11 +134,12 @@ export function Layout() {
 
   const allVentasItems = [
     { to: "/ventas/clientes", label: "Clientes", perm: "Clientes" },
-    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" }
+    { to: "/ventas/gestion-ventas", label: "Gestión de Ventas", perm: "Gestión de Ventas" },
+    { to: "/ventas/devoluciones", label: "Devoluciones", perm: "Devoluciones" }
   ];
   const ventasItems = isVendedor
     ? allVentasItems
-    : allVentasItems.filter(i => hasPerm(i.perm));
+    : allVentasItems.filter(i => hasPerm(i.perm) || (i.perm === "Devoluciones" && (hasPerm("Gestión de Ventas") || hasPerm("Ventas"))));
   const showVentas = isVendedor || hasPerm("Ventas") || ventasItems.length > 0;
   const ventasPaths = [...ventasItems.map((i) => i.to), "/ventas/pos"];
 
@@ -157,6 +158,7 @@ export function Layout() {
   const getPageTitle = (path) => {
     if (path === "/ventas/pos") return "Punto de Venta";
     if (path.startsWith("/ventas/gestion-ventas") || path.startsWith("/ventas/detalle")) return "Gestión de Ventas";
+    if (path.startsWith("/ventas/devoluciones")) return "Devoluciones";
     if (path.startsWith("/ventas/clientes")) return "Clientes";
     if (path.startsWith("/produccion/gestion")) return "Gestión de Producción";
     if (path.startsWith("/produccion/empleados")) return "Gestión de Empleados";

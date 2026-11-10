@@ -18,6 +18,7 @@ const CategoriaProductos = lazy(() => import("@/features/ventas/paginas/Categori
 const Productos = lazy(() => import("@/features/ventas/paginas/Productos").then(m => ({ default: m.Productos })));
 const Clientes = lazy(() => import("@/features/ventas/paginas/Clientes").then(m => ({ default: m.Clientes })));
 const GestionVentas = lazy(() => import("@/features/ventas/paginas/GestionVentas").then(m => ({ default: m.GestionVentas })));
+const Devoluciones = lazy(() => import("@/features/ventas/paginas/Devoluciones"));
 const Roles = lazy(() => import("@/features/configuracion/paginas/Roles").then(m => ({ default: m.Roles })));
 const Usuarios = lazy(() => import("@/features/configuracion/paginas/Usuarios").then(m => ({ default: m.Usuarios })));
 const Login = lazy(() => import("@/features/autenticacion/paginas/Login").then(m => ({ default: m.Login })));
@@ -36,23 +37,24 @@ const PosVendedor = lazy(() => import("@/features/pos/paginas/PosVendedor"));
  * A user with a given permission + Ver privilege will have access to the corresponding route(s).
  */
 const PERMISSION_ROUTE_MAP = {
-  "Dashboard":             { path: "",                           element: <Dashboard /> },
-  "Categoría Insumos":     { path: "compras/categoria-insumos",  element: <CategoriaInsumos /> },
-  "Insumos":               { path: "compras/insumos",            element: <Insumos /> },
-  "Proveedores":           { path: "compras/proveedores",        element: <Proveedores /> },
-  "Gestión de Compras":    { path: "compras/gestion",            element: <GestionCompras /> },
-  "Categoría Productos":   { path: "ventas/categoria-productos", element: <CategoriaProductos /> },
-  "Productos":             { path: "ventas/productos",           element: <Productos /> },
-  "Fichas Técnicas":       { path: "ventas/fichas-tecnicas",     element: <FichasTecnicas /> },
-  "Empleados":             { path: "produccion/empleados",       element: <Empleados /> },
-  "Gestión de Empleados":  { path: "produccion/empleados",       element: <Empleados /> },
-  "Gestión de Producción": { path: "produccion/gestion",         element: <GestionProduccion /> },
-  "Clientes":              { path: "ventas/clientes",            element: <Clientes /> },
-  "Gestión de Ventas":     { path: "ventas/gestion-ventas",      element: <GestionVentas /> },
-  "Punto de Venta":        { path: "ventas/pos",                 element: <PosVendedor /> },
-  "Vendedor":              { path: "ventas/pos",                 element: <PosVendedor /> },
-  "Roles":                 { path: "configuracion/roles",        element: <Roles /> },
-  "Usuarios":              { path: "configuracion/usuarios",     element: <Usuarios /> },
+  "Dashboard": { path: "", element: <Dashboard /> },
+  "Categoría Insumos": { path: "compras/categoria-insumos", element: <CategoriaInsumos /> },
+  "Insumos": { path: "compras/insumos", element: <Insumos /> },
+  "Proveedores": { path: "compras/proveedores", element: <Proveedores /> },
+  "Gestión de Compras": { path: "compras/gestion", element: <GestionCompras /> },
+  "Categoría Productos": { path: "ventas/categoria-productos", element: <CategoriaProductos /> },
+  "Productos": { path: "ventas/productos", element: <Productos /> },
+  "Fichas Técnicas": { path: "ventas/fichas-tecnicas", element: <FichasTecnicas /> },
+  "Empleados": { path: "produccion/empleados", element: <Empleados /> },
+  "Gestión de Empleados": { path: "produccion/empleados", element: <Empleados /> },
+  "Gestión de Producción": { path: "produccion/gestion", element: <GestionProduccion /> },
+  "Clientes": { path: "ventas/clientes", element: <Clientes /> },
+  "Gestión de Ventas": { path: "ventas/gestion-ventas", element: <GestionVentas /> },
+  "Devoluciones": { path: "ventas/devoluciones", element: <Devoluciones /> },
+  "Punto de Venta": { path: "ventas/pos", element: <PosVendedor /> },
+  "Vendedor": { path: "ventas/pos", element: <PosVendedor /> },
+  "Roles": { path: "configuracion/roles", element: <Roles /> },
+  "Usuarios": { path: "configuracion/usuarios", element: <Usuarios /> },
 };
 
 export function AppRoutes() {
@@ -167,6 +169,7 @@ export function AppRoutes() {
             <Route path="produccion/empleados" element={<Empleados />} />
             <Route path="ventas/clientes" element={<Clientes />} />
             <Route path="ventas/gestion-ventas" element={<GestionVentas />} />
+            <Route path="ventas/devoluciones" element={<Devoluciones />} />
             <Route path="ventas/pos" element={<PosVendedor />} />
             <Route path="ventas/fichas-tecnicas" element={<FichasTecnicas />} />
             <Route path="configuracion/roles" element={<Roles />} />
@@ -190,6 +193,7 @@ export function AppRoutes() {
     const vendedorPerms = [
       "Punto de Venta",
       "Gestión de Ventas",
+      "Devoluciones",
       "Clientes",
       "Categoría Productos",
       "Productos",
@@ -213,12 +217,12 @@ export function AppRoutes() {
   const defaultPath = isVendedor
     ? "ventas/pos"
     : hasPrivilege(user, "Gestión de Ventas", "ver")
-    ? "ventas/gestion-ventas"
-    : hasPrivilege(user, "Punto de Venta", "ver")
-    ? "ventas/pos"
-    : allowedRoutes.length > 0
-    ? allowedRoutes[0].path
-    : "";
+      ? "ventas/gestion-ventas"
+      : hasPrivilege(user, "Punto de Venta", "ver")
+        ? "ventas/pos"
+        : allowedRoutes.length > 0
+          ? allowedRoutes[0].path
+          : "";
 
   return (
     <Suspense fallback={<ChazinLoader fullScreen size="lg" text="CARGANDO..." />}>

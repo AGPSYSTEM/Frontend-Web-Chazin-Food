@@ -81,7 +81,8 @@ export const GRUPOS_PERMISOS = [
     parentPermiso: "Ventas",
     subPermisos: [
       { id: "Clientes", nombre: "Clientes", descripcion: "Directorio de clientes, activación y programa de fidelidad", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
-      { id: "Gestión de Ventas", nombre: "Gestión de Ventas", descripcion: "Historial de ventas, aprobación de pagos y creación de venta física (POS)", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
+      { id: "Gestión de Ventas", nombre: "Gestión de Ventas", descripcion: "Historial de ventas, aprobación de pagos y creación de venta física (POS)", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] },
+      { id: "Devoluciones", nombre: "Devoluciones", descripcion: "Registro, seguimiento y gestión de devoluciones según políticas de la empresa", accionesDisponibles: ["ver", "crear", "editar", "eliminar"] }
     ]
   }
 ];
@@ -112,6 +113,8 @@ export function hasPrivilege(user, modulo, accion = "ver") {
     modulosEquivalentes.push("Gestión de Ventas", "Vendedor");
   } else if (modulo === "Gestión de Ventas" && (accionNorm === "ver" || accionNorm === "crear")) {
     modulosEquivalentes.push("Punto de Venta");
+  } else if (modulo === "Devoluciones") {
+    modulosEquivalentes.push("Gestión de Ventas", "Ventas");
   } else if (modulo === "Fichas Técnicas") {
     modulosEquivalentes.push("Productos", "Insumos");
   }

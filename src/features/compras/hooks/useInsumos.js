@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { insumosService } from "../servicios/insumosService";
 import { proveedoresService } from "../servicios/proveedoresService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { normalizeFichaWithVersions } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { apiClient } from "@/shared/api/apiClient";
-import { matchesSmartSearch, formatStatusTokens, hasStatusSearchIntent } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, rankSearchResults, normalizeSearchText } from "@/shared/utils/searchUtils";
 
 export function useInsumos() {
   const notify = useNotifications();
@@ -148,171 +148,235 @@ export function useInsumos() {
     fetchPapelera();
   }, [fetchInsumos, fetchPapelera]);
 
-  const filteredInsumos = insumos.filter((item) => {
-    const isPrep = item.tipo === "Preparado";
-    const isAgotado = (item.stock || 0) === 0;
-    const isBajo = (item.stock || 0) <= (item.stockMinimo || 0) && (item.stock || 0) > 0;
-    const stockStatus = isAgotado
-      ? "Agotado agotada stock agotado sin stock sin_stock cero 0 reabastecer"
-      : isBajo
-      ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento disponible en stock"
-      : "Normal disponible en stock suficiente";
-    const esAdicionStr = (item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1")
-      ? "Adición Adicion adicion es adicion adicionable si sí"
-      : "estandar ingrediente base";
-
+  const filteredInsumos = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
-
-    // Chequeo profundo de lotes y fechas de vencimiento
-    const hasLots = Array.isArray(item.lotes) && item.lotes.length > 0;
-    let tieneLoteVencido = false;
-    const lotesTokensArr = [];
-
-    if (hasLots) {
-      lotesTokensArr.push("lote lotes con lote con lotes");
-      item.lotes.forEach((l) => {
-        const isLoteVenc = l.estado === "VENCIDO" || (l.fechaVencimiento && l.fechaVencimiento <= todayStr);
-        if (isLoteVenc) tieneLoteVencido = true;
-
-        const loteStatusStr = isLoteVenc
-          ? "lote vencido lotes vencidos vencido vencida vencitos vencito caducado caducada expirado expirada reabastecer"
-          : "lote activo lote vigente lote disponible";
-
-        let fechaLoteFormatted = "";
-        if (l.fechaVencimiento) {
-          try {
-            const parts = String(l.fechaVencimiento).split("-");
-            if (parts.length === 3) {
-              fechaLoteFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-            }
-          } catch {}
-        }
-
-        lotesTokensArr.push(
-          `lote ${l.numeroLote || ""} #${l.numeroLote || ""} ${l.numeroLote || ""} ` +
-          `cant ${l.cantidad || 0} disp ${l.cantidadDisponible ?? l.cantidad ?? 0} ` +
-          `${l.fechaVencimiento || ""} ${fechaLoteFormatted} ${l.estado || ""} ${loteStatusStr}`
-        );
-      });
-    } else {
-      lotesTokensArr.push("sin_lote sin_lotes");
-    }
-
-    const insumoDirectoVencido = item.fechaVencimiento && item.fechaVencimiento <= todayStr;
-    const estaVencido = tieneLoteVencido || insumoDirectoVencido;
-    const vencimientoKeywords = estaVencido
-      ? "lote vencido lotes vencidos vencido vencida vencitos vencito caducado caducada expirado expirada vencimiento inactivado reabastecer reabastecimiento"
-      : "vigente fresco al dia buen_estado";
-
-    let fechaVencFormatted = "";
-    if (item.fechaVencimiento) {
-      try {
-        const parts = String(item.fechaVencimiento).split("-");
-        if (parts.length === 3) {
-          fechaVencFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-      } catch {}
-    }
-
-    const lotesTokens = lotesTokensArr.join(" ");
-
-    const ingredientesTokens = (item.ingredientes || [])
-      .map((ing) => `${ing.nombre || ""} ${ing.cantidad || ""} ${ing.unidadMedida || ""}`)
-      .join(" ");
-
-    // Ficha técnica tokens para insumos preparados
-    let fichaTokens = "";
-    if (item.fichaTecnica) {
-      const f = item.fichaTecnica;
-      fichaTokens = [
-        f.procedimiento || "",
-        f.tiempoPreparacion ? `${f.tiempoPreparacion} min minutos tiempo preparacion` : "",
-        f.rendimiento ? `${f.rendimiento} rendimiento porciones` : "",
-        f.vidaUtil ? `${f.vidaUtil} vida util almacenamiento` : "",
-        f.especificaciones || "",
-        f.caracteristicas || "",
-        f.condicionesAlmacenamiento || ""
-      ].join(" ");
-    }
-
-    const precioNum = Number(item.precioUnitario || item.costo || item.precio || 0);
-    const precioAdicionNum = Number(item.precioAdicion || 0);
-
-    const hasDesc = Boolean(item.descripcion && String(item.descripcion).trim());
-    const descText = hasDesc ? `${item.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
-    const hasCat = Boolean((item.categoria || item.categoriaNombre) && String(item.categoria || item.categoriaNombre).trim());
-    const catText = hasCat ? `${item.categoria || ""} ${item.categoriaNombre || ""} con_categoria con categoria` : "sin_categoria sin categoria";
-    const hasProv = Boolean((item.proveedor || item.proveedorNombre) && String(item.proveedor || item.proveedorNombre).trim());
-    const provText = hasProv ? `${item.proveedor || ""} ${item.proveedorNombre || ""} con_proveedor con proveedor` : "sin_proveedor sin proveedor";
-
-    const matchSearch = matchesSmartSearch(
-      [
-        item.nombre,
-        item.categoria,
-        item.categoriaNombre,
-        catText,
-        item.categoria?.nombre,
-        item.idCategoriaInsumo,
-        item.proveedor,
-        item.proveedorNombre,
-        provText,
-        item.proveedor?.nombre,
-        item.proveedor?.contacto,
-        item.proveedor?.telefono,
-        item.proveedor?.email,
-        item.proveedor?.nit,
-        formatStatusTokens(item.estado),
-        item.tipo,
-        isPrep ? "Insumo Preparado Preparado receta" : "Insumo Base Base ingrediente",
-        descText,
-        item.unidadMedida,
-        item.id,
-        item.idInsumo,
-        `#${item.id || item.idInsumo}`,
-        item.stock,
-        String(item.stock ?? ""),
-        item.stock !== undefined && item.stock !== null ? `${item.stock} ${item.unidadMedida || ""}` : "",
-        `stock ${item.stock ?? ""}`,
-        item.stockMinimo,
-        String(item.stockMinimo ?? ""),
-        `minimo ${item.stockMinimo ?? ""}`,
-        item.stockMaximo,
-        String(item.stockMaximo ?? ""),
-        `maximo ${item.stockMaximo ?? ""}`,
-        precioNum,
-        String(precioNum),
-        `$${precioNum.toLocaleString("es-CO")}`,
-        `$ ${precioNum.toLocaleString("es-CO")}`,
-        precioAdicionNum > 0 ? precioAdicionNum : "",
-        precioAdicionNum > 0 ? String(precioAdicionNum) : "",
-        precioAdicionNum > 0 ? `$${precioAdicionNum.toLocaleString("es-CO")}` : "",
-        stockStatus,
-        esAdicionStr,
-        item.incluyeIva ? "con iva incluye iva gravado" : "exento sin_impuesto no_gravado",
-        item.fechaExpedicion || "",
-        item.fechaVencimiento || "",
-        fechaVencFormatted,
-        vencimientoKeywords,
-        lotesTokens,
-        ingredientesTokens,
-        fichaTokens
-      ],
-      searchTerm
-    );
-
     const hasSearch = Boolean(searchTerm && searchTerm.trim());
-    const isItemActivo = item.estado === "Activo" || item.estado === 1 || item.estado === "1";
-    const matchEstadoFiltro =
-      filterEstado === "Todos" ||
-      (filterEstado === "Activo" && isItemActivo) ||
-      (filterEstado === "Inactivo" && !isItemActivo);
 
-    // Si el usuario escribe en el buscador, la búsqueda prevalece para encontrar registros inmediatamente
-    const matchEstado = !hasSearch ? matchEstadoFiltro : true;
-    const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
+    const baseFiltered = insumos.filter((item) => {
+      const isPrep = item.tipo === "Preparado";
+      const isAgotado = (item.stock || 0) === 0;
+      const isBajo = (item.stock || 0) <= (item.stockMinimo || 0) && (item.stock || 0) > 0;
+      const stockStatus = isAgotado
+        ? "Agotado agotada stock agotado sin stock sin_stock cero 0 reabastecer"
+        : isBajo
+        ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento disponible en stock"
+        : "Normal disponible en stock suficiente";
+      const esAdicionStr = (item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1")
+        ? "Adición Adicion adicion es adicion adicionable si sí"
+        : "estandar ingrediente base sin adicion";
 
-    return matchSearch && matchCategoria && matchEstado;
-  });
+      // Chequeo profundo de lotes y fechas de vencimiento
+      const hasLots = Array.isArray(item.lotes) && item.lotes.length > 0;
+      let tieneLoteVencido = false;
+      const lotesTokensArr = [];
+
+      if (hasLots) {
+        lotesTokensArr.push("lote lotes con lote con lotes");
+        item.lotes.forEach((l) => {
+          const isLoteVenc = l.estado === "VENCIDO" || (l.fechaVencimiento && l.fechaVencimiento <= todayStr);
+          if (isLoteVenc) tieneLoteVencido = true;
+
+          const loteStatusStr = isLoteVenc
+            ? "lote vencido lotes vencidos vencido vencida vencitos vencito caducado caducada expirado expirada reabastecer"
+            : "lote activo lote vigente lote disponible";
+
+          let fechaLoteFormatted = "";
+          if (l.fechaVencimiento) {
+            try {
+              const parts = String(l.fechaVencimiento).split("-");
+              if (parts.length === 3) {
+                fechaLoteFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+              }
+            } catch {}
+          }
+
+          lotesTokensArr.push(
+            `lote ${l.numeroLote || ""} #${l.numeroLote || ""} ${l.numeroLote || ""} ` +
+            `cant ${l.cantidad || 0} disp ${l.cantidadDisponible ?? l.cantidad ?? 0} ` +
+            `${l.fechaVencimiento || ""} ${fechaLoteFormatted} ${l.estado || ""} ${loteStatusStr}`
+          );
+        });
+      } else {
+        lotesTokensArr.push("sin lote sin_lote sin lotes sin_lotes");
+      }
+
+      const insumoDirectoVencido = item.fechaVencimiento && item.fechaVencimiento <= todayStr;
+      const estaVencido = tieneLoteVencido || insumoDirectoVencido;
+      const vencimientoKeywords = estaVencido
+        ? "lote vencido lotes vencidos vencido vencida vencitos vencito caducado caducada expirado expirada vencimiento inactivado reabastecer reabastecimiento"
+        : "vigente fresco al dia buen_estado no vencido";
+
+      let fechaVencFormatted = "";
+      if (item.fechaVencimiento) {
+        try {
+          const parts = String(item.fechaVencimiento).split("-");
+          if (parts.length === 3) {
+            fechaVencFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+        } catch {}
+      }
+
+      const lotesTokens = lotesTokensArr.join(" ");
+
+      const ingredientesTokens = (item.ingredientes || [])
+        .map((ing) => `${ing.nombre || ""} ${ing.cantidad || ""} ${ing.unidadMedida || ""}`)
+        .join(" ");
+
+      // Ficha técnica tokens para insumos preparados
+      let fichaTokens = "";
+      if (item.fichaTecnica) {
+        const f = item.fichaTecnica;
+        fichaTokens = [
+          f.procedimiento || "",
+          f.tiempoPreparacion ? `${f.tiempoPreparacion} min minutos tiempo preparacion` : "",
+          f.rendimiento ? `${f.rendimiento} rendimiento porciones` : "",
+          f.vidaUtil ? `${f.vidaUtil} vida util almacenamiento` : "",
+          f.especificaciones || "",
+          f.caracteristicas || "",
+          f.condicionesAlmacenamiento || ""
+        ].join(" ");
+      }
+
+      const precioNum = Number(item.precioUnitario || item.costo || item.precio || 0);
+      const precioAdicionNum = Number(item.precioAdicion || 0);
+
+      const hasDesc = Boolean(item.descripcion && String(item.descripcion).trim());
+      const descText = hasDesc ? `${item.descripcion} con_descripcion con descripcion` : "sin_descripcion sin descripcion";
+      const hasCat = Boolean((item.categoria || item.categoriaNombre) && String(item.categoria || item.categoriaNombre).trim());
+      const catText = hasCat ? `${item.categoria || ""} ${item.categoriaNombre || ""} con_categoria con categoria` : "sin_categoria sin categoria";
+      const hasProv = Boolean((item.proveedor || item.proveedorNombre) && String(item.proveedor || item.proveedorNombre).trim());
+      const provText = hasProv ? `${item.proveedor || ""} ${item.proveedorNombre || ""} con_proveedor con proveedor` : "sin_proveedor sin proveedor";
+
+      const matchSearch = matchesSmartSearch(
+        [
+          item.nombre,
+          item.categoria,
+          item.categoriaNombre,
+          catText,
+          item.categoria?.nombre,
+          item.idCategoriaInsumo,
+          item.proveedor,
+          item.proveedorNombre,
+          provText,
+          item.proveedor?.nombre,
+          item.proveedor?.contacto,
+          item.proveedor?.telefono,
+          item.proveedor?.email,
+          item.proveedor?.nit,
+          formatStatusTokens(item.estado),
+          item.tipo,
+          isPrep ? "Insumo Preparado Preparado receta" : "Insumo Base Base ingrediente",
+          descText,
+          item.unidadMedida,
+          item.id,
+          item.idInsumo,
+          `#${item.id || item.idInsumo}`,
+          item.stock,
+          String(item.stock ?? ""),
+          item.stock !== undefined && item.stock !== null ? `${item.stock} ${item.unidadMedida || ""}` : "",
+          `stock ${item.stock ?? ""}`,
+          item.stockMinimo,
+          String(item.stockMinimo ?? ""),
+          `minimo ${item.stockMinimo ?? ""}`,
+          item.stockMaximo,
+          String(item.stockMaximo ?? ""),
+          `maximo ${item.stockMaximo ?? ""}`,
+          precioNum,
+          String(precioNum),
+          `$${precioNum.toLocaleString("es-CO")}`,
+          `$ ${precioNum.toLocaleString("es-CO")}`,
+          precioAdicionNum > 0 ? precioAdicionNum : "",
+          precioAdicionNum > 0 ? String(precioAdicionNum) : "",
+          precioAdicionNum > 0 ? `$${precioAdicionNum.toLocaleString("es-CO")}` : "",
+          stockStatus,
+          esAdicionStr,
+          item.incluyeIva ? "con iva incluye iva gravado" : "exento sin_impuesto no_gravado",
+          item.fechaExpedicion || "",
+          item.fechaVencimiento || "",
+          fechaVencFormatted,
+          vencimientoKeywords,
+          lotesTokens,
+          ingredientesTokens,
+          fichaTokens
+        ],
+        searchTerm
+      );
+
+      const isItemActivo = item.estado === "Activo" || item.estado === 1 || item.estado === "1";
+      const matchEstadoFiltro =
+        filterEstado === "Todos" ||
+        (filterEstado === "Activo" && isItemActivo) ||
+        (filterEstado === "Inactivo" && !isItemActivo);
+
+      // Si el usuario escribe en el buscador, la búsqueda prevalece para encontrar registros inmediatamente
+      const matchEstado = !hasSearch ? matchEstadoFiltro : true;
+      const matchCategoria = filterCategoria === "Todas" || item.categoria === filterCategoria || item.categoriaNombre === filterCategoria;
+
+      return matchSearch && matchCategoria && matchEstado;
+    });
+
+    if (!hasSearch) {
+      return baseFiltered;
+    }
+
+    return rankSearchResults(baseFiltered, searchTerm, (item, normQuery, tokens) => {
+      let extra = 0;
+      const isAdicion = item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1";
+
+      // Si busca "adicion", los que sean adiciones salen inmediatamente de primero
+      if (tokens.some((t) => t.includes("adicion") || t.includes("adici"))) {
+        if (isAdicion) extra += 2500;
+        if (item.precioAdicion && Number(item.precioAdicion) > 0) extra += 500;
+      }
+
+      // Si busca "vencido" o variantes, los que tengan vencimiento cumplido van primero
+      const tieneLoteVencido = (item.lotes || []).some(
+        (l) => l.estado === "VENCIDO" || (l.fechaVencimiento && l.fechaVencimiento <= todayStr)
+      );
+      const vencidoDirecto = item.fechaVencimiento && item.fechaVencimiento <= todayStr;
+      const estaVencido = tieneLoteVencido || vencidoDirecto;
+
+      if (tokens.some((t) => t.includes("vencid") || t.includes("vencit") || t.includes("caduc"))) {
+        if (estaVencido) extra += 2500;
+      }
+
+      // Si busca "lote" o "lotes"
+      if (tokens.some((t) => t === "lote" || t === "lotes")) {
+        if ((item.lotes || []).length > 0) extra += 800;
+      }
+
+      // Coincidencia con número de lote
+      (item.lotes || []).forEach((l) => {
+        const lotNum = normalizeSearchText(l.numeroLote || "");
+        if (lotNum && tokens.some((t) => lotNum.includes(t))) extra += 600;
+      });
+
+      // Si busca "preparado" o "base"
+      if (tokens.some((t) => t.includes("preparad"))) {
+        if (item.tipo === "Preparado") extra += 1200;
+      } else if (tokens.some((t) => t === "base")) {
+        if (item.tipo !== "Preparado") extra += 1200;
+      }
+
+      // Categoría
+      const cat = normalizeSearchText(item.categoriaNombre || item.categoria?.nombre || item.categoria || "");
+      if (cat) {
+        if (cat === normQuery) extra += 600;
+        else if (cat.startsWith(normQuery)) extra += 400;
+        else if (cat.includes(normQuery)) extra += 200;
+      }
+
+      // Proveedor
+      const prov = normalizeSearchText(item.proveedorNombre || item.proveedor?.nombre || item.proveedor || "");
+      if (prov) {
+        if (prov === normQuery) extra += 500;
+        else if (prov.startsWith(normQuery)) extra += 300;
+        else if (prov.includes(normQuery)) extra += 150;
+      }
+
+      return extra;
+    });
+  }, [insumos, searchTerm, filterCategoria, filterEstado]);
 
   const createInsumo = async (data) => {
     try {
@@ -595,4 +659,3 @@ export function useInsumos() {
     resetUnreadCount
   };
 }
-

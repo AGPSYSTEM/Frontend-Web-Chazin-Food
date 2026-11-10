@@ -479,8 +479,19 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onCancelar, onEdit
                           <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
                             ${Number(d.precioUnitario).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
                           </td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-900 dark:text-gray-100">
-                            ${Number(d.subtotal || (d.cantidad * d.precioUnitario)).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                          <td className="px-4 py-3 text-right">
+                            <span className="font-bold text-gray-900 dark:text-gray-100 block">
+                              ${Number(d.subtotal || (d.cantidad * d.precioUnitario)).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
+                            </span>
+                            {Boolean(d.incluyeIva || Number(d.iva) > 0) ? (
+                              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                                +IVA ({d.porcentajeIva || 19}%): ${Number(d.iva || 0).toLocaleString("es-CO")}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400">
+                                Exento de IVA
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -502,7 +513,7 @@ export function DetalleCompraModal({ isOpen, onClose, compra, onCancelar, onEdit
               </div>
               {Boolean(compra.incluyeIva || Number(compra.iva) > 0) && (
                 <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
-                  <span>IVA (19%):</span>
+                  <span>IVA Total Insumos:</span>
                   <span className="font-semibold">
                     +${Number(compra.iva || 0).toLocaleString("es-CO", { minimumFractionDigits: 0 })}
                   </span>

@@ -97,7 +97,9 @@ export function InsumoModal({
     // Adición integrada
     esAdicion: false,
     precioAdicion: 0,
-    imagen: ""
+    imagen: "",
+    incluyeIva: false,
+    porcentajeIva: "19"
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -149,7 +151,10 @@ export function InsumoModal({
         esAdicion: esAdicionVal,
         precioAdicion: precioAdicionVal,
         imagen: imagenVal,
-        incluyeIva: !!(insumo.incluyeIva === 1 || insumo.incluyeIva === true || insumo.incluyeIva === "1")
+        incluyeIva: !!(insumo.incluyeIva === 1 || insumo.incluyeIva === true || insumo.incluyeIva === "1"),
+        porcentajeIva: (insumo.porcentajeIva !== undefined && insumo.porcentajeIva !== null)
+          ? String(insumo.porcentajeIva)
+          : (insumo.incluyeIva ? "19" : "19")
       });
 
       if (isPrep) {
@@ -188,7 +193,8 @@ export function InsumoModal({
         esAdicion: esSalsaDefault,
         precioAdicion: esSalsaDefault ? 1500 : 0,
         imagen: esSalsaDefault ? "sauce" : "bacon",
-        incluyeIva: false
+        incluyeIva: false,
+        porcentajeIva: "19"
       });
       setInitialFichaTecnica(null);
       setFichaTecnica(null);
@@ -221,7 +227,8 @@ export function InsumoModal({
       esAdicion: form.esAdicion,
       precioAdicion: form.precioAdicion,
       imagen: form.imagen,
-      incluyeIva: form.incluyeIva
+      incluyeIva: form.incluyeIva,
+      porcentajeIva: form.porcentajeIva
     };
 
     // Restaurar borrador del formulario destino si existe (#61)
@@ -394,6 +401,28 @@ export function InsumoModal({
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
+    // ── Modo Edición: Solo se permite modificar Stock Mínimo, Stock Máximo y Descripción (#78) ──
+    if (isEditing) {
+      const minVal = Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo));
+      const maxVal = Math.max(0, form.stockMaximo === "" ? 0 : Number(form.stockMaximo));
+      if (maxVal < minVal) {
+        notify.warning(
+          "Stock Inválido",
+          "La cantidad máxima no puede ser inferior a la cantidad mínima."
+        );
+        return;
+      }
+
+      onSave({
+        ...insumo,
+        stockMinimo: minVal,
+        stockMaximo: maxVal,
+        descripcion: (form.descripcion || "").trim(),
+        estado: form.estado
+      });
+      return;
+    }
+
     const fieldsToValidate = ["nombre"];
     if (tipo === "Base") {
       fieldsToValidate.push("idCategoriaInsumo", "stock", "stockMinimo", "stockMaximo", "precioUnitario");
@@ -495,21 +524,22 @@ export function InsumoModal({
         unidadMedida: form.unidadMedida || "und — unidad",
         estado: form.estado || "Activo",
         incluyeIva: form.incluyeIva ? 1 : 0,
+        porcentajeIva: form.incluyeIva ? (parseFloat(form.porcentajeIva) || 19) : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal
       };
 
       const prevEntityDataInicialInsumo = insumo
         ? {
-            nombre: insumo.nombre || "",
-            descripcion: insumo.descripcion || "",
-            precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
-            unidadMedida: insumo.unidadMedida || "und — unidad",
-            estado: insumo.estado || "Activo",
-            incluyeIva: insumo.incluyeIva ? 1 : 0,
-            esAdicion: Boolean(insumo.esAdicion),
-            precioAdicion: Number(insumo.precioAdicion || 0)
-          }
+          nombre: insumo.nombre || "",
+          descripcion: insumo.descripcion || "",
+          precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
+          unidadMedida: insumo.unidadMedida || "und — unidad",
+          estado: insumo.estado || "Activo",
+          incluyeIva: insumo.incluyeIva ? 1 : 0,
+          esAdicion: Boolean(insumo.esAdicion),
+          precioAdicion: Number(insumo.precioAdicion || 0)
+        }
         : null;
 
       onSave({
@@ -521,6 +551,7 @@ export function InsumoModal({
         tipo: "Preparado",
         estado: form.estado,
         incluyeIva: form.incluyeIva ? 1 : 0,
+        porcentajeIva: form.incluyeIva ? (parseFloat(form.porcentajeIva) || 19) : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal,
@@ -559,6 +590,7 @@ export function InsumoModal({
         fechaExpedicion: null, // #62: Eliminada fecha de expedición
         fechaVencimiento: null, // #62: Retirada de Insumo maestro, gestionada por Lote en Compras
         incluyeIva: form.incluyeIva ? 1 : 0,
+        porcentajeIva: form.incluyeIva ? (parseFloat(form.porcentajeIva) || 19) : 0,
         esAdicion: esAdicionFinal,
         precioAdicion: precioAdicionFinal,
         imagen: imagenFinal
@@ -569,7 +601,7 @@ export function InsumoModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      /* Evitar cierre accidental al hacer clic fuera (#7) */
+    /* Evitar cierre accidental al hacer clic fuera (#7) */
     >
       <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800">
         {/* Modal Header */}
@@ -604,64 +636,81 @@ export function InsumoModal({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0" noValidate>
+          {/* Banner Informativo en Modo Edición */}
+          {isEditing && (
+            <div className="mx-6 mt-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200 shrink-0">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <span className="font-bold">Modo Edición Restringido:</span> Por políticas de trazabilidad y control de inventario, los datos maestros (nombre, categoría, unidad de medida, costo base, stock e impuestos) son <strong>inmutables</strong>. Solo se permite actualizar el <strong>Stock Mínimo</strong>, <strong>Stock Máximo</strong> y la <strong>Descripción</strong>.
+              </div>
+            </div>
+          )}
+
           {/* Scrollable Form Body */}
           <div className="p-6 overflow-y-auto flex-1 space-y-5">
             {/* ════ SWITCH / SELECTOR TIPO DE INSUMO (Estilo Proveedores) ════ */}
-            <div className="flex flex-col gap-1.5">
-              <label className={labelCls}>Tipo de Insumo</label>
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
-                <button
-                  type="button"
-                  onClick={() => handleTipoChange("Base")}
-                  className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    tipo === "Base"
-                      ? "bg-white dark:bg-gray-900 text-[#F05454] shadow-sm ring-1 ring-black/5"
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <Package className="w-4 h-4" />
-                  <span>Insumo Base / Materia Prima</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTipoChange("Preparado")}
-                  className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    tipo === "Preparado"
-                      ? "bg-white dark:bg-gray-900 text-[#F05454] shadow-sm ring-1 ring-black/5"
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
-                  }`}
-                >
-                  <FlaskConical className="w-4 h-4" />
-                  <span>Insumo Preparado (Receta)</span>
-                </button>
+            {!isEditing && (
+              <div className="flex flex-col gap-1.5">
+                <label className={labelCls}>Tipo de Insumo</label>
+                <div className="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+                  <button
+                    type="button"
+                    onClick={() => handleTipoChange("Base")}
+                    className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${tipo === "Base"
+                        ? "bg-white dark:bg-gray-900 text-[#F05454] shadow-sm ring-1 ring-black/5"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>Insumo Base / Materia Prima</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTipoChange("Preparado")}
+                    className={`flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer ${tipo === "Preparado"
+                        ? "bg-white dark:bg-gray-900 text-[#F05454] shadow-sm ring-1 ring-black/5"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      }`}
+                  >
+                    <FlaskConical className="w-4 h-4" />
+                    <span>Insumo Preparado (Receta)</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ════ INSUMO BASE / DIRECTO ════ */}
             {tipo === "Base" && (
               <div className="space-y-4">
                 {/* Banner de Guía de Unidades y Stock */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3.5 flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
-                    <Info className="w-3.5 h-3.5" />
+                {!isEditing && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3.5 flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs">
+                      <Info className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">
+                      <p className="font-semibold text-blue-950 dark:text-blue-100">Control de Inventario y Fórmulas:</p>
+                      Si compras en <strong>Kilogramos (Kg)</strong> o <strong>Litros (Lt)</strong>, en las recetas y ventas puedes usar porciones en <strong>Gramos (Gr)</strong> o <strong>Mililitros (Ml)</strong> y el sistema convertirá las proporciones automáticamente al vender.
+                    </div>
                   </div>
-                  <div className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed">
-                    <p className="font-semibold text-blue-950 dark:text-blue-100">Control de Inventario y Fórmulas:</p>
-                    Si compras en <strong>Kilogramos (Kg)</strong> o <strong>Litros (Lt)</strong>, en las recetas y ventas puedes usar porciones en <strong>Gramos (Gr)</strong> o <strong>Mililitros (Ml)</strong> y el sistema convertirá las proporciones automáticamente al vender.
-                  </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>Nombre del Insumo <span className="text-red-500">*</span></label>
+                    <label className={labelCls}>
+                      Nombre del Insumo {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                    </label>
                     <input
                       type="text"
                       required
+                      disabled={isEditing}
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
                       onBlur={() => handleBlur("nombre")}
                       className={`${baseInputCls} ${
-                        touched.nombre && errors.nombre
+                        isEditing
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                          : touched.nombre && errors.nombre
                           ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                           : touched.nombre && form.nombre && !errors.nombre
                           ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -669,12 +718,12 @@ export function InsumoModal({
                       }`}
                       placeholder="Ej. Queso Cheddar en Lonchas o Pan Brioche"
                     />
-                    {touched.nombre && errors.nombre ? (
+                    {!isEditing && touched.nombre && errors.nombre ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.nombre}</span>
                       </p>
-                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                    ) : !isEditing && touched.nombre && form.nombre && !errors.nombre ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>Nombre de insumo válido</span>
@@ -683,8 +732,11 @@ export function InsumoModal({
                   </div>
 
                   <div>
-                    <label className={labelCls}>Categoría <span className="text-red-500">*</span></label>
+                    <label className={labelCls}>
+                      Categoría {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                    </label>
                     <select
+                      disabled={isEditing}
                       value={String(form.idCategoriaInsumo || "")}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -694,12 +746,14 @@ export function InsumoModal({
                         handleCategoriaChange(catId, catNom);
                       }}
                       onBlur={() => handleBlur("idCategoriaInsumo")}
-                      className={`${baseInputCls} cursor-pointer ${
-                        touched.idCategoriaInsumo && errors.idCategoriaInsumo
-                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                      className={`${baseInputCls} ${
+                        isEditing
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700 pointer-events-none"
+                          : touched.idCategoriaInsumo && errors.idCategoriaInsumo
+                          ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400 cursor-pointer"
                           : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo
-                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
-                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                          ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400 cursor-pointer"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454] cursor-pointer"
                       }`}
                     >
                       <option value="">Seleccionar categoría</option>
@@ -712,12 +766,12 @@ export function InsumoModal({
                         );
                       })}
                     </select>
-                    {touched.idCategoriaInsumo && errors.idCategoriaInsumo ? (
+                    {!isEditing && touched.idCategoriaInsumo && errors.idCategoriaInsumo ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.idCategoriaInsumo}</span>
                       </p>
-                    ) : touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo ? (
+                    ) : !isEditing && touched.idCategoriaInsumo && form.idCategoriaInsumo && !errors.idCategoriaInsumo ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>Categoría seleccionada</span>
@@ -725,14 +779,21 @@ export function InsumoModal({
                     ) : null}
                   </div>
 
-                  {/* Proveedor eliminado: se asigna desde Gestión de Compras */}
+                  {/* Proveedor eliminado: se gestiona en compras */}
 
                   <div>
-                    <label className={labelCls}>Unidad de Medida / Presentación <span className="text-red-500">*</span></label>
+                    <label className={labelCls}>
+                      Unidad de Medida / Presentación {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                    </label>
                     <select
+                      disabled={isEditing}
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
+                      className={`${baseInputCls} ${
+                        isEditing
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700 pointer-events-none"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer"
+                      }`}
                     >
                       <option value="Kg">Kilogramos (Kg) — Peso / Masa</option>
                       <option value="Gr">Gramos (Gr) — Peso / Masa</option>
@@ -746,7 +807,7 @@ export function InsumoModal({
 
                   <div>
                     <label className={labelCls}>
-                      Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""}) <span className="text-red-500">*</span>
+                      Precio de Compra (${form.unidadMedida ? ` / ${getUnitShort(form.unidadMedida)}` : ""}) {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">$</span>
@@ -754,11 +815,14 @@ export function InsumoModal({
                         min="0"
                         step="500"
                         formatThousands={true}
+                        disabled={isEditing}
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
                         onBlur={() => handleBlur("precioUnitario")}
                         className={`${baseInputCls} pl-8 pr-20 ${
-                          touched.precioUnitario && errors.precioUnitario
+                          isEditing
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                            : touched.precioUnitario && errors.precioUnitario
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                             : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
                             ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -770,12 +834,12 @@ export function InsumoModal({
                         / {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.precioUnitario && errors.precioUnitario ? (
+                    {!isEditing && touched.precioUnitario && errors.precioUnitario ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.precioUnitario}</span>
                       </p>
-                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                    ) : !isEditing && touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>Precio de compra válido</span>
@@ -785,17 +849,20 @@ export function InsumoModal({
 
                   <div>
                     <label className={labelCls}>
-                      Stock Inicial / Actual ({getUnitShort(form.unidadMedida)})
+                      Stock Actual ({getUnitShort(form.unidadMedida)}) {isEditing && <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span>}
                     </label>
                     <div className="relative">
                       <NumberInput
                         min="0"
                         step={form.unidadMedida === "Kg" || form.unidadMedida === "Lt" ? "0.01" : "1"}
+                        disabled={isEditing}
                         value={form.stock}
                         onChange={(e) => handleNumberInput("stock", e.target.value)}
                         onBlur={() => handleBlur("stock")}
                         className={`${baseInputCls} pr-20 font-semibold ${
-                          touched.stock && errors.stock
+                          isEditing
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                            : touched.stock && errors.stock
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                             : touched.stock && form.stock !== "" && !errors.stock
                             ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -807,15 +874,15 @@ export function InsumoModal({
                         {getUnitShort(form.unidadMedida)}
                       </span>
                     </div>
-                    {touched.stock && errors.stock ? (
+                    {!isEditing && touched.stock && errors.stock ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.stock}</span>
                       </p>
-                    ) : touched.stock && form.stock !== "" && !errors.stock ? (
+                    ) : !isEditing && touched.stock && form.stock !== "" && !errors.stock ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Stock inicial válido</span>
+                        <span>Stock válido</span>
                       </p>
                     ) : null}
                   </div>
@@ -831,13 +898,12 @@ export function InsumoModal({
                         value={form.stockMinimo}
                         onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
                         onBlur={() => handleBlur("stockMinimo")}
-                        className={`${baseInputCls} pr-20 ${
-                          touched.stockMinimo && errors.stockMinimo
+                        className={`${baseInputCls} pr-20 ${touched.stockMinimo && errors.stockMinimo
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                             : touched.stockMinimo && form.stockMinimo !== "" && !errors.stockMinimo
-                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
-                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
-                        }`}
+                              ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                              : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
                         placeholder="5"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 pointer-events-none">
@@ -868,13 +934,12 @@ export function InsumoModal({
                         value={form.stockMaximo}
                         onChange={(e) => handleNumberInput("stockMaximo", e.target.value)}
                         onBlur={() => handleBlur("stockMaximo")}
-                        className={`${baseInputCls} pr-20 ${
-                          touched.stockMaximo && errors.stockMaximo
+                        className={`${baseInputCls} pr-20 ${touched.stockMaximo && errors.stockMaximo
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                             : touched.stockMaximo && form.stockMaximo !== "" && !errors.stockMaximo
-                            ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
-                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
-                        }`}
+                              ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
+                              : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
                         placeholder="100"
                       />
                       <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 pointer-events-none">
@@ -914,16 +979,19 @@ export function InsumoModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className={labelCls}>
-                      Nombre del Insumo Preparado <span className="text-red-500">*</span>
+                      Nombre del Insumo Preparado {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="text"
                       required
+                      disabled={isEditing}
                       value={form.nombre}
                       onChange={(e) => handleNombreChange(e.target.value)}
                       onBlur={() => handleBlur("nombre")}
                       className={`${baseInputCls} ${
-                        touched.nombre && errors.nombre
+                        isEditing
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                          : touched.nombre && errors.nombre
                           ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                           : touched.nombre && form.nombre && !errors.nombre
                           ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -931,12 +999,12 @@ export function InsumoModal({
                       }`}
                       placeholder="Ej. Salsa Chazin de la Casa, Carne Molida Sazonada, Cebolla Caramelizada..."
                     />
-                    {touched.nombre && errors.nombre ? (
+                    {!isEditing && touched.nombre && errors.nombre ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.nombre}</span>
                       </p>
-                    ) : touched.nombre && form.nombre && !errors.nombre ? (
+                    ) : !isEditing && touched.nombre && form.nombre && !errors.nombre ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>Nombre de preparado válido</span>
@@ -957,7 +1025,7 @@ export function InsumoModal({
 
                   <div>
                     <label className={labelCls}>
-                      Costo / Precio Estimado <span className="text-red-500">*</span>
+                      Costo / Precio Estimado {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm pointer-events-none">$</span>
@@ -966,11 +1034,14 @@ export function InsumoModal({
                         step="500"
                         formatThousands={true}
                         required
+                        disabled={isEditing}
                         value={form.precioUnitario}
                         onChange={(e) => handleNumberInput("precioUnitario", e.target.value)}
                         onBlur={() => handleBlur("precioUnitario")}
                         className={`${baseInputCls} pl-8 ${
-                          touched.precioUnitario && errors.precioUnitario
+                          isEditing
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                            : touched.precioUnitario && errors.precioUnitario
                             ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                             : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario
                             ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -979,12 +1050,12 @@ export function InsumoModal({
                         placeholder="0"
                       />
                     </div>
-                    {touched.precioUnitario && errors.precioUnitario ? (
+                    {!isEditing && touched.precioUnitario && errors.precioUnitario ? (
                       <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span>{errors.precioUnitario}</span>
                       </p>
-                    ) : touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
+                    ) : !isEditing && touched.precioUnitario && form.precioUnitario !== "" && !errors.precioUnitario ? (
                       <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                         <span>Costo estimado válido</span>
@@ -993,11 +1064,18 @@ export function InsumoModal({
                   </div>
 
                   <div>
-                    <label className={labelCls}>Unidad de Medida</label>
+                    <label className={labelCls}>
+                      Unidad de Medida {isEditing && <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span>}
+                    </label>
                     <select
+                      disabled={isEditing}
                       value={form.unidadMedida}
                       onChange={(e) => setForm({ ...form, unidadMedida: e.target.value })}
-                      className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer`}
+                      className={`${baseInputCls} ${
+                        isEditing
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700 pointer-events-none"
+                          : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 cursor-pointer"
+                      }`}
                     >
                       <option value="und — unidad">und — unidad</option>
                       <option value="porción">porción</option>
@@ -1008,50 +1086,93 @@ export function InsumoModal({
                       <option value="paq">paq — Paquete</option>
                     </select>
                   </div>
+
+                  {/* Stock Mínimo y Stock Máximo para Insumo Preparado */}
+                  <div>
+                    <label className={labelCls}>
+                      Stock Mínimo Alerta ({getUnitShort(form.unidadMedida)})
+                    </label>
+                    <div className="relative">
+                      <NumberInput
+                        min="0"
+                        step="1"
+                        value={form.stockMinimo}
+                        onChange={(e) => handleNumberInput("stockMinimo", e.target.value)}
+                        onBlur={() => handleBlur("stockMinimo")}
+                        className={`${baseInputCls} pr-20 ${touched.stockMinimo && errors.stockMinimo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
+                        placeholder="5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={labelCls}>
+                      Stock Máximo Capacidad ({getUnitShort(form.unidadMedida)})
+                    </label>
+                    <div className="relative">
+                      <NumberInput
+                        min="0"
+                        step="1"
+                        value={form.stockMaximo}
+                        onChange={(e) => handleNumberInput("stockMaximo", e.target.value)}
+                        onBlur={() => handleBlur("stockMaximo")}
+                        className={`${baseInputCls} pr-20 ${touched.stockMaximo && errors.stockMaximo
+                            ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
+                            : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]"
+                          }`}
+                        placeholder="100"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Sección Ficha Técnica del Preparado */}
-                <div className="pt-2">
-                  <FichaTecnicaInsumo
-                    insumoId={insumo?.id}
-                    insumoName={form.nombre}
-                    initialData={initialFichaTecnica}
-                    entityData={{
-                      nombre: form.nombre || "",
-                      descripcion: form.descripcion || "",
-                      precioUnitario: Number(form.precioUnitario) || 0,
-                      unidadMedida: form.unidadMedida || "und — unidad",
-                      estado: form.estado || "Activo"
-                    }}
-                    prevEntityData={
-                      insumo
-                        ? {
+                {!isEditing && (
+                  <div className="pt-2">
+                    <FichaTecnicaInsumo
+                      insumoId={insumo?.id}
+                      insumoName={form.nombre}
+                      initialData={initialFichaTecnica}
+                      entityData={{
+                        nombre: form.nombre || "",
+                        descripcion: form.descripcion || "",
+                        precioUnitario: Number(form.precioUnitario) || 0,
+                        unidadMedida: form.unidadMedida || "und — unidad",
+                        estado: form.estado || "Activo"
+                      }}
+                      prevEntityData={
+                        insumo
+                          ? {
                             nombre: insumo.nombre || "",
                             descripcion: insumo.descripcion || "",
                             precioUnitario: Number(insumo.precioUnitario ?? insumo.precio ?? 0),
                             unidadMedida: insumo.unidadMedida || "und — unidad",
                             estado: insumo.estado || "Activo"
                           }
-                        : null
-                    }
-                    onRestoreEntityData={(restoredEnt) => {
-                      if (!restoredEnt || typeof restoredEnt !== "object") return;
-                      setForm((prev) => ({
-                        ...prev,
-                        nombre: restoredEnt.nombre ?? prev.nombre,
-                        descripcion: restoredEnt.descripcion ?? prev.descripcion,
-                        precioUnitario:
-                          restoredEnt.precioUnitario !== undefined
-                            ? String(restoredEnt.precioUnitario)
-                            : prev.precioUnitario,
-                        unidadMedida: restoredEnt.unidadMedida ?? prev.unidadMedida,
-                        estado: restoredEnt.estado || prev.estado
-                      }));
-                    }}
-                    onChange={(data) => setFichaTecnica(data)}
-                    onSave={(data) => setFichaTecnica(data)}
-                  />
-                </div>
+                          : null
+                      }
+                      onRestoreEntityData={(restoredEnt) => {
+                        if (!restoredEnt || typeof restoredEnt !== "object") return;
+                        setForm((prev) => ({
+                          ...prev,
+                          nombre: restoredEnt.nombre ?? prev.nombre,
+                          descripcion: restoredEnt.descripcion ?? prev.descripcion,
+                          precioUnitario:
+                            restoredEnt.precioUnitario !== undefined
+                              ? String(restoredEnt.precioUnitario)
+                              : prev.precioUnitario,
+                          unidadMedida: restoredEnt.unidadMedida ?? prev.unidadMedida,
+                          estado: restoredEnt.estado || prev.estado
+                        }));
+                      }}
+                      onChange={(data) => setFichaTecnica(data)}
+                      onSave={(data) => setFichaTecnica(data)}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -1069,11 +1190,10 @@ export function InsumoModal({
             </div>
 
             {/* ════ SELECCIONABLE PARA UTILIZAR COMO ADICIÓN ════ */}
-            <div className={`p-4 rounded-3xl border transition-all ${
-              form.esAdicion || isSalsaItem(form.nombre, form.categoria)
+            <div className={`p-4 rounded-3xl border transition-all ${form.esAdicion || isSalsaItem(form.nombre, form.categoria)
                 ? "border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20 shadow-xs"
                 : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40"
-            }`}>
+              }`}>
               {isSalsaItem(form.nombre, form.categoria) && (
                 <div className="mb-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200">
                   <span className="text-base leading-none">🥫</span>
@@ -1084,11 +1204,10 @@ export function InsumoModal({
               )}
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${
-                    form.esAdicion
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${form.esAdicion
                       ? "bg-purple-600 text-white shadow-xs"
                       : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                  }`}>
+                    }`}>
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
@@ -1110,16 +1229,15 @@ export function InsumoModal({
                 <button
                   type="button"
                   role="switch"
+                  disabled={isEditing}
                   aria-checked={form.esAdicion}
-                  onClick={() => setForm(prev => ({ ...prev, esAdicion: !prev.esAdicion }))}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    form.esAdicion ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'
-                  }`}
+                  onClick={() => !isEditing && setForm(prev => ({ ...prev, esAdicion: !prev.esAdicion }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 ${isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.esAdicion ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      form.esAdicion ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${form.esAdicion ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
@@ -1130,7 +1248,7 @@ export function InsumoModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelCls}>
-                        Precio de Venta de la Adición ($) <span className="text-red-500">*</span>
+                        Precio de Venta de la Adición ($) {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
                       </label>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-600 dark:text-purple-400 font-bold text-sm pointer-events-none">$</span>
@@ -1138,12 +1256,15 @@ export function InsumoModal({
                           min="0"
                           step="100"
                           formatThousands={true}
+                          disabled={isEditing}
                           required={form.esAdicion}
                           value={form.precioAdicion}
                           onChange={(e) => handleNumberInput("precioAdicion", e.target.value)}
                           onBlur={() => handleBlur("precioAdicion")}
                           className={`${baseInputCls} pl-8 font-bold text-purple-700 dark:text-purple-300 ${
-                            touched.precioAdicion && errors.precioAdicion
+                            isEditing
+                              ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+                              : touched.precioAdicion && errors.precioAdicion
                               ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                               : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion
                               ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -1152,12 +1273,12 @@ export function InsumoModal({
                           placeholder="Ej. 3500"
                         />
                       </div>
-                      {touched.precioAdicion && errors.precioAdicion ? (
+                      {!isEditing && touched.precioAdicion && errors.precioAdicion ? (
                         <p className="text-xs text-red-500 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                           <span>{errors.precioAdicion}</span>
                         </p>
-                      ) : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion ? (
+                      ) : !isEditing && touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion ? (
                         <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1 animate-in fade-in duration-150">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                           <span>Precio de adición válido</span>
@@ -1167,7 +1288,9 @@ export function InsumoModal({
                     </div>
 
                     <div>
-                      <label className={labelCls}>Ícono o Imagen de la Adición</label>
+                      <label className={labelCls}>
+                        Ícono o Imagen de la Adición {isEditing && <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span>}
+                      </label>
                       <div className="flex items-center gap-2">
                         {/* Preview */}
                         <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 border-2 border-purple-300 dark:border-purple-700 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
@@ -1181,109 +1304,202 @@ export function InsumoModal({
                         {/* Input slug / URL */}
                         <input
                           type="text"
+                          disabled={isEditing}
                           value={form.imagen}
                           onChange={(e) => setForm({ ...form, imagen: e.target.value })}
-                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500"
+                          className={`flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs ${
+                            isEditing ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-800" : "focus:ring-2 focus:ring-purple-500"
+                          }`}
                           placeholder="Slug de ícono (ej. bacon) o URL..."
                         />
 
                         {/* Botón subir imagen */}
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
-                          title="Subir imagen"
-                        >
-                          {uploading ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <UploadCloud className="w-3.5 h-3.5" />
-                          )}
-                          <span className="hidden sm:inline">{uploading ? "..." : "Subir"}</span>
-                        </button>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleImageFileChange}
-                        />
+                        {!isEditing && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploading}
+                              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                              title="Subir imagen"
+                            >
+                              {uploading ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <UploadCloud className="w-3.5 h-3.5" />
+                              )}
+                              <span className="hidden sm:inline">{uploading ? "..." : "Subir"}</span>
+                            </button>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleImageFileChange}
+                            />
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Paleta rápida de íconos gastronómicos */}
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                      O elige rápidamente un ícono sugerido:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {QUICK_ADICION_ICONS.map((ic) => {
-                        const isSelected = form.imagen === ic.slug;
-                        return (
-                          <button
-                            key={ic.slug}
-                            type="button"
-                            onClick={() => setForm({ ...form, imagen: ic.slug })}
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-purple-600 text-white font-bold shadow-xs scale-105"
-                                : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-50 hover:border-purple-300"
-                            }`}
-                          >
-                            <FoodIcon name={ic.slug} size={14} stroke={1.75} />
-                            <span>{ic.label}</span>
-                            {isSelected && <Check className="w-3 h-3 ml-0.5" />}
-                          </button>
-                        );
-                      })}
+                  {!isEditing && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                        O elige rápidamente un ícono sugerido:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_ADICION_ICONS.map((ic) => {
+                          const isSelected = form.imagen === ic.slug;
+                          return (
+                            <button
+                              key={ic.slug}
+                              type="button"
+                              onClick={() => setForm({ ...form, imagen: ic.slug })}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs transition-all cursor-pointer ${isSelected
+                                  ? "bg-purple-600 text-white font-bold shadow-xs scale-105"
+                                  : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-50 hover:border-purple-300"
+                                }`}
+                            >
+                              <FoodIcon name={ic.slug} size={14} stroke={1.75} />
+                              <span>{ic.label}</span>
+                              {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* ════ SECCIÓN IVA (19%) (#83) ════ */}
-            <div className="p-4 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${
-                  form.incluyeIva
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                }`}>
-                  <Percent className="w-4 h-4 stroke-[2.5]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <span>¿Aplica IVA (19%)?</span>
-                    {form.incluyeIva && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                        IVA 19% Activo
+            {/* ════ SECCIÓN IVA SELECCIONABLE Y MANUAL (#83) ════ */}
+            <div className={`p-4 rounded-3xl border transition-all ${form.incluyeIva
+                ? "border-blue-300 dark:border-blue-800/80 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs"
+                : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40"
+              }`}>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors ${form.incluyeIva
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                    }`}>
+                    <Percent className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span>¿Lleva impuesto IVA?</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${form.incluyeIva
+                          ? "bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300"
+                          : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                        }`}>
+                        {form.incluyeIva ? `IVA ${form.porcentajeIva || 19}% Activo` : "Exento de IVA"}
                       </span>
-                    )}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Indica si este insumo grava impuesto al valor agregado (IVA) al comprarse o procesarse
-                  </p>
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Indica si este insumo grava IVA y digita el porcentaje de tarifa que le corresponde
+                    </p>
+                  </div>
                 </div>
+
+                {/* Switch Toggle */}
+                <button
+                  type="button"
+                  role="switch"
+                  disabled={isEditing}
+                  aria-checked={form.incluyeIva}
+                  onClick={() => !isEditing && setForm(prev => ({
+                    ...prev,
+                    incluyeIva: !prev.incluyeIva,
+                    porcentajeIva: !prev.incluyeIva ? (prev.porcentajeIva || "19") : "0"
+                  }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 ${isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${form.incluyeIva ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                  />
+                </button>
               </div>
 
-              <button
-                type="button"
-                role="switch"
-                aria-checked={form.incluyeIva}
-                onClick={() => setForm(prev => ({ ...prev, incluyeIva: !prev.incluyeIva }))}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                    form.incluyeIva ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              {/* Subformulario de Tarifa Manual de IVA */}
+              {form.incluyeIva && (
+                <div className="mt-4 pt-4 border-t border-blue-100 dark:border-blue-900/40 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                    <div>
+                      <label className={labelCls}>
+                        Porcentaje de IVA Manual (%) {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="relative">
+                        <Percent className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <NumberInput
+                          min="0"
+                          max="100"
+                          step="1"
+                          disabled={isEditing}
+                          value={form.porcentajeIva}
+                          onChange={(e) => handleNumberInput("porcentajeIva", e.target.value)}
+                          className={`${baseInputCls} pl-9 font-bold text-blue-700 dark:text-blue-300 ${
+                            isEditing ? "bg-gray-100 dark:bg-gray-800 opacity-60 cursor-not-allowed border-gray-200 dark:border-gray-700" : "border-blue-200 dark:border-blue-800 focus:ring-2 focus:ring-blue-400"
+                          }`}
+                          placeholder="19"
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Digita cualquier tarifa manual aplicable al insumo (ej. 19, 5, 8 ó 0).
+                      </p>
+                    </div>
+
+                    {/* Botones de selección rápida de tarifas comunes */}
+                    {!isEditing && (
+                      <div>
+                        <label className={labelCls}>Tarifas comunes sugeridas</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { val: "19", label: "19% (General)" },
+                            { val: "5", label: "5% (Reducido)" },
+                            { val: "8", label: "8% (Consumo)" },
+                            { val: "0", label: "0% (Exento)" }
+                          ].map(tarifa => {
+                            const isSelected = String(form.porcentajeIva) === tarifa.val;
+                            return (
+                              <button
+                                key={tarifa.val}
+                                type="button"
+                                onClick={() => setForm(prev => ({ ...prev, porcentajeIva: tarifa.val }))}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                    ? "bg-blue-600 text-white shadow-xs font-bold scale-105"
+                                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300"
+                                  }`}
+                              >
+                                {tarifa.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cálculo previo en vivo */}
+                  {Number(form.precioUnitario) > 0 && (
+                    <div className="p-3 bg-white dark:bg-gray-800/80 rounded-2xl border border-blue-200/60 dark:border-blue-900/40 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span className="text-gray-600 dark:text-gray-300 font-medium">
+                        Precio base: <strong className="text-gray-900 dark:text-gray-100">${Number(form.precioUnitario).toLocaleString("es-CO")}</strong>
+                      </span>
+                      <span className="text-blue-600 dark:text-blue-400 font-bold">
+                        + IVA ({form.porcentajeIva || 19}%): +${Math.round(Number(form.precioUnitario) * ((Number(form.porcentajeIva) || 19) / 100)).toLocaleString("es-CO")}
+                      </span>
+                      <span className="text-gray-900 dark:text-gray-100 font-extrabold bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-xl border border-blue-200 dark:border-blue-800">
+                        Total unitario: ${Math.round(Number(form.precioUnitario) * (1 + ((Number(form.porcentajeIva) || 19) / 100))).toLocaleString("es-CO")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

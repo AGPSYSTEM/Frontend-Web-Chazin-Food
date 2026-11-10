@@ -267,27 +267,16 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                 </div>
               </div>
 
-              {/* Grid 2 Columnas: Metadata detallada */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Grid 3 Columnas: Metadata detallada */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Categoría */}
                 <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
                     <Tag className="w-3.5 h-3.5" />
                     <span>Categoría</span>
                   </div>
-                  <p className="font-semibold text-gray-800 dark:text-gray-200">
+                  <p className="font-semibold text-gray-800 dark:text-gray-200 truncate">
                     {insumo.categoria || insumo.categoriaNombre || "General / Sin categoría"}
-                  </p>
-                </div>
-
-                {/* Proveedor */}
-                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-                    <Building2 className="w-3.5 h-3.5" />
-                    <span>Proveedor Asignado</span>
-                  </div>
-                  <p className="font-semibold text-gray-800 dark:text-gray-200">
-                    {insumo.proveedor || insumo.proveedorNombre || "Sin proveedor asignado (Genérico)"}
                   </p>
                 </div>
 
@@ -299,6 +288,23 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                   </div>
                   <p className="font-semibold text-gray-800 dark:text-gray-200">
                     {Number(insumo.stockMaximo !== undefined && insumo.stockMaximo !== null ? insumo.stockMaximo : 100).toLocaleString("es-CO")} <span className="text-xs font-medium text-gray-500">{insumo.unidadMedida || "und"}</span>
+                  </p>
+                </div>
+
+                {/* Impuesto IVA */}
+                <div className="p-3.5 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+                    <span className="font-bold text-xs">%</span>
+                    <span>Impuesto IVA</span>
+                  </div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                    {Boolean(insumo.incluyeIva) ? (
+                      <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold">
+                        Grava IVA ({insumo.porcentajeIva || 19}%)
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 font-medium">Exento de IVA (0%)</span>
+                    )}
                   </p>
                 </div>
               </div>

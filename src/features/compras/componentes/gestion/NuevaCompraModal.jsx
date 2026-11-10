@@ -133,20 +133,18 @@ function LoteEditor({ lotes, onLotesChange, totalCantidad }) {
                       placeholder="Nº Lote (ej: L-001)"
                       value={l.numeroLote}
                       onChange={(e) => updateLote(idx, "numeroLote", e.target.value)}
-                      className={`w-full px-2 py-1 text-[11px] border rounded-lg focus:ring-1 focus:ring-blue-400 dark:bg-gray-800 font-mono ${
-                        esAuto
+                      className={`w-full px-2 py-1 text-[11px] border rounded-lg focus:ring-1 focus:ring-blue-400 dark:bg-gray-800 font-mono ${esAuto
                           ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 text-emerald-800 dark:text-emerald-200"
                           : "border-gray-200 dark:border-gray-700 bg-white"
-                      }`}
+                        }`}
                     />
                     <button
                       type="button"
                       onClick={() => toggleModoLote(idx)}
-                      className={`px-1.5 py-1 text-[9px] font-bold rounded-md shrink-0 uppercase tracking-wider transition-colors ${
-                        esAuto
+                      className={`px-1.5 py-1 text-[9px] font-bold rounded-md shrink-0 uppercase tracking-wider transition-colors ${esAuto
                           ? "bg-emerald-600 text-white"
                           : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300"
-                      }`}
+                        }`}
                       title={esAuto ? "Cambiar a ingreso manual" : "Cambiar a código automático"}
                     >
                       {esAuto ? "Auto" : "Manual"}
@@ -190,9 +188,8 @@ function LoteEditor({ lotes, onLotesChange, totalCantidad }) {
 
       {lotes.length > 0 && (
         <div
-          className={`text-[10px] font-medium flex items-center justify-between px-1 ${
-            excede ? "text-red-500" : "text-gray-500 dark:text-gray-400"
-          }`}
+          className={`text-[10px] font-medium flex items-center justify-between px-1 ${excede ? "text-red-500" : "text-gray-500 dark:text-gray-400"
+            }`}
         >
           <span className="flex items-center gap-1">
             {excede && <AlertCircle className="w-3 h-3" />}
@@ -232,6 +229,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     stock: "0",
     stockMinimo: "5",
     incluyeIva: false,
+    porcentajeIva: "19",
     esAdicion: false,
     precioAdicion: "",
     descripcion: "",
@@ -239,11 +237,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const [nuevoInsumoForm, setNuevoInsumoForm] = useState(initialNuevoInsumoForm);
   const [nuevoInsumoErrors, setNuevoInsumoErrors] = useState({});
 
-  // Campos principales de la factura de compra (#74, #75, #76, #83)
+  // Campos principales de la factura de compra (#74, #75, #76)
   const [idProveedor, setIdProveedor] = useState("");
   const [numeroFactura, setNumeroFactura] = useState("");
   const [fechaFactura, setFechaFactura] = useState(hoy());
-  const [incluyeIva, setIncluyeIva] = useState(false);
 
   // Errores de validación y campos tocados
   const [formErrors, setFormErrors] = useState({});
@@ -354,7 +351,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
       setIdProveedor("");
       setNumeroFactura("");
       setFechaFactura(hoy());
-      setIncluyeIva(false);
       setOrdenItems([]);
       setFormErrors({});
       setTouched({});
@@ -423,6 +419,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
         stockMinimo: parseFloat(nuevoInsumoForm.stockMinimo) || 5,
         descripcion: (nuevoInsumoForm.descripcion || "").trim(),
         incluyeIva: nuevoInsumoForm.incluyeIva ? 1 : 0,
+        porcentajeIva: nuevoInsumoForm.incluyeIva
+          ? (parseFloat(nuevoInsumoForm.porcentajeIva) || 19)
+          : 0,
         esAdicion: nuevoInsumoForm.esAdicion ? 1 : 0,
         precioAdicion: parseFloat(nuevoInsumoForm.precioAdicion) || 0,
         imagen: nuevoInsumoForm.esAdicion ? "sauce" : "",
@@ -443,6 +442,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
         stockMinimo: nuevoItem.stockMinimo !== undefined ? nuevoItem.stockMinimo : payload.stockMinimo,
         idProveedor: nuevoItem.idProveedor || payload.idProveedor,
         incluyeIva: nuevoItem.incluyeIva !== undefined ? nuevoItem.incluyeIva : payload.incluyeIva,
+        porcentajeIva: nuevoItem.porcentajeIva !== undefined ? nuevoItem.porcentajeIva : payload.porcentajeIva,
       };
 
       // Agregar a la lista de insumos localmente para que esté disponible de inmediato
@@ -516,24 +516,24 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     const filterList = (list) =>
       search.trim()
         ? list.filter((i) =>
-            matchesSmartSearch(
-              [
-                i.nombre,
-                i.categoria,
-                i.categoriaNombre,
-                i.descripcion,
-                i.id,
-                i.idInsumo,
-                `#${i.id || i.idInsumo}`,
-                i.stock,
-                String(i.stock ?? ""),
-                i.unidadMedida,
-                i.precioUnitario,
-                String(i.precioUnitario ?? "")
-              ],
-              search
-            )
+          matchesSmartSearch(
+            [
+              i.nombre,
+              i.categoria,
+              i.categoriaNombre,
+              i.descripcion,
+              i.id,
+              i.idInsumo,
+              `#${i.id || i.idInsumo}`,
+              i.stock,
+              String(i.stock ?? ""),
+              i.unidadMedida,
+              i.precioUnitario,
+              String(i.precioUnitario ?? "")
+            ],
+            search
           )
+        )
         : list;
 
     if (insumosAsociados.length > 0 && selectedProveedorId) {
@@ -574,7 +574,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     }));
   };
 
-  /* ── Añadir/actualizar ítem en orden ── */
+  /* ── Añadir/actualizar ítem en orden con cálculo de IVA individual ── */
   const handleAddToOrden = () => {
     if (!configurando) return;
     const cant = parseFloat(configurando.cantidad);
@@ -582,11 +582,28 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     if (!cant || !precio || cant <= 0 || precio <= 0) return;
     const idStr = String(configurando.insumo?.idInsumo || configurando.insumo?.id);
     const subtotal = cant * precio;
+
+    // Determinar si el insumo lleva IVA y su porcentaje
+    const llevaIva = Boolean(
+      configurando.insumo?.incluyeIva === 1 ||
+      configurando.insumo?.incluyeIva === true ||
+      configurando.insumo?.incluyeIva === "1"
+    );
+    const pctIva = llevaIva
+      ? (Number(configurando.insumo?.porcentajeIva) > 0 ? Number(configurando.insumo?.porcentajeIva) : 19)
+      : 0;
+    const itemIva = llevaIva ? Math.round(subtotal * (pctIva / 100)) : 0;
+    const itemTotal = subtotal + itemIva;
+
     const newItem = {
       insumo: configurando.insumo,
       cantidad: String(cant),
       precioUnitario: String(precio),
       subtotal,
+      incluyeIva: llevaIva,
+      porcentajeIva: pctIva,
+      iva: itemIva,
+      total: itemTotal,
       lotes: (configurando.lotes || []).filter((l) => l.numeroLote && String(l.numeroLote).trim()),
     };
     setOrdenItems((prev) => {
@@ -609,10 +626,11 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     }
   };
 
-  /* ── Cálculos financieros con switch de IVA (#83) ── */
+  /* ── Cálculos financieros: acumulación de IVA individual por insumo ── */
   const subtotalGeneral = ordenItems.reduce((acc, it) => acc + (it.subtotal || 0), 0);
-  const ivaCalculado = incluyeIva ? Math.round(subtotalGeneral * 0.19) : 0;
-  const totalGeneral = subtotalGeneral + ivaCalculado;
+  const totalIva = ordenItems.reduce((acc, it) => acc + (it.iva || 0), 0);
+  const totalGeneral = subtotalGeneral + totalIva;
+  const insumosConIvaCount = ordenItems.filter((it) => it.incluyeIva).length;
 
   /* ── Validaciones de compra (#74) ── */
   const validateForm = () => {
@@ -659,9 +677,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
         fechaFactura,
         fechaCompra: hoy(),
         estado: "RECIBIDA", // Siempre confirmada (#86)
-        incluyeIva: incluyeIva ? 1 : 0,
+        incluyeIva: totalIva > 0 ? 1 : 0,
         subtotal: subtotalGeneral,
-        iva: ivaCalculado,
+        iva: totalIva,
         total: totalGeneral,
         detalles: ordenItems.map((it) => {
           const lotesValidos = (it.lotes || [])
@@ -684,6 +702,9 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
             cantidad: parseFloat(it.cantidad),
             precioUnitario: parseFloat(it.precioUnitario),
             subtotal: it.subtotal,
+            incluyeIva: it.incluyeIva ? 1 : 0,
+            porcentajeIva: it.porcentajeIva || 0,
+            iva: it.iva || 0,
             lotes: lotesValidos,
             ...(numLote ? { numeroLote: numLote } : {}),
             ...(fVenc ? { fechaVencimiento: fVenc } : {}),
@@ -735,11 +756,11 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
           </button>
         </div>
 
-        {/* ── Barra superior: Proveedor, Factura, Fecha e IVA (#74, #75, #76, #83) ── */}
+        {/* ── Barra superior: Proveedor, Factura y Fecha (#74, #75, #76) ── */}
         <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-850 shrink-0 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
             {/* Proveedor Obligatorio (#74) */}
-            <div className="sm:col-span-4">
+            <div className="sm:col-span-5">
               <label className={labelCls}>
                 Proveedor <span className="text-red-500">*</span>
               </label>
@@ -750,11 +771,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     setIdProveedor(e.target.value);
                     if (formErrors.idProveedor) setFormErrors((err) => ({ ...err, idProveedor: null }));
                   }}
-                  className={`w-full pl-3 pr-8 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold appearance-none transition-colors ${
-                    (touched.idProveedor || submitted) && formErrors.idProveedor
+                  className={`w-full pl-3 pr-8 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold appearance-none transition-colors ${(touched.idProveedor || submitted) && formErrors.idProveedor
                       ? "border-red-500 bg-red-50/40 text-red-900 focus:ring-red-400"
                       : "border-gray-200 dark:border-gray-700 bg-white"
-                  }`}
+                    }`}
                 >
                   <option value="">-- Selecciona un proveedor obligatorio --</option>
                   {proveedores.map((p) => (
@@ -774,7 +794,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
             </div>
 
             {/* Número de Factura (#76) */}
-            <div className="sm:col-span-3">
+            <div className="sm:col-span-4">
               <label className={labelCls}>
                 Nº Factura <span className="text-red-500">*</span>
               </label>
@@ -786,11 +806,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   value={numeroFactura}
                   onBlur={() => handleHeaderBlur("numeroFactura")}
                   onChange={(e) => handleHeaderChange("numeroFactura", e.target.value)}
-                  className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold uppercase transition-colors ${
-                    (touched.numeroFactura || submitted) && formErrors.numeroFactura
+                  className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-semibold uppercase transition-colors ${(touched.numeroFactura || submitted) && formErrors.numeroFactura
                       ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                       : "border-gray-200 dark:border-gray-700 bg-white"
-                  }`}
+                    }`}
                 />
               </div>
               {(touched.numeroFactura || submitted) && formErrors.numeroFactura && (
@@ -813,11 +832,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   value={fechaFactura}
                   onBlur={() => handleHeaderBlur("fechaFactura")}
                   onChange={(e) => handleHeaderChange("fechaFactura", e.target.value)}
-                  className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-medium transition-colors ${
-                    (touched.fechaFactura || submitted) && formErrors.fechaFactura
+                  className={`w-full pl-8 pr-3 py-2 border rounded-xl dark:bg-gray-800 dark:text-gray-100 text-xs font-medium transition-colors ${(touched.fechaFactura || submitted) && formErrors.fechaFactura
                       ? "border-red-500 bg-red-50/50 text-red-900 focus:ring-red-400"
                       : "border-gray-200 dark:border-gray-700 bg-white"
-                  }`}
+                    }`}
                 />
               </div>
               {(touched.fechaFactura || submitted) && formErrors.fechaFactura && (
@@ -826,29 +844,6 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   {formErrors.fechaFactura}
                 </p>
               )}
-            </div>
-
-            {/* Switch Aplica IVA (19%) (#83) */}
-            <div className="sm:col-span-2 flex items-center justify-start sm:justify-end pb-1">
-              <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs">
-                <Percent className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">IVA 19%</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={incluyeIva}
-                  onClick={() => setIncluyeIva(!incluyeIva)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    incluyeIva ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                      incluyeIva ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           </div>
 
@@ -871,11 +866,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
               <button
                 type="button"
                 onClick={() => setMobileTab("catalogo")}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  mobileTab === "catalogo"
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${mobileTab === "catalogo"
                     ? "bg-white dark:bg-gray-800 text-[#F05454] shadow-xs border border-gray-200/60 dark:border-gray-700/60"
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                }`}
+                  }`}
               >
                 <Package className="w-3.5 h-3.5" />
                 <span>1. Catálogo</span>
@@ -883,11 +877,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
               <button
                 type="button"
                 onClick={() => setMobileTab("orden")}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  mobileTab === "orden"
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${mobileTab === "orden"
                     ? "bg-white dark:bg-gray-800 text-[#F05454] shadow-xs border border-gray-200/60 dark:border-gray-700/60"
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-                }`}
+                  }`}
               >
                 <ShoppingCart className="w-3.5 h-3.5" />
                 <span>2. Orden ({ordenItems.length})</span>
@@ -904,9 +897,8 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   PANEL IZQUIERDO — Catálogo de Insumos
               ───────────────────────────────────────────────── */}
               <div
-                className={`${
-                  mobileTab === "catalogo" ? "flex" : "hidden"
-                } sm:flex w-full sm:w-1/2 border-r border-gray-100 dark:border-gray-800 flex-col overflow-hidden`}
+                className={`${mobileTab === "catalogo" ? "flex" : "hidden"
+                  } sm:flex w-full sm:w-1/2 border-r border-gray-100 dark:border-gray-800 flex-col overflow-hidden`}
               >
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
                   <div className="flex items-center justify-between mb-2">
@@ -971,15 +963,14 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           key={idStr}
                           type="button"
                           onClick={() => handleSelectInsumo(ins)}
-                          className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 group cursor-pointer ${
-                            esConfigurando
+                          className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 group cursor-pointer ${esConfigurando
                               ? "bg-[#F05454]/10 border-[#F05454] shadow-xs"
                               : enOrden
-                              ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
-                              : ins._highlight
-                              ? "bg-blue-50/60 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/40 hover:bg-blue-50"
-                              : "bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/60 hover:bg-gray-50"
-                          }`}
+                                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                                : ins._highlight
+                                  ? "bg-blue-50/60 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/40 hover:bg-blue-50"
+                                  : "bg-white dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/60 hover:bg-gray-50"
+                            }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
@@ -1065,12 +1056,23 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     </div>
 
                     {configurandoSubtotal > 0 && (
-                      <p className="text-[11px] text-gray-600 dark:text-gray-300 mb-2">
-                        Subtotal ítem:{" "}
-                        <strong className="text-[#F05454]">
-                          ${configurandoSubtotal.toLocaleString("es-CO")}
-                        </strong>
-                      </p>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 mb-2 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Subtotal: <strong className="text-gray-900 dark:text-gray-100">${configurandoSubtotal.toLocaleString("es-CO")}</strong>
+                        </span>
+                        {Boolean(configurando.insumo?.incluyeIva) ? (
+                          <span className="text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                            + IVA ({configurando.insumo?.porcentajeIva || 19}%): ${Math.round(configurandoSubtotal * ((Number(configurando.insumo?.porcentajeIva) || 19) / 100)).toLocaleString("es-CO")}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 font-medium bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
+                            Exento de IVA
+                          </span>
+                        )}
+                        <span className="font-bold text-[#F05454]">
+                          Total ítem: ${Math.round(configurandoSubtotal * (1 + (configurando.insumo?.incluyeIva ? ((Number(configurando.insumo?.porcentajeIva) || 19) / 100) : 0))).toLocaleString("es-CO")}
+                        </span>
+                      </div>
                     )}
 
                     {/* Lotes con scroll y suma automática (#79, #80, #82) */}
@@ -1113,9 +1115,8 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   PANEL DERECHO — Orden de Compra
               ───────────────────────────────────────────────── */}
               <div
-                className={`${
-                  mobileTab === "orden" ? "flex" : "hidden"
-                } sm:flex w-full sm:w-1/2 flex-col overflow-hidden bg-gray-50/40 dark:bg-gray-900`}
+                className={`${mobileTab === "orden" ? "flex" : "hidden"
+                  } sm:flex w-full sm:w-1/2 flex-col overflow-hidden bg-gray-50/40 dark:bg-gray-900`}
               >
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
                   <div className="flex items-center justify-between">
@@ -1164,8 +1165,24 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                                 </span>
                                 <span>×</span>
                                 <span>${parseFloat(it.precioUnitario).toLocaleString("es-CO")}</span>
-                                <span className="font-bold text-[#F05454]">
-                                  = ${it.subtotal.toLocaleString("es-CO")}
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">
+                                  (Subtotal: ${it.subtotal.toLocaleString("es-CO")})
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                {it.incluyeIva ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold">
+                                    <Percent className="w-2.5 h-2.5" />
+                                    IVA {it.porcentajeIva || 19}%: +${(it.iva || 0).toLocaleString("es-CO")}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 text-[10px] font-medium">
+                                    Exento de IVA
+                                  </span>
+                                )}
+                                <span className="font-bold text-[#F05454] text-xs">
+                                  Total: ${((it.subtotal || 0) + (it.iva || 0)).toLocaleString("es-CO")}
                                 </span>
                               </div>
 
@@ -1219,29 +1236,28 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   )}
                 </div>
 
-                {/* Resumen financiero con desglose de IVA (#83) */}
+                {/* Resumen financiero con sumatoria de IVA por cada insumo */}
                 <div className="px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-2">
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>Subtotal:</span>
+                    <span>Subtotal General:</span>
                     <span className="font-semibold text-gray-700 dark:text-gray-300">
                       ${subtotalGeneral.toLocaleString("es-CO")}
                     </span>
                   </div>
 
-                  {incluyeIva && (
-                    <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
-                      <span className="flex items-center gap-1">
-                        <Percent className="w-3 h-3" /> IVA (19%):
-                      </span>
-                      <span className="font-semibold">
-                        +${ivaCalculado.toLocaleString("es-CO")}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
+                    <span className="flex items-center gap-1">
+                      <Percent className="w-3 h-3" />
+                      <span>Total IVA Insumos ({insumosConIvaCount} de {ordenItems.length} gravan IVA):</span>
+                    </span>
+                    <span className="font-bold">
+                      +${totalIva.toLocaleString("es-CO")}
+                    </span>
+                  </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-800">
                     <span className="font-bold text-sm text-gray-800 dark:text-gray-200">
-                      Total a Pagar:
+                      Total de la Compra:
                     </span>
                     <span className="text-xl font-black text-[#F05454]">
                       ${totalGeneral.toLocaleString("es-CO")}
@@ -1351,11 +1367,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           setNuevoInsumoErrors((prev) => ({ ...prev, nombre: err }));
                         }
                       }}
-                      className={`${inputCls} ${
-                        (nuevoInsumoTouched.nombre) && nuevoInsumoErrors.nombre
+                      className={`${inputCls} ${(nuevoInsumoTouched.nombre) && nuevoInsumoErrors.nombre
                           ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                           : ""
-                      }`}
+                        }`}
                     />
                     {(nuevoInsumoTouched.nombre) && nuevoInsumoErrors.nombre && (
                       <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
@@ -1396,11 +1411,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           setNuevoInsumoErrors((prev) => ({ ...prev, idCategoriaInsumo: err }));
                         }
                       }}
-                      className={`${inputCls} cursor-pointer ${
-                        (nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo
+                      className={`${inputCls} cursor-pointer ${(nuevoInsumoTouched.idCategoriaInsumo) && nuevoInsumoErrors.idCategoriaInsumo
                           ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                           : ""
-                      }`}
+                        }`}
                     >
                       <option value="">Seleccionar categoría</option>
                       {categorias.map((c) => {
@@ -1453,11 +1467,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           value={nuevoInsumoForm.precioUnitario}
                           onBlur={() => handleNuevoInsumoBlur("precioUnitario")}
                           onChange={(e) => handleNuevoInsumoChange("precioUnitario", e.target.value)}
-                          className={`${inputCls} pl-8 ${
-                            (nuevoInsumoTouched.precioUnitario) && nuevoInsumoErrors.precioUnitario
+                          className={`${inputCls} pl-8 ${(nuevoInsumoTouched.precioUnitario) && nuevoInsumoErrors.precioUnitario
                               ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                               : ""
-                          }`}
+                            }`}
                         />
                       </div>
                       {(nuevoInsumoTouched.precioUnitario) && nuevoInsumoErrors.precioUnitario && (
@@ -1484,11 +1497,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                         }}
                         onBlur={() => handleNuevoInsumoBlur("stock")}
                         onChange={(e) => handleNuevoInsumoChange("stock", e.target.value)}
-                        className={`${inputCls} ${
-                          (nuevoInsumoTouched.stock) && nuevoInsumoErrors.stock
+                        className={`${inputCls} ${(nuevoInsumoTouched.stock) && nuevoInsumoErrors.stock
                             ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                             : ""
-                        }`}
+                          }`}
                       />
                       {(nuevoInsumoTouched.stock) && nuevoInsumoErrors.stock && (
                         <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
@@ -1511,11 +1523,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                         }}
                         onBlur={() => handleNuevoInsumoBlur("stockMinimo")}
                         onChange={(e) => handleNuevoInsumoChange("stockMinimo", e.target.value)}
-                        className={`${inputCls} ${
-                          (nuevoInsumoTouched.stockMinimo) && nuevoInsumoErrors.stockMinimo
+                        className={`${inputCls} ${(nuevoInsumoTouched.stockMinimo) && nuevoInsumoErrors.stockMinimo
                             ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                             : ""
-                        }`}
+                          }`}
                       />
                       {(nuevoInsumoTouched.stockMinimo) && nuevoInsumoErrors.stockMinimo && (
                         <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
@@ -1530,11 +1541,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   <div className="p-3.5 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-                          nuevoInsumoForm.incluyeIva
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.incluyeIva
                             ? "bg-blue-600 text-white"
                             : "bg-gray-200 dark:bg-gray-700 text-gray-500"
-                        }`}
+                          }`}
                       >
                         <Percent className="w-4 h-4 stroke-[2.5]" />
                       </div>
@@ -1557,34 +1567,30 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                           incluyeIva: !prev.incluyeIva,
                         }))
                       }
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        nuevoInsumoForm.incluyeIva ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
-                      }`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.incluyeIva ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
+                        }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                          nuevoInsumoForm.incluyeIva ? "translate-x-4" : "translate-x-0"
-                        }`}
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.incluyeIva ? "translate-x-4" : "translate-x-0"
+                          }`}
                       />
                     </button>
                   </div>
 
                   {/* Switch Adición para Menú */}
                   <div
-                    className={`p-3.5 rounded-2xl border transition-all ${
-                      nuevoInsumoForm.esAdicion
+                    className={`p-3.5 rounded-2xl border transition-all ${nuevoInsumoForm.esAdicion
                         ? "border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20"
                         : "border-gray-200 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/30"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
-                            nuevoInsumoForm.esAdicion
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.esAdicion
                               ? "bg-purple-600 text-white"
                               : "bg-gray-200 dark:bg-gray-700 text-gray-500"
-                          }`}
+                            }`}
                         >
                           <Sparkles className="w-4 h-4" />
                         </div>
@@ -1607,16 +1613,14 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                             esAdicion: !prev.esAdicion,
                           }))
                         }
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          nuevoInsumoForm.esAdicion
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.esAdicion
                             ? "bg-purple-600"
                             : "bg-gray-300 dark:bg-gray-700"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                            nuevoInsumoForm.esAdicion ? "translate-x-4" : "translate-x-0"
-                          }`}
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.esAdicion ? "translate-x-4" : "translate-x-0"
+                            }`}
                         />
                       </button>
                     </div>
@@ -1636,11 +1640,10 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                             value={nuevoInsumoForm.precioAdicion}
                             onBlur={() => handleNuevoInsumoBlur("precioAdicion")}
                             onChange={(e) => handleNuevoInsumoChange("precioAdicion", e.target.value)}
-                            className={`${inputCls} pl-8 ${
-                              (nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion
+                            className={`${inputCls} pl-8 ${(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion
                                 ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
                                 : ""
-                            }`}
+                              }`}
                           />
                         </div>
                         {(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion && (
