@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   User,
@@ -13,9 +13,16 @@ import {
   Plus,
   List,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown,
+  Search,
+  Check,
+  UserCheck,
+  UserX,
+  Users
 } from "lucide-react";
 import { usuariosService } from "@/features/configuracion/servicios/usuariosService";
+import { VincularUsuarioSelector } from "./VincularUsuarioSelector";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import {
   validateNombre,
@@ -56,7 +63,8 @@ export function EmpleadoModal({
   onClose,
   onSave,
   empleado = null,
-  cargosDisponibles = ["Administrador", "Cocinero", "Vendedor"]
+  cargosDisponibles = ["Administrador", "Cocinero", "Vendedor"],
+  empleadosExistentes = []
 }) {
   const notify = useNotifications();
   const isEditing = Boolean(empleado);
@@ -84,6 +92,56 @@ export function EmpleadoModal({
   const [submitting, setSubmitting] = useState(false);
   const [isCustomCargo, setIsCustomCargo] = useState(false);
   const [usuariosSistema, setUsuariosSistema] = useState([]);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("TODOS");
+  const userDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setUserDropdownOpen(false);
+      setUserSearchTerm("");
+      setUserRoleFilter("TODOS");
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    if (userDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userDropdownOpen]);
+
+  const getRolInfo = (u) => {
+    const r = (u.rol || u.rolNombre || (u.idRol === 1 ? "Administrador" : u.idRol === 2 ? "Cocinero" : u.idRol === 3 ? "Vendedor" : "Cliente") || "").trim();
+    const lower = r.toLowerCase();
+    const isStaff = lower.includes("admin") || lower.includes("cocin") || lower.includes("vend") || lower.includes("cajer") || lower.includes("personal");
+    return {
+      label: r || "Usuario",
+      isStaff,
+      color: lower.includes("admin")
+        ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+        : lower.includes("cocin")
+        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+        : lower.includes("vend")
+        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700"
+    };
+  };
+
+  const getExistingEmpleadoVinculado = (idUsuario) => {
+    if (!idUsuario || !Array.isArray(empleadosExistentes)) return null;
+    return empleadosExistentes.find(
+      (emp) => Number(emp.idUsuario) === Number(idUsuario) && Number(emp.idEmpleado || emp.id) !== Number(empleado?.idEmpleado || empleado?.id)
+    );
+  };
 
   // Cargar usuarios del sistema para vincular roles/cuentas
   useEffect(() => {
@@ -292,8 +350,8 @@ export function EmpleadoModal({
   };
 
   // Vincular usuario seleccionado con autocompletado inteligente
-  const handleSelectUsuario = (e) => {
-    const id = e.target.value;
+  const handleSelectUsuario = (val) => {
+    const id = val && typeof val === "object" && val.target ? val.target.value : val;
     if (!id) {
       setForm((prev) => ({ ...prev, idUsuario: null }));
       return;
@@ -339,6 +397,7 @@ export function EmpleadoModal({
       if (updated.telefono) validateField("telefono", updated.telefono, updated);
       if (updated.correo) validateField("correo", updated.correo, updated);
       validateField("cargo", updated.cargo, updated);
+      setUserDropdownOpen(false);
     }
   };
 
@@ -469,39 +528,13 @@ export function EmpleadoModal({
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
           
           {/* Fila Superior: Vinculación con Usuario del Sistema (Roles Activos) */}
-          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/70 dark:from-blue-950/30 dark:to-indigo-950/20 px-4 py-2.5 rounded-2xl border border-blue-100 dark:border-blue-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-              <div>
-                <span className="text-xs font-bold text-blue-900 dark:text-blue-200 block leading-tight">
-                  Vincular con Usuario del Sistema (Roles Activos)
-                </span>
-                <span className="text-[11px] text-blue-700/80 dark:text-blue-300/70">
-                  Sincroniza datos personales y cargo automáticamente con el rol
-                </span>
-              </div>
-            </div>
-            <div className="w-full sm:w-80 shrink-0">
-              <select
-                value={form.idUsuario || ""}
-                onChange={handleSelectUsuario}
-                className="w-full px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 text-xs outline-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 font-medium"
-              >
-                <option value="">-- Sin vincular (Empleado sin cuenta) --</option>
-                {usuariosSistema.map((u) => {
-                  const rolLabel =
-                    u.rol ||
-                    u.rolNombre ||
-                    (u.idRol === 1 ? "Administrador" : u.idRol === 2 ? "Cocinero" : u.idRol === 3 ? "Vendedor" : "Usuario");
-                  return (
-                    <option key={u.idUsuario} value={u.idUsuario}>
-                      {u.nombre} {u.apellidos || ""} — {rolLabel}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
+          <VincularUsuarioSelector
+            usuarios={usuariosSistema}
+            selectedUserId={form.idUsuario}
+            onSelectUser={handleSelectUsuario}
+            empleadosExistentes={empleadosExistentes}
+            currentEmpleadoId={empleado?.idEmpleado || empleado?.id}
+          />
 
           {/* Grid de 2 Columnas Aprovechando el Ancho Completo */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

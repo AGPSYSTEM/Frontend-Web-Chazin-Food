@@ -374,6 +374,7 @@ export function Empleados() {
         onSave={handleSave}
         empleado={selectedEmpleado}
         cargosDisponibles={cargosDisponibles}
+        empleadosExistentes={empleados}
       />
 
       <VerEmpleadoModal
