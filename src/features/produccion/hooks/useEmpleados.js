@@ -33,9 +33,9 @@ export function useEmpleados() {
     fetchEmpleados();
   }, [fetchEmpleados]);
 
-  // Cargos únicos disponibles
+  // Cargos únicos disponibles (Cargos base conectados con roles + escalables)
   const cargosDisponibles = useMemo(() => {
-    const defaultCargos = ["Cocinero Principal", "Auxiliar de Cocina", "Cajera / Vendedora", "Mesero", "Domiciliario", "Administrador de Turno"];
+    const defaultCargos = ["Administrador", "Cocinero", "Vendedor"];
     const fromData = empleados.map((e) => e.cargo).filter(Boolean);
     return Array.from(new Set([...defaultCargos, ...fromData]));
   }, [empleados]);

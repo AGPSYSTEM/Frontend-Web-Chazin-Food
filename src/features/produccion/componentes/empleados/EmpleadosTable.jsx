@@ -1,4 +1,4 @@
-import { Eye, Edit2, Trash2, Power, Briefcase, Phone, Mail, Clock, DollarSign, Calendar } from "lucide-react";
+import { Eye, Edit2, Trash2, Power, Briefcase, Phone, Mail, Clock, DollarSign, Calendar, ShieldCheck } from "lucide-react";
 
 export function EmpleadosTable({
   empleados = [],
@@ -100,6 +100,15 @@ export function EmpleadosTable({
                       <Clock className="w-3 h-3 text-gray-400" />
                       {emp.turno || "Completo"}
                     </span>
+                    {emp.usuario && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 mt-1 font-medium bg-blue-50/60 dark:bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-900/40"
+                        title={`Vinculado a usuario #${emp.usuario.idUsuario} (${emp.usuario.email})`}
+                      >
+                        <ShieldCheck className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span className="truncate max-w-[130px]">Usuario #{emp.usuario.idUsuario}</span>
+                      </span>
+                    )}
                   </td>
 
                   {/* Contacto */}

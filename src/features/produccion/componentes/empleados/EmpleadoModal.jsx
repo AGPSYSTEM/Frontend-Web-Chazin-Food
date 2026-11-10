@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
-import { X, User, Briefcase, Phone, Mail, MapPin, DollarSign, Calendar, Clock, FileText } from "lucide-react";
+import { X, User, Briefcase, Phone, Mail, MapPin, DollarSign, Calendar, Clock, FileText, ShieldCheck, Plus, List } from "lucide-react";
+import { usuariosService } from "@/features/configuracion/servicios/usuariosService";
 
-export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
+export function EmpleadoModal({
+  isOpen,
+  onClose,
+  onSave,
+  empleado = null,
+  cargosDisponibles = ["Administrador", "Cocinero", "Vendedor"]
+}) {
   const isEditing = Boolean(empleado);
 
   const initialForm = {
@@ -12,20 +19,40 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
     telefono: "",
     correo: "",
     direccion: "",
-    cargo: "Auxiliar de Cocina",
+    cargo: "Cocinero",
     fechaContratacion: new Date().toISOString().split("T")[0],
     tipoContrato: "Término Fijo",
     salario: "",
     turno: "Completo",
-    estado: 1
+    estado: 1,
+    idUsuario: null
   };
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [isCustomCargo, setIsCustomCargo] = useState(false);
+  const [usuariosSistema, setUsuariosSistema] = useState([]);
+
+  // Cargar usuarios del sistema para vincular roles/cuentas
+  useEffect(() => {
+    if (isOpen) {
+      usuariosService
+        .getUsuarios()
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setUsuariosSistema(data);
+          }
+        })
+        .catch(() => setUsuariosSistema([]));
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (empleado) {
+      const currentCargo = empleado.cargo || "Cocinero";
+      const isBaseOrAvailable = ["Administrador", "Cocinero", "Vendedor", ...cargosDisponibles].includes(currentCargo);
+
       setForm({
         nombre: empleado.nombre || "",
         apellidos: empleado.apellidos || "",
@@ -34,20 +61,24 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
         telefono: empleado.telefono || "",
         correo: empleado.correo || "",
         direccion: empleado.direccion || "",
-        cargo: empleado.cargo || "Auxiliar de Cocina",
+        cargo: currentCargo,
         fechaContratacion: empleado.fechaContratacion
           ? new Date(empleado.fechaContratacion).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0],
         tipoContrato: empleado.tipoContrato || "Término Fijo",
-        salario: empleado.salario !== undefined ? String(empleado.salario) : "",
+        salario: empleado.salario !== undefined ? String(Math.round(Number(empleado.salario) || 0)) : "",
         turno: empleado.turno || "Completo",
-        estado: empleado.estado !== undefined ? Number(empleado.estado) : 1
+        estado: empleado.estado !== undefined ? Number(empleado.estado) : 1,
+        idUsuario: empleado.idUsuario || null
       });
+
+      setIsCustomCargo(!isBaseOrAvailable);
     } else {
       setForm(initialForm);
+      setIsCustomCargo(false);
     }
     setErrors({});
-  }, [empleado, isOpen]);
+  }, [empleado, isOpen, cargosDisponibles]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,12 +88,50 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
     }
   };
 
+  // Vincular usuario seleccionado con autocompletado inteligente
+  const handleSelectUsuario = (e) => {
+    const id = e.target.value;
+    if (!id) {
+      setForm((prev) => ({ ...prev, idUsuario: null }));
+      return;
+    }
+
+    const found = usuariosSistema.find((u) => String(u.idUsuario) === String(id));
+    if (found) {
+      // Mapear rol a cargo base
+      let cargoMapped = "Vendedor";
+      const rolStr = (found.rol || found.rolNombre || "").toLowerCase();
+      if (rolStr.includes("admin")) {
+        cargoMapped = "Administrador";
+      } else if (rolStr.includes("cocin")) {
+        cargoMapped = "Cocinero";
+      } else if (rolStr.includes("vend") || rolStr.includes("cajer")) {
+        cargoMapped = "Vendedor";
+      } else if (found.rol || found.rolNombre) {
+        cargoMapped = found.rol || found.rolNombre;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        idUsuario: found.idUsuario,
+        nombre: found.nombre || prev.nombre,
+        apellidos: found.apellidos || prev.apellidos,
+        tipoDocumento: found.tipoDocumento || prev.tipoDocumento || "C.C.",
+        numeroDocumento: found.numeroDocumento || prev.numeroDocumento,
+        telefono: found.telefono || prev.telefono,
+        correo: found.email || found.correo || prev.correo,
+        cargo: cargoMapped
+      }));
+      setIsCustomCargo(false);
+    }
+  };
+
   const validate = () => {
     const err = {};
     if (!form.nombre.trim()) err.nombre = "El nombre es obligatorio";
     if (!form.apellidos.trim()) err.apellidos = "Los apellidos son obligatorios";
     if (!form.numeroDocumento.trim()) err.numeroDocumento = "El número de documento es obligatorio";
-    if (!form.cargo.trim()) err.cargo = "El cargo o función es obligatorio";
+    if (!form.cargo.trim()) err.cargo = "El cargo o puesto es obligatorio";
 
     if (form.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) {
       err.correo = "Ingresa un correo electrónico válido";
@@ -84,7 +153,8 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
       setSubmitting(true);
       await onSave({
         ...form,
-        salario: form.salario ? Number(form.salario) : 0
+        salario: form.salario ? Number(form.salario) : 0,
+        idUsuario: form.idUsuario ? Number(form.idUsuario) : null
       });
     } finally {
       setSubmitting(false);
@@ -92,6 +162,11 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
   };
 
   if (!isOpen) return null;
+
+  // Lista unificada de cargos base y existentes (sin cargos duplicados o sobrantes)
+  const listaCargos = Array.from(
+    new Set(["Administrador", "Cocinero", "Vendedor", ...cargosDisponibles, form.cargo])
+  ).filter(Boolean);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
@@ -108,7 +183,7 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                 {isEditing ? "Editar Empleado" : "Registrar Nuevo Empleado"}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Información del personal y desempeño de funciones en Chazin Food
+                Información del personal, rol en el sistema y desempeño de funciones en Chazin Food
               </p>
             </div>
           </div>
@@ -123,6 +198,40 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
           
+          {/* Vinculación con Usuario del Sistema y Roles */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/40">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <label className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Vincular con Usuario del Sistema (Roles Activos)</span>
+              </label>
+              <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                Opcional
+              </span>
+            </div>
+            <select
+              value={form.idUsuario || ""}
+              onChange={handleSelectUsuario}
+              className="w-full px-3.5 py-2 rounded-xl border border-blue-200 dark:border-blue-800 text-sm outline-none bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30"
+            >
+              <option value="">-- Sin vincular (Empleado sin cuenta de sistema) --</option>
+              {usuariosSistema.map((u) => {
+                const rolLabel =
+                  u.rol ||
+                  u.rolNombre ||
+                  (u.idRol === 1 ? "Administrador" : u.idRol === 2 ? "Cocinero" : u.idRol === 3 ? "Vendedor" : "Usuario");
+                return (
+                  <option key={u.idUsuario} value={u.idUsuario}>
+                    {u.nombre} {u.apellidos || ""} — Rol: {rolLabel} ({u.email})
+                  </option>
+                );
+              })}
+            </select>
+            <p className="text-[11px] text-blue-700/80 dark:text-blue-300/70 mt-1.5">
+              Al seleccionar un usuario, sus datos personales y cargo se sincronizan automáticamente con su rol correspondiente.
+            </p>
+          </div>
+
           {/* Sección 1: Información Personal */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3 flex items-center gap-2">
@@ -173,7 +282,7 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
               {/* Tipo de Documento */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Tipo de Documento <span className="text-red-500">*</span>
+                  Tipo de Documento
                 </label>
                 <select
                   name="tipoDocumento"
@@ -182,10 +291,10 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-700 dark:text-white"
                 >
                   <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
-                  <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
                   <option value="C.E.">Cédula de Extranjería (C.E.)</option>
-                  <option value="PPT">Permiso por Protección Temporal (PPT)</option>
-                  <option value="PASAPORTE">Pasaporte</option>
+                  <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
+                  <option value="P.P.">Pasaporte (P.P.)</option>
+                  <option value="P.E.P.">Permiso Especial (P.E.P.)</option>
                 </select>
               </div>
 
@@ -278,25 +387,94 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Cargo / Puesto */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Cargo o Puesto <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="cargo"
-                  value={form.cargo}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="Cocinero Principal">Cocinero Principal</option>
-                  <option value="Auxiliar de Cocina">Auxiliar de Cocina</option>
-                  <option value="Cajera / Vendedora">Cajera / Vendedora</option>
-                  <option value="Mesero / Atención al Cliente">Mesero / Atención al Cliente</option>
-                  <option value="Domiciliario">Domiciliario</option>
-                  <option value="Administrador de Turno">Administrador de Turno</option>
-                  <option value="Personal de Limpieza y Apoyo">Personal de Limpieza y Apoyo</option>
-                </select>
+              {/* Cargo / Puesto (Escalable con selector y creación libre) */}
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Cargo o Puesto <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCargo(!isCustomCargo);
+                      if (!isCustomCargo && !form.cargo) {
+                        setForm((prev) => ({ ...prev, cargo: "" }));
+                      }
+                    }}
+                    className="text-xs font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition-colors"
+                  >
+                    {isCustomCargo ? (
+                      <>
+                        <List className="w-3.5 h-3.5" />
+                        <span>Ver lista de cargos</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Crear nuevo cargo</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {isCustomCargo ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        name="cargo"
+                        value={form.cargo}
+                        onChange={handleChange}
+                        autoFocus
+                        placeholder="Escribe el nuevo cargo (Ej: Administrador, Cocinero, Vendedor, Cajero, Repartidor...)"
+                        className={`w-full px-3.5 py-2 rounded-xl border text-sm outline-none transition-all dark:bg-gray-700 dark:text-white ${
+                          errors.cargo
+                            ? "border-red-500 focus:ring-2 focus:ring-red-200"
+                            : "border-gray-200 dark:border-gray-600 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomCargo(false);
+                          setForm((prev) => ({ ...prev, cargo: "Cocinero" }));
+                        }}
+                        className="px-3 py-2 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 shrink-0"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Crea un nuevo cargo para escalar el personal de la empresa de forma independiente.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      name="cargo"
+                      value={form.cargo}
+                      onChange={(e) => {
+                        if (e.target.value === "__CREAR_NUEVO__") {
+                          setIsCustomCargo(true);
+                          setForm((prev) => ({ ...prev, cargo: "" }));
+                        } else {
+                          handleChange(e);
+                        }
+                      }}
+                      className={`w-full px-3.5 py-2 rounded-xl border text-sm outline-none transition-all dark:bg-gray-700 dark:text-white ${
+                        errors.cargo
+                          ? "border-red-500 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 dark:border-gray-600 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
+                      }`}
+                    >
+                      {listaCargos.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="__CREAR_NUEVO__">+ Crear nuevo cargo...</option>
+                    </select>
+                  </div>
+                )}
+                {errors.cargo && <p className="text-xs text-red-500 mt-1">{errors.cargo}</p>}
               </div>
 
               {/* Tipo de Contrato */}
@@ -330,7 +508,7 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                     name="turno"
                     value={form.turno}
                     onChange={handleChange}
-                    placeholder="Ej: Tarde - Noche / Rotativo"
+                    placeholder="Ej: Completo / Mañana - Tarde / Tarde - Noche"
                     className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-700 dark:text-white"
                   />
                 </div>
@@ -367,7 +545,7 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                     onChange={handleChange}
                     placeholder="Ej: 1600000"
                     min="0"
-                    step="1000"
+                    step="50000"
                     className={`w-full pl-9 pr-3.5 py-2 rounded-xl border text-sm outline-none transition-all dark:bg-gray-700 dark:text-white ${
                       errors.salario
                         ? "border-red-500 focus:ring-2 focus:ring-red-200"
@@ -378,7 +556,7 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                 {errors.salario && <p className="text-xs text-red-500 mt-1">{errors.salario}</p>}
               </div>
 
-              {/* Estado Inicial */}
+              {/* Estado */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Estado Operativo
@@ -389,8 +567,8 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
                   onChange={handleChange}
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-600 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-700 dark:text-white"
                 >
-                  <option value="1">Activo (En funciones)</option>
-                  <option value="0">Inactivo (Suspendido / Vacaciones)</option>
+                  <option value={1}>Activo (En funciones)</option>
+                  <option value={0}>Inactivo (Pausado)</option>
                 </select>
               </div>
 
@@ -398,27 +576,27 @@ export function EmpleadoModal({ isOpen, onClose, onSave, empleado = null }) {
           </div>
 
           {/* Footer Buttons */}
-          <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-600/20 transition-all disabled:opacity-50"
+              className="px-5 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md shadow-red-600/20 active:scale-95 disabled:opacity-50"
             >
               {submitting ? "Guardando..." : isEditing ? "Actualizar Empleado" : "Registrar Empleado"}
             </button>
           </div>
+
         </form>
 
       </div>
     </div>
   );
 }
-

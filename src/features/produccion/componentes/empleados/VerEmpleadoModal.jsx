@@ -159,6 +159,34 @@ export function VerEmpleadoModal({ isOpen, onClose, empleado }) {
             </div>
           </div>
 
+          {/* Bloque 3: Cuenta de Sistema y Roles */}
+          {empleado.usuario && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-blue-500" /> Cuenta de Sistema y Rol Vinculado
+              </h3>
+              <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900/40 text-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-blue-700 dark:text-blue-400 block font-medium">
+                      Usuario #{empleado.usuario.idUsuario} en Plataforma
+                    </span>
+                    <span className="font-bold text-gray-900 dark:text-white">
+                      {empleado.usuario.nombre} {empleado.usuario.apellidos || ""}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 block">
+                      {empleado.usuario.email}
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-800">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Rol: {empleado.usuario.rolInfo?.nombre || empleado.cargo}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Footer */}

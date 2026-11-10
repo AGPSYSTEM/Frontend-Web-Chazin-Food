@@ -370,6 +370,7 @@ export function Empleados() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         empleado={selectedEmpleado}
+        cargosDisponibles={cargosDisponibles}
       />
 
       <VerEmpleadoModal
