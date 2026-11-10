@@ -168,29 +168,29 @@ export function Empleados() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+    <div className="p-4 sm:p-6 lg:p-8 w-full space-y-6 animate-in fade-in duration-300">
       
       {/* Encabezado y Título */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
               Gestión de Empleados
             </h1>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200/60 dark:border-red-900/40">
               Subproceso de Personal
             </span>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             Administración del personal, información de contacto y desempeño de funciones en Chazin Food
           </p>
         </div>
 
         {/* Botones de Acción */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap">
           <button
             onClick={() => setViewMode(viewMode === "activos" ? "papelera" : "activos")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-colors border ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-colors border shadow-xs cursor-pointer ${
               viewMode === "papelera"
                 ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800"
                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
@@ -211,7 +211,7 @@ export function Empleados() {
 
           <button
             onClick={exportarExcel}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors shadow-xs cursor-pointer"
           >
             <Download className="w-4 h-4 text-gray-500" />
             <span>Exportar Excel</span>
@@ -219,7 +219,7 @@ export function Empleados() {
 
           <button
             onClick={handleOpenCreate}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-md shadow-red-600/20 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-md shadow-red-600/20 active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nuevo Empleado</span>
@@ -227,84 +227,88 @@ export function Empleados() {
         </div>
       </div>
 
-      {/* Tarjetas de Estadísticas (KPIs) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Tarjetas de Estadísticas (KPIs) a Ancho Completo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Total Empleados */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center font-bold shrink-0">
+            <Users className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 block font-medium">Total Empleados</span>
-            <span className="text-xl font-black text-gray-900 dark:text-white">{stats.total}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Total Empleados</span>
+            <span className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{stats.total}</span>
+            <span className="text-[11px] text-gray-400 block">registrados en nómina</span>
           </div>
         </div>
 
         {/* Empleados Activos */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <CheckCircle2 className="w-5 h-5" />
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 block font-medium">En Funciones (Activos)</span>
-            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{stats.activos}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">En Funciones (Activos)</span>
+            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-tight">{stats.activos}</span>
+            <span className="text-[11px] text-emerald-500 font-medium block">operando actualmente</span>
           </div>
         </div>
 
         {/* Empleados Inactivos */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 flex items-center justify-center font-bold">
-            <XCircle className="w-5 h-5" />
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 flex items-center justify-center font-bold shrink-0">
+            <XCircle className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 block font-medium">Inactivos / Pausados</span>
-            <span className="text-xl font-black text-gray-700 dark:text-gray-300">{stats.inactivos}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Inactivos / Pausados</span>
+            <span className="text-2xl font-black text-gray-700 dark:text-gray-300 leading-tight">{stats.inactivos}</span>
+            <span className="text-[11px] text-gray-400 block">sin turno asignado</span>
           </div>
         </div>
 
         {/* Papelera de Reciclaje */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 flex items-center justify-center font-bold">
-            <Briefcase className="w-5 h-5" />
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
+            <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 block font-medium">Papelera</span>
-            <span className="text-xl font-black text-amber-600 dark:text-amber-400">{stats.papelera}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Papelera</span>
+            <span className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.papelera}</span>
+            <span className="text-[11px] text-amber-500 font-medium block">disponibles para restaurar</span>
           </div>
         </div>
 
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+      {/* Barra de Búsqueda y Filtros Optimizada para Pantallas Anchas */}
+      <div className="bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4">
         
-        {/* Buscador Multicriterio */}
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+        {/* Buscador Multicriterio Flexible a la Izquierda */}
+        <div className="relative flex-1 w-full">
+          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por documento, nombre, cargo, salario (ej: 1.300.000), teléfono, correo..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl text-sm outline-none border border-gray-200 dark:border-gray-600 dark:bg-gray-700/60 dark:text-white focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 transition-all"
+            className="w-full pl-11 pr-4 py-2.5 bg-gray-50/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all outline-none"
           />
         </div>
 
-        {/* Filtros por Pastillas (Pills) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        {/* Filtros a la Derecha */}
+        <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap justify-between lg:justify-end shrink-0">
           
-          {/* Filtro por Estado */}
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-            <span className="text-gray-400 font-semibold mr-1">Estado:</span>
+          {/* Pastillas de Estado */}
+          <div className="flex items-center gap-1.5 text-xs bg-gray-100/70 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200/60 dark:border-gray-700">
+            <span className="text-gray-400 font-semibold px-2">Estado:</span>
             {["Todos", "Activo", "Inactivo"].map((st) => (
               <button
                 key={st}
                 onClick={() => setFilterEstado(st)}
-                className={`px-3 py-1 rounded-full font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
                   filterEstado === st
-                    ? "bg-red-600 text-white shadow-sm"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 {st}
@@ -312,13 +316,12 @@ export function Empleados() {
             ))}
           </div>
 
-          {/* Filtro por Cargo */}
+          {/* Selector de Cargo */}
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-400 font-semibold">Cargo:</span>
             <select
               value={filterCargo}
               onChange={(e) => setFilterCargo(e.target.value)}
-              className="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-600 text-xs font-semibold outline-none dark:bg-gray-700 dark:text-white focus:border-red-500"
+              className="px-3.5 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs font-semibold outline-none bg-white dark:bg-gray-800 dark:text-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 cursor-pointer"
             >
               <option value="Todos">Todos los Cargos</option>
               {cargosDisponibles.map((c) => (
@@ -331,10 +334,10 @@ export function Empleados() {
 
       </div>
 
-      {/* Vista de Tabla */}
+      {/* Vista de Tabla a Ancho Completo */}
       {viewMode === "papelera" ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60">
             <div>
               <h3 className="text-sm font-bold text-amber-800 dark:text-amber-200">
                 Papelera de Empleados
@@ -383,4 +386,3 @@ export function Empleados() {
   );
 }
 export default Empleados;
-
