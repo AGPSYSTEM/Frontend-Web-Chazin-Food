@@ -29,7 +29,7 @@ export function Empleados() {
     restoreEmpleado
   } = useEmpleados();
 
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -70,7 +70,7 @@ export function Empleados() {
       title: isActivo ? "¿Desactivar Empleado?" : "¿Activar Empleado?",
       message: `¿Estás seguro de que deseas ${isActivo ? "desactivar" : "activar"} a ${emp.nombre} ${emp.apellidos}?`,
       confirmText: isActivo ? "Sí, Desactivar" : "Sí, Activar",
-      variant: isActivo ? "warning" : "primary"
+      type: isActivo ? "warning" : "info"
     });
 
     if (confirmed) {
@@ -83,7 +83,7 @@ export function Empleados() {
       title: "¿Enviar a la Papelera?",
       message: `El empleado ${emp.nombre} ${emp.apellidos} será trasladado a la papelera. Podrás restaurarlo en cualquier momento.`,
       confirmText: "Sí, Eliminar",
-      variant: "danger"
+      type: "danger"
     });
 
     if (confirmed) {
