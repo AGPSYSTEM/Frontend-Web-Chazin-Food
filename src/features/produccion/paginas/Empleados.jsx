@@ -286,7 +286,7 @@ export function Empleados() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por documento, nombre, apellido, cargo, correo o teléfono..."
+            placeholder="Buscar por documento, nombre, cargo, salario (ej: 1.300.000), teléfono, correo..."
             className="w-full pl-10 pr-4 py-2 rounded-xl text-sm outline-none border border-gray-200 dark:border-gray-600 dark:bg-gray-700/60 dark:text-white focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 transition-all"
           />
         </div>

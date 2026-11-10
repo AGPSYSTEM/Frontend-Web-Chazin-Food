@@ -407,6 +407,12 @@ export function matchTokenInCorpus(corpus = "", token = "") {
   // Coincidencia directa exacta de substring
   if (corpus.includes(token)) return true;
 
+  // Si el token tiene símbolo de moneda ($1.300.000, $5000), verificar coincidencia sin el símbolo
+  const tokenNoCurrency = token.replace(/^[$€£]/, "").trim();
+  if (tokenNoCurrency && tokenNoCurrency !== token && corpus.includes(tokenNoCurrency)) {
+    return true;
+  }
+
   // Variación plural en español (ej: "hamburguesas" coincide con "hamburguesa", "proveedores" con "proveedor")
   if (token.endsWith("es") && token.length > 3) {
     const singular = token.slice(0, -2);
@@ -417,11 +423,12 @@ export function matchTokenInCorpus(corpus = "", token = "") {
     if (corpus.includes(singular)) return true;
   }
 
-  // Coincidencia numérica parcial cuando el usuario escribe puntos o comas separadoras (ej: "13.15" -> "1315", "5.000" -> "5000")
-  if (/^\d[\d.,]*\d$/.test(token) && /[.,]/.test(token)) {
-    const cleanDigits = token.replace(/[.,]/g, "");
+  // Coincidencia numérica con o sin símbolo de moneda ($) y separadores de miles/decimales (ej: "1.300.000", "$1.300.000", "5.000" -> "5000")
+  const numericToken = tokenNoCurrency || token;
+  if (/^\d[\d.,]*\d$/.test(numericToken) && /[.,]/.test(numericToken)) {
+    const cleanDigits = numericToken.replace(/[.,]/g, "");
     const corpusWithoutDots = corpus.replace(/(?<=\d)[.,](?=\d)/g, "");
-    if (cleanDigits && corpusWithoutDots.includes(cleanDigits)) {
+    if (cleanDigits && (corpusWithoutDots.includes(cleanDigits) || corpus.includes(cleanDigits))) {
       return true;
     }
   }
@@ -456,14 +463,18 @@ export function matchesSmartSearch(fields = [], query = "") {
 
     expandedParts.push(str);
 
-    // Si es un número (stock, precio, cantidad, id, módulos), indexar como entero, palabra en español y con formato
-    if (typeof item === "number" && !isNaN(item)) {
-      expandedParts.push(String(item));
-      if (SPANISH_DIGIT_WORDS[item]) {
-        expandedParts.push(SPANISH_DIGIT_WORDS[item]);
+    // Si es un número (stock, precio, cantidad, id, módulos) o string numérico, indexar como entero, palabra en español y con formato
+    const numParsed = typeof item === "number" ? item : (!isNaN(Number(str)) && str !== "" ? Number(str) : null);
+    if (numParsed !== null && !isNaN(numParsed)) {
+      const intVal = Math.round(numParsed);
+      expandedParts.push(String(intVal));
+      if (SPANISH_DIGIT_WORDS[intVal]) {
+        expandedParts.push(SPANISH_DIGIT_WORDS[intVal]);
       }
-      if (item >= 1000) {
-        expandedParts.push(item.toLocaleString("es-CO"));
+      if (numParsed >= 1000) {
+        expandedParts.push(intVal.toLocaleString("es-CO"));
+        expandedParts.push(`$ ${intVal.toLocaleString("es-CO")}`);
+        expandedParts.push(`$${intVal.toLocaleString("es-CO")}`);
       }
     }
 

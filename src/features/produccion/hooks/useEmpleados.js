@@ -61,20 +61,53 @@ export function useEmpleados() {
 
       if (!searchTerm || !searchTerm.trim()) return true;
 
+      const numSalario = Number(emp.salario) || 0;
+      const formattedSalario = numSalario > 0 ? Math.round(numSalario).toLocaleString("es-CO") : "";
+      const currencySalario = numSalario > 0 ? `$ ${formattedSalario}` : "";
+
+      const fechaContratoStr = emp.fechaContratacion
+        ? new Date(emp.fechaContratacion).toLocaleDateString("es-CO", {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+          })
+        : "";
+      const fechaContratoCorta = emp.fechaContratacion
+        ? new Date(emp.fechaContratacion).toLocaleDateString("es-CO")
+        : "";
+
       return matchesSmartSearch(
         [
+          emp.idEmpleado,
+          `ID #${emp.idEmpleado}`,
+          `#${emp.idEmpleado}`,
           emp.nombre,
           emp.apellidos,
           `${emp.nombre} ${emp.apellidos}`,
           emp.numeroDocumento,
           emp.tipoDocumento,
+          `${emp.tipoDocumento} ${emp.numeroDocumento}`,
+          `${emp.tipoDocumento}. ${emp.numeroDocumento}`,
           emp.cargo,
           emp.correo,
           emp.telefono,
+          emp.telefono ? String(emp.telefono).replace(/\D/g, "") : "",
           emp.direccion,
           emp.tipoContrato,
           emp.turno,
-          isActivo ? "Activo" : "Inactivo"
+          isActivo ? "Activo" : "Inactivo",
+          emp.fechaContratacion,
+          fechaContratoStr,
+          fechaContratoCorta,
+          // Salario en formatos numérico, con puntos y con divisa
+          emp.salario,
+          numSalario,
+          String(Math.round(numSalario)),
+          formattedSalario,
+          currencySalario,
+          `$${formattedSalario}`,
+          `COP ${formattedSalario}`,
+          "COP Mensual"
         ],
         searchTerm
       );
