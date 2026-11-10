@@ -3,6 +3,36 @@ import { empleadosService } from "../servicios/empleadosService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
+const cleanMojibake = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã©/g, "é")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã±/g, "ñ")
+    .replace(/Ã/g, "Á")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã/g, "Í")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ãš/g, "Ú")
+    .replace(/Ã‘/g, "Ñ");
+};
+
+const sanitizeEmpleado = (emp) => {
+  if (!emp) return emp;
+  return {
+    ...emp,
+    nombre: cleanMojibake(emp.nombre),
+    apellidos: cleanMojibake(emp.apellidos),
+    cargo: cleanMojibake(emp.cargo),
+    tipoContrato: cleanMojibake(emp.tipoContrato),
+    turno: cleanMojibake(emp.turno),
+    direccion: cleanMojibake(emp.direccion)
+  };
+};
+
 export function useEmpleados() {
   const notify = useNotifications();
   const [empleados, setEmpleados] = useState([]);
@@ -19,8 +49,8 @@ export function useEmpleados() {
         empleadosService.getEmpleados({ papelera: false }),
         empleadosService.getEmpleados({ papelera: true }).catch(() => [])
       ]);
-      setEmpleados(Array.isArray(activosData) ? activosData : []);
-      setPapeleraEmpleados(Array.isArray(papeleraData) ? papeleraData : []);
+      setEmpleados(Array.isArray(activosData) ? activosData.map(sanitizeEmpleado) : []);
+      setPapeleraEmpleados(Array.isArray(papeleraData) ? papeleraData.map(sanitizeEmpleado) : []);
     } catch (err) {
       console.error(err);
       notify.error("Error", err.message || "Error al cargar los empleados");

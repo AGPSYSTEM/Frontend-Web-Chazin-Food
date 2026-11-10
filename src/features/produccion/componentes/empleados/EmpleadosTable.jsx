@@ -1,5 +1,22 @@
 import { Eye, Edit2, Trash2, Power, Briefcase, Phone, Mail, Clock, DollarSign, Calendar, ShieldCheck } from "lucide-react";
 
+const cleanMojibake = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã©/g, "é")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã±/g, "ñ")
+    .replace(/Ã /g, "Á")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã /g, "Í")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ãš/g, "Ú")
+    .replace(/Ã‘/g, "Ñ");
+};
+
 export function EmpleadosTable({
   empleados = [],
   onView,
@@ -74,7 +91,7 @@ export function EmpleadosTable({
                           {emp.nombre} {emp.apellidos}
                         </span>
                         <span className="text-xs text-gray-400 block mt-0.5">
-                          ID #{emp.idEmpleado} • {emp.tipoContrato || "Término Fijo"}
+                          ID #{emp.idEmpleado} • {cleanMojibake(emp.tipoContrato) || "Término Fijo"}
                         </span>
                       </div>
                     </div>
@@ -98,7 +115,7 @@ export function EmpleadosTable({
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      {emp.turno || "Completo"}
+                      {cleanMojibake(emp.turno) || "Completo"}
                     </span>
                     {emp.usuario && (
                       <span
