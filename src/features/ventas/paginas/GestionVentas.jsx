@@ -70,7 +70,7 @@ export function GestionVentas() {
   const canCancel = hasPrivilege(user, "Gestión de Ventas", "eliminar");
 
   const [activeTab, setActiveTab] = useState("pedidos_pagados");
-  const [historialViewMode, setHistorialViewMode] = useState("cards"); // "cards" | "table"
+  const [historialViewMode, setHistorialViewMode] = useState("table"); // "cards" | "table"
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [selectedVentaDetail, setSelectedVentaDetail] = useState(null);
 

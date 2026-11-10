@@ -595,7 +595,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
                 <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70 rounded-xl p-3 space-y-2 animate-in fade-in duration-150">
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
                     <span className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
-                      🍳 Receta: {hybridInfo.prepFormatted}
+                      🍳 Ficha técnica: {hybridInfo.prepFormatted}
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
                       🛵 {hybridInfo.esDomicilio ? "Domicilio (+15-25 min)" : hybridInfo.prepMin <= 2 ? "Servicio rápido (+1-4 min)" : "En Mesa (+3-8 min)"}

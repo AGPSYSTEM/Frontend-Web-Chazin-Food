@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
-import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, extractKitchenSearchTokens } from "@/shared/utils/searchUtils";
 import {
   LogOut,
   ChefHat,
@@ -354,7 +354,7 @@ export function CocineroDashboard() {
   // ── Configuración de Auto-desvanecimiento de comandas listas ──
   const [autoFadeSegundos, setAutoFadeSegundos] = useState(() => {
     const saved = localStorage.getItem("kds_auto_fade_sec");
-    return saved !== null ? Number(saved) : 60; // 60 segundos por defecto
+    return saved !== null ? Number(saved) : 0; // 0 (Manual sin temporizador) por defecto
   });
   const [showConfigFade, setShowConfigFade] = useState(false);
 
@@ -707,40 +707,10 @@ export function CocineroDashboard() {
         if (!hasProd) return false;
       }
 
-      // 3. Filtro por buscador multicriterio de texto
+            // 3. Filtro por buscador multicriterio exacto en todas las columnas y detalles
       if (hasSearch) {
-        const prodsList = (p.productos || [])
-          .map((pr) => {
-            const adics = (pr.adiciones || []).map((a) => (typeof a === "object" ? a.nombre : a)).join(" ");
-            return `${pr.nombre || ""} ${pr.nota || pr.observaciones || ""} ${adics}`;
-          })
-          .join(" ");
-
-        const mesaText = p.mesa ? `mesa ${p.mesa} #${p.mesa}` : "sin_mesa sin mesa para llevar llevar recoger domicilio";
-        const obsText = p.observaciones ? p.observaciones : "sin_observaciones sin observaciones";
-        const clientText = p.cliente ? p.cliente : "sin_cliente sin cliente mostrador";
-
-        return matchesSmartSearch(
-          [
-            p.codigo,
-            p.id,
-            p.idVenta,
-            `#${p.id || p.idVenta}`,
-            `VEN-${p.id || p.idVenta}`,
-            p.cliente,
-            clientText,
-            p.responsable,
-            p.mesa,
-            mesaText,
-            p.tipoEntrega,
-            p.canal,
-            p.observaciones,
-            obsText,
-            formatStatusTokens(p.estado || p.estadoEntrega),
-            prodsList
-          ],
-          searchTerm
-        );
+        const tokens = extractKitchenSearchTokens(p);
+        return matchesSmartSearch(tokens, searchTerm);
       }
 
       return true;
@@ -869,7 +839,7 @@ export function CocineroDashboard() {
                 <input
                   type="text"
                   aria-label="Buscar comanda"
-                  placeholder="Buscar comanda..."
+                  placeholder="Buscar por código, cliente, platillo, detalles, hora o estado..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-[#F05454] focus:bg-white dark:focus:bg-gray-900 rounded-xl text-xs font-medium text-gray-800 dark:text-gray-200 placeholder-gray-400 outline-hidden transition"
@@ -973,11 +943,11 @@ export function CocineroDashboard() {
             {/* Recetas / Fichas Técnicas link */}
             <Link
               to="/fichas-tecnicas"
-              aria-label="Ir al recetario de fichas técnicas"
+              aria-label="Ir al catálogo de fichas técnicas"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-[#F05454] rounded-xl text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/60 transition cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Recetario</span>
+              <span className="hidden sm:inline">Fichas Técnicas</span>
             </Link>
 
             {/* Dark Mode Toggle */}
@@ -1325,10 +1295,10 @@ export function CocineroDashboard() {
                                   verReceta(ped, prod);
                                 }}
                                 className="px-2 py-1 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-[#F05454] rounded-lg text-[11px] font-black transition shrink-0 flex items-center gap-1 cursor-pointer border border-red-100 dark:border-red-900/40 shadow-2xs"
-                                title="Ver receta y proporciones"
+                                title="Ver ficha técnica y proporciones"
                               >
                                 <BookOpen className="w-3 h-3" />
-                                <span>Receta</span>
+                                <span>Ficha Técnica</span>
                               </button>
                             </div>
 

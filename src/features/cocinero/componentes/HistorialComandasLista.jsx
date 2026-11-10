@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { matchesSmartSearch, formatStatusTokens, extractKitchenSearchTokens } from "@/shared/utils/searchUtils";
+import { resolveOrderTimings } from "@/features/produccion/utils/tiempoProduccionUtils";
 import {
   Search,
   Calendar,
@@ -8,6 +9,7 @@ import {
   UtensilsCrossed,
   RotateCcw,
   CheckCircle2,
+  Check,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
@@ -87,42 +89,10 @@ export function HistorialComandasLista({
         }
       }
 
-      // 3. Search query multicriterio
+            // 3. Search query multicriterio exacto en todas las columnas y detalles
       if (hasSearch) {
-        const prodsList = (p.productos || [])
-          .map((pr) => {
-            const adics = (pr.adiciones || []).map((a) => (typeof a === "object" ? a.nombre : a)).join(" ");
-            return `${pr.nombre || ""} ${pr.nota || pr.observaciones || ""} ${adics}`;
-          })
-          .join(" ");
-
-        const mesaText = p.mesa ? `mesa ${p.mesa} #${p.mesa}` : "sin_mesa sin mesa para llevar llevar recoger domicilio";
-        const obsText = p.observaciones ? p.observaciones : "sin_observaciones sin observaciones";
-        const clientText = p.cliente ? p.cliente : "sin_cliente sin cliente mostrador";
-
-        return matchesSmartSearch(
-          [
-            p.codigo,
-            p.id,
-            p.idVenta,
-            `#${p.id || p.idVenta}`,
-            `VEN-${p.id || p.idVenta}`,
-            p.cliente,
-            clientText,
-            p.responsable,
-            p.mesa,
-            mesaText,
-            p.tipoEntrega,
-            p.canal,
-            p.observaciones,
-            obsText,
-            p.total ? String(p.total) : "",
-            formatStatusTokens(p.estado || p.estadoEntrega),
-            orderDateStr,
-            prodsList
-          ],
-          searchTerm
-        );
+        const tokens = extractKitchenSearchTokens(p);
+        return matchesSmartSearch(tokens, searchTerm);
       }
 
       return true;
@@ -309,6 +279,7 @@ export function HistorialComandasLista({
                   const items = Array.isArray(ped.productos) ? ped.productos : [];
                   const totalPlatillos = items.reduce((s, i) => s + (i.cantidad || 1), 0);
                   const parsedNotes = parseKitchenOrderNotes(ped.observaciones);
+                  const timings = resolveOrderTimings(ped);
 
                   // Delivery badge styling
                   const isDomicilio = String(ped.tipoEntrega || ped.mesa || "").toLowerCase().includes("domicilio");
@@ -447,7 +418,7 @@ export function HistorialComandasLista({
                                         className="text-[10px] text-[#F05454] font-bold hover:underline cursor-pointer flex items-center gap-1"
                                       >
                                         <BookOpen className="w-3 h-3" />
-                                        Receta
+                                        Ficha Técnica
                                       </button>
                                     )}
                                   </div>
@@ -500,12 +471,41 @@ export function HistorialComandasLista({
                         )}
                       </td>
 
-                      {/* Status */}
+                      {/* Status & Timing Bar / Timeline por cada estado */}
                       <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-[11px] font-black">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Despachado
-                        </span>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-[11px] font-black">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {ped.estado || "Despachado"}
+                          </span>
+
+                          {/* Barra acumulativa con horas en que se actualizó cada estado (Gestión de Producción) */}
+                          <div className="flex flex-col items-stretch gap-0.5 bg-gray-50/90 dark:bg-gray-800/70 px-2 py-1 rounded-lg border border-gray-200/70 dark:border-gray-700/70 min-w-[130px] text-left">
+                            {Array.isArray(timings.estadosAlcanzados) && timings.estadosAlcanzados.length > 0 ? (
+                              timings.estadosAlcanzados.map((st) => (
+                                <div
+                                  key={st.key}
+                                  className={`flex items-center justify-between gap-1.5 text-[9.5px] font-mono leading-tight ${
+                                    st.current
+                                      ? "font-extrabold text-emerald-700 dark:text-emerald-300"
+                                      : "font-semibold text-gray-500 dark:text-gray-400"
+                                  }`}
+                                >
+                                  <span className="inline-flex items-center gap-1">
+                                    <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0 stroke-[2.5]" />
+                                    <span>{st.label}:</span>
+                                  </span>
+                                  <span>{st.hora}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] font-mono font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5 text-gray-400" />
+                                <span>{timeStr || timings.horaPedido || "Despachado"}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Action: Reabrir */}

@@ -230,7 +230,22 @@ export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado 
                       {getEntregaBadge(v.tipoEntrega)}
                       <span className="inline-flex items-center gap-1 text-[10.5px] font-medium text-gray-500 dark:text-gray-400">
                         <Clock className="w-2.5 h-2.5 text-amber-500 shrink-0" />
-                        <span>{v.tiempoEstimadoEntrega || (v.tipoEntrega === 'Domicilio' ? '35 - 45 min' : '15 - 20 min')}</span>
+                        <span>{
+  (() => {
+    const st = String(v.estado || '').toLowerCase();
+    const isDomi = String(v.tipoEntrega || '').toLowerCase().includes('domicilio');
+    if (st.includes('entreg') || st.includes('complet')) {
+      return isDomi ? 'Entregado a destino' : 'Servido en Mesa';
+    }
+    if (st.includes('despach')) {
+      return isDomi ? 'En Despacho (Ruta)' : 'Servido en Mesa';
+    }
+    if (st.includes('list')) {
+      return isDomi ? 'Listo • En Despacho' : 'Listo para entrega';
+    }
+    return v.tiempoEstimadoEntrega || (isDomi ? '35 - 45 min' : '15 - 20 min');
+  })()
+}</span>
                       </span>
                     </div>
                   </td>

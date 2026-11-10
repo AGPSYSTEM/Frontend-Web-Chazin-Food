@@ -337,7 +337,7 @@ export function calculateAutomaticDeliveryEstimate(order = {}, nowMs = Date.now(
     prepFormatted: prep.formatted,
     esDomicilio,
     estadoCocina,
-    detalleCalculo: `Cocción receta: ${prep.formatted} + ${modalidadTxt} • Estado: ${estadoCocina}`
+    detalleCalculo: `Cocción ficha técnica: ${prep.formatted} + ${modalidadTxt} • Estado: ${estadoCocina}`
   };
 }
 

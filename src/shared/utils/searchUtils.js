@@ -1111,3 +1111,153 @@ export function matchClienteMultiCriteria(cliente, criteria = {}) {
 
   return true;
 }
+
+
+/**
+ * Extractor exhaustivo de tokens de búsqueda para comandas de cocina y KDS.
+ * Indexa con exactitud: códigos, cliente, mesa/canal, fecha en formatos D/M/YYYY y YYYY-MM-DD,
+ * hora en 12h (07:22 PM) y 24h, estado (Despachado, Listo, En Preparación), platillos principales,
+ * adiciones, ingredientes removidos (sin cebolla, etc.), personalizaciones y notas.
+ */
+export function extractKitchenSearchTokens(p = {}) {
+  if (!p || typeof p !== 'object') return [];
+  const tokens = [];
+
+  // 1. Códigos e identificadores
+  if (p.codigo) tokens.push(p.codigo);
+  if (p.id) {
+    tokens.push(String(p.id), '#' + p.id, 'VEN-' + p.id, 'OP-00' + p.id);
+  }
+  if (p.idVenta) {
+    tokens.push(String(p.idVenta), '#' + p.idVenta, 'VEN-' + p.idVenta);
+  }
+
+  // 2. Cliente y personal responsable
+  if (p.cliente) tokens.push(p.cliente);
+  if (p.responsable) tokens.push(p.responsable);
+  if (p.cocinero) tokens.push(p.cocinero);
+  if (p.responsableCocina) tokens.push(p.responsableCocina);
+
+  // 3. Canal, mesa y tipo de entrega
+  if (p.mesa) tokens.push(p.mesa, 'mesa ' + p.mesa, 'mesa #' + p.mesa, '#' + p.mesa);
+  if (p.tipoEntrega) tokens.push(p.tipoEntrega);
+  if (p.canal) tokens.push(p.canal);
+
+  // 4. Estado textual completo y variaciones
+  const estadoRaw = p.estado || p.estadoEntrega || '';
+  if (estadoRaw) {
+    tokens.push(estadoRaw);
+    tokens.push(formatStatusTokens(estadoRaw));
+  }
+  const normEstado = String(estadoRaw).toLowerCase();
+  if (normEstado.includes('despach')) tokens.push('despachado', 'despacho');
+  if (normEstado.includes('list')) tokens.push('listo', 'listos', 'terminado');
+  if (normEstado.includes('prepar')) tokens.push('preparando', 'en preparación', 'preparacion', 'cocinando');
+  if (normEstado.includes('cola') || normEstado.includes('pend')) tokens.push('pendiente', 'en cola', 'espera');
+  if (normEstado.includes('entreg')) tokens.push('entregado', 'completado', 'completada');
+
+  // 5. Fechas y Horas exactas
+  const orderDate = p.fechaVenta ? new Date(p.fechaVenta) : (p.fecha ? new Date(p.fecha) : null);
+  if (orderDate && !isNaN(orderDate.getTime())) {
+    const isoDate = orderDate.toISOString().split('T')[0];
+    tokens.push(isoDate);
+
+    const day = orderDate.getDate();
+    const dayPadded = String(day).padStart(2, '0');
+    const month = orderDate.getMonth() + 1;
+    const monthPadded = String(month).padStart(2, '0');
+    const year = orderDate.getFullYear();
+
+    tokens.push(day + '/' + month + '/' + year);
+    tokens.push(dayPadded + '/' + monthPadded + '/' + year);
+    tokens.push(day + '/' + month);
+    tokens.push(dayPadded + '/' + monthPadded);
+
+    const meses = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    tokens.push(meses[orderDate.getMonth()]);
+
+    let h = orderDate.getHours();
+    const m = String(orderDate.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    const h12Padded = String(h12).padStart(2, '0');
+    const h24Padded = String(h).padStart(2, '0');
+
+    tokens.push(h12Padded + ':' + m + ' ' + ampm); // '07:22 PM'
+    tokens.push(h12 + ':' + m + ' ' + ampm);       // '7:22 PM'
+    tokens.push(h12Padded + ':' + m);             // '07:22'
+    tokens.push(h12 + ':' + m);                   // '7:22'
+    tokens.push(h24Padded + ':' + m);             // '19:22'
+    tokens.push(ampm);
+  }
+
+  if (p.horaInicio) tokens.push(p.horaInicio);
+  if (p.horaPedido) tokens.push(p.horaPedido);
+  if (p.horaEstado) tokens.push(p.horaEstado);
+
+  // Marcas de tiempo acumuladas en tiemposEstados
+  if (p.tiemposEstados && typeof p.tiemposEstados === 'object') {
+    Object.values(p.tiemposEstados).forEach((t) => {
+      if (t?.hora) tokens.push(t.hora);
+      if (t?.horaExacta) tokens.push(t.horaExacta);
+    });
+  }
+
+  // 6. Platillos principales y cada uno de sus detalles
+  if (p.platilloNombre) tokens.push(p.platilloNombre);
+  if (p.nombreProducto) tokens.push(p.nombreProducto);
+
+  const items = Array.isArray(p.productos) ? p.productos : [];
+  items.forEach((it) => {
+    if (!it) return;
+    if (it.nombre) tokens.push(it.nombre);
+    if (it.nombreProducto) tokens.push(it.nombreProducto);
+    if (it.variante) tokens.push(it.variante);
+    if (it.categoria) tokens.push(it.categoria);
+    if (it.nota) tokens.push(it.nota);
+    if (it.observacion) tokens.push(it.observacion);
+    if (it.observaciones) tokens.push(it.observaciones);
+    if (it.especificaciones) tokens.push(it.especificaciones);
+
+    // Adiciones (nombre y objetos)
+    if (Array.isArray(it.adiciones)) {
+      it.adiciones.forEach((ad) => {
+        const adName = typeof ad === 'object' ? ad.nombre : ad;
+        if (adName) tokens.push(adName);
+      });
+    }
+
+    // Ingredientes removidos (ej: 'Sin cebolla')
+    if (Array.isArray(it.ingredientesRemovidos)) {
+      it.ingredientesRemovidos.forEach((rem) => {
+        const remName = typeof rem === 'object' ? rem.nombre : rem;
+        if (remName) {
+          tokens.push(remName);
+          tokens.push('sin ' + remName);
+        }
+      });
+    }
+
+    // Personalizaciones
+    if (it.personalizaciones) {
+      if (typeof it.personalizaciones === 'string') tokens.push(it.personalizaciones);
+      else if (typeof it.personalizaciones === 'object') {
+        try {
+          tokens.push(JSON.stringify(it.personalizaciones));
+        } catch (_) {}
+      }
+    }
+  });
+
+  // 7. Observaciones generales y notas de comanda
+  if (p.observaciones) {
+    tokens.push(p.observaciones);
+  }
+
+  if (p.total) tokens.push(String(p.total));
+
+  return tokens.filter(Boolean);
+}
