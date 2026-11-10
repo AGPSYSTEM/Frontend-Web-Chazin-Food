@@ -82,15 +82,58 @@ export function useDevoluciones() {
         }
       }
 
-      // Búsqueda inteligente
+      // Búsqueda inteligente — cubre todos los datos visibles en la tabla
       if (hasSearch) {
         const clienteNombre = d.cliente?.nombre || d.venta?.cliente?.nombre || "";
         const clienteDoc = d.cliente?.documento || d.venta?.cliente?.documento || "";
-        const codigoDev = d.codigoDevolucion || `DEV-${d.idDevolucion}`;
-        const codigoVen = d.codigoVenta || (d.idVenta ? `VEN-${d.idVenta}` : "");
+        const clienteEmail = d.cliente?.email || d.cliente?.correo || d.venta?.cliente?.email || "";
+        const clienteTel = d.cliente?.telefono || d.venta?.cliente?.telefono || "";
+        const codigoDev = d.codigoDevolucion || `DEV-${String(d.idDevolucion).padStart(4, "0")}`;
+        const codigoVen = d.codigoVenta || (d.idVenta ? `VEN-${String(d.idVenta).padStart(4, "0")}` : "");
 
-        const prodsText = Array.isArray(d.productosDevueltos)
-          ? d.productosDevueltos.map(p => `${p.nombre || p.nombreProducto || ""} x${p.cantidad || 1}`).join(" ")
+        // Fecha de la devolución formateada en varios formatos buscables
+        let fechaTexto = "";
+        if (d.fecha) {
+          const fechaObj = new Date(d.fecha);
+          if (!isNaN(fechaObj.getTime())) {
+            fechaTexto = [
+              fechaObj.toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" }),
+              fechaObj.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" }),
+              fechaObj.toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" }),
+              String(fechaObj.getFullYear()),
+              String(fechaObj.getDate()).padStart(2, "0"),
+            ].join(" ");
+          }
+        }
+
+        // Valor devuelto — buscable como número y como texto formateado en COP
+        const valorNum = Number(d.valorDevuelto || 0);
+        const valorTexto = valorNum > 0
+          ? new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(valorNum)
+          : "reposicion cambio";
+
+        // Productos devueltos — nombre, cantidad y precio unitario
+        let prodsText = "";
+        if (Array.isArray(d.productosDevueltos)) {
+          prodsText = d.productosDevueltos
+            .map(p => [
+              p.nombre || p.nombreProducto || "",
+              `x${p.cantidad || 1}`,
+              p.cantidad ? `${p.cantidad} unidad` : "",
+              p.precioUnitario ? String(p.precioUnitario) : ""
+            ].join(" "))
+            .join(" ");
+        }
+
+        // Totales de unidades devueltas (ej: "3 unidades")
+        const totalUnidades = Array.isArray(d.productosDevueltos)
+          ? d.productosDevueltos.reduce((acc, p) => acc + Number(p.cantidad || 1), 0)
+          : 0;
+        const unidadesTexto = `${totalUnidades} unidad${totalUnidades !== 1 ? "es" : ""}`;
+
+        // Usuario que resolvió (si aplica)
+        const resolvedBy = d.usuarioResolucion
+          ? `${d.usuarioResolucion.nombre || ""} ${d.usuarioResolucion.apellidos || ""}`.trim()
           : "";
 
         return matchesSmartSearch(
@@ -101,14 +144,21 @@ export function useDevoluciones() {
             `#${d.idVenta}`,
             clienteNombre,
             clienteDoc,
+            clienteEmail,
+            clienteTel,
             d.motivo,
             d.tipoResolucion,
             d.descripcion,
             d.accionRealizada,
             d.motivoRechazo,
             prodsText,
+            unidadesTexto,
+            fechaTexto,
+            valorTexto,
+            String(valorNum),
             formatStatusTokens(d.estado),
-            d.estado
+            d.estado,
+            resolvedBy
           ],
           searchTerm
         );
@@ -123,7 +173,9 @@ export function useDevoluciones() {
         (d) => d.codigoVenta,
         (d) => d.cliente?.nombre || d.venta?.cliente?.nombre,
         (d) => d.motivo,
-        (d) => d.tipoResolucion
+        (d) => d.tipoResolucion,
+        (d) => d.estado,
+        (d) => d.cliente?.documento || d.venta?.cliente?.documento
       ]);
     }
 

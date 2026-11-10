@@ -180,6 +180,16 @@ export function formatStatusTokens(estado) {
     return `${str} pendiente pendientes en cola en espera`;
   }
 
+  // Aprobada / aprobado (devoluciones)
+  if (lower.includes("aprob")) {
+    return `${str} aprobada aprobadas aprobado aprobados aprobacion`;
+  }
+
+  // Rechazada / rechazado (devoluciones)
+  if (lower.includes("rechaz")) {
+    return `${str} rechazada rechazadas rechazado rechazados rechazo`;
+  }
+
   // En preparación / Preparando / Cocina
   if (lower.includes("prep") || lower.includes("cocin")) {
     return `${str} en preparacion preparando cocina cocinando`;
@@ -216,7 +226,7 @@ export function hasStatusSearchIntent(query = "") {
   const norm = normalizeSearchText(query);
   if (!norm) return false;
   return (
-    /\b(inactiv[oa]?s?|activ[oa]?s?|deshabilitad[oa]?s?|habilitad[oa]?s?|vencid[oa]?s?|vencit[oa]?s?|caducad[oa]?s?|expirad[oa]?s?|agotad[oa]?s?|cancelad[oa]?s?|anulad[oa]?s?|recibid[oa]?s?|completad[oa]?s?|pendient[es]?|preparand[oa]|cocina|list[oa]?s?|entregad[oa]?s?)\b/.test(norm)
+    /\b(inactiv[oa]?s?|activ[oa]?s?|deshabilitad[oa]?s?|habilitad[oa]?s?|vencid[oa]?s?|vencit[oa]?s?|caducad[oa]?s?|expirad[oa]?s?|agotad[oa]?s?|cancelad[oa]?s?|anulad[oa]?s?|recibid[oa]?s?|completad[oa]?s?|pendient[es]?|preparand[oa]|cocina|list[oa]?s?|entregad[oa]?s?|aprobad[oa]?s?|rechazad[oa]?s?)\b/.test(norm)
   );
 }
 
@@ -289,6 +299,16 @@ export function matchTokenInCorpus(corpus = "", token = "") {
       corpus.includes("completad") ||
       corpus.includes("confirmad")
     );
+  }
+
+  // Aprobado / aprobada (devoluciones)
+  if (/^(aprobad[oa]?s?|aprobacion)$/.test(token)) {
+    return corpus.includes("aprobad") || corpus.includes("aprobacion");
+  }
+
+  // Rechazado / rechazada (devoluciones)
+  if (/^(rechazad[oa]?s?|rechazo)$/.test(token)) {
+    return corpus.includes("rechazad") || corpus.includes("rechazo");
   }
 
   // Pendiente / en cola / espera
