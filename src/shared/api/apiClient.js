@@ -126,8 +126,9 @@ export async function apiFetch(endpoint, options = {}) {
 
 export const apiClient = {
   get: (endpoint, options) => apiFetch(endpoint, { method: 'GET', ...options }),
-  post: (endpoint, body, options) => apiFetch(endpoint, { method: 'POST', body: JSON.stringify(body), ...options }),
-  put: (endpoint, body, options) => apiFetch(endpoint, { method: 'PUT', body: JSON.stringify(body), ...options }),
+  post: (endpoint, body, options) => apiFetch(endpoint, { method: 'POST', body: body ? JSON.stringify(body) : undefined, ...options }),
+  put: (endpoint, body, options) => apiFetch(endpoint, { method: 'PUT', body: body ? JSON.stringify(body) : undefined, ...options }),
+  patch: (endpoint, body, options) => apiFetch(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined, ...options }),
   delete: (endpoint, options) => apiFetch(endpoint, { method: 'DELETE', ...options })
 };
 
