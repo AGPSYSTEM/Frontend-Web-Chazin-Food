@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   User,
@@ -13,16 +13,9 @@ import {
   Plus,
   List,
   AlertCircle,
-  CheckCircle2,
-  ChevronDown,
-  Search,
-  Check,
-  UserCheck,
-  UserX,
-  Users
+  FileText,
+  Activity
 } from "lucide-react";
-import { usuariosService } from "@/features/configuracion/servicios/usuariosService";
-import { VincularUsuarioSelector } from "./VincularUsuarioSelector";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import {
   validateNombre,
@@ -63,154 +56,96 @@ export function EmpleadoModal({
   onClose,
   onSave,
   empleado = null,
-  cargosDisponibles = ["Administrador", "Cocinero", "Vendedor"],
-  empleadosExistentes = []
+  rolesDisponibles = ["Administrador", "Cocinero", "Vendedor"],
+  cargosDisponibles
 }) {
   const notify = useNotifications();
   const isEditing = Boolean(empleado);
 
+  const availableRoles = rolesDisponibles || cargosDisponibles || ["Administrador", "Cocinero", "Vendedor"];
+
   const initialForm = {
-    nombre: "",
-    apellidos: "",
     tipoDocumento: "C.C.",
     numeroDocumento: "",
+    nombre: "",
+    apellidos: "",
     telefono: "",
     correo: "",
     direccion: "",
-    cargo: "Cocinero",
-    fechaContratacion: new Date().toISOString().split("T")[0],
+    rol: "Cocinero",
     tipoContrato: "Término Fijo",
-    salario: "",
+    fechaInicio: new Date().toISOString().split("T")[0],
+    fechaFin: "",
     turno: "Completo",
-    estado: 1,
-    idUsuario: null
+    salario: "",
+    estado: "Activo"
   };
 
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [isCustomCargo, setIsCustomCargo] = useState(false);
-  const [usuariosSistema, setUsuariosSistema] = useState([]);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [userSearchTerm, setUserSearchTerm] = useState("");
-  const [userRoleFilter, setUserRoleFilter] = useState("TODOS");
-  const userDropdownRef = useRef(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setUserDropdownOpen(false);
-      setUserSearchTerm("");
-      setUserRoleFilter("TODOS");
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
-        setUserDropdownOpen(false);
-      }
-    };
-    if (userDropdownOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [userDropdownOpen]);
-
-  const getRolInfo = (u) => {
-    const r = (u.rol || u.rolNombre || (u.idRol === 1 ? "Administrador" : u.idRol === 2 ? "Cocinero" : u.idRol === 3 ? "Vendedor" : "Cliente") || "").trim();
-    const lower = r.toLowerCase();
-    const isStaff = lower.includes("admin") || lower.includes("cocin") || lower.includes("vend") || lower.includes("cajer") || lower.includes("personal");
-    return {
-      label: r || "Usuario",
-      isStaff,
-      color: lower.includes("admin")
-        ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-        : lower.includes("cocin")
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-        : lower.includes("vend")
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-    };
-  };
-
-  const getExistingEmpleadoVinculado = (idUsuario) => {
-    if (!idUsuario || !Array.isArray(empleadosExistentes)) return null;
-    return empleadosExistentes.find(
-      (emp) => Number(emp.idUsuario) === Number(idUsuario) && Number(emp.idEmpleado || emp.id) !== Number(empleado?.idEmpleado || empleado?.id)
-    );
-  };
-
-  // Cargar usuarios del sistema para vincular roles/cuentas
-  useEffect(() => {
-    if (isOpen) {
-      usuariosService
-        .getUsuarios()
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setUsuariosSistema(data);
-          }
-        })
-        .catch(() => setUsuariosSistema([]));
-    }
-  }, [isOpen]);
+  const [isCustomRol, setIsCustomRol] = useState(false);
 
   useEffect(() => {
     if (empleado) {
-      const currentCargo = empleado.cargo || "Cocinero";
-      const isBaseOrAvailable = ["Administrador", "Cocinero", "Vendedor", ...cargosDisponibles].includes(currentCargo);
+      const currentRol = empleado.rol || empleado.cargo || "Cocinero";
+      const isBaseOrAvailable = ["Administrador", "Cocinero", "Vendedor", ...availableRoles].includes(currentRol);
 
       const numSalario = Number(empleado.salario) || 0;
+      const fInicio = empleado.fechaInicio || empleado.fechaContratacion
+        ? new Date(empleado.fechaInicio || empleado.fechaContratacion).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0];
+      const fFin = empleado.fechaFin ? new Date(empleado.fechaFin).toISOString().split("T")[0] : "";
+
+      let estadoValue = "Activo";
+      if (empleado.estado === "Incapacitado" || empleado.estado === 2 || empleado.estado === "2") {
+        estadoValue = "Incapacitado";
+      } else if (empleado.estado === 0 || empleado.estado === "0" || empleado.estado === "Inactivo" || empleado.estado === false) {
+        estadoValue = "Inactivo";
+      } else {
+        estadoValue = "Activo";
+      }
+
       setForm({
-        nombre: empleado.nombre || "",
-        apellidos: empleado.apellidos || "",
         tipoDocumento: empleado.tipoDocumento || "C.C.",
         numeroDocumento: empleado.numeroDocumento || "",
+        nombre: empleado.nombre || "",
+        apellidos: empleado.apellidos || "",
         telefono: empleado.telefono || "",
         correo: empleado.correo || "",
         direccion: extractCleanDireccion(empleado.direccion) || "",
-        cargo: currentCargo,
-        fechaContratacion: empleado.fechaContratacion
-          ? new Date(empleado.fechaContratacion).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
+        rol: currentRol,
         tipoContrato: empleado.tipoContrato || "Término Fijo",
+        fechaInicio: fInicio,
+        fechaFin: fFin,
         salario: numSalario > 0 ? formatMilesCOP(Math.round(numSalario)) : "",
         turno: empleado.turno || "Completo",
-        estado: empleado.estado !== undefined ? Number(empleado.estado) : 1,
-        idUsuario: empleado.idUsuario || null
+        estado: estadoValue
       });
 
-      setIsCustomCargo(!isBaseOrAvailable);
+      setIsCustomRol(!isBaseOrAvailable);
     } else {
-      let defaultDir = "";
-      try {
-        const savedUser = JSON.parse(localStorage.getItem("chazin_user") || "{}");
-        if (savedUser) {
-          const raw =
-            savedUser.direccion ||
-            (savedUser.clienteInfo ? savedUser.clienteInfo.direccion : "") ||
-            (savedUser.cliente ? savedUser.cliente.direccion : "");
-          defaultDir = extractCleanDireccion(raw);
-        }
-      } catch (_) {}
-
       setForm({
         ...initialForm,
-        direccion: defaultDir
+        fechaInicio: new Date().toISOString().split("T")[0]
       });
-      setIsCustomCargo(false);
+      setIsCustomRol(false);
     }
     setErrors({});
     setTouched({});
-  }, [empleado, isOpen, cargosDisponibles]);
+  }, [empleado, isOpen]);
 
   // Validador individual de campo en tiempo real
   const validateField = (name, value, currentForm = form) => {
     let errorMsg = "";
 
     switch (name) {
+      case "numeroDocumento": {
+        const res = validateDocumento(value, currentForm.tipoDocumento);
+        if (!res.isValid) errorMsg = res.error;
+        break;
+      }
       case "nombre": {
         const res = validateNombre(value, "nombres");
         if (!res.isValid) errorMsg = res.error;
@@ -218,11 +153,6 @@ export function EmpleadoModal({
       }
       case "apellidos": {
         const res = validateNombre(value, "apellidos");
-        if (!res.isValid) errorMsg = res.error;
-        break;
-      }
-      case "numeroDocumento": {
-        const res = validateDocumento(value, currentForm.tipoDocumento);
         if (!res.isValid) errorMsg = res.error;
         break;
       }
@@ -240,10 +170,10 @@ export function EmpleadoModal({
         }
         break;
       }
-      case "cargo": {
-        const res = validateRequerido(value, "El cargo o puesto");
+      case "rol": {
+        const res = validateRequerido(value, "El rol del empleado");
         if (!res.isValid) errorMsg = res.error;
-        else if (value.trim().length < 2) errorMsg = "El cargo debe tener al menos 2 caracteres.";
+        else if (value.trim().length < 2) errorMsg = "El rol debe tener al menos 2 caracteres.";
         break;
       }
       case "tipoContrato": {
@@ -256,9 +186,17 @@ export function EmpleadoModal({
         if (!res.isValid) errorMsg = res.error;
         break;
       }
-      case "fechaContratacion": {
-        const res = validateRequerido(value, "La fecha de contratación");
+      case "fechaInicio": {
+        const res = validateRequerido(value, "La fecha de inicio de contratación");
         if (!res.isValid) errorMsg = res.error;
+        break;
+      }
+      case "fechaFin": {
+        if (currentForm.tipoContrato === "Término Fijo" && (!value || !value.trim())) {
+          errorMsg = "La fecha de finalización es obligatoria para contratos a Término Fijo.";
+        } else if (value && currentForm.fechaInicio && value < currentForm.fechaInicio) {
+          errorMsg = "La fecha fin no puede ser anterior a la fecha de inicio.";
+        }
         break;
       }
       case "salario": {
@@ -284,60 +222,26 @@ export function EmpleadoModal({
     const { name, value } = e.target;
     let nextVal = value;
 
-    // Sanitización en vivo según tipo de campo
     if (name === "numeroDocumento") {
       nextVal = sanitizeDocumento(value, form.tipoDocumento);
     } else if (name === "telefono") {
       nextVal = sanitizeTelefono(value);
     } else if (name === "salario") {
-      // Permitir formateo de miles en vivo
       const rawNum = parseMilesCOP(value, false);
       nextVal = rawNum !== "" ? formatMilesCOP(rawNum) : "";
     }
 
     setForm((prev) => {
-      const next = { ...prev, [name]: nextVal };
+      const updated = { ...prev, [name]: nextVal };
 
-      // Autocompletar inteligente por correo
-      if (name === "correo" && nextVal && nextVal.includes("@")) {
-        const found = usuariosSistema.find(
-          (u) => (u.email || u.correo || "").toLowerCase() === nextVal.trim().toLowerCase()
-        );
-        if (found) {
-          const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
-          const dirLimpia = extractCleanDireccion(rawDir);
-          if (dirLimpia && !prev.direccion) next.direccion = dirLimpia;
-          if (!prev.nombre && found.nombre) next.nombre = found.nombre;
-          if (!prev.apellidos && (found.apellidos || found.apellido)) next.apellidos = found.apellidos || found.apellido;
-          if (!prev.telefono && found.telefono) next.telefono = sanitizeTelefono(found.telefono);
-          if (!prev.numeroDocumento && (found.numeroDocumento || found.documento)) {
-            next.numeroDocumento = sanitizeDocumento(found.numeroDocumento || found.documento, prev.tipoDocumento);
-          }
-          if (!prev.idUsuario && found.idUsuario) next.idUsuario = found.idUsuario;
-        }
+      // Si cambia tipo de contrato a Término Indefinido, limpiar error de fechaFin si no se ingresa
+      if (name === "tipoContrato" && nextVal === "Término Indefinido" && !updated.fechaFin) {
+        setErrors((errs) => ({ ...errs, fechaFin: null }));
       }
 
-      // Autocompletar inteligente por número de documento
-      if (name === "numeroDocumento" && nextVal && nextVal.trim().length >= 6) {
-        const found = usuariosSistema.find(
-          (u) => String(u.numeroDocumento || u.documento || u.idUsuario || "").trim() === nextVal.trim()
-        );
-        if (found) {
-          const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
-          const dirLimpia = extractCleanDireccion(rawDir);
-          if (dirLimpia && !prev.direccion) next.direccion = dirLimpia;
-          if (!prev.nombre && found.nombre) next.nombre = found.nombre;
-          if (!prev.apellidos && (found.apellidos || found.apellido)) next.apellidos = found.apellidos || found.apellido;
-          if (!prev.telefono && found.telefono) next.telefono = sanitizeTelefono(found.telefono);
-          if (!prev.correo && (found.email || found.correo)) next.correo = found.email || found.correo;
-          if (!prev.idUsuario && found.idUsuario) next.idUsuario = found.idUsuario;
-        }
-      }
-
-      return next;
+      return updated;
     });
 
-    // Validación en vivo si ya fue tocado
     if (touched[name]) {
       validateField(name, nextVal, { ...form, [name]: nextVal });
     }
@@ -349,69 +253,18 @@ export function EmpleadoModal({
     validateField(name, value);
   };
 
-  // Vincular usuario seleccionado con autocompletado inteligente
-  const handleSelectUsuario = (val) => {
-    const id = val && typeof val === "object" && val.target ? val.target.value : val;
-    if (!id) {
-      setForm((prev) => ({ ...prev, idUsuario: null }));
-      return;
-    }
-
-    const found = usuariosSistema.find((u) => String(u.idUsuario) === String(id));
-    if (found) {
-      let cargoMapped = "Vendedor";
-      const rolStr = (found.rol || found.rolNombre || "").toLowerCase();
-      if (rolStr.includes("admin")) {
-        cargoMapped = "Administrador";
-      } else if (rolStr.includes("cocin")) {
-        cargoMapped = "Cocinero";
-      } else if (rolStr.includes("vend") || rolStr.includes("cajer")) {
-        cargoMapped = "Vendedor";
-      } else if (found.rol || found.rolNombre) {
-        cargoMapped = found.rol || found.rolNombre;
-      }
-
-      const rawDir = found.direccion || (found.clienteInfo ? found.clienteInfo.direccion : "");
-      const dirLimpia = extractCleanDireccion(rawDir);
-
-      const updated = {
-        ...form,
-        idUsuario: found.idUsuario,
-        nombre: found.nombre || form.nombre,
-        apellidos: found.apellidos || found.apellido || form.apellidos,
-        tipoDocumento: found.tipoDocumento || form.tipoDocumento || "C.C.",
-        numeroDocumento: found.numeroDocumento || found.documento || form.numeroDocumento,
-        telefono: found.telefono ? sanitizeTelefono(found.telefono) : form.telefono,
-        correo: found.email || found.correo || form.correo,
-        direccion: dirLimpia || form.direccion,
-        cargo: cargoMapped
-      };
-
-      setForm(updated);
-      setIsCustomCargo(false);
-
-      // Revalidar campos autocompletados
-      validateField("nombre", updated.nombre, updated);
-      validateField("apellidos", updated.apellidos, updated);
-      validateField("numeroDocumento", updated.numeroDocumento, updated);
-      if (updated.telefono) validateField("telefono", updated.telefono, updated);
-      if (updated.correo) validateField("correo", updated.correo, updated);
-      validateField("cargo", updated.cargo, updated);
-      setUserDropdownOpen(false);
-    }
-  };
-
   const validateAll = () => {
     const fieldsToValidate = [
+      "numeroDocumento",
       "nombre",
       "apellidos",
-      "numeroDocumento",
       "telefono",
       "correo",
-      "cargo",
+      "rol",
       "tipoContrato",
       "turno",
-      "fechaContratacion",
+      "fechaInicio",
+      "fechaFin",
       "salario"
     ];
 
@@ -423,14 +276,14 @@ export function EmpleadoModal({
       const val = form[f];
       let msg = "";
 
-      if (f === "nombre") {
+      if (f === "numeroDocumento") {
+        const r = validateDocumento(val, form.tipoDocumento);
+        if (!r.isValid) msg = r.error;
+      } else if (f === "nombre") {
         const r = validateNombre(val, "nombres");
         if (!r.isValid) msg = r.error;
       } else if (f === "apellidos") {
         const r = validateNombre(val, "apellidos");
-        if (!r.isValid) msg = r.error;
-      } else if (f === "numeroDocumento") {
-        const r = validateDocumento(val, form.tipoDocumento);
         if (!r.isValid) msg = r.error;
       } else if (f === "telefono" && val && val.trim()) {
         const r = validateTelefono(val);
@@ -438,8 +291,8 @@ export function EmpleadoModal({
       } else if (f === "correo" && val && val.trim()) {
         const r = validateEmail(val);
         if (!r.isValid) msg = r.error;
-      } else if (f === "cargo") {
-        const r = validateRequerido(val, "El cargo o puesto");
+      } else if (f === "rol") {
+        const r = validateRequerido(val, "El rol del empleado");
         if (!r.isValid) msg = r.error;
       } else if (f === "tipoContrato") {
         const r = validateRequerido(val, "El tipo de contrato");
@@ -447,9 +300,15 @@ export function EmpleadoModal({
       } else if (f === "turno") {
         const r = validateRequerido(val, "El turno u horario");
         if (!r.isValid) msg = r.error;
-      } else if (f === "fechaContratacion") {
-        const r = validateRequerido(val, "La fecha de contratación");
+      } else if (f === "fechaInicio") {
+        const r = validateRequerido(val, "La fecha de inicio de contratación");
         if (!r.isValid) msg = r.error;
+      } else if (f === "fechaFin") {
+        if (form.tipoContrato === "Término Fijo" && (!val || !val.trim())) {
+          msg = "La fecha de finalización es obligatoria para contratos a Término Fijo.";
+        } else if (val && form.fechaInicio && val < form.fechaInicio) {
+          msg = "La fecha fin no puede ser anterior a la fecha de inicio.";
+        }
       } else if (f === "salario" && val && String(val).trim()) {
         const r = validateNumeroPositivo(val, "salario", { min: 0, allowZero: true, isCurrency: true });
         if (!r.isValid) msg = r.error;
@@ -481,8 +340,9 @@ export function EmpleadoModal({
       const parsedSalario = form.salario ? Number(parseMilesCOP(form.salario, false)) : 0;
       await onSave({
         ...form,
+        cargo: form.rol, // Para retrocompatibilidad
         salario: parsedSalario,
-        idUsuario: form.idUsuario ? Number(form.idUsuario) : null
+        fechaContratacion: form.fechaInicio
       });
     } finally {
       setSubmitting(false);
@@ -491,9 +351,9 @@ export function EmpleadoModal({
 
   if (!isOpen) return null;
 
-  // Lista unificada de cargos base y existentes
-  const listaCargos = Array.from(
-    new Set(["Administrador", "Cocinero", "Vendedor", ...cargosDisponibles, form.cargo])
+  // Lista unificada de roles disponibles
+  const listaRoles = Array.from(
+    new Set(["Administrador", "Cocinero", "Vendedor", ...availableRoles, form.rol])
   ).filter(Boolean);
 
   return (
@@ -511,43 +371,87 @@ export function EmpleadoModal({
                 {isEditing ? "Editar Empleado" : "Registrar Nuevo Empleado"}
               </h2>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Información del personal, rol en el sistema y desempeño de funciones en Chazin Food
+                Información del personal, rol asignado y condiciones de contratación en Chazin Food
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             type="button"
-            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-200/60 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-200/60 dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body con Optimización de Espacios en 2 Columnas */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4">
+        {/* Formulario en 2 Columnas */}
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5">
           
-          {/* Fila Superior: Vinculación con Usuario del Sistema (Roles Activos) */}
-          <VincularUsuarioSelector
-            usuarios={usuariosSistema}
-            selectedUserId={form.idUsuario}
-            onSelectUser={handleSelectUsuario}
-            empleadosExistentes={empleadosExistentes}
-            currentEmpleadoId={empleado?.idEmpleado || empleado?.id}
-          />
-
-          {/* Grid de 2 Columnas Aprovechando el Ancho Completo */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             
-            {/* ──── COLUMNA 1: DATOS PERSONALES ──── */}
-            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5 pb-1 border-b border-gray-200/60 dark:border-gray-700">
-                <User className="w-3.5 h-3.5 text-red-500" />
-                <span>Datos Personales</span>
+            {/* ──── COLUMNA 1: DOCUMENTO DE IDENTIDAD Y DATOS PERSONALES ──── */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70 space-y-3.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 flex items-center gap-1.5 pb-2 border-b border-gray-200/60 dark:border-gray-700">
+                <User className="w-4 h-4 text-red-500" />
+                <span>Identificación y Datos Personales</span>
               </h3>
 
-              {/* Nombres y Apellidos */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 1. DOCUMENTO DE IDENTIDAD (DE PRIMERO) */}
+              <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-red-100 dark:border-red-900/30 shadow-2xs space-y-2">
+                <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider block">
+                  Documento de Identidad (Principal)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                      Tipo Documento
+                    </label>
+                    <select
+                      name="tipoDocumento"
+                      value={form.tipoDocumento}
+                      onChange={(e) => {
+                        handleChange(e);
+                        validateField("numeroDocumento", form.numeroDocumento, { ...form, tipoDocumento: e.target.value });
+                      }}
+                      className="w-full px-2.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-750 dark:text-white font-semibold cursor-pointer"
+                    >
+                      <option value="C.C.">Cédula (C.C.)</option>
+                      <option value="C.E.">Cédula Ext. (C.E.)</option>
+                      <option value="T.I.">Tarjeta Id. (T.I.)</option>
+                      <option value="Pasaporte">Pasaporte (P.P.)</option>
+                      <option value="PPT">Permiso Temp. (PPT)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                      Número de Documento <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="numeroDocumento"
+                      value={form.numeroDocumento}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="Ej: 1020304050"
+                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none font-bold transition-all dark:bg-gray-750 dark:text-white ${
+                        errors.numeroDocumento && touched.numeroDocumento
+                          ? "border-red-500 bg-red-50/40 dark:bg-red-950/30 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
+                      }`}
+                    />
+                    {errors.numeroDocumento && touched.numeroDocumento && (
+                      <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1 font-medium">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {errors.numeroDocumento}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Nombres y Apellidos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                     Nombres <span className="text-red-500">*</span>
@@ -599,57 +503,7 @@ export function EmpleadoModal({
                 </div>
               </div>
 
-              {/* Tipo y Número de Documento */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Tipo de Documento
-                  </label>
-                  <select
-                    name="tipoDocumento"
-                    value={form.tipoDocumento}
-                    onChange={(e) => {
-                      handleChange(e);
-                      // Revalidar documento con la nueva configuración
-                      validateField("numeroDocumento", form.numeroDocumento, { ...form, tipoDocumento: e.target.value });
-                    }}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white font-medium"
-                  >
-                    <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
-                    <option value="C.E.">Cédula de Extranjería (C.E.)</option>
-                    <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
-                    <option value="Pasaporte">Pasaporte (P.P.)</option>
-                    <option value="PPT">Permiso Temporal (PPT)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Número de Documento <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="numeroDocumento"
-                    value={form.numeroDocumento}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="Ej: 1020304050"
-                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition-all dark:bg-gray-800 dark:text-white ${
-                      errors.numeroDocumento && touched.numeroDocumento
-                        ? "border-red-500 bg-red-50/30 dark:bg-red-950/20 focus:ring-2 focus:ring-red-200"
-                        : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
-                    }`}
-                  />
-                  {errors.numeroDocumento && touched.numeroDocumento && (
-                    <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      {errors.numeroDocumento}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Teléfono y Correo */}
+              {/* 3. Teléfono y Correo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
@@ -708,7 +562,7 @@ export function EmpleadoModal({
                 </div>
               </div>
 
-              {/* Dirección */}
+              {/* 4. Dirección */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Dirección de Residencia
@@ -727,55 +581,55 @@ export function EmpleadoModal({
               </div>
             </div>
 
-            {/* ──── COLUMNA 2: FUNCIONES LABORALES & CONTRATACIÓN ──── */}
-            <div className="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 flex items-center gap-1.5 pb-1 border-b border-gray-200/60 dark:border-gray-700">
-                <Briefcase className="w-3.5 h-3.5 text-red-500" />
-                <span>Funciones y Desempeño Laboral</span>
+            {/* ──── COLUMNA 2: ROL, CONTRATACIÓN Y ESTADO OPERATIVO ──── */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70 space-y-3.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 flex items-center gap-1.5 pb-2 border-b border-gray-200/60 dark:border-gray-700">
+                <Briefcase className="w-4 h-4 text-red-500" />
+                <span>Rol, Contratación y Estado Operativo</span>
               </h3>
 
-              {/* Cargo o Puesto */}
+              {/* 1. ROL DEL EMPLEADO (ANTES CARGO) */}
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Cargo o Puesto <span className="text-red-500">*</span>
+                    Rol del Empleado <span className="text-red-500">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => {
-                      setIsCustomCargo(!isCustomCargo);
-                      if (!isCustomCargo && !form.cargo) {
-                        setForm((prev) => ({ ...prev, cargo: "" }));
+                      setIsCustomRol(!isCustomRol);
+                      if (!isCustomRol && !form.rol) {
+                        setForm((prev) => ({ ...prev, rol: "" }));
                       }
                     }}
-                    className="text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition-colors"
+                    className="text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition-colors cursor-pointer"
                   >
-                    {isCustomCargo ? (
+                    {isCustomRol ? (
                       <>
                         <List className="w-3 h-3" />
-                        <span>Ver lista de cargos</span>
+                        <span>Ver lista de roles</span>
                       </>
                     ) : (
                       <>
                         <Plus className="w-3 h-3" />
-                        <span>+ Crear nuevo cargo</span>
+                        <span>+ Crear nuevo rol</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                {isCustomCargo ? (
+                {isCustomRol ? (
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      name="cargo"
-                      value={form.cargo}
+                      name="rol"
+                      value={form.rol}
                       onChange={handleChange}
                       onBlur={handleBlur}
                       autoFocus
-                      placeholder="Escribe el nuevo cargo (Ej: Cajero, Repartidor...)"
+                      placeholder="Escribe el nuevo rol (Ej: Supervisor, Repartidor...)"
                       className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition-all dark:bg-gray-800 dark:text-white ${
-                        errors.cargo && touched.cargo
+                        errors.rol && touched.rol
                           ? "border-red-500 bg-red-50/30 dark:bg-red-950/20 focus:ring-2 focus:ring-red-200"
                           : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
                       }`}
@@ -783,49 +637,49 @@ export function EmpleadoModal({
                     <button
                       type="button"
                       onClick={() => {
-                        setIsCustomCargo(false);
-                        setForm((prev) => ({ ...prev, cargo: "Cocinero" }));
-                        validateField("cargo", "Cocinero");
+                        setIsCustomRol(false);
+                        setForm((prev) => ({ ...prev, rol: "Cocinero" }));
+                        validateField("rol", "Cocinero");
                       }}
-                      className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 shrink-0"
+                      className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 shrink-0 cursor-pointer"
                     >
                       Cancelar
                     </button>
                   </div>
                 ) : (
                   <select
-                    name="cargo"
-                    value={form.cargo}
+                    name="rol"
+                    value={form.rol}
                     onChange={(e) => {
                       if (e.target.value === "__CREAR_NUEVO__") {
-                        setIsCustomCargo(true);
-                        setForm((prev) => ({ ...prev, cargo: "" }));
+                        setIsCustomRol(true);
+                        setForm((prev) => ({ ...prev, rol: "" }));
                       } else {
                         handleChange(e);
-                        validateField("cargo", e.target.value);
+                        validateField("rol", e.target.value);
                       }
                     }}
-                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition-all dark:bg-gray-800 dark:text-white font-medium ${
-                      errors.cargo && touched.cargo
+                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition-all dark:bg-gray-800 dark:text-white font-medium cursor-pointer ${
+                      errors.rol && touched.rol
                         ? "border-red-500 focus:ring-2 focus:ring-red-200"
                         : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
                     }`}
                   >
-                    {listaCargos.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                    {listaRoles.map((r) => (
+                      <option key={r} value={r}>{r}</option>
                     ))}
-                    <option value="__CREAR_NUEVO__">+ Crear nuevo cargo...</option>
+                    <option value="__CREAR_NUEVO__">+ Crear nuevo rol...</option>
                   </select>
                 )}
-                {errors.cargo && touched.cargo && (
+                {errors.rol && touched.rol && (
                   <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3 shrink-0" />
-                    {errors.cargo}
+                    {errors.rol}
                   </p>
                 )}
               </div>
 
-              {/* Tipo de Contrato y Turno */}
+              {/* 2. TIPO DE CONTRATO Y TURNO */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
@@ -835,7 +689,7 @@ export function EmpleadoModal({
                     name="tipoContrato"
                     value={form.tipoContrato}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white font-medium"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white font-medium cursor-pointer"
                   >
                     <option value="Término Fijo">Término Fijo</option>
                     <option value="Término Indefinido">Término Indefinido</option>
@@ -874,31 +728,66 @@ export function EmpleadoModal({
                 </div>
               </div>
 
-              {/* Fecha de Contratación y Salario Mensual COP */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 3. FECHAS DE CONTRATACIÓN: INICIO Y FIN */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 shadow-2xs">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha de Ingreso <span className="text-red-500">*</span>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Fecha de Inicio <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
                     <input
                       type="date"
-                      name="fechaContratacion"
-                      value={form.fechaContratacion}
+                      name="fechaInicio"
+                      value={form.fechaInicio}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      className="w-full pl-8 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white"
+                      className={`w-full pl-8 pr-2.5 py-1.5 rounded-xl border text-xs outline-none dark:bg-gray-750 dark:text-white ${
+                        errors.fechaInicio && touched.fechaInicio
+                          ? "border-red-500"
+                          : "border-gray-200 dark:border-gray-700 focus:border-red-500"
+                      }`}
                     />
                   </div>
-                  {errors.fechaContratacion && touched.fechaContratacion && (
-                    <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                  {errors.fechaInicio && touched.fechaInicio && (
+                    <p className="text-[10px] text-red-500 mt-1 flex items-center gap-0.5">
                       <AlertCircle className="w-3 h-3 shrink-0" />
-                      {errors.fechaContratacion}
+                      {errors.fechaInicio}
                     </p>
                   )}
                 </div>
 
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Fecha de Finalización {form.tipoContrato === "Término Fijo" && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="relative">
+                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                    <input
+                      type="date"
+                      name="fechaFin"
+                      value={form.fechaFin}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="Opcional si es indefinido"
+                      className={`w-full pl-8 pr-2.5 py-1.5 rounded-xl border text-xs outline-none dark:bg-gray-750 dark:text-white ${
+                        errors.fechaFin && touched.fechaFin
+                          ? "border-red-500"
+                          : "border-gray-200 dark:border-gray-700 focus:border-red-500"
+                      }`}
+                    />
+                  </div>
+                  {errors.fechaFin && touched.fechaFin && (
+                    <p className="text-[10px] text-red-500 mt-1 flex items-center gap-0.5 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {errors.fechaFin}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. SALARIO Y ESTADO OPERATIVO (ACTIVO, INACTIVO, INCAPACITADO) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                     Salario Mensual (COP)
@@ -926,23 +815,24 @@ export function EmpleadoModal({
                     </p>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Estado Operativo <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="estado"
+                    value={form.estado}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white font-semibold cursor-pointer"
+                  >
+                    <option value="Activo">🟢 Activo (Operando)</option>
+                    <option value="Incapacitado">🟣 Incapacitado (Licencia médica)</option>
+                    <option value="Inactivo">⚪ Inactivo (Pausado / Finalizado)</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Estado Operativo */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Estado Operativo
-                </label>
-                <select
-                  name="estado"
-                  value={form.estado}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white font-medium"
-                >
-                  <option value={1}>Activo (En funciones operativas)</option>
-                  <option value={0}>Inactivo (Pausado temporalmente)</option>
-                </select>
-              </div>
             </div>
 
           </div>
@@ -953,14 +843,14 @@ export function EmpleadoModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md shadow-red-600/20 active:scale-95 disabled:opacity-50"
+              className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md shadow-red-600/20 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? "Guardando..." : isEditing ? "Actualizar Empleado" : "Registrar Empleado"}
             </button>
