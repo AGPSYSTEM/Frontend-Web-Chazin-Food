@@ -1,1593 +1,2901 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+
 import {
+
   User, FileText,
+
   Package,
+
   TrendingUp,
+
   Award,
+
   Flame,
+
   Crown,
+
   Clock,
+
   AlertTriangle,
+
   ChevronDown,
+
   ChevronUp,
+
   Sparkles,
+
   Sprout,
+
   Check,
+
   Mail,
+
   Phone,
+
   MapPin,
+
   CreditCard,
+
   Save,
+
   AlertCircle,
+
   Edit2,
+
   ArrowLeft,
+
   ShoppingBag,
+
   Bike,
+
   UtensilsCrossed,
+
   DollarSign,
+
   PieChart,
+
   Calendar,
+
   Zap,
+
   Sun,
+
   Moon,
+
   LogOut,
+
   RefreshCw,
+
   Tag,
+
   ShieldCheck,
+
   Percent,
+
   Receipt,
+
   Camera,
+
   Upload,
+
   Trash2,
+
   Monitor,
+
   Smartphone,
+
   Laptop,
+
   Key,
+
   CheckCircle2,
+
   Globe,
+
   Eye,
+
   EyeOff,
+
   Lock,
+
   X,
+
   RotateCcw
+
 } from "lucide-react";
+
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
+
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
+
 import { useNotifications } from "@/shared/hooks/useNotifications";
+
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/shared/servicios/cloudinaryService";
+
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";
+
 import { ventasService } from "@/features/ventas/servicios/ventasService";
+
 import { devolucionesService } from "@/features/ventas/servicios/devolucionesService";
+
 import { SolicitarDevolucionModal } from "@/features/ventas/componentes/devoluciones/SolicitarDevolucionModal";
+
 import { wompiService } from "@/features/ventas/servicios/wompiService";
+
 import { useCart } from "@/shared/context/CartContext";
+
 import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
+
 import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 const TIPOS_DOCUMENTO = ["C.C.", "C.E.", "T.I.", "Pasaporte", "PPT", "NIT"];
 
 const PRESET_AVATAR_CATEGORIES = [
+
   {
+
     name: "Comida & Menú",
+
     avatars: [
+
       { slug: "burger", label: "Hamburguesa" },
+
       { slug: "hotdog", label: "Perro Caliente" },
+
       { slug: "fries", label: "Papas Fritas" },
+
       { slug: "sides", label: "Acompañamientos" },
+
       { slug: "pizza", label: "Pizza" },
+
       { slug: "drink", label: "Bebida / Refresco" },
+
       { slug: "bottle", label: "Botella / Agua" },
+
       { slug: "meat", label: "Carne Parrilla" },
+
       { slug: "chicken", label: "Pollo Crispy" },
+
       { slug: "bacon", label: "Tocineta" },
+
       { slug: "cheese", label: "Queso Fundido" },
+
       { slug: "egg", label: "Huevo Frito" },
+
       { slug: "mushroom", label: "Champiñones" },
+
       { slug: "salsa_queso", label: "Salsa de Queso" },
+
       { slug: "jalapenos", label: "Jalapeños" },
+
       { slug: "tomate", label: "Tomate" },
+
       { slug: "tomato", label: "Tomate Fresco" },
+
       { slug: "cebolla", label: "Cebolla" },
+
       { slug: "onion", label: "Cebolla Crispy" },
+
       { slug: "guacamole", label: "Guacamole" },
+
       { slug: "avocado", label: "Aguacate" },
+
       { slug: "pepper", label: "Picante / Ají" },
+
       { slug: "sauce", label: "Salsas de la Casa" },
+
       { slug: "lettuce", label: "Lechuga" },
+
       { slug: "salad", label: "Ensalada Veggie" },
+
       { slug: "carrot", label: "Zanahoria" },
+
       { slug: "bread", label: "Pan Brioche" },
+
       { slug: "dessert", label: "Postre / Torta" },
+
       { slug: "icecream", label: "Helado" },
+
       { slug: "combo", label: "Combo Gourmet" }
+
     ]
+
   },
+
   {
+
     name: "Promos & Eventos",
+
     avatars: [
+
       { slug: "fire", label: "Fuego / Burger Fest" },
+
       { slug: "2x1", label: "Promo 2x1" },
+
       { slug: "discount", label: "Ticket Descuento" },
+
       { slug: "flash", label: "Relámpago / Flash" },
+
       { slug: "gift", label: "Combo Festivo / Regalo" },
+
       { slug: "crown", label: "Edición Especial" },
+
       { slug: "calendar", label: "Evento Calendario" },
+
       { slug: "party", label: "Fiesta / Celebración" },
+
       { slug: "rocket", label: "Lanzamiento Cohete" }
+
     ]
+
   },
+
   {
+
     name: "Emblemas",
+
     avatars: [
+
       { slug: "chazin", label: "Emblema Chazin Food" },
+
       { slug: "chef", label: "Chef Profesional" },
+
       { slug: "star", label: "Estrella Destacada" },
+
       { slug: "sprout", label: "Nivel Semilla" },
+
       { slug: "bronze", label: "Nivel Bronce" },
+
       { slug: "silver", label: "Nivel Plata" },
+
       { slug: "gold", label: "Nivel Oro VIP" }
+
     ]
+
   }
+
 ];
 
 const getUserInitials = (name) => {
+
   if (!name || typeof name !== "string") return "CF";
+
   const parts = name.trim().split(/\s+/).filter(Boolean);
+
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
   return (parts[0][0] + parts[1][0]).toUpperCase();
+
 };
 
 const ALL_AVATAR_ITEMS = PRESET_AVATAR_CATEGORIES.flatMap((c) => c.avatars);
+
 const PRESET_AVATARS = ALL_AVATAR_ITEMS.map((a) => a.slug);
 
 function FieldError({ msg }) {
+
   if (!msg) return null;
+
   return (
+
     <p className="mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+
       <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {msg}
+
     </p>
+
   );
+
 }
 
 export function ClientePerfil() {
+
   const navigate = useNavigate();
+
   const { user, updateProfile, logout, refreshUser } = useAuth();
+
   const { clearCart } = useCart();
+
   const [darkMode, toggleDarkMode] = useDarkMode();
+
   const { success, warning, error: notifyError, confirmAction } = useNotifications();
 
   const [searchParams] = useSearchParams();
+
   const location = useLocation();
+
   const initialTab = searchParams.get("tab") || location.state?.tab || "fidelidad";
+
   const [tab, setTab] = useState(initialTab); // "fidelidad" | "pedidos" | "editar"
+
   const [selectedPedidoDetalle, setSelectedPedidoDetalle] = useState(null);
 
   useEffect(() => {
+
     const urlTab = searchParams.get("tab") || location.state?.tab;
+
     if (urlTab && ["fidelidad", "pedidos", "editar"].includes(urlTab)) {
+
       setTab(urlTab);
+
     }
+
   }, [searchParams, location.state]);
 
   const [pedidos, setPedidos] = useState([]);
+
   const [loadingPedidos, setLoadingPedidos] = useState(true);
+
   const [solicitarDevolucionOpen, setSolicitarDevolucionOpen] = useState(false);
+
   const [pedidoParaDevolucion, setPedidoParaDevolucion] = useState(null);
+
   const [misDevoluciones, setMisDevoluciones] = useState([]);
+
   const [saving, setSaving] = useState(false);
+
   const [showBenefitsTable, setShowBenefitsTable] = useState(false);
 
   // Avatar / Profile photo state
+
   const fileInputRef = useRef(null);
+
   const [avatarUrl, setAvatarUrl] = useState(() => {
+
     return user?.foto || user?.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+
   });
+
   const [avatarFilter, setAvatarFilter] = useState("todos");
 
   useEffect(() => {
+
     if (user?.foto || user?.avatar) {
+
       setAvatarUrl(user.foto || user.avatar);
+
     }
+
   }, [user?.foto, user?.avatar]);
 
   const filteredAvatars = useMemo(() => {
+
     if (avatarFilter === "todos") return ALL_AVATAR_ITEMS;
+
     const cat = PRESET_AVATAR_CATEGORIES.find((c) => c.name === avatarFilter);
+
     return cat ? cat.avatars : ALL_AVATAR_ITEMS;
+
   }, [avatarFilter]);
 
   // Edit form state
+
   const [form, setForm] = useState({
+
     nombre: "",
+
     apellidos: "",
+
     email: "",
+
     telefono: "",
+
     direccion: "",
+
     tipoDocumento: "C.C.",
+
     numeroDocumento: "",
+
   });
+
   const [errors, setErrors] = useState({});
+
   const [touched, setTouched] = useState({});
 
   // Sync user profile on mount
+
   useEffect(() => {
+
     refreshUser?.();
+
   }, [refreshUser]);
 
   // Fetch client orders (backend + localStorage)
+
   const fetchMyOrders = useCallback(async () => {
+
     if (!user) {
+
       setLoadingPedidos(false);
+
       return;
+
     }
+
     try {
+
       setLoadingPedidos(true);
+
       const currentUserId = user?.idUsuario || user?.id || user?._id;
+
       const currentUserClientId = user?.idCliente;
+
       const currentUserFullName = `${user?.nombre || ""} ${user?.apellidos || ""}`.trim();
+
       const storageKey = `mis_pedidos_${currentUserId || "guest"}`;
+
       let localHistory = [];
+
       try {
+
         localHistory = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
       } catch (e) {
+
         localHistory = [];
+
       }
 
       let backendOrders = [];
+
       try {
+
         const data = await ventasService.getVentas();
+
         if (data && Array.isArray(data)) {
+
           backendOrders = data.filter(
+
             (v) =>
+
               (currentUserId && (v.idUsuario === currentUserId || v.usuario?.idUsuario === currentUserId)) ||
+
               (currentUserClientId && v.idCliente === currentUserClientId) ||
+
               (currentUserFullName && v.clienteNombre === currentUserFullName)
+
           );
+
         }
+
       } catch (err) {
+
         console.warn("No se pudieron cargar pedidos del backend:", err);
+
       }
 
       const backendMap = new Map();
+
       backendOrders.forEach((o) => {
+
         const id = o.idVenta || o.id;
+
         const code = o.numeroVenta || o.codigoPedido;
+
         if (id) backendMap.set(String(id), o);
+
         if (code) backendMap.set(String(code), o);
+
       });
 
       const mergedPedidos = [];
+
       const processedBackendIds = new Set();
 
       for (const localOrd of localHistory) {
+
         const matched = backendMap.get(String(localOrd.id)) || backendMap.get(String(localOrd.numeroVenta));
+
         if (matched) {
+
           processedBackendIds.add(String(matched.idVenta || matched.id));
+
           let currentEstado = matched.estado || matched.estadoEntrega || "Por Aprobar";
+
           if (matched.estadoAprobacion === "RECHAZADO" || matched.estadoEntrega === "CANCELADO") {
+
             currentEstado = "Anulada";
+
           } else if (matched.estadoAprobacion === "PENDIENTE") {
+
             currentEstado = "Por Aprobar";
+
           } else if (matched.estadoEntrega === "PREPARANDO") {
+
             currentEstado = "En Preparación";
+
           } else if (matched.estadoEntrega === "LISTO") {
+
             currentEstado = "Listo";
+
           } else if (matched.estadoEntrega === "ENTREGADO") {
+
             currentEstado = "Completada";
+
           }
 
           let matchedObs = {};
+
           if (matched.observaciones) {
+
             if (typeof matched.observaciones === "object" && matched.observaciones !== null) {
+
               matchedObs = matched.observaciones;
+
             } else if (typeof matched.observaciones === "string" && matched.observaciones.startsWith("{")) {
+
               try { matchedObs = JSON.parse(matched.observaciones); } catch (e) { }
+
             }
+
           }
 
           let items = localOrd.items || [];
+
           if ((!items || items.length === 0) && matched.productos && Array.isArray(matched.productos)) {
+
             items = matched.productos;
+
           } else if ((!items || items.length === 0) && matchedObs.productos && Array.isArray(matchedObs.productos)) {
+
             items = matchedObs.productos;
+
           }
 
           const cleanObserv = extractCleanSpecifications(
+
             matched.especificaciones ||
+
             matchedObs.especificaciones ||
+
             matchedObs.nota ||
+
             localOrd.especificaciones ||
+
             ""
+
           );
 
           localOrd.estado = currentEstado;
+
           mergedPedidos.push({
+
             id: matched.idVenta || matched.id || localOrd.id,
+
             idVenta: matched.idVenta || matched.id || localOrd.id,
+
             idCliente: matched.idCliente || user?.idCliente,
+
             numeroVenta: matched.numeroVenta || matchedObs.codigoPedido || localOrd.numeroVenta,
+
             fecha: matched.fechaVenta ? new Date(matched.fechaVenta).toLocaleString("es-CO") : localOrd.fecha,
+
             fechaVenta: matched.fechaVenta || localOrd.fechaVenta || null,
+
             detalles: matched.detalles || localOrd.detalles || [],
+
             items,
+
             subtotal: matched.subtotal || localOrd.subtotal || localOrd.total,
+
             total: matched.total || localOrd.total,
+
             descuentoAplicado: matched.descuentoAplicado || localOrd.descuentoAplicado || 0,
+
             metodoPago: matchedObs.metodoPago || matched.metodoPago || localOrd.metodoPago || "Wompi",
+
             tipoEntrega: matchedObs.tipoEntrega || matched.tipoEntrega || localOrd.tipoEntrega || "Domicilio",
+
             direccion: matchedObs.direccion || matched.direccion || localOrd.direccion || user?.direccion || "Dirección de entrega",
+
             especificaciones: cleanObserv,
+
             estado: currentEstado,
+
           });
+
         } else {
+
           mergedPedidos.push({
+
             id: localOrd.id,
+
             idVenta: localOrd.idVenta || localOrd.id,
+
             idCliente: localOrd.idCliente || user?.idCliente,
+
             numeroVenta: localOrd.numeroVenta,
+
             fecha: localOrd.fecha,
+
             fechaVenta: localOrd.fechaVenta || localOrd.createdAt || null,
+
             detalles: localOrd.detalles || [],
+
             items: localOrd.items || [],
+
             subtotal: localOrd.subtotal || localOrd.total,
+
             total: localOrd.total,
+
             descuentoAplicado: localOrd.descuentoAplicado || 0,
+
             metodoPago: localOrd.metodoPago || "Wompi",
+
             tipoEntrega: localOrd.tipoEntrega || "Domicilio",
+
             direccion: localOrd.direccion || user?.direccion || "Dirección de entrega",
+
             especificaciones: extractCleanSpecifications(localOrd.especificaciones || ""),
+
             estado: localOrd.estado || "Completada",
+
           });
+
         }
+
       }
 
       // Add backend orders not present in localHistory
+
       backendOrders.forEach((o) => {
+
         const idStr = String(o.idVenta || o.id);
+
         if (!processedBackendIds.has(idStr)) {
+
           let currentEstado = o.estado || o.estadoEntrega || "Por Aprobar";
+
           if (o.estadoAprobacion === "RECHAZADO" || o.estadoEntrega === "CANCELADO") {
+
             currentEstado = "Anulada";
+
           } else if (o.estadoAprobacion === "PENDIENTE") {
+
             currentEstado = "Por Aprobar";
+
           } else if (o.estadoEntrega === "PREPARANDO") {
+
             currentEstado = "En Preparación";
+
           } else if (o.estadoEntrega === "LISTO") {
+
             currentEstado = "Listo";
+
           } else if (o.estadoEntrega === "ENTREGADO") {
+
             currentEstado = "Completada";
+
           }
 
           let oObs = {};
+
           if (o.observaciones) {
+
             if (typeof o.observaciones === "object" && o.observaciones !== null) {
+
               oObs = o.observaciones;
+
             } else if (typeof o.observaciones === "string" && o.observaciones.startsWith("{")) {
+
               try { oObs = JSON.parse(o.observaciones); } catch (e) { }
+
             }
+
           }
 
           let items = [];
+
           if (o.productos && Array.isArray(o.productos) && o.productos.length > 0) {
+
             items = o.productos.map((p) => ({
+
               nombre: p.nombre || "Producto",
+
               cantidad: Number(p.cantidad) || 1,
+
               precio: Number(p.precioUnitario || p.total) || 0,
+
               adiciones: p.adiciones || [],
+
               personalizaciones: p.personalizaciones || [],
+
             }));
+
           } else if (oObs.productos && Array.isArray(oObs.productos) && oObs.productos.length > 0) {
+
             items = oObs.productos.map((p) => ({
+
               nombre: p.nombre || "Producto",
+
               cantidad: Number(p.cantidad) || 1,
+
               precio: Number(p.precioUnitario || p.total) || 0,
+
               adiciones: p.adiciones || [],
+
               personalizaciones: p.personalizaciones || [],
+
             }));
+
           } else if (o.detalles && Array.isArray(o.detalles)) {
+
             items = o.detalles.map((d) => ({
+
               idDetalleVenta: d.idDetalleVenta,
+
               idVariante: d.idVariante || d.variante?.idVariante,
+
               nombre: d.variante?.producto?.nombre || d.producto?.nombre || d.nombreProducto || "Producto",
+
               cantidad: Number(d.cantidad) || 1,
+
               precioUnitario: Number(d.precioUnitario) || 0,
+
               precio: Number(d.precioUnitario) || 0,
+
               adiciones: d.adiciones || [],
+
               personalizaciones: d.personalizaciones || [],
+
             }));
+
           }
 
           const cleanObserv = extractCleanSpecifications(
+
             o.especificaciones ||
+
             oObs.especificaciones ||
+
             oObs.nota ||
+
             ""
+
           );
 
           mergedPedidos.push({
+
             id: o.idVenta || o.id,
+
             idVenta: o.idVenta || o.id,
+
             idCliente: o.idCliente || user?.idCliente,
+
             numeroVenta: o.numeroVenta || oObs.codigoPedido || `VEN-${String(o.idVenta || o.id).padStart(4, "0")}`,
+
             fecha: o.fechaVenta ? new Date(o.fechaVenta).toLocaleString("es-CO") : "Reciente",
+
             fechaVenta: o.fechaVenta || null,
+
             detalles: o.detalles || [],
+
             items,
+
             subtotal: Number(o.subtotal) || Number(o.total) || 0,
+
             total: Number(o.total) || 0,
+
             descuentoAplicado: Number(o.descuentoAplicado) || 0,
+
             metodoPago: oObs.metodoPago || o.metodoPago || "Wompi",
+
             tipoEntrega: oObs.tipoEntrega || o.tipoEntrega || "Domicilio",
+
             direccion: oObs.direccion || o.direccion || user?.direccion || "Dirección de entrega",
+
             especificaciones: cleanObserv,
+
             estado: currentEstado,
+
           });
+
         }
+
       });
 
       setPedidos(mergedPedidos);
+
     } catch (err) {
+
       console.error("Error al sincronizar pedidos del cliente:", err);
+
     } finally {
+
       setLoadingPedidos(false);
+
     }
+
   }, [user?.idUsuario, user?.id, user?._id, user?.idCliente, user?.nombre, user?.apellidos]);
 
   const fetchMisDevoluciones = useCallback(async () => {
+
     try {
+
       const data = await devolucionesService.getMisDevoluciones(user?.idCliente);
+
       setMisDevoluciones(Array.isArray(data) ? data : []);
+
     } catch (err) {
+
       console.warn("No se pudieron cargar devoluciones del cliente:", err);
+
     }
+
   }, [user?.idCliente]);
 
   useEffect(() => {
+
     fetchMisDevoluciones();
+
   }, [fetchMisDevoluciones]);
 
   const getDevolucionInfo = useCallback((ped) => {
+
     if (!ped) return null;
+
     const idVenta = ped.idVenta || ped.id;
+
     const existing = misDevoluciones.find(
+
       (d) => Number(d.idVenta) === Number(idVenta) || (d.venta && Number(d.venta.idVenta) === Number(idVenta))
+
     );
 
     const fechaRaw = ped.fechaVenta || ped.fechaCreacion || ped.createdAt || ped.fecha;
+
     let diffHours = 0;
+
     if (fechaRaw) {
+
       const parsed = new Date(fechaRaw);
+
       if (!isNaN(parsed.getTime())) {
+
         diffHours = (Date.now() - parsed.getTime()) / (1000 * 60 * 60);
+
       }
+
     }
+
     const cumplePlazo = isNaN(diffHours) ? true : diffHours <= 48;
 
     const est = String(ped.estado || "").toLowerCase();
+
     const esCompletado = est.includes("completad") || est.includes("listo") || est.includes("entregad");
 
     return {
+
       existing,
+
       cumplePlazo,
+
       horasRestantes: Math.max(0, Math.round(48 - diffHours)),
+
       esCompletado,
+
       puedeSolicitar: esCompletado && cumplePlazo && (!existing || existing.estado === "RECHAZADA")
+
     };
+
   }, [misDevoluciones]);
 
   const handleCrearDevolucionCliente = async (formData) => {
+
     try {
+
       const res = await devolucionesService.createDevolucion(formData);
+
       success("¡Solicitud de Devolución Enviada!", `Hemos recibido tu solicitud ${res.codigoDevolucion || ""} para el pedido.`);
+
       await fetchMisDevoluciones();
+
       await fetchPedidos();
+
     } catch (err) {
+
       notifyError("Error al solicitar devolución", err.message || "No fue posible procesar tu solicitud.");
+
       throw err;
+
     }
+
   };
 
   // Sincronizar y verificar retorno de transacción Wompi si viene en los query params
+
   useEffect(() => {
+
     const wompiTxId = searchParams.get("id");
+
     if (wompiTxId) {
+
       setTab("pedidos");
+
       (async () => {
+
         try {
+
           const verificacion = await wompiService.verificarTransaccion(wompiTxId);
+
           if (verificacion && verificacion.aprobado) {
+
             success("¡Pago Aprobado con Wompi!", `Tu pedido ${verificacion.numeroVenta || ''} fue aprobado y enviado a cocina.`);
+
             if (typeof clearCart === "function") clearCart();
+
           } else if (verificacion && verificacion.estado === 'PENDING') {
+
             warning("Pago en Proceso", "Tu banco está verificando el pago. Puedes seguir su estado en esta pantalla.");
+
             if (typeof clearCart === "function") clearCart();
+
           } else {
+
             notifyError("Pago No Completado", `La transacción fue ${verificacion?.estado || 'rechazada'}.`);
+
           }
+
         } catch (err) {
+
           console.error("Error verificando Wompi en perfil:", err);
+
         } finally {
+
           fetchMyOrders();
+
           const newParams = new URLSearchParams(window.location.search);
+
           newParams.delete("id");
+
           newParams.set("tab", "pedidos");
+
           window.history.replaceState({}, document.title, `${window.location.pathname}?${newParams.toString()}`);
+
         }
+
       })();
+
     }
+
   }, [searchParams, fetchMyOrders, clearCart]);
 
   // Populate form with current user data
+
   useEffect(() => {
+
     if (user) {
+
       let cleanDir = user.direccion || "";
+
       if (typeof cleanDir === "string" && cleanDir.trim().startsWith("{")) {
+
         try {
+
           const parsed = JSON.parse(cleanDir);
+
           cleanDir = parsed.direccion || cleanDir;
+
         } catch (e) {
+
           /* keep */
+
         }
+
       }
 
       const rawDocVal = user.numeroDocumento || user.documento || "";
+
       const validDocVal = (rawDocVal && String(rawDocVal).trim().length >= 6) ? String(rawDocVal).trim() : "";
+
       setForm({
+
         nombre: user.nombre || "",
+
         apellidos: user.apellidos || user.apellido || "",
+
         email: user.email || "",
+
         telefono: user.telefono || "",
+
         direccion: cleanDir,
+
         tipoDocumento: user.tipoDocumento || "C.C.",
+
         numeroDocumento: validDocVal,
+
       });
 
       const userAvatar = user.foto || user.avatar || localStorage.getItem(`avatar_${user?.id || user?.idUsuario}`) || "";
+
       setAvatarUrl(userAvatar);
+
       setErrors({});
+
       setTouched({});
+
     }
+
   }, [user]);
 
   const isGoogleUser = useMemo(() => {
+
     return Boolean(
+
       user?.esUsuarioGoogle ||
+
       (user?.foto && user?.foto.includes("googleusercontent.com")) ||
+
       (user?.avatar && user?.avatar.includes("googleusercontent.com"))
+
     );
+
   }, [user]);
 
   const rawDocUser = user?.numeroDocumento || user?.documento || "";
+
   const tieneCedulaRegistrada = Boolean(rawDocUser && String(rawDocUser).trim().length >= 6);
 
   // Estados de seguridad y contraseña
+
   const [passForm, setPassForm] = useState({
+
     passwordActual: "",
+
     passwordNueva: "",
+
     passwordConfirm: "",
+
   });
+
   const [passErrors, setPassErrors] = useState({});
+
   const [passTouched, setPassTouched] = useState({});
+
   const [savingPass, setSavingPass] = useState(false);
+
   const [showPasswords, setShowPasswords] = useState(false);
+
   const [showPassActual, setShowPassActual] = useState(false);
+
   const [showPassNueva, setShowPassNueva] = useState(false);
+
   const [showPassConfirm, setShowPassConfirm] = useState(false);
 
   const toggleAllPasswords = () => {
+
     const next = !showPasswords;
+
     setShowPasswords(next);
+
     setShowPassActual(next);
+
     setShowPassNueva(next);
+
     setShowPassConfirm(next);
+
   };
 
   // Toast automático eliminado - reemplazado por indicadores visuales y onboarding sin interrupciones
 
   const handlePassSubmit = async (e) => {
+
     e.preventDefault();
+
     const errs = {};
+
     if (!isGoogleUser && !passForm.passwordActual) {
+
       errs.passwordActual = "Ingresa tu contraseña actual.";
+
     }
+
     if (!passForm.passwordNueva) {
+
       errs.passwordNueva = "Ingresa la nueva contraseña.";
+
     } else if (passForm.passwordNueva.length < 6) {
+
       errs.passwordNueva = "La contraseña debe tener al menos 6 caracteres.";
+
     }
+
     if (!passForm.passwordConfirm) {
+
       errs.passwordConfirm = "Confirma la nueva contraseña.";
+
     } else if (passForm.passwordNueva !== passForm.passwordConfirm) {
+
       errs.passwordConfirm = "Las contraseñas no coinciden.";
+
     }
 
     if (Object.keys(errs).length > 0) {
+
       setPassErrors(errs);
+
       setPassTouched({ passwordActual: true, passwordNueva: true, passwordConfirm: true });
+
       return;
+
     }
 
     setSavingPass(true);
+
     try {
+
       const payload = {
+
         passwordNueva: passForm.passwordNueva,
+
         crearPasswordDirecta: isGoogleUser,
+
       };
+
       if (!isGoogleUser && passForm.passwordActual) {
+
         payload.passwordActual = passForm.passwordActual;
+
       }
+
       const res = await updateProfile(payload);
+
       if (res && res.success !== false) {
+
         success(
+
           isGoogleUser ? "¡Contraseña creada con éxito!" : "¡Contraseña actualizada!",
+
           isGoogleUser
+
             ? "Ahora puedes iniciar sesión ingresando tu correo y tu nueva contraseña."
+
             : "Tu contraseña ha sido actualizada correctamente."
+
         );
+
         setPassForm({ passwordActual: "", passwordNueva: "", passwordConfirm: "" });
+
         setPassErrors({});
+
         setPassTouched({});
+
       } else {
+
         notifyError("Error", res?.message || "No se pudo actualizar la contraseña.");
+
       }
+
     } catch (err) {
+
       notifyError("Error", err.message || "No se pudo actualizar la contraseña.");
+
     } finally {
+
       setSavingPass(false);
+
     }
+
   };
 
   // Detect client device and browser for Active Sessions
+
   const deviceInfo = useMemo(() => {
+
     const ua = navigator.userAgent;
+
     let browser = "Google Chrome";
+
     if (ua.includes("Edg")) browser = "Microsoft Edge";
+
     else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
+
     else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
 
     let os = "Windows PC";
+
     let isMobile = false;
+
     if (ua.includes("Android")) {
+
       os = "Android Mobile";
+
       isMobile = true;
+
     } else if (ua.includes("iPhone") || ua.includes("iPad")) {
+
       os = "iOS Device";
+
       isMobile = true;
+
     } else if (ua.includes("Mac")) {
+
       os = "macOS";
+
     } else if (ua.includes("Linux")) {
+
       os = "Linux PC";
+
     }
 
     return { browser, os, isMobile };
+
   }, []);
 
-
-
   useEffect(() => {
+
     if (refreshUser) {
+
       refreshUser();
+
     }
+
   }, [refreshUser]);
 
   useEffect(() => {
+
     fetchMyOrders();
+
   }, [fetchMyOrders]);
 
   // ── Calculate Advanced Real Statistics ──
+
   const stats = useMemo(() => {
+
     const completedPedidos = pedidos.filter((p) => {
+
       const st = String(p.estado || "").toUpperCase();
+
       return !st.includes("ANULAD") && !st.includes("CANCEL") && !st.includes("RECHAZ");
+
     });
+
     const totalPedidosCount = completedPedidos.length;
 
     // Total spent & savings
+
     const totalGastado = completedPedidos.reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0);
+
     const totalAhorrado = completedPedidos.reduce((acc, p) => acc + (parseFloat(p.descuentoAplicado) || 0), 0);
 
     // Total products / dishes consumed
+
     const totalProductosCount = completedPedidos.reduce(
+
       (acc, p) => acc + (p.items || []).reduce((iAcc, item) => iAcc + (Number(item.cantidad) || 1), 0),
+
       0
+
     );
 
     // Ticket promedio
+
     const ticketPromedio = completedPedidos.length > 0 ? Math.round(totalGastado / completedPedidos.length) : 0;
 
     // Item popularity ranking
+
     const itemCounts = {};
+
     completedPedidos.forEach((p) => {
+
       (p.items || []).forEach((item) => {
+
         const name = (item.nombre || "Producto").trim();
+
         itemCounts[name] = (itemCounts[name] || 0) + (Number(item.cantidad) || 1);
+
       });
+
     });
 
     const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
+
     const top3Items = sortedItems.slice(0, 3).map(([nombre, count]) => ({
+
       nombre,
+
       count,
+
       percent: totalProductosCount > 0 ? Math.round((count / totalProductosCount) * 100) : 0,
+
     }));
 
     const favoriteProduct = sortedItems.length > 0 ? sortedItems[0][0] : "Sin pedidos aún";
+
     const favoriteCount = sortedItems.length > 0 ? sortedItems[0][1] : 0;
 
     // Favorite payment method
+
     const paymentCounts = { Efectivo: 0, Tarjeta: 0, Transferencia: 0 };
+
     completedPedidos.forEach((p) => {
+
       const m = String(p.metodoPago || "Efectivo").toLowerCase();
+
       if (m.includes("tarjeta")) paymentCounts.Tarjeta++;
+
       else if (m.includes("transfer")) paymentCounts.Transferencia++;
+
       else paymentCounts.Efectivo++;
+
     });
 
     let topPayment = "Efectivo";
+
     let topPaymentCount = paymentCounts.Efectivo;
+
     if (paymentCounts.Tarjeta > topPaymentCount) {
+
       topPayment = "Tarjeta";
+
       topPaymentCount = paymentCounts.Tarjeta;
+
     }
+
     if (paymentCounts.Transferencia > topPaymentCount) {
+
       topPayment = "Transferencia";
+
       topPaymentCount = paymentCounts.Transferencia;
+
     }
+
     const paymentPercent = completedPedidos.length > 0 ? Math.round((topPaymentCount / completedPedidos.length) * 100) : 100;
 
     // Favorite delivery method
+
     let deliveryCount = 0;
+
     let pickupCount = 0;
+
     completedPedidos.forEach((p) => {
+
       const t = String(p.tipoEntrega || "").toLowerCase();
+
       if (t.includes("llevar") || t.includes("recoger") || t.includes("mesa")) pickupCount++;
+
       else deliveryCount++;
+
     });
+
     const preferredDelivery = deliveryCount >= pickupCount ? "A Domicilio" : "En Mesa";
 
     // Last order date
+
     const lastOrderDate = completedPedidos.length > 0 ? completedPedidos[0].fecha : "Sin compras recientes";
 
     return {
+
       totalPedidosCount,
+
       completedPedidosCount: completedPedidos.length,
+
       totalGastado,
+
       totalAhorrado,
+
       totalProductosCount,
+
       ticketPromedio,
+
       top3Items,
+
       favoriteProduct,
+
       favoriteCount,
+
       topPayment,
+
       paymentPercent,
+
       preferredDelivery,
+
       lastOrderDate,
+
     };
+
   }, [pedidos]);
 
   // Fidelity Data extraction
+
   const fidelidad = user?.fidelidad || {};
+
   const realOrdersCount = stats.totalPedidosCount || 0;
 
   const tipoFidelidad =
+
     fidelidad.tipo && fidelidad.tipo !== "Nuevo"
+
       ? fidelidad.tipo
+
       : realOrdersCount >= 9
+
         ? "VIP"
+
         : realOrdersCount >= 6
+
           ? "Frecuente"
+
           : realOrdersCount >= 3
+
             ? "Regular"
+
             : (fidelidad.tipo || user?.tipo || "Nuevo");
 
   const descuentoPorcentaje =
+
     fidelidad.descuentoPorcentaje !== undefined && fidelidad.descuentoPorcentaje > 0
+
       ? fidelidad.descuentoPorcentaje
+
       : tipoFidelidad === "VIP"
+
         ? 15
+
         : tipoFidelidad === "Frecuente"
+
           ? 10
+
           : tipoFidelidad === "Regular"
+
             ? 5
+
             : 0;
 
   const comprasCiclo =
+
     fidelidad.comprasCiclo !== undefined && fidelidad.comprasCiclo > 0
+
       ? fidelidad.comprasCiclo
+
       : (realOrdersCount % 3);
 
   const comprasFaltantes =
+
     fidelidad.comprasFaltantes !== undefined && fidelidad.comprasFaltantes > 0
+
       ? fidelidad.comprasFaltantes
+
       : (3 - (comprasCiclo % 3));
 
   const siguienteNivel =
+
     fidelidad.siguienteNivel ||
+
     (tipoFidelidad === "Nuevo" ? "Regular" : tipoFidelidad === "Regular" ? "Frecuente" : "VIP");
+
   const enGracia = Boolean(fidelidad.enGracia);
+
   const diasRestantesRaw =
+
     fidelidad.diasRestantes !== undefined ? fidelidad.diasRestantes : tipoFidelidad !== "Nuevo" ? 30 : null;
+
   const diasGraciaRestantesRaw = fidelidad.diasGraciaRestantes || 0;
+
   const fechaVencimientoObj =
+
     fidelidad.fechaVencimientoNivel || fidelidad.vence
+
       ? new Date(fidelidad.fechaVencimientoNivel || fidelidad.vence)
+
       : null;
 
   // Real-time client countdown ticker (1-second precision)
+
   const [currentTick, setCurrentTick] = useState(() => Date.now());
+
   useEffect(() => {
+
     const timer = setInterval(() => setCurrentTick(Date.now()), 1000);
+
     return () => clearInterval(timer);
+
   }, []);
 
   const liveFidelityStatus = useMemo(() => {
+
     if (tipoFidelidad === "Nuevo") {
+
       return {
+
         esNuevo: true,
+
         enGracia: false,
+
         expirado: false,
+
         diasRestantes: null,
+
         formattedCountdown: "Membresía Permanente sin vencimiento",
+
         pctRemaining: 100,
+
         barColor: "from-emerald-500 to-teal-500",
+
         fechaVencimientoStr: null,
+
       };
+
     }
 
     if (!fechaVencimientoObj || isNaN(fechaVencimientoObj.getTime())) {
+
       return {
+
         esNuevo: false,
+
         enGracia: false,
+
         expirado: false,
+
         diasRestantes: 30,
+
         formattedCountdown: "30 días restantes",
+
         pctRemaining: 100,
+
         barColor: "from-emerald-500 to-teal-500",
+
         fechaVencimientoStr: null,
+
       };
+
     }
 
     const diffMs = fechaVencimientoObj.getTime() - currentTick;
 
     if (diffMs > 0) {
+
       const totalSec = Math.floor(diffMs / 1000);
+
       const d = Math.floor(totalSec / 86400);
+
       const h = Math.floor((totalSec % 86400) / 3600);
+
       const m = Math.floor((totalSec % 3600) / 60);
+
       const s = totalSec % 60;
 
       const pct = Math.min(100, Math.max(0, (diffMs / (30 * 86400000)) * 100));
+
       const barColor =
+
         pct > 33
+
           ? "from-emerald-500 to-teal-500"
+
           : pct > 12
+
             ? "from-amber-500 to-orange-500"
+
             : "from-red-500 to-rose-600 animate-pulse";
 
       return {
+
         esNuevo: false,
+
         enGracia: false,
+
         expirado: false,
+
         diasRestantes: d,
+
         horasRestantes: h,
+
         minutosRestantes: m,
+
         segundosRestantes: s,
+
         formattedCountdown: `${d > 0 ? `${d}d ` : ""}${h}h ${m}m ${String(s).padStart(2, "0")}s restantes`,
+
         pctRemaining: Math.max(pct, 5),
+
         barColor,
+
         fechaVencimientoStr: fechaVencimientoObj.toLocaleDateString("es-CO", {
+
           year: "numeric",
+
           month: "short",
+
           day: "numeric",
+
         }),
+
       };
+
     }
 
     // Expiration date passed -> Evaluate grace period
+
     const msExpirado = Math.abs(diffMs);
+
     const limiteGraciaDias = tipoFidelidad === "VIP" ? 15 : tipoFidelidad === "Frecuente" ? 10 : 0;
+
     const limiteGraciaMs = limiteGraciaDias * 86400000;
 
     if (limiteGraciaDias > 0 && msExpirado < limiteGraciaMs) {
+
       const msRestanteGracia = limiteGraciaMs - msExpirado;
+
       const totalSecG = Math.floor(msRestanteGracia / 1000);
+
       const dG = Math.floor(totalSecG / 86400);
+
       const hG = Math.floor((totalSecG % 86400) / 3600);
+
       const mG = Math.floor((totalSecG % 3600) / 60);
+
       const sG = totalSecG % 60;
+
       const pctG = Math.min(100, Math.max(5, (msRestanteGracia / limiteGraciaMs) * 100));
 
       return {
+
         esNuevo: false,
+
         enGracia: true,
+
         expirado: false,
+
         diasGracia: dG,
+
         horasGracia: hG,
+
         minutosGracia: mG,
+
         segundosGracia: sG,
+
         formattedCountdown: `${dG > 0 ? `${dG}d ` : ""}${hG}h ${mG}m ${String(sG).padStart(2, "0")}s para reactivar`,
+
         pctRemaining: pctG,
+
         barColor: "from-amber-500 to-red-500 animate-pulse",
+
         fechaVencimientoStr: "En periodo de gracia",
+
       };
+
     }
 
     // Grace expired -> Tier degraded
+
     return {
+
       esNuevo: false,
+
       enGracia: false,
+
       expirado: true,
+
       diasRestantes: 0,
+
       formattedCountdown: "Ciclo Vencido (Nivel por renovar)",
+
       pctRemaining: 0,
+
       barColor: "from-red-600 to-gray-600",
+
       fechaVencimientoStr: "Vencido",
+
     };
+
   }, [tipoFidelidad, fechaVencimientoObj, currentTick]);
 
   const now = new Date(currentTick);
+
   const diasRestantes = liveFidelityStatus.diasRestantes;
+
   const enGraciaActivo = liveFidelityStatus.enGracia;
+
   const diasGraciaRestantes = liveFidelityStatus.diasGracia || diasGraciaRestantesRaw;
 
   // Format clean full name avoiding word duplication
+
   const formatFullName = (u) => {
+
     if (!u) return "Cliente";
+
     const nombre = (u.nombre || "").trim();
+
     const apellidos = (u.apellidos || u.apellido || "").trim();
+
     if (!apellidos) return nombre;
+
     if (!nombre) return apellidos;
+
     const nombreWords = nombre.split(/\s+/);
+
     const apellidosWords = apellidos.split(/\s+/);
+
     const uniqueApellidos = apellidosWords.filter(
+
       (w) => !nombreWords.some((nw) => nw.toLowerCase() === w.toLowerCase())
+
     ).join(" ");
+
     return uniqueApellidos ? `${nombre} ${uniqueApellidos}` : nombre;
+
   };
 
   const userName = formatFullName(user);
 
   // ── Photo Upload & Avatar Handling ──
+
   const handleFileUpload = async (e) => {
+
     const file = e.target.files?.[0];
+
     if (!file) return;
 
     try {
+
       info("Subiendo foto...", "Subiendo tu foto a Cloudinary...");
+
       const previousAvatar = avatarUrl;
+
       const url = await uploadImageToCloudinary(file);
 
       // Si el avatar anterior era una foto subida a Cloudinary, eliminarla
+
       if (previousAvatar && previousAvatar !== url && previousAvatar.includes("cloudinary.com")) {
+
         deleteImageFromCloudinary(previousAvatar);
+
       }
 
       setAvatarUrl(url);
+
       localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, url);
+
       success("Foto cargada", "Presiona 'Guardar Cambios' para aplicar tu foto de perfil");
+
     } catch (err) {
+
       console.error("Error al subir avatar a Cloudinary:", err);
+
       error("Error al subir foto", err.message || "No se pudo subir la foto de perfil");
+
     }
+
   };
 
   const handleSelectPresetAvatar = (avatar) => {
+
     const previousAvatar = avatarUrl;
+
     if (previousAvatar && previousAvatar.includes("cloudinary.com")) {
+
       deleteImageFromCloudinary(previousAvatar);
+
     }
+
     setAvatarUrl(avatar);
+
     localStorage.setItem(`avatar_${user?.id || user?.idUsuario}`, avatar);
+
     success("Avatar seleccionado", "Presiona 'Guardar Cambios' para actualizar tu perfil");
+
   };
 
   const handleRemoveAvatar = () => {
+
     const previousAvatar = avatarUrl;
+
     if (previousAvatar && previousAvatar.includes("cloudinary.com")) {
+
       deleteImageFromCloudinary(previousAvatar);
+
     }
+
     setAvatarUrl("");
+
     localStorage.removeItem(`avatar_${user?.id || user?.idUsuario}`);
+
     success("Foto eliminada", "Se mostrará el distintivo de tu nivel");
+
   };
 
   // ── Close other active sessions ──
+
   const handleCloseOtherSessions = async () => {
+
     const isConfirmed = await confirmAction(
+
       "¿Cerrar sesiones en otros dispositivos?",
+
       "Se desconectarán todos los teléfonos o navegadores donde tengas tu cuenta abierta, excepto este dispositivo.",
+
       "Sí, cerrar otras sesiones"
+
     );
 
     if (isConfirmed) {
+
       success("Sesiones cerradas", "Tus otras sesiones han sido desconectadas por seguridad.");
+
     }
+
   };
 
   const docConfig = DOCUMENTO_CONFIG[form.tipoDocumento] || DOCUMENTO_CONFIG["C.C."];
 
   // ── Edit form handlers ──
+
   const validateSingleField = (name, val, extra = {}) => {
+
     switch (name) {
+
       case "nombre":
+
         if (!val.trim()) return "El nombre es obligatorio.";
+
         if (val.includes("@")) return "El nombre no puede contener el carácter '@'.";
+
         if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+
         return "";
+
       case "apellidos":
+
         if (!val.trim()) return "Los apellidos son obligatorios.";
+
         if (val.includes("@")) return "Los apellidos no pueden contener el carácter '@'.";
+
         if (val.trim().length < 2) return "Mínimo 2 caracteres.";
+
         return "";
+
       case "email":
+
         if (!val.trim()) return "El correo es obligatorio.";
+
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val.trim())) return "Ingresa un correo electrónico válido (ej: usuario@correo.com).";
+
         return "";
+
       case "numeroDocumento":
+
         if (!val || !val.trim()) return "El número de documento es obligatorio para facturación y compras.";
+
         return validateDocumento(val, extra.tipoDocumento || form.tipoDocumento).error || "";
+
       case "telefono":
+
         if (!val) return "";
+
         return val.length < 7 ? "Mínimo 7 dígitos." : "";
+
       default:
+
         return "";
+
     }
+
   };
 
   const handleBlur = (name) => {
+
     setTouched((prev) => ({ ...prev, [name]: true }));
+
     const err = validateSingleField(name, form[name] || "");
+
     setErrors((prev) => ({ ...prev, [name]: err }));
+
   };
 
   const handleChange = (e) => {
+
     const { name, value } = e.target;
+
     let v = value;
 
     if (name === "numeroDocumento") {
+
       v = sanitizeDocumento(value, form.tipoDocumento);
+
     } else if (name === "telefono") {
+
       v = sanitizeTelefono(value);
+
     }
 
     setForm((prev) => ({ ...prev, [name]: v }));
+
     // Validación inline inmediata en tiempo real (Item 23)
+
     const err = validateSingleField(name, v);
+
     setErrors((prev) => ({ ...prev, [name]: err }));
+
   };
 
   const handleTipoDocChange = (e) => {
+
     const nuevoTipo = e.target.value;
+
     const sanitizedDoc = sanitizeDocumento(form.numeroDocumento, nuevoTipo);
+
     setForm((prev) => ({
+
       ...prev,
+
       tipoDocumento: nuevoTipo,
+
       numeroDocumento: sanitizedDoc,
+
     }));
+
     if (touched.numeroDocumento) {
+
       const err = validateSingleField("numeroDocumento", sanitizedDoc, { tipoDocumento: nuevoTipo });
+
       setErrors((prev) => ({ ...prev, numeroDocumento: err }));
+
     }
+
   };
 
   const validate = () => {
+
     const errs = {};
+
     const errNombre = validateSingleField("nombre", form.nombre);
+
     if (errNombre) errs.nombre = errNombre;
+
     const errApellidos = validateSingleField("apellidos", form.apellidos);
+
     if (errApellidos) errs.apellidos = errApellidos;
+
     const errEmail = validateSingleField("email", form.email);
+
     if (errEmail) errs.email = errEmail;
+
     if (form.numeroDocumento) {
+
       const errDoc = validateSingleField("numeroDocumento", form.numeroDocumento);
+
       if (errDoc) errs.numeroDocumento = errDoc;
+
     }
+
     if (form.telefono) {
+
       const errTel = validateSingleField("telefono", form.telefono);
+
       if (errTel) errs.telefono = errTel;
+
     }
+
     return errs;
+
   };
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
+
     setTouched({
+
       nombre: true,
+
       apellidos: true,
+
       email: true,
+
       numeroDocumento: true,
+
       telefono: true,
+
       direccion: true,
+
     });
+
     const errs = validate();
+
     if (Object.keys(errs).length > 0) {
+
       setErrors(errs);
+
       return;
+
     }
 
     setSaving(true);
+
     try {
+
       const result = await updateProfile({
+
         nombre: form.nombre.trim(),
+
         apellidos: form.apellidos.trim(),
+
         email: form.email.trim(),
+
         telefono: form.telefono || null,
+
         direccion: form.direccion.trim() || null,
+
         tipoDocumento: form.tipoDocumento,
+
         numeroDocumento: form.numeroDocumento || null,
+
         foto: avatarUrl || null,
+
         avatar: avatarUrl || null,
+
       });
 
       if (result.success) {
+
         success("¡Perfil Actualizado!", "Tus datos personales y foto han sido guardados correctamente.");
+
         refreshUser?.();
+
       } else {
+
         notifyError("No se pudo actualizar", result.message || "Ocurrió un error al guardar los cambios.");
+
       }
+
     } finally {
+
       setSaving(false);
+
     }
+
   };
 
   return (
+
     <div className="min-h-screen bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col font-sans transition-colors">
+
       {/* ── Top Header Navigation (Mismo navbar unificado) ── */}
+
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 shadow-md sticky top-0 z-40">
+
         <div className="w-full px-4 sm:px-6 lg:px-8">
+
           <div className="flex items-center justify-between py-4">
+
             <div
+
               className="flex items-center gap-4 cursor-pointer select-none group"
+
               onClick={() => {
+
                 navigate("/");
+
                 window.scrollTo({ top: 0, behavior: "smooth" });
+
               }}
+
               title="Ir al inicio - Chazin Food"
+
             >
+
               <div className="shrink-0 w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm border border-gray-100 group-hover:scale-105 transition-transform">
+
                 <img
+
                   src={logoImg}
+
                   alt="Chazin Food"
+
                   className="w-full h-full object-cover"
+
                   style={{ objectPosition: "50% 56%" }}
+
                 />
+
               </div>
+
               <div>
+
                 <div className="flex items-center gap-2 flex-wrap">
+
                   <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 group-hover:text-[#f05454] transition-colors">Chazin Food</h1>
+
                   <FidelidadBadge
+
                     tipo={tipoFidelidad}
+
                     descuento={descuentoPorcentaje}
+
                     enGracia={enGracia}
+
                     size="sm"
+
                   />
+
                 </div>
+
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+
                   {user?.nombre ? `¡Bienvenido, ${user.nombre}!` : "Panel de Cliente & Fidelidad"}
+
                 </p>
+
               </div>
+
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+
               <button
+
                 onClick={toggleDarkMode}
+
                 aria-label={darkMode ? "Activar modo claro" : "Activar modo oscuro"}
+
                 className="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
+
                 title="Cambiar Modo"
+
               >
+
                 {darkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
+
               </button>
 
               <Link
+
                 to="/"
+
                 aria-label="Volver al menú de comidas"
+
                 className="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-sm font-medium cursor-pointer"
+
               >
+
                 <ArrowLeft className="w-4 h-4 text-[#f05454]" />
+
                 <span className="hidden sm:inline">Volver al Menú</span>
+
               </Link>
 
               <div
+
                 className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl text-sm font-bold shadow-2xs"
+
               >
+
                 <User className="w-5 h-5 text-[#f05454]" />
+
                 <span className="hidden sm:inline">Mi Perfil</span>
+
               </div>
 
               <button
+
                 onClick={() => {
+
                   logout();
+
                   navigate("/");
+
                 }}
+
                 aria-label="Cerrar sesión"
+
                 className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl transition-colors cursor-pointer"
+
                 title="Cerrar Sesión"
+
               >
+
                 <LogOut className="w-5 h-5" />
+
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       </header>
 
       {/* ── Main Content Container ── */}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full flex-1 space-y-6">
+
         {/* ── Hero Profile & Loyalty Card ── */}
+
         <div
+
           className={`rounded-3xl p-6 sm:p-8 border shadow-md relative overflow-hidden transition-all ${tipoFidelidad === "VIP"
+
               ? "bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-orange-500/20 border-amber-300 dark:border-amber-700/80"
+
               : tipoFidelidad === "Frecuente"
+
                 ? "bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/15 border-indigo-200 dark:border-indigo-800/80"
+
                 : tipoFidelidad === "Regular"
+
                   ? "bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-red-500/15 border-orange-200 dark:border-orange-800/80"
+
                   : "bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-850 border-gray-200/90 dark:border-gray-800"
+
             }`}
+
         >
+
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/40 dark:bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+
             {/* User Info Left */}
+
             <div className="flex items-center gap-4 sm:gap-5">
+
               <div
+
                 className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center text-3xl sm:text-4xl shadow-md border shrink-0 overflow-hidden relative ${tipoFidelidad === "VIP"
+
                     ? "bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 border-amber-200"
+
                     : tipoFidelidad === "Frecuente"
+
                       ? "bg-gradient-to-tr from-indigo-500 to-purple-500 text-white border-indigo-300"
+
                       : tipoFidelidad === "Regular"
+
                         ? "bg-gradient-to-tr from-orange-500 to-amber-500 text-white border-orange-300"
+
                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+
                   }`}
+
               >
+
                 {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+
                   <img src={avatarUrl} alt={userName} className="w-full h-full object-cover rounded-3xl" />
+
                 ) : avatarUrl ? (
+
                   <FoodIcon name={avatarUrl} size={36} />
+
                 ) : (
+
                   <span className="font-black text-xl sm:text-2xl text-gray-700 dark:text-gray-200 uppercase tracking-tight">
+
                     {getUserInitials(userName)}
+
                   </span>
+
                 )}
+
               </div>
 
               <div className="space-y-1 min-w-0">
+
                 <div className="flex items-center gap-2 flex-wrap">
+
                   <h2 className="text-xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate">
+
                     {userName}
+
                   </h2>
+
                   <FidelidadBadge tipo={tipoFidelidad} descuento={descuentoPorcentaje} enGracia={enGracia} size="md" />
+
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap font-medium">
+
                   <span className="flex items-center gap-1">
+
                     <Mail className="w-3.5 h-3.5 text-gray-400" />
+
                     {user?.email || "Sin correo"}
+
                   </span>
+
                   {user?.telefono && (
+
                     <span className="flex items-center gap-1">
+
                       <Phone className="w-3.5 h-3.5 text-gray-400" />
+
                       {user.telefono}
+
                     </span>
+
                   )}
+
                   {form.direccion && (
+
                     <span className="flex items-center gap-1 truncate max-w-xs">
+
                       <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+
                       <span className="truncate">{form.direccion}</span>
+
                     </span>
+
                   )}
+
                 </div>
+
               </div>
+
             </div>
 
             {/* Loyalty Quick Stats Box */}
+
             <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xs p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 lg:min-w-[320px]">
+
               <div className="flex-1 space-y-2 w-full">
+
                 <div className="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-gray-300">
+
                   <span className="flex items-center gap-1.5">
+
                     <Flame className="w-4 h-4 text-orange-500" />
+
                     <span>Racha ({comprasCiclo} de 3)</span>
+
                   </span>
+
                   <span className="text-[11px] font-extrabold text-[#f05454] flex items-center gap-1">
+
                     {comprasFaltantes === 0
+
                       ? <><span>¡Meta alcanzada!</span> <Sparkles className="w-3.5 h-3.5 text-amber-500 inline" /></>
+
                       : tipoFidelidad === "VIP"
+
                         ? `Faltan ${comprasFaltantes} ${comprasFaltantes === 1 ? "compra" : "compras"}`
+
                         : `Faltan ${comprasFaltantes} para ${siguienteNivel}`}
+
                   </span>
+
                 </div>
 
                 {/* 3 Step Indicator */}
+
                 <div className="grid grid-cols-3 gap-1.5">
+
                   {[1, 2, 3].map((step) => {
+
                     const isCompleted = comprasCiclo >= step;
+
                     return (
+
                       <div
+
                         key={step}
+
                         className={`h-2.5 rounded-full transition-all ${isCompleted
+
                             ? "bg-gradient-to-r from-orange-500 to-[#f05454] shadow-xs"
+
                             : "bg-gray-200 dark:bg-gray-700"
+
                           }`}
+
                       />
+
                     );
+
                   })}
+
                 </div>
 
                 {/* Expiration, Grace & Real-Time Countdown Progress Bar */}
+
                 {/* Expiration, Grace & Real-Time Countdown Progress Bar */}
+
                 {tipoFidelidad === "Nuevo" ? (
+
                   <div className="pt-2">
+
                     <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200">
+
                       <div className="flex items-center justify-between text-xs font-bold">
+
                         <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+
                           <Sprout className="w-3.5 h-3.5 shrink-0" />
+
                           <span>Membresía Permanente</span>
+
                         </span>
+
                         <span className="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[10.5px] font-black px-2 py-0.5 rounded-md">
+
                           Sin vencimiento
+
                         </span>
+
                       </div>
+
                       <p className="text-[10.5px] text-emerald-700 dark:text-emerald-300/90 mt-1">
+
                         Realiza 3 compras para ascender al nivel <strong>Regular</strong> y obtener <strong>5% OFF</strong> automático en todos tus pedidos.
+
                       </p>
+
                     </div>
+
                   </div>
+
                 ) : (
+
                   <div className="pt-2 space-y-2">
+
                     {liveFidelityStatus.enGracia ? (
+
                       <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200">
+
                         <div className="flex items-center justify-between text-xs font-black">
+
                           <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+
                             <AlertTriangle className="w-3.5 h-3.5 animate-pulse shrink-0" />
+
                             <span>Periodo de Gracia Activo</span>
+
                           </span>
+
                           <span className="bg-amber-200 dark:bg-amber-900/60 px-2 py-0.5 rounded-md font-mono font-black text-[11px]">
+
                             {liveFidelityStatus.formattedCountdown}
+
                           </span>
+
                         </div>
+
                         <p className="text-[10.5px] text-amber-700 dark:text-amber-300/90 mt-1">
+
                           Realiza 1 compra antes de que finalice tu tiempo de gracia para reactivar tu nivel {tipoFidelidad} sin descender.
+
                         </p>
+
                       </div>
+
                     ) : (
+
                       <div className="space-y-1.5">
+
                         <div className="flex items-center justify-between text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+
                           <span className="flex items-center gap-1.5">
+
                             <Clock className="w-3.5 h-3.5 text-[#f05454]" />
+
                             <span>Vigencia del Nivel (Tiempo Real):</span>
+
                           </span>
+
                           <span className="text-[#f05454] font-mono font-bold text-[11px] bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-md border border-red-100 dark:border-red-900/40">
+
                             {liveFidelityStatus.formattedCountdown}
+
                           </span>
+
                         </div>
+
                         {/* Progress Bar with Correct Health Color */}
+
                         <div className="w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
+
                           <div
+
                             className={`h-full bg-gradient-to-r ${liveFidelityStatus.barColor} rounded-full transition-all duration-300`}
+
                             style={{ width: `${liveFidelityStatus.pctRemaining}%` }}
+
                           />
+
                         </div>
+
                         {fechaVencimientoObj && (
+
                           <div className="flex items-center justify-between text-[10px] text-gray-400">
+
                             <span>Próxima Renovación:</span>
+
                             <span className="font-bold">{liveFidelityStatus.fechaVencimientoStr}</span>
+
                           </div>
+
                         )}
+
                       </div>
+
                     )}
+
                   </div>
+
                 )}
+
               </div>
 
               {descuentoPorcentaje > 0 && (
+
                 <div className="bg-[#f05454] text-white px-3.5 py-2 rounded-xl font-black text-center shrink-0 self-stretch sm:self-center flex sm:flex-col items-center justify-center gap-1 shadow-2xs">
+
                   <span className="text-lg leading-none">{descuentoPorcentaje}%</span>
+
                   <span className="text-[10px] uppercase tracking-wider">OFF Activo</span>
+
                 </div>
+
               )}
+
             </div>
+
           </div>
+
         </div>
 
         {/* ── 10+ Comprehensive Statistics Dashboard Grid ── */}
+
         <div>
+
           <div className="flex items-center justify-between mb-3.5">
+
             <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
               <TrendingUp className="w-5 h-5 text-[#f05454]" />
+
               <span>Estadísticas & Hábitos de Consumo</span>
+
             </h3>
+
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Actualizado en tiempo real</span>
+
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+
             {/* Metric 1: Total Invertido */}
+
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
+
               <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
+
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Total Compras</span>
+
                 <DollarSign className="w-4 h-4" />
+
               </div>
+
               <div>
+
                 <p className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
+
                   ${stats.totalGastado.toLocaleString("es-CO")}
+
                 </p>
+
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">en compras acumuladas</p>
+
               </div>
+
             </div>
 
             {/* Metric 2: Ahorro Total por Fidelidad */}
+
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
+
               <div className="flex items-center justify-between text-rose-500 mb-2">
+
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Ahorro Fidelidad</span>
+
                 <Tag className="w-4 h-4" />
+
               </div>
+
               <div>
+
                 <p className="text-lg sm:text-2xl font-black text-[#f05454]">
+
                   ${stats.totalAhorrado.toLocaleString("es-CO")}
+
                 </p>
+
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">ahorrados en descuentos</p>
+
               </div>
+
             </div>
 
             {/* Metric 3: Platillos Disfrutados */}
+
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between">
+
               <div className="flex items-center justify-between text-orange-500 mb-2">
+
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Platillos</span>
+
                 <UtensilsCrossed className="w-4 h-4" />
+
               </div>
+
               <div>
+
                 <p className="text-lg sm:text-2xl font-black text-orange-600 dark:text-orange-400">
+
                   {stats.totalProductosCount}
+
                 </p>
+
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">unidades preparadas</p>
+
               </div>
+
             </div>
 
             {/* Metric 4: Ticket Promedio */}
+
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
+
               <div className="flex items-center justify-between text-purple-500 mb-2">
+
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Ticket Promedio</span>
+
                 <Receipt className="w-4 h-4" />
+
               </div>
+
               <div>
+
                 <p className="text-lg sm:text-2xl font-black text-purple-600 dark:text-purple-400">
+
                   ${stats.ticketPromedio.toLocaleString("es-CO")}
+
                 </p>
+
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">por cada pedido</p>
+
               </div>
+
             </div>
 
             {/* Metric 5: Total Pedidos (Pedidos a lo último) */}
+
             <div className="bg-white dark:bg-gray-900 border border-gray-200/80 dark:border-gray-800 p-4 rounded-2xl shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
+
               <div className="flex items-center justify-between text-blue-500 mb-2">
+
                 <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">Pedidos Totales</span>
+
                 <Package className="w-4 h-4" />
+
               </div>
+
               <div>
+
                 <p className="text-lg sm:text-2xl font-black text-blue-600 dark:text-blue-400">
+
                   {stats.totalPedidosCount}
+
                 </p>
+
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">órdenes realizadas</p>
+
               </div>
+
             </div>
+
           </div>
+
         </div>
 
         {/* ── Multi-Tab Navigation ── */}
+
         <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200/80 dark:border-gray-800 shadow-xs overflow-hidden">
+
           <div className="flex border-b border-gray-100 dark:border-gray-800 overflow-x-auto no-scrollbar">
+
             <button
+
               onClick={() => setTab("fidelidad")}
+
               className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "fidelidad"
+
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
+
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+
                 }`}
+
             >
+
               <Crown className="w-4 h-4 shrink-0" />
+
               <span>Fidelidad & Hábitos</span>
+
             </button>
 
             <button
+
               onClick={() => setTab("editar")}
+
               className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "editar"
+
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
+
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+
                 }`}
+
             >
+
               <Edit2 className="w-4 h-4 shrink-0" />
+
               <span>Editar Datos</span>
+
             </button>
 
             <button
+
               onClick={() => setTab("pedidos")}
+
               className={`flex-1 min-w-[130px] sm:min-w-0 py-3.5 sm:py-4 px-3 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer border-b-2 whitespace-nowrap ${tab === "pedidos"
+
                   ? "border-[#f05454] text-[#f05454] bg-red-50/40 dark:bg-red-950/20"
+
                   : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+
                 }`}
+
             >
+
               <Package className="w-4 h-4 shrink-0" />
+
               <span>Mis Pedidos ({pedidos.length})</span>
+
             </button>
+
           </div>
 
           <div className="p-6 sm:p-8">
+
             {/* ══ TAB 1: FIDELIDAD & HÁBITOS ══ */}
+
             {tab === "fidelidad" && (
+
               <div className="space-y-6">
+
                 {/* Real-time Fidelity Card */}
+
                 <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-red-500/10 border border-amber-200 dark:border-amber-900/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+
                   <div className="space-y-1">
+
                     <div className="flex items-center gap-2 flex-wrap">
+
                       <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-white dark:bg-gray-800 shadow-2xs border border-amber-200 dark:border-amber-800 shrink-0">
+
                         {tipoFidelidad === "VIP" ? (
+
                           <FoodIcon name="gold" size={20} stroke={2} className="text-amber-500" />
+
                         ) : tipoFidelidad === "Frecuente" ? (
+
                           <FoodIcon name="silver" size={20} stroke={2} className="text-indigo-500" />
+
                         ) : tipoFidelidad === "Regular" ? (
+
                           <FoodIcon name="bronze" size={20} stroke={2} className="text-orange-500" />
+
                         ) : (
+
                           <FoodIcon name="sprout" size={20} stroke={2} className="text-emerald-500" />
+
                         )}
+
                       </span>
+
                       <h4 className="font-black text-base text-gray-900 dark:text-gray-100">
+
                         Nivel {tipoFidelidad}
+
                       </h4>
+
                       {descuentoPorcentaje > 0 && (
+
                         <span className="px-2.5 py-0.5 rounded-lg bg-[#f05454] text-white text-xs font-black">
+
                           {descuentoPorcentaje}% OFF
+
                         </span>
+
                       )}
+
                     </div>
+
                     <p className="text-xs text-gray-600 dark:text-gray-300">
+
                       {tipoFidelidad === "Nuevo"
+
                         ? "Membresía Permanente sin vencimiento. Completa 3 compras para desbloquear 5% de descuento permanente."
+
                         : `Vigencia activa con renovación automática cada 30 días o al cumplir la meta del ciclo.`}
+
                     </p>
+
                   </div>
 
                   <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60 shadow-2xs shrink-0 self-stretch md:self-auto text-center md:text-right">
+
                     <span className="text-[10px] uppercase font-bold text-gray-400 block">Tiempo Restante:</span>
+
                     <span className="font-mono font-black text-sm text-[#f05454] block mt-0.5">
+
                       {liveFidelityStatus.formattedCountdown}
+
                     </span>
+
                   </div>
+
                 </div>
 
                 {/* Top 3 Platillos Ranking & Hábitos */}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
                   {/* Left 2 Cols: Top Platillos Ranking */}
+
                   <div className="lg:col-span-2 bg-gray-50/70 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-4">
+
                     <div className="flex items-center justify-between">
+
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                         <Award className="w-4 h-4 text-amber-500" />
+
                         <span>Top Platillos Más Pedidos</span>
+
                       </h4>
+
                       <span className="text-xs text-gray-400 font-bold">{stats.totalProductosCount} consumidos en total</span>
+
                     </div>
 
                     {stats.top3Items.length === 0 ? (
+
                       <div className="py-8 text-center text-gray-400 text-xs italic">
+
                         Realiza tus primeros pedidos para descubrir tus platillos favoritos.
+
                       </div>
+
                     ) : (
+
                       <div className="space-y-3">
-                        {stats.top3Items.map((item, idx) => (
+
+                                                {stats.top3Items.map((item, idx) => (
                           <div
                             key={idx}
-                            className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between gap-3 shadow-2xs"
+                            className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-2xs"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="min-w-0">
-                                <h5 className="font-black text-sm text-gray-900 dark:text-gray-100 truncate">
-                                  {item.nombre}
-                                </h5>
-                                <p className="text-[11px] text-gray-500 font-medium">
-                                  Pedido <strong className="text-gray-800 dark:text-gray-200">{item.count} {item.count === 1 ? "vez" : "veces"}</strong> ({item.percent}% de tus elecciones)
-                                </p>
-                              </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="font-black text-sm text-gray-900 dark:text-gray-100 truncate" title={item.nombre}>
+                                {item.nombre}
+                              </h5>
+                              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                Pedido <strong className="text-gray-800 dark:text-gray-200">{item.count} {item.count === 1 ? "vez" : "veces"}</strong> ({item.percent}% de tus elecciones)
+                              </p>
                             </div>
-                            <div className="w-24 bg-gray-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden shrink-0">
+                            <div className="w-full sm:w-28 bg-gray-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden shrink-0">
                               <div
                                 className="bg-[#f05454] h-full rounded-full transition-all"
                                 style={{ width: `${item.percent}%` }}
@@ -1595,1174 +2903,2223 @@ export function ClientePerfil() {
                             </div>
                           </div>
                         ))}
+
                       </div>
+
                     )}
+
                   </div>
 
                   {/* Right Col: Hábitos de Pago y Entrega */}
+
                   <div className="bg-gray-50/70 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 space-y-4">
+
                     <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                       <PieChart className="w-4 h-4 text-blue-500" />
+
                       <span>Preferencias de Compra</span>
+
                     </h4>
 
                     <div className="space-y-3 text-xs">
+
                       {/* Método de pago */}
+
                       <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80">
+
                         <div className="flex items-center justify-between text-gray-500 font-medium">
+
                           <span>Método de Pago Favorito</span>
+
                           <CreditCard className="w-3.5 h-3.5 text-blue-500" />
+
                         </div>
+
                         <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-1">
+
                           {stats.topPayment} ({stats.paymentPercent}%)
+
                         </p>
+
                       </div>
 
                       {/* Modalidad de entrega */}
+
                       <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80">
+
                         <div className="flex items-center justify-between text-gray-500 font-medium">
+
                           <span>Preferencia de Entrega</span>
+
                           <Bike className="w-3.5 h-3.5 text-purple-500" />
+
                         </div>
+
                         <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-1">
+
                           {stats.preferredDelivery}
+
                         </p>
+
                       </div>
 
                       {/* Último pedido */}
+
                       <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80">
+
                         <div className="flex items-center justify-between text-gray-500 font-medium">
+
                           <span>Última Compra</span>
+
                           <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+
                         </div>
+
                         <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mt-1 truncate">
+
                           {stats.lastOrderDate}
+
                         </p>
+
                       </div>
+
                     </div>
+
                   </div>
+
                 </div>
 
                 {/* ── Tabla de Niveles y Beneficios Desplegable ── */}
+
                 <div className="bg-white dark:bg-gray-850 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-750 space-y-3">
+
                   <div className="flex items-center justify-between">
+
                     <div>
+
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                         <Sparkles className="w-4 h-4 text-amber-500" />
+
                         <span>Tabla de Niveles & Beneficios del Club</span>
+
                       </h4>
+
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+
                         Conoce las ventajas de cada membresía y cómo mantener tus descuentos automáticos.
+
                       </p>
+
                     </div>
+
                     <button
+
                       onClick={() => setShowBenefitsTable(!showBenefitsTable)}
+
                       className="px-3 py-1.5 bg-gray-100 dark:bg-gray-750 hover:bg-gray-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1"
+
                     >
+
                       <span>{showBenefitsTable ? "Ocultar" : "Ver detalles"}</span>
+
                       {showBenefitsTable ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+
                     </button>
+
                   </div>
 
                   {showBenefitsTable && (
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 animate-in fade-in duration-150">
+
                       {/* Nivel Nuevo */}
+
                       <div className="p-4 rounded-2xl border bg-gray-50/80 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 space-y-2">
+
                         <div className="flex items-center justify-between">
+
                           <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-gray-200/60 dark:border-gray-700">
+
                             <FoodIcon name="sprout" size={20} stroke={2} className="text-emerald-600" />
+
                           </span>
+
                           <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-[10px] font-black rounded-lg">0% OFF</span>
+
                         </div>
+
                         <h5 className="font-black text-sm">Cliente Nuevo</h5>
+
                         <p className="text-xs text-gray-500">Realiza 3 compras para subir automáticamente al nivel Regular.</p>
+
                       </div>
 
                       {/* Nivel Regular */}
+
                       <div className="p-4 rounded-2xl border bg-orange-50/70 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/40 space-y-2">
+
                         <div className="flex items-center justify-between">
+
                           <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-orange-200/60 dark:border-orange-900/40">
+
                             <FoodIcon name="bronze" size={20} stroke={2} className="text-orange-600" />
+
                           </span>
+
                           <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-black rounded-lg">5% OFF</span>
+
                         </div>
+
                         <h5 className="font-black text-sm text-orange-900 dark:text-orange-300">Cliente Regular</h5>
+
                         <p className="text-xs text-orange-800/80 dark:text-orange-400">
+
                           Vigencia de 30 días. Realiza 3 compras en el mes para ascender a Frecuente.
+
                         </p>
+
                       </div>
 
                       {/* Nivel Frecuente */}
+
                       <div className="p-4 rounded-2xl border bg-indigo-50/70 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 space-y-2">
+
                         <div className="flex items-center justify-between">
+
                           <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-indigo-200/60 dark:border-indigo-900/40">
+
                             <FoodIcon name="silver" size={20} stroke={2} className="text-indigo-600" />
+
                           </span>
+
                           <span className="px-2 py-0.5 bg-indigo-600 text-white text-[10px] font-black rounded-lg">10% OFF</span>
+
                         </div>
+
                         <h5 className="font-black text-sm text-indigo-900 dark:text-indigo-300">Cliente Frecuente</h5>
+
                         <p className="text-xs text-indigo-800/80 dark:text-indigo-400">
+
                           Vigencia de 30 días + 10 días de periodo de gracia para no perder el estatus.
+
                         </p>
+
                       </div>
 
                       {/* Nivel VIP */}
+
                       <div className="p-4 rounded-2xl border bg-amber-50/70 dark:bg-amber-950/20 border-amber-300 dark:border-amber-900/50 space-y-2 shadow-xs">
+
                         <div className="flex items-center justify-between">
+
                           <span className="w-8 h-8 rounded-xl bg-white dark:bg-gray-750 flex items-center justify-center shadow-2xs border border-amber-300/60 dark:border-amber-900/40">
+
                             <FoodIcon name="gold" size={20} stroke={2} className="text-amber-500" />
+
                           </span>
+
                           <span className="px-2 py-0.5 bg-amber-500 text-amber-950 text-[10px] font-black rounded-lg">15% OFF</span>
+
                         </div>
+
                         <h5 className="font-black text-sm text-amber-950 dark:text-amber-300">Cliente VIP</h5>
+
                         <p className="text-xs text-amber-900/80 dark:text-amber-400">
+
                           Máximo descuento + 15 días de gracia. Renueva con 3 compras en el ciclo.
+
                         </p>
+
                       </div>
+
                     </div>
+
                   )}
+
                 </div>
+
               </div>
+
             )}
 
             {/* ══ TAB 2: HISTORIAL DE PEDIDOS ══ */}
+
             {tab === "pedidos" && (
+
               <div className="space-y-4">
+
                 <div className="flex items-center justify-between">
+
                   <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                     <Package className="w-4 h-4 text-red-500" />
+
                     <span>Historial de Compras Realizadas</span>
+
                   </h4>
+
                   <button
+
                     onClick={fetchMyOrders}
+
                     disabled={loadingPedidos}
+
                     className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-bold rounded-xl transition cursor-pointer"
+
                   >
+
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingPedidos ? "animate-spin text-red-500" : ""}`} />
+
                     <span>Actualizar</span>
+
                   </button>
+
                 </div>
 
                 {loadingPedidos ? (
+
                   <div className="py-8">
+
                     <ChazinLoader text="CARGANDO TUS PEDIDOS" size="md" />
+
                   </div>
+
                 ) : pedidos.length === 0 ? (
+
                   <div className="py-12 text-center space-y-3 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+
                     <ShoppingBag className="w-10 h-10 text-gray-300 mx-auto" />
+
                     <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Aún no tienes pedidos registrados</p>
+
                     <Link
+
                       to="/"
+
                       className="inline-flex items-center gap-2 px-4 py-2 bg-[#f05454] text-white rounded-xl text-xs font-bold shadow-xs hover:bg-red-600 transition"
+
                     >
+
                       Explorar el Menú y Pedir
+
                     </Link>
+
                   </div>
+
                 ) : (
+
                   <div className="space-y-3">
+
                     {pedidos.map((ped, idx) => (
+
                       <div
+
                         key={idx}
+
                         className="bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 p-4 rounded-2xl shadow-2xs hover:shadow-xs transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+
                       >
+
                         <div className="space-y-1.5 min-w-0">
+
                           <div className="flex items-center gap-2.5 flex-wrap">
+
                             <span className="font-black text-sm text-gray-900 dark:text-gray-100">
+
                               {ped.numeroVenta || `Pedido #${ped.id}`}
+
                             </span>
+
                             <span
+
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${ped.estado === "Completada" || ped.estado === "Listo"
+
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+
                                   : ped.estado === "En Preparación"
+
                                     ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+
                                     : ped.estado === "Anulada"
+
                                       ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+
                                       : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+
                                 }`}
+
                             >
+
                               {ped.estado}
+
                             </span>
+
                             <span className="text-xs text-gray-400 font-medium">{ped.fecha}</span>
+
                           </div>
 
                           <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5 flex-wrap">
+
                             {(ped.items || []).length > 0 ? (
+
                               (ped.items || []).map((i, iIdx) => (
+
                                 <span key={iIdx} className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700/60 px-2 py-0.5 rounded-md font-medium">
+
                                   <FoodIcon name={i.nombre} size={13} stroke={2} className="text-amber-500 shrink-0" />
+
                                   <span>{i.cantidad || 1}x {i.nombre}</span>
+
                                 </span>
+
                               ))
+
                             ) : (
+
                               <span className="italic text-gray-400">Platillos preparados</span>
+
                             )}
+
                           </div>
+
                         </div>
 
                         <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 border-t sm:border-t-0 pt-2.5 sm:pt-0">
+
                           <div className="text-right">
+
                             <p className="text-base font-black text-gray-900 dark:text-gray-100">
+
                               ${(parseFloat(ped.total) || 0).toLocaleString("es-CO")}
+
                             </p>
+
                             {ped.descuentoAplicado > 0 && (
+
                               <p className="text-[10px] text-emerald-600 font-bold">
+
                                 -${ped.descuentoAplicado.toLocaleString("es-CO")} OFF
+
                               </p>
+
                             )}
+
                           </div>
+
                           <div className="flex items-center gap-2">
+
                             {(() => {
+
                               const devInfo = getDevolucionInfo(ped);
+
                               if (!devInfo) return null;
+
                               if (devInfo.existing) {
+
                                 return (
+
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+
                                     <RotateCcw className="w-3 h-3" />
+
                                     Devolución: {devInfo.existing.estado}
+
                                   </span>
+
                                 );
+
                               }
+
                               if (devInfo.puedeSolicitar) {
+
                                 return (
+
                                   <button
+
                                     type="button"
+
                                     onClick={() => {
+
                                       setPedidoParaDevolucion(ped);
+
                                       setSolicitarDevolucionOpen(true);
+
                                     }}
+
                                     className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+
                                     title="Solicitar devolución según políticas de la empresa (máx 2 días)"
+
                                   >
+
                                     <RotateCcw className="w-3.5 h-3.5" />
+
                                     <span>Devolución</span>
+
                                   </button>
+
                                 );
+
                               }
+
                               return null;
+
                             })()}
+
                             <button
+
                               type="button"
+
                               onClick={() => setSelectedPedidoDetalle(ped)}
+
                               className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-[#f05454] hover:text-white text-gray-700 dark:text-gray-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+
                             >
+
                               <Receipt className="w-3.5 h-3.5" />
+
                               <span>Ver detalle</span>
+
                             </button>
+
                           </div>
+
                         </div>
+
                       </div>
+
                     ))}
+
                   </div>
+
                 )}
+
               </div>
+
             )}
 
             {/* ══ TAB 3: EDITAR DATOS PERSONALES, FOTO & SESIONES ACTIVAS ══ */}
+
             {tab === "editar" && (
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
                 {/* ── Left Column: Formulario de Datos Personales ── */}
+
                 <div className="lg:col-span-7 space-y-6">
+
                   <div>
+
                     <h4 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                       <User className="w-4 h-4 text-[#f05454]" />
+
                       <span>Información Personal</span>
+
                     </h4>
+
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+
                       Actualiza tus nombres, datos de identificación y dirección de entrega.
+
                     </p>
+
                   </div>
 
                   {/* Onboarding exclusivo para usuarios de Google Auth con datos pendientes */}
+
                   {isGoogleUser && (!form.numeroDocumento || form.numeroDocumento.length < 6 || !form.telefono || form.telefono.length < 7 || !form.direccion || form.direccion.length < 5) && (
+
                     <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50/50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/20 border-2 border-amber-300 dark:border-amber-700/80 rounded-3xl p-5 shadow-xs space-y-3.5">
+
                       <div className="flex items-start gap-3">
+
                         <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 font-black shadow-sm mt-0.5">
+
                           <Globe className="w-5 h-5" />
+
                         </div>
+
                         <div className="text-xs space-y-1 flex-1">
+
                           <div className="flex items-center justify-between flex-wrap gap-2">
+
                             <h4 className="font-black text-amber-950 dark:text-amber-100 text-sm sm:text-base flex items-center gap-2">
+
                               <span>Completa tus datos de entrega y facturación</span>
+
                             </h4>
+
                             <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+
                               Acceso con Google OAuth 2.0
+
                             </span>
+
                           </div>
+
                           <p className="text-amber-900 dark:text-amber-200/90 leading-relaxed text-xs">
+
                             Al iniciar con Google, datos como tu <strong>teléfono</strong> y <strong>dirección</strong> quedan pendientes por privacidad. Completa los campos marcados como <strong className="text-amber-800 dark:text-amber-300">Pendiente</strong> a continuación para que el restaurante pueda coordinar tus domicilios y emitir tu factura:
+
                           </p>
+
                         </div>
+
                       </div>
 
                       {/* Checklist dinámico interactivo con progreso en vivo */}
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+
                         <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.numeroDocumento && form.numeroDocumento.length >= 6
+
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+
                           }`}>
+
                           {form.numeroDocumento && form.numeroDocumento.length >= 6 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+
                           <span className="truncate">Cédula: {form.numeroDocumento && form.numeroDocumento.length >= 6 ? 'Lista ✓' : 'Falta registrar'}</span>
+
                         </div>
 
                         <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.telefono && form.telefono.length >= 7
+
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+
                           }`}>
+
                           {form.telefono && form.telefono.length >= 7 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+
                           <span className="truncate">Teléfono: {form.telefono && form.telefono.length >= 7 ? 'Listo ✓' : 'Falta registrar'}</span>
+
                         </div>
 
                         <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold transition-all ${form.direccion && form.direccion.length >= 5
+
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300 shadow-xs'
+
                             : 'bg-white dark:bg-gray-800 border-amber-300 text-amber-900 dark:text-amber-200'
+
                           }`}>
+
                           {form.direccion && form.direccion.length >= 5 ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />}
+
                           <span className="truncate">Dirección: {form.direccion && form.direccion.length >= 5 ? 'Lista ✓' : 'Falta registrar'}</span>
+
                         </div>
+
                       </div>
+
                     </div>
+
                   )}
 
                   {/* Banner tradicional para usuarios de registro normal sin cédula */}
+
                   {!isGoogleUser && !tieneCedulaRegistrada && (
+
                     <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+
                       <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+
                       <div className="text-xs space-y-1">
+
                         <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+
                           Tu cuenta no cuenta con un número de documento registrado
+
                         </p>
+
                         <p className="text-amber-800 dark:text-amber-300/90 leading-relaxed">
+
                           Para cumplir con los requisitos de facturación electrónica y procesar tus pedidos en Chazin Food, por favor registra tu número de cédula válido (6 a 10 dígitos).
+
                         </p>
+
                       </div>
+
                     </div>
+
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-4">
+
                     {/* ── Documento de Identidad (Primero en el formulario, inmutable si ya está registrado) ── */}
+
                     <div className="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700 space-y-2">
+
                       <div className="flex items-center justify-between">
+
                         <label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+
                           <FileText className="w-3.5 h-3.5 text-[#f05454]" />
+
                           <span>Documento de Identidad</span>
+
                           <span className="text-red-500">*</span>
+
                         </label>
+
                         {tieneCedulaRegistrada ? (
+
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+
                             <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+
                             <span>Dato verificado (Inmutable)</span>
+
                           </span>
+
                         ) : (
+
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+
                             Pendiente
+
                           </span>
+
                         )}
+
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
                         <div>
+
                           <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+
                             Tipo Doc.
+
                           </label>
+
                           <select
+
                             value={form.tipoDocumento}
+
                             onChange={handleTipoDocChange}
+
                             disabled={tieneCedulaRegistrada}
+
                             className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+
                               tieneCedulaRegistrada
+
                                 ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+
                                 : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-red-400 cursor-pointer"
+
                             }`}
+
                           >
+
                             {TIPOS_DOCUMENTO.map((t) => (
+
                               <option key={t} value={t}>
+
                                 {t}
+
                               </option>
+
                             ))}
+
                           </select>
+
                         </div>
 
                         <div className="sm:col-span-2">
+
                           <label className="block text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-1 flex items-center justify-between">
+
                             <span>N.° Documento ({docConfig.helper})</span>
+
                           </label>
+
                           <div className="relative">
+
                             <input
+
                               type="text"
+
                               name="numeroDocumento"
+
                               value={form.numeroDocumento}
+
                               onBlur={() => handleBlur("numeroDocumento")}
+
                               onChange={handleChange}
+
                               readOnly={tieneCedulaRegistrada}
+
                               disabled={tieneCedulaRegistrada}
+
                               inputMode={docConfig.numericOnly ? "numeric" : "text"}
+
                               placeholder={docConfig.helper}
+
                               className={`w-full px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-medium transition ${
+
                                 tieneCedulaRegistrada
+
                                   ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
+
                                   : touched.numeroDocumento && errors.numeroDocumento
+
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+
                                   : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-red-400"
+
                               }`}
+
                             />
+
                             {tieneCedulaRegistrada && (
+
                               <Lock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+
                             )}
+
                           </div>
+
                           <FieldError msg={touched.numeroDocumento ? errors.numeroDocumento : ""} />
+
                         </div>
+
                       </div>
+
                       {tieneCedulaRegistrada && (
+
                         <p className="text-[10.5px] text-gray-400 dark:text-gray-500 italic">
+
                           Por seguridad y validación fiscal, el documento de identidad queda inmutable una vez registrado.
+
                         </p>
+
                       )}
+
                     </div>
 
                     {/* Nombres y Apellidos */}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                       {/* Nombre */}
+
                       <div>
+
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                           Nombre <span className="text-red-500">*</span>
+
                         </label>
+
                         <input
+
                           type="text"
+
                           name="nombre"
+
                           value={form.nombre}
+
                           onBlur={() => handleBlur("nombre")}
+
                           onChange={handleChange}
+
                           placeholder="Tu nombre"
+
                           className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.nombre && errors.nombre ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                             }`}
+
                         />
+
                         <FieldError msg={touched.nombre ? errors.nombre : ""} />
+
                       </div>
 
                       {/* Apellidos */}
+
                       <div>
+
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                           Apellidos <span className="text-red-500">*</span>
+
                         </label>
+
                         <input
+
                           type="text"
+
                           name="apellidos"
+
                           value={form.apellidos}
+
                           onBlur={() => handleBlur("apellidos")}
+
                           onChange={handleChange}
+
                           placeholder="Tus apellidos"
+
                           className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.apellidos && errors.apellidos ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                             }`}
+
                         />
+
                         <FieldError msg={touched.apellidos ? errors.apellidos : ""} />
+
                       </div>
+
                     </div>
 
                     {/* Email */}
+
                     <div>
+
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                         Correo Electrónico <span className="text-red-500">*</span>
+
                       </label>
+
                       <div className="relative">
+
                         <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+
                         <input
+
                           type="email"
+
                           name="email"
+
                           value={form.email}
+
                           onBlur={() => handleBlur("email")}
+
                           onChange={handleChange}
+
                           placeholder="tu@correo.com"
+
                           className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.email && errors.email ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                             }`}
+
                         />
+
                       </div>
+
                       <FieldError msg={touched.email ? errors.email : ""} />
+
                     </div>
 
                     {/* Teléfono */}
+
                     <div>
+
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+
                         <span>Teléfono Celular</span>
+
                         {isGoogleUser && (!form.telefono || form.telefono.trim().length < 7) && (
+
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+
                             <AlertCircle className="w-3 h-3" /> Pendiente
+
                           </span>
+
                         )}
+
                       </label>
+
                       <div className="relative">
+
                         <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+
                         <input
+
                           type="text"
+
                           name="telefono"
+
                           value={form.telefono}
+
                           onBlur={() => handleBlur("telefono")}
+
                           onChange={handleChange}
+
                           inputMode="numeric"
+
                           placeholder="Ej: 3001234567"
+
                           className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:bg-white dark:focus:bg-gray-800 ${touched.telefono && errors.telefono ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400" : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                             }`}
+
                         />
+
                       </div>
+
                       <FieldError msg={touched.telefono ? errors.telefono : ""} />
+
                     </div>
 
                     {/* Dirección de Entrega por Defecto */}
+
                     <div>
+
                       <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+
                         <span>Dirección de Entrega por Defecto</span>
+
                         {isGoogleUser && (!form.direccion || form.direccion.trim().length < 5) && (
+
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+
                             <AlertCircle className="w-3 h-3" /> Pendiente
+
                           </span>
+
                         )}
+
                       </label>
+
                       <div className="relative">
+
                         <MapPin className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+
                         <input
+
                           type="text"
+
                           name="direccion"
+
                           value={form.direccion}
+
                           onChange={handleChange}
+
                           placeholder="Ej: Calle 50 #30-20, Medellín"
+
                           className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 focus:ring-red-400 focus:bg-white dark:focus:bg-gray-800"
+
                         />
+
                       </div>
+
                       <p className="text-[11px] text-gray-400 mt-1">
+
                         Esta dirección se precargará automáticamente al realizar tus pedidos.
+
                       </p>
+
                     </div>
 
                     {/* Submit button */}
+
                     <div className="pt-2">
+
                       <button
+
                         type="submit"
+
                         disabled={saving}
+
                         className="w-full sm:w-auto px-7 py-3 bg-gradient-to-r from-[#f05454] to-[#c43d3d] hover:from-[#e04444] hover:to-[#b52d2d] text-white font-bold rounded-2xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 text-sm disabled:opacity-60 cursor-pointer"
+
                       >
+
                         {saving ? (
+
                           <>
+
                             <RefreshCw className="w-4 h-4 animate-spin" />
+
                             <span>Guardando cambios...</span>
+
                           </>
+
                         ) : (
+
                           <>
+
                             <Save className="w-4 h-4" />
+
                             <span>Guardar Cambios</span>
+
                           </>
+
                         )}
+
                       </button>
+
                     </div>
+
                   </form>
 
                   {/* ── Tarjeta de Seguridad y Contraseña de Acceso ── */}
+
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 p-6 rounded-3xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+
                       <div>
+
                         <h4 className="text-base font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                           <Key className="w-4 h-4 text-[#f05454]" />
+
                           <span>Seguridad &amp; Contraseña de Acceso</span>
+
                         </h4>
+
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+
                           {isGoogleUser
+
                             ? "Asigna una contraseña para ingresar también escribiendo tu correo y contraseña directamente."
+
                             : "Actualiza tu contraseña para mantener la seguridad de tu cuenta."}
+
                         </p>
+
                       </div>
+
                       {isGoogleUser && (
+
                         <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-blue-100/80 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 shrink-0">
+
                           <Globe className="w-3.5 h-3.5" /> Cuenta Google
+
                         </span>
+
                       )}
+
                     </div>
 
                     {isGoogleUser && (
+
                       <div className="bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/70 rounded-2xl p-4 flex items-start gap-3">
+
                         <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+
                         <div className="text-xs space-y-1">
+
                           <p className="font-bold text-blue-900 dark:text-blue-200">
+
                             Acceso vinculado con Google OAuth 2.0
+
                           </p>
+
                           <p className="text-blue-800 dark:text-blue-300/90 leading-relaxed">
+
                             Actualmente accedes mediante Google. Si deseas ingresar también directamente ingresando tu correo electrónico en el login tradicional, crea tu contraseña a continuación (no se requiere contraseña actual).
+
                           </p>
+
                         </div>
+
                       </div>
+
                     )}
 
                     <form onSubmit={handlePassSubmit} className="space-y-4" noValidate>
+
                       {!isGoogleUser && (
+
                         <div>
+
                           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                             Contraseña Actual <span className="text-red-500">*</span>
+
                           </label>
+
                           <div className="relative">
+
                             <input
+
                               type={showPassActual ? "text" : "password"}
+
                               name="passwordActual"
+
                               value={passForm.passwordActual}
+
                               onChange={(e) => {
+
                                 setPassForm((prev) => ({ ...prev, passwordActual: e.target.value }));
+
                                 setPassErrors((prev) => ({ ...prev, passwordActual: "" }));
+
                               }}
+
                               placeholder="Tu contraseña actual"
+
                               className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordActual && passErrors.passwordActual
+
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                                 }`}
+
                             />
+
                             <button
+
                               type="button"
+
                               onClick={() => setShowPassActual(!showPassActual)}
+
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+
                             >
+
                               {showPassActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+
                             </button>
+
                           </div>
+
                           {passTouched.passwordActual && passErrors.passwordActual && (
+
                             <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordActual}</p>
+
                           )}
+
                         </div>
+
                       )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                         <div>
+
                           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                             {isGoogleUser ? "Crear Contraseña" : "Nueva Contraseña"} <span className="text-red-500">*</span>
+
                           </label>
+
                           <div className="relative">
+
                             <input
+
                               type={showPassNueva ? "text" : "password"}
+
                               name="passwordNueva"
+
                               value={passForm.passwordNueva}
+
                               onChange={(e) => {
+
                                 setPassForm((prev) => ({ ...prev, passwordNueva: e.target.value }));
+
                                 setPassErrors((prev) => ({ ...prev, passwordNueva: "" }));
+
                               }}
+
                               placeholder="Mínimo 6 caracteres"
+
                               className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordNueva && passErrors.passwordNueva
+
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                                 }`}
+
                             />
+
                             <button
+
                               type="button"
+
                               onClick={() => setShowPassNueva(!showPassNueva)}
+
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+
                             >
+
                               {showPassNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+
                             </button>
+
                           </div>
+
                           {passTouched.passwordNueva && passErrors.passwordNueva && (
+
                             <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordNueva}</p>
+
                           )}
+
                         </div>
 
                         <div>
+
                           <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+
                             Confirmar Contraseña <span className="text-red-500">*</span>
+
                           </label>
+
                           <div className="relative">
+
                             <input
+
                               type={showPassConfirm ? "text" : "password"}
+
                               name="passwordConfirm"
+
                               value={passForm.passwordConfirm}
+
                               onChange={(e) => {
+
                                 setPassForm((prev) => ({ ...prev, passwordConfirm: e.target.value }));
+
                                 setPassErrors((prev) => ({ ...prev, passwordConfirm: "" }));
+
                               }}
+
                               placeholder="Repite la contraseña"
+
                               className={`w-full px-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none transition focus:ring-2 ${passTouched.passwordConfirm && passErrors.passwordConfirm
+
                                   ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+
                                   : "border-gray-200 dark:border-gray-700 focus:ring-red-400"
+
                                 }`}
+
                             />
+
                             <button
+
                               type="button"
+
                               onClick={() => setShowPassConfirm(!showPassConfirm)}
+
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+
                             >
+
                               {showPassConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+
                             </button>
+
                           </div>
+
                           {passTouched.passwordConfirm && passErrors.passwordConfirm && (
+
                             <p className="text-[11px] text-red-500 font-bold mt-1">{passErrors.passwordConfirm}</p>
+
                           )}
+
                         </div>
+
                       </div>
 
                       {/* Botón Mostrar / Ocultar contraseñas */}
+
                       <div className="flex items-center justify-start pt-1">
+
                         <button
+
                           type="button"
+
                           onClick={toggleAllPasswords}
+
                           className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer select-none"
+
                         >
+
                           {showPasswords ? (
+
                             <>
+
                               <EyeOff className="w-4 h-4 text-gray-500 shrink-0" />
+
                               <span>Ocultar contraseñas</span>
+
                             </>
+
                           ) : (
+
                             <>
+
                               <Eye className="w-4 h-4 text-gray-500 shrink-0" />
+
                               <span>Mostrar contraseñas</span>
+
                             </>
+
                           )}
+
                         </button>
+
                       </div>
 
                       <div className="pt-2">
+
                         <button
+
                           type="submit"
+
                           disabled={savingPass}
+
                           className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 dark:bg-gray-100 hover:bg-black dark:hover:bg-white text-white dark:text-gray-900 font-bold rounded-2xl transition-all shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-60 cursor-pointer"
+
                         >
+
                           {savingPass ? (
+
                             <>
+
                               <RefreshCw className="w-4 h-4 animate-spin" />
+
                               <span>Guardando contraseña...</span>
+
                             </>
+
                           ) : (
+
                             <>
+
                               <Key className="w-4 h-4" />
+
                               <span>{isGoogleUser ? "Crear y Asignar Contraseña" : "Actualizar Contraseña"}</span>
+
                             </>
+
                           )}
+
                         </button>
+
                       </div>
+
                     </form>
+
                   </div>
+
                 </div>
 
                 {/* ── Right Column: Foto de Perfil & Sesiones Activas ── */}
+
                 <div className="lg:col-span-5 space-y-6">
+
                   {/* Tarjeta 1: Foto de Perfil */}
+
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+
                     <div className="flex items-center justify-between">
+
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                         <Camera className="w-4 h-4 text-[#f05454]" />
+
                         <span>Foto de Perfil & Avatar</span>
+
                       </h4>
+
                       {avatarUrl && (
+
                         <button
+
                           type="button"
+
                           onClick={handleRemoveAvatar}
+
                           className="text-[11px] font-bold text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer transition"
+
                         >
+
                           <Trash2 className="w-3 h-3" />
+
                           <span>Quitar foto</span>
+
                         </button>
+
                       )}
+
                     </div>
 
                     <div className="flex items-center gap-4">
+
                       {/* Avatar Preview */}
+
                       <div className="w-20 h-20 rounded-3xl bg-white dark:bg-gray-850 border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-4xl shadow-inner shrink-0 overflow-hidden relative group">
+
                         {avatarUrl && (avatarUrl.startsWith("data:image") || avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+
                           <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+
                         ) : avatarUrl ? (
+
                           <FoodIconBadge name={avatarUrl} size="lg" />
+
                         ) : (
+
                           <span className="font-black text-2xl text-gray-400 dark:text-gray-500 uppercase tracking-tight">
+
                             {getUserInitials(userName)}
+
                           </span>
+
                         )}
 
                         <button
+
                           type="button"
+
                           onClick={() => fileInputRef.current?.click()}
+
                           className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+
                           title="Cambiar foto"
+
                         >
+
                           <Camera className="w-5 h-5" />
+
                         </button>
+
                       </div>
 
                       <div className="space-y-2 flex-1 min-w-0">
+
                         <input
+
                           ref={fileInputRef}
+
                           type="file"
+
                           accept="image/*"
+
                           onChange={handleFileUpload}
+
                           className="hidden"
+
                         />
 
                         <button
+
                           type="button"
+
                           onClick={() => fileInputRef.current?.click()}
+
                           className="w-full px-3.5 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+
                         >
+
                           <Upload className="w-3.5 h-3.5 text-[#f05454]" />
+
                           <span>Subir Imagen</span>
+
                         </button>
 
                         <p className="text-[10.5px] text-gray-400 leading-tight">
+
                           JPG, PNG o WEBP. Máx. 2MB.
+
                         </p>
+
                       </div>
+
                     </div>
 
                     {/* Preset Avatars Selector: Toda la iconografía disponible */}
+
                     <div className="pt-2 border-t border-gray-200/70 dark:border-gray-700/60">
+
                       <div className="flex items-center justify-between mb-2">
+
                         <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+
                           O elige un avatar de nuestra iconografía:
+
                         </p>
+
                         <span className="text-[10px] text-gray-400 font-medium">
+
                           {ALL_AVATAR_ITEMS.length} iconos
+
                         </span>
+
                       </div>
 
                       {/* Chips de filtro por categoría */}
+
                       <div className="flex flex-wrap items-center gap-1.5 pb-2 mb-2">
+
                         <button
+
                           type="button"
+
                           onClick={() => setAvatarFilter("todos")}
+
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${avatarFilter === "todos"
+
                               ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
+
                               : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+
                             }`}
+
                         >
+
                           Todos ({ALL_AVATAR_ITEMS.length})
+
                         </button>
+
                         {PRESET_AVATAR_CATEGORIES.map((cat) => (
+
                           <button
+
                             key={cat.name}
+
                             type="button"
+
                             onClick={() => setAvatarFilter(cat.name)}
+
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer ${avatarFilter === cat.name
+
                                 ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-xs"
+
                                 : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+
                               }`}
+
                           >
+
                             {cat.name} ({cat.avatars.length})
+
                           </button>
+
                         ))}
+
                       </div>
 
                       {/* Cuadrícula desplazable de avatares con tooltip y checkmark */}
+
                       <div className="max-h-48 overflow-y-auto pr-1 flex items-center gap-2 flex-wrap">
+
                         {filteredAvatars.map((item) => {
+
                           const isSelected = avatarUrl === item.slug;
+
                           return (
+
                             <button
+
                               key={item.slug}
+
                               type="button"
+
                               onClick={() => handleSelectPresetAvatar(item.slug)}
+
                               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-95 cursor-pointer relative group ${isSelected
+
                                   ? "bg-red-500/15 border-2 border-[#f05454] shadow-xs text-[#f05454] scale-105"
+
                                   : "bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"
+
                                 }`}
+
                               title={item.label}
+
                             >
+
                               <FoodIcon name={item.slug} size={18} />
+
                               {isSelected && (
+
                                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#f05454] text-white rounded-full flex items-center justify-center text-[9px] font-black shadow-xs">
+
                                   ✓
+
                                 </span>
+
                               )}
+
                             </button>
+
                           );
+
                         })}
+
                       </div>
+
                     </div>
+
                   </div>
 
                   {/* Tarjeta 2: Sesiones Activas & Seguridad */}
+
                   <div className="bg-gray-50/80 dark:bg-gray-800/40 p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 space-y-4">
+
                     <div className="flex items-center justify-between">
+
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-2">
+
                         <ShieldCheck className="w-4 h-4 text-emerald-500" />
+
                         <span>Sesiones Activas</span>
+
                       </h4>
+
                       <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded-full flex items-center gap-1">
+
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+
                         <span>1 en línea</span>
+
                       </span>
+
                     </div>
 
                     {/* Dispositivo Actual */}
+
                     <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs space-y-2">
+
                       <div className="flex items-start justify-between gap-3">
+
                         <div className="flex items-center gap-2.5">
+
                           <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+
                             {deviceInfo.isMobile ? <Smartphone className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+
                           </div>
+
                           <div>
+
                             <div className="flex items-center gap-1.5">
+
                               <h5 className="font-bold text-xs text-gray-900 dark:text-gray-100">
+
                                 {deviceInfo.os}
+
                               </h5>
+
                               <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 text-[9.5px] font-black rounded-md">
+
                                 Este Dispositivo
+
                               </span>
+
                             </div>
+
                             <p className="text-[11px] text-gray-500 font-medium">
+
                               {deviceInfo.browser} • Colombia (IP Actual)
+
                             </p>
+
                           </div>
+
                         </div>
+
                       </div>
 
                       <div className="text-[10.5px] text-gray-400 flex items-center gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+
                         <Clock className="w-3 h-3 text-gray-400" />
+
                         <span>Sesión iniciada hoy • Actividad en tiempo real</span>
+
                       </div>
+
                     </div>
 
                     {/* Dispositivo Secundario Frecuente */}
+
                     <div className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 shadow-2xs opacity-85 space-y-1.5">
+
                       <div className="flex items-center justify-between">
+
                         <div className="flex items-center gap-2.5">
+
                           <div className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500">
+
                             <Smartphone className="w-4 h-4" />
+
                           </div>
+
                           <div>
+
                             <h5 className="font-bold text-xs text-gray-800 dark:text-gray-200">
+
                               Dispositivo Móvil
+
                             </h5>
+
                             <p className="text-[11px] text-gray-400">
+
                               Navegador Móvil • Medellín, Colombia
+
                             </p>
+
                           </div>
+
                         </div>
+
                         <span className="text-[10px] text-gray-400 font-medium">Hace 3h</span>
+
                       </div>
+
                     </div>
 
                     {/* Botón Cerrar Otras Sesiones */}
+
                     <div className="pt-1">
+
                       <button
+
                         type="button"
+
                         onClick={handleCloseOtherSessions}
+
                         className="w-full py-2.5 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+
                       >
+
                         <Key className="w-3.5 h-3.5 text-amber-500" />
+
                         <span>Cerrar sesión en otros dispositivos</span>
+
                       </button>
+
                     </div>
+
                   </div>
+
                 </div>
+
               </div>
+
             )}
+
           </div>
+
         </div>
 
         {/* ═══ MODAL VER DETALLE DE PEDIDO (ITEM 27) ═══ */}
+
         {selectedPedidoDetalle && (
+
           <div
+
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+
             onClick={() => setSelectedPedidoDetalle(null)}
+
           >
+
             <div
+
               className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-2xl border border-gray-150 dark:border-gray-800 space-y-5 text-left max-h-[92vh] overflow-y-auto"
+
               onClick={(e) => e.stopPropagation()}
+
             >
+
               {/* Header */}
+
               <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+
                 <div>
+
                   <span className="text-[10px] uppercase font-black tracking-wider text-red-500 block">
+
                     Detalle del Pedido
+
                   </span>
+
                   <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 flex items-center gap-2 mt-0.5">
+
                     <Receipt className="w-5 h-5 text-red-500" />
+
                     <span>{selectedPedidoDetalle.numeroVenta || `Pedido #${selectedPedidoDetalle.id}`}</span>
+
                   </h3>
+
                   <p className="text-xs text-gray-400 mt-0.5">{selectedPedidoDetalle.fecha}</p>
+
                 </div>
+
                 <button
+
                   type="button"
+
                   onClick={() => setSelectedPedidoDetalle(null)}
+
                   aria-label="Cerrar detalle del pedido"
+
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
+
                 >
+
                   <X className="w-5 h-5" />
+
                 </button>
+
               </div>
 
               {/* Status & Delivery Summary */}
+
               <div className="grid grid-cols-2 gap-3 text-xs">
+
                 <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+
                   <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Estado del Pedido</span>
+
                   <span
+
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${selectedPedidoDetalle.estado === "Completada" || selectedPedidoDetalle.estado === "Listo"
+
                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+
                         : selectedPedidoDetalle.estado === "En Preparación"
+
                           ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+
                           : selectedPedidoDetalle.estado === "Anulada"
+
                             ? "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+
                             : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+
                       }`}
+
                   >
+
                     <Clock className="w-3 h-3" />
+
                     {selectedPedidoDetalle.estado}
+
                   </span>
+
                 </div>
+
                 <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
+
                   <span className="text-[10.5px] text-gray-400 font-bold uppercase block mb-1">Método de Pago</span>
+
                   <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+
                     <CreditCard className="w-3.5 h-3.5 text-red-500" />
+
                     {selectedPedidoDetalle.metodoPago || "Wompi (En línea)"}
+
                   </span>
+
                 </div>
+
               </div>
 
               {/* Delivery address & specs */}
+
               <div className="p-3.5 rounded-2xl bg-red-50/50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 space-y-1.5 text-xs">
+
                 <div className="flex items-center gap-1.5 text-[#f05454] font-black">
+
                   <MapPin className="w-4 h-4 shrink-0" />
+
                   <span>Dirección de Entrega:</span>
+
                 </div>
+
                 <p className="font-medium text-gray-800 dark:text-gray-200 pl-5">
+
                   {typeof selectedPedidoDetalle.direccion === "string" && selectedPedidoDetalle.direccion.trim().startsWith("{")
+
                     ? (() => {
+
                       try {
+
                         const p = JSON.parse(selectedPedidoDetalle.direccion);
+
                         return p.direccion || "Medellín, Antioquia";
+
                       } catch (e) {
+
                         return "Medellín, Antioquia";
+
                       }
+
                     })()
+
                     : (selectedPedidoDetalle.direccion || "Medellín, Antioquia")}
+
                 </p>
+
                 {Boolean(extractCleanSpecifications(selectedPedidoDetalle.especificaciones)) && (
+
                   <div className="pt-1.5 border-t border-red-100/60 dark:border-red-900/40 text-gray-600 dark:text-gray-300 text-[11px] pl-5">
+
                     <strong>Especificaciones:</strong> {extractCleanSpecifications(selectedPedidoDetalle.especificaciones)}
+
                   </div>
+
                 )}
+
               </div>
 
               {/* Products Breakdown List */}
+
               <div className="space-y-2">
+
                 <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+
                   <ShoppingBag className="w-4 h-4 text-amber-500" />
+
                   <span>Productos Ordenados:</span>
+
                 </h4>
+
                 <div className="space-y-2 divide-y divide-gray-100 dark:divide-gray-800">
+
                   {(selectedPedidoDetalle.items || []).map((it, itIdx) => (
+
                     <div key={itIdx} className="pt-2 first:pt-0 flex items-start justify-between gap-3 text-xs">
+
                       <div className="flex items-start gap-2.5 min-w-0">
+
                         <span className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 font-black text-xs mt-0.5">
+
                           {it.cantidad || 1}x
+
                         </span>
+
                         <div className="min-w-0">
+
                           <p className="font-bold text-gray-900 dark:text-gray-100 truncate">{it.nombre}</p>
+
                           {it.adiciones && it.adiciones.length > 0 && (
+
                             <div className="flex flex-wrap gap-1 mt-0.5">
+
                               {it.adiciones.map((ad, adIdx) => (
+
                                 <span key={adIdx} className="text-[10px] text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.2 rounded">
+
                                   +{ad.nombre || ad}
+
                                 </span>
+
                               ))}
+
                             </div>
+
                           )}
+
                           {it.personalizaciones && it.personalizaciones.length > 0 && (
+
                             <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
+
                               Sin: {it.personalizaciones.join(", ")}
+
                             </div>
+
                           )}
+
                         </div>
+
                       </div>
+
                       <span className="font-bold text-gray-800 dark:text-gray-200 shrink-0">
+
                         ${(Number(it.precio || 0) * (Number(it.cantidad) || 1)).toLocaleString("es-CO")}
+
                       </span>
+
                     </div>
+
                   ))}
+
                 </div>
+
               </div>
 
               {/* Financial Summary */}
+
               <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 border border-gray-150 dark:border-gray-700 space-y-1.5 text-xs">
+
                 <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+
                   <span>Subtotal:</span>
+
                   <span className="font-bold">
+
                     ${(parseFloat(selectedPedidoDetalle.subtotal || selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+
                   </span>
+
                 </div>
+
                 {selectedPedidoDetalle.descuentoAplicado > 0 && (
+
                   <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+
                     <span>Descuento Fidelidad:</span>
+
                     <span>-${(parseFloat(selectedPedidoDetalle.descuentoAplicado) || 0).toLocaleString("es-CO")}</span>
+
                   </div>
+
                 )}
+
                 <div className="flex justify-between items-center text-sm font-black text-gray-900 dark:text-gray-100 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+
                   <span>Total Pagado:</span>
+
                   <span className="text-red-600 dark:text-red-400 text-base">
+
                     ${(parseFloat(selectedPedidoDetalle.total) || 0).toLocaleString("es-CO")}
+
                   </span>
+
                 </div>
+
               </div>
 
               {/* Devolución Action / Status */}
+
               {(() => {
+
                 const devInfo = getDevolucionInfo(selectedPedidoDetalle);
+
                 if (!devInfo) return null;
 
                 if (devInfo.existing) {
+
                   return (
+
                     <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs space-y-1">
+
                       <div className="flex items-center justify-between">
+
                         <span className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+
                           <RotateCcw className="w-4 h-4 text-amber-600" />
+
                           Devolución Registrada
+
                         </span>
+
                         <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+
                           {devInfo.existing.estado}
+
                         </span>
+
                       </div>
+
                       <p className="text-[11px] text-amber-700 dark:text-amber-300">
+
                         Motivo: <strong>{devInfo.existing.motivo}</strong> · Solución: <strong>{devInfo.existing.tipoResolucion}</strong>
+
                       </p>
+
                     </div>
+
                   );
+
                 }
 
                 if (devInfo.puedeSolicitar) {
+
                   return (
+
                     <button
+
                       type="button"
+
                       onClick={() => {
+
                         const target = selectedPedidoDetalle;
+
                         setSelectedPedidoDetalle(null);
+
                         setPedidoParaDevolucion(target);
+
                         setSolicitarDevolucionOpen(true);
+
                       }}
+
                       className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-98"
+
                     >
+
                       <RotateCcw className="w-4 h-4" />
+
                       <span>Solicitar Devolución (Política de 2 días)</span>
+
                     </button>
+
                   );
+
                 }
 
                 return null;
+
               })()}
 
               {/* Close Button */}
+
               <button
+
                 type="button"
+
                 onClick={() => setSelectedPedidoDetalle(null)}
+
                 className="w-full py-3 rounded-2xl bg-[#f05454] hover:bg-red-600 text-white font-bold text-xs transition cursor-pointer active:scale-98 shadow-md"
+
               >
+
                 Cerrar Detalle
+
               </button>
+
             </div>
+
           </div>
+
         )}
 
         {/* Modal de Solicitud de Devolución para el Cliente */}
+
         <SolicitarDevolucionModal
+
           isOpen={solicitarDevolucionOpen}
+
           onClose={() => {
+
             setSolicitarDevolucionOpen(false);
+
             setPedidoParaDevolucion(null);
+
           }}
+
           pedido={pedidoParaDevolucion}
+
           onSubmit={handleCrearDevolucionCliente}
+
         />
+
       </main>
+
     </div>
+
   );
+
 }
 
 export default ClientePerfil;
