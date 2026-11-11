@@ -397,56 +397,51 @@ export function EmpleadoModal({
               </h3>
 
               {/* 1. DOCUMENTO DE IDENTIDAD (DE PRIMERO) */}
-              <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-red-100 dark:border-red-900/30 shadow-2xs space-y-2">
-                <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider block">
-                  Documento de Identidad (Principal)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-                  <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                      Tipo Documento
-                    </label>
-                    <select
-                      name="tipoDocumento"
-                      value={form.tipoDocumento}
-                      onChange={(e) => {
-                        handleChange(e);
-                        validateField("numeroDocumento", form.numeroDocumento, { ...form, tipoDocumento: e.target.value });
-                      }}
-                      className="w-full px-2.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-750 dark:text-white font-semibold cursor-pointer"
-                    >
-                      <option value="C.C.">Cédula (C.C.)</option>
-                      <option value="C.E.">Cédula Ext. (C.E.)</option>
-                      <option value="T.I.">Tarjeta Id. (T.I.)</option>
-                      <option value="Pasaporte">Pasaporte (P.P.)</option>
-                      <option value="PPT">Permiso Temp. (PPT)</option>
-                    </select>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Tipo de Documento
+                  </label>
+                  <select
+                    name="tipoDocumento"
+                    value={form.tipoDocumento}
+                    onChange={(e) => {
+                      handleChange(e);
+                      validateField("numeroDocumento", form.numeroDocumento, { ...form, tipoDocumento: e.target.value });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30 dark:bg-gray-800 dark:text-white cursor-pointer"
+                  >
+                    <option value="C.C.">Cédula (C.C.)</option>
+                    <option value="C.E.">Cédula Ext. (C.E.)</option>
+                    <option value="T.I.">Tarjeta Id. (T.I.)</option>
+                    <option value="Pasaporte">Pasaporte (P.P.)</option>
+                    <option value="PPT">Permiso Temp. (PPT)</option>
+                  </select>
+                </div>
 
-                  <div className="sm:col-span-3">
-                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                      Número de Documento <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="numeroDocumento"
-                      value={form.numeroDocumento}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      placeholder="Ej: 1020304050"
-                      className={`w-full px-3 py-2 rounded-xl border text-xs outline-none font-bold transition-all dark:bg-gray-750 dark:text-white ${
-                        errors.numeroDocumento && touched.numeroDocumento
-                          ? "border-red-500 bg-red-50/40 dark:bg-red-950/30 focus:ring-2 focus:ring-red-200"
-                          : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
-                      }`}
-                    />
-                    {errors.numeroDocumento && touched.numeroDocumento && (
-                      <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1 font-medium">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
-                        {errors.numeroDocumento}
-                      </p>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                    Número de Documento <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="numeroDocumento"
+                    value={form.numeroDocumento}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Ej: 1020304050"
+                    className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition-all dark:bg-gray-800 dark:text-white ${
+                      errors.numeroDocumento && touched.numeroDocumento
+                        ? "border-red-500 bg-red-50/30 dark:bg-red-950/20 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 dark:border-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-100 dark:focus:ring-red-900/30"
+                    }`}
+                  />
+                  {errors.numeroDocumento && touched.numeroDocumento && (
+                    <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {errors.numeroDocumento}
+                    </p>
+                  )}
                 </div>
               </div>
 

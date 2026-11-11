@@ -113,11 +113,9 @@ export function VerEmpleadoModal({ isOpen, onClose, empleado }) {
               <User className="w-4 h-4 text-red-500" /> Identificación y Contacto
             </h3>
             <div className="grid grid-cols-2 gap-3.5 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60 text-sm">
-              <div className="col-span-2 sm:col-span-1 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-red-100 dark:border-red-900/30">
-                <span className="text-[11px] font-bold text-red-600 dark:text-red-400 block uppercase tracking-wider">
-                  Documento de Identidad
-                </span>
-                <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+              <div className="col-span-2 sm:col-span-1 p-2.5">
+                <span className="text-xs text-gray-400 block">Documento de Identidad</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200 block mt-0.5">
                   {empleado.tipoDocumento || "C.C."} {empleado.numeroDocumento}
                 </span>
               </div>
