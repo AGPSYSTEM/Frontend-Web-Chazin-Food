@@ -104,15 +104,23 @@ export function EmpleadosTable({
     }).format(num);
   };
 
-  const formatDate = (dateVal) => {
+  const formatDateCompact = (dateVal) => {
     if (!dateVal) return "-";
     try {
+      const str = String(dateVal).split("T")[0];
+      const parts = str.split("-");
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        return `${d}/${m}/${y}`;
+      }
       const d = new Date(dateVal);
-      return d.toLocaleDateString("es-CO", {
-        year: "numeric",
-        month: "short",
-        day: "numeric"
-      });
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, "0");
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+      }
+      return String(dateVal);
     } catch {
       return String(dateVal);
     }
@@ -132,30 +140,36 @@ export function EmpleadosTable({
     );
   }
 
+  // Scroll vertical solo si hay más de 5 registros mostrados
+  const hasVerticalScroll = paginatedEmpleados.length > 5;
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xs border border-gray-100 dark:border-gray-800 overflow-hidden w-full flex flex-col">
       
-      {/* Contenedor con Scroll Horizontal General Adaptativo */}
-      <div className="overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse table-auto min-w-[980px]">
-          <thead>
+      {/* Contenedor de la tabla:
+          - Sin scroll horizontal
+          - Si hay 5 o menos registros: sin scroll
+          - Si hay más de 5 registros: scroll vertical con cabecera pegajosa */}
+      <div className={`w-full ${hasVerticalScroll ? "max-h-[390px] overflow-y-auto" : "overflow-hidden"}`}>
+        <table className="w-full text-left border-collapse table-auto">
+          <thead className={hasVerticalScroll ? "sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 shadow-2xs" : ""}>
             <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/50 text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">
               {/* 1. DOCUMENTO DE IDENTIDAD DE PRIMERO */}
-              <th className="py-4 px-5 sm:px-6 w-[16%] min-w-[140px]">Documento</th>
+              <th className="py-3 px-3 sm:px-4 w-[13%]">Documento</th>
               {/* 2. EMPLEADO */}
-              <th className="py-4 px-5 sm:px-6 w-[22%] min-w-[200px]">Empleado</th>
-              {/* 3. ROL & TURNO (ANTES CARGO) */}
-              <th className="py-4 px-5 sm:px-6 w-[16%] min-w-[150px]">Rol & Turno</th>
+              <th className="py-3 px-3 sm:px-4 w-[21%]">Empleado</th>
+              {/* 3. ROL & TURNO */}
+              <th className="py-3 px-3 sm:px-4 w-[14%]">Rol & Turno</th>
               {/* 4. CONTACTO */}
-              <th className="py-4 px-5 sm:px-6 w-[16%] min-w-[160px]">Contacto</th>
+              <th className="py-3 px-3 sm:px-4 w-[16%]">Contacto</th>
               {/* 5. CONTRATACIÓN (FECHAS DE INICIO Y FIN) */}
-              <th className="py-4 px-5 sm:px-6 w-[15%] min-w-[150px]">Contratación</th>
+              <th className="py-3 px-3 sm:px-4 w-[14%]">Contratación</th>
               {/* 6. SALARIO */}
-              <th className="py-4 px-5 sm:px-6 w-[12%] min-w-[120px]">Salario</th>
-              {/* 7. ESTADO (ACTIVO, INACTIVO, INCAPACITADO) */}
-              <th className="py-4 px-5 sm:px-6 w-[11%] min-w-[110px]">Estado</th>
+              <th className="py-3 px-3 sm:px-4 w-[10%]">Salario</th>
+              {/* 7. ESTADO */}
+              <th className="py-3 px-3 sm:px-4 w-[6%]">Estado</th>
               {/* 8. ACCIONES */}
-              <th className="py-4 px-5 sm:px-6 text-center min-w-[100px]">Acciones</th>
+              <th className="py-3 px-2 sm:px-3 text-center w-[6%]">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -167,7 +181,6 @@ export function EmpleadosTable({
               const estadoStr = emp.estado || (emp.estado === 0 ? "Inactivo" : "Activo");
               const isActivo = estadoStr === "Activo";
               const isIncapacitado = estadoStr === "Incapacitado";
-              const isInactivo = estadoStr === "Inactivo";
 
               return (
                 <tr
@@ -175,117 +188,119 @@ export function EmpleadosTable({
                   className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
                 >
                   {/* 1. DOCUMENTO DE IDENTIDAD DE PRIMERO */}
-                  <td className="py-4 px-5 sm:px-6">
-                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-red-100/70 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200/50 dark:border-red-900/40 mb-1">
-                      {emp.tipoDocumento || "C.C."}
-                    </span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100 text-sm block tracking-tight font-mono">
-                      {emp.numeroDocumento || "-"}
-                    </span>
+                  <td className="py-3 px-3 sm:px-4">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-red-100/70 text-red-700 dark:bg-red-950/60 dark:text-red-400 border border-red-200/50 dark:border-red-900/40">
+                        {emp.tipoDocumento || "C.C."}
+                      </span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100 text-xs sm:text-sm tracking-tight font-mono">
+                        {emp.numeroDocumento || "-"}
+                      </span>
+                    </div>
                   </td>
 
                   {/* 2. EMPLEADO (NOMBRE, AVATAR, ID) */}
-                  <td className="py-4 px-5 sm:px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center font-bold text-xs shrink-0 border border-red-200/60 dark:border-red-900/40 shadow-2xs">
+                  <td className="py-3 px-3 sm:px-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center font-bold text-xs shrink-0 border border-red-200/60 dark:border-red-900/40 shadow-2xs">
                         {emp.foto ? (
                           <img
                             src={emp.foto}
                             alt={emp.nombre}
-                            className="w-full h-full rounded-2xl object-cover"
+                            className="w-full h-full rounded-xl object-cover"
                           />
                         ) : (
                           initials || "EM"
                         )}
                       </div>
-                      <div>
-                        <span className="font-bold text-gray-900 dark:text-white block leading-tight text-sm">
+                      <div className="min-w-0">
+                        <span className="font-bold text-gray-900 dark:text-white block leading-tight text-xs sm:text-sm truncate">
                           {emp.nombre} {emp.apellidos}
                         </span>
-                        <span className="text-xs text-gray-400 dark:text-gray-500 block mt-0.5">
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500 block">
                           ID #{emp.idEmpleado}
                         </span>
                       </div>
                     </div>
                   </td>
 
-                  {/* 3. ROL & TURNO (ANTES CARGO) */}
-                  <td className="py-4 px-5 sm:px-6">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40 shadow-2xs">
-                      <Briefcase className="w-3 h-3 text-blue-500" />
-                      <span>{rolDisplay}</span>
+                  {/* 3. ROL & TURNO */}
+                  <td className="py-3 px-3 sm:px-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40 shadow-2xs truncate">
+                      <Briefcase className="w-3 h-3 text-blue-500 shrink-0" />
+                      <span className="truncate">{rolDisplay}</span>
                     </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1.5 font-medium">
+                    <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1 font-medium truncate">
                       <Clock className="w-3 h-3 text-gray-400 shrink-0" />
-                      <span>{cleanMojibake(emp.turno) || "Completo"}</span>
+                      <span className="truncate">{cleanMojibake(emp.turno) || "Completo"}</span>
                     </span>
                   </td>
 
                   {/* 4. CONTACTO */}
-                  <td className="py-4 px-5 sm:px-6">
+                  <td className="py-3 px-3 sm:px-4">
                     {emp.telefono ? (
-                      <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-medium">
-                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1 font-medium truncate">
+                        <Phone className="w-3 h-3 text-gray-400 shrink-0" />
                         <span>{emp.telefono}</span>
                       </span>
                     ) : null}
                     {emp.correo ? (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1 truncate max-w-[200px]">
-                        <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate max-w-[150px]" title={emp.correo}>
+                        <Mail className="w-3 h-3 text-gray-400 shrink-0" />
                         <span className="truncate">{emp.correo}</span>
                       </span>
                     ) : null}
                     {!emp.telefono && !emp.correo && (
-                      <span className="text-xs text-gray-400 italic">Sin contacto registrado</span>
+                      <span className="text-[11px] text-gray-400 italic">Sin contacto</span>
                     )}
                   </td>
 
-                  {/* 5. CONTRATACIÓN (TIPO, FECHA INICIO Y FIN) */}
-                  <td className="py-4 px-5 sm:px-6">
-                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 block">
+                  {/* 5. CONTRATACIÓN (TIPO, FECHA INICIO Y FIN COMPACTA) */}
+                  <td className="py-3 px-3 sm:px-4">
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 block truncate" title={cleanMojibake(emp.tipoContrato)}>
                       {cleanMojibake(emp.tipoContrato) || "Término Fijo"}
                     </span>
-                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1 font-medium">
+                    <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1 font-medium whitespace-nowrap">
                       <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
-                      <span>{formatDate(emp.fechaInicio)}</span>
+                      <span>{formatDateCompact(emp.fechaInicio)}</span>
                       {emp.fechaFin ? (
                         <>
-                          <span className="text-gray-300">→</span>
-                          <span>{formatDate(emp.fechaFin)}</span>
+                          <span className="text-gray-400">→</span>
+                          <span>{formatDateCompact(emp.fechaFin)}</span>
                         </>
                       ) : (
-                        <span className="text-gray-400 italic">(Indefinido)</span>
+                        <span className="text-gray-400 italic text-[10px]">(Indef.)</span>
                       )}
                     </div>
                     {emp.contratoVencido && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-900/40 mt-1">
-                        <AlertCircle className="w-2.5 h-2.5" /> Contrato vencido
+                        <AlertCircle className="w-2.5 h-2.5 shrink-0" /> Vencido
                       </span>
                     )}
                   </td>
 
                   {/* 6. SALARIO */}
-                  <td className="py-4 px-5 sm:px-6">
-                    <span className="font-bold text-gray-900 dark:text-white text-sm block">
+                  <td className="py-3 px-3 sm:px-4">
+                    <span className="font-bold text-gray-900 dark:text-white text-xs sm:text-sm block whitespace-nowrap">
                       {formatMoney(emp.salario)}
                     </span>
-                    <span className="text-[11px] text-gray-400 block font-medium">COP Mensual</span>
+                    <span className="text-[10px] text-gray-400 block font-medium">COP Mensual</span>
                   </td>
 
                   {/* 7. ESTADO OPERATIVO (ACTIVO, INACTIVO, INCAPACITADO) */}
-                  <td className="py-4 px-5 sm:px-6">
+                  <td className="py-3 px-3 sm:px-4">
                     {isIncapacitado ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800 shadow-2xs">
-                        <Activity className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800 shadow-2xs whitespace-nowrap">
+                        <Activity className="w-3 h-3 text-purple-600 animate-pulse" />
                         <span>Incapacitado</span>
                       </span>
                     ) : isActivo ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800 shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800 shadow-2xs whitespace-nowrap">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         <span>Activo</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs whitespace-nowrap">
                         <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                         <span>Inactivo</span>
                       </span>
@@ -293,15 +308,15 @@ export function EmpleadosTable({
                   </td>
 
                   {/* 8. ACCIONES (SIN ACTIVAR/DESACTIVAR) */}
-                  <td className="py-4 px-5 sm:px-6 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
+                  <td className="py-3 px-2 sm:px-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
                       {isTrash ? (
                         <button
                           onClick={() => onRestore && onRestore(emp)}
                           title="Restaurar empleado"
-                          className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-colors cursor-pointer"
+                          className="p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors cursor-pointer"
                         >
-                          <RotateCcw className="w-4 h-4" />
+                          <RotateCcw className="w-3.5 h-3.5" />
                         </button>
                       ) : (
                         <>
@@ -309,9 +324,9 @@ export function EmpleadosTable({
                           <button
                             onClick={() => onView && onView(emp)}
                             title="Ver detalle del empleado"
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 rounded-xl transition-colors cursor-pointer"
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 rounded-lg transition-colors cursor-pointer"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Editar */}
@@ -319,9 +334,9 @@ export function EmpleadosTable({
                             <button
                               onClick={() => onEdit && onEdit(emp)}
                               title="Editar empleado"
-                              className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 rounded-xl transition-colors cursor-pointer"
+                              className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 dark:hover:text-amber-400 rounded-lg transition-colors cursor-pointer"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
                           )}
 
@@ -330,9 +345,9 @@ export function EmpleadosTable({
                             <button
                               onClick={() => onDelete && onDelete(emp)}
                               title="Enviar a papelera"
-                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-xl transition-colors cursor-pointer"
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </>
