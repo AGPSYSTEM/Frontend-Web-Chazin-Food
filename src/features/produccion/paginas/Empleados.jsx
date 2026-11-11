@@ -1,6 +1,18 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
-import { Plus, Search, Users, Briefcase, CheckCircle2, XCircle, Download, Trash2, RotateCcw, X } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Users,
+  Briefcase,
+  CheckCircle2,
+  XCircle,
+  Download,
+  Trash2,
+  RotateCcw,
+  X,
+  Activity
+} from "lucide-react";
 import { useEmpleados } from "../hooks/useEmpleados";
 import { EmpleadosTable } from "../componentes/empleados/EmpleadosTable";
 import { EmpleadoModal } from "../componentes/empleados/EmpleadoModal";
@@ -13,18 +25,17 @@ export function Empleados() {
     empleados,
     papeleraEmpleados,
     filteredEmpleados,
-    cargosDisponibles,
+    rolesDisponibles,
     stats,
     loading,
     searchTerm,
     setSearchTerm,
     filterEstado,
     setFilterEstado,
-    filterCargo,
-    setFilterCargo,
+    filterRol,
+    setFilterRol,
     createEmpleado,
     updateEmpleado,
-    toggleEstadoEmpleado,
     deleteEmpleado,
     restoreEmpleado
   } = useEmpleados();
@@ -64,20 +75,6 @@ export function Empleados() {
     }
   };
 
-  const handleToggleStatus = async (emp) => {
-    const isActivo = emp.estado === 1 || emp.estado === "1" || emp.estado === "Activo";
-    const confirmed = await confirm({
-      title: isActivo ? "¿Desactivar Empleado?" : "¿Activar Empleado?",
-      message: `¿Estás seguro de que deseas ${isActivo ? "desactivar" : "activar"} a ${emp.nombre} ${emp.apellidos}?`,
-      confirmText: isActivo ? "Sí, Desactivar" : "Sí, Activar",
-      type: isActivo ? "warning" : "info"
-    });
-
-    if (confirmed) {
-      await toggleEstadoEmpleado(emp.idEmpleado);
-    }
-  };
-
   const handleDelete = async (emp) => {
     const confirmed = await confirm({
       title: "¿Enviar a la Papelera?",
@@ -99,56 +96,60 @@ export function Empleados() {
     const listToExport = viewMode === "papelera" ? papeleraEmpleados : filteredEmpleados;
     if (listToExport.length === 0) return;
 
+    // Documento de identidad de primero en el reporte
     const headers = [
+      "Tipo Documento",
+      "Número Documento",
       "ID",
       "Nombres",
       "Apellidos",
-      "Tipo Documento",
-      "Número Documento",
+      "Rol",
+      "Turno",
+      "Tipo Contrato",
+      "Fecha Inicio",
+      "Fecha Fin",
       "Teléfono",
       "Correo",
       "Dirección",
-      "Cargo",
-      "Tipo Contrato",
-      "Turno",
-      "Fecha Contratación",
       "Salario (COP)",
       "Estado"
     ];
 
     const data = listToExport.map((e) => [
+      e.tipoDocumento || "C.C.",
+      e.numeroDocumento || "",
       e.idEmpleado,
       e.nombre || "",
       e.apellidos || "",
-      e.tipoDocumento || "C.C.",
-      e.numeroDocumento || "",
+      e.rol || e.cargo || "",
+      e.turno || "",
+      e.tipoContrato || "",
+      e.fechaInicio ? new Date(e.fechaInicio).toISOString().split("T")[0] : "",
+      e.fechaFin ? new Date(e.fechaFin).toISOString().split("T")[0] : "Indefinido",
       e.telefono || "",
       e.correo || "",
       e.direccion || "",
-      e.cargo || "",
-      e.tipoContrato || "",
-      e.turno || "",
-      e.fechaContratacion ? new Date(e.fechaContratacion).toISOString().split("T")[0] : "",
       e.salario || 0,
-      e.estado === 1 || e.estado === "1" || e.estado === "Activo" ? "Activo" : "Inactivo"
+      e.estado || "Activo"
     ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
     worksheet["!cols"] = [
+      { wch: 15 },
+      { wch: 18 },
       { wch: 8 },
       { wch: 20 },
       { wch: 20 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 15 },
-      { wch: 25 },
-      { wch: 25 },
-      { wch: 22 },
-      { wch: 18 },
+      { wch: 20 },
       { wch: 16 },
       { wch: 18 },
       { wch: 15 },
-      { wch: 12 }
+      { wch: 15 },
+      { wch: 16 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 14 }
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -182,7 +183,7 @@ export function Empleados() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Administración del personal, información de contacto y desempeño de funciones en Chazin Food
+            Administración del personal, roles, contratos y desempeño de funciones en Chazin Food
           </p>
         </div>
 
@@ -227,8 +228,8 @@ export function Empleados() {
         </div>
       </div>
 
-      {/* Tarjetas de Estadísticas (KPIs) a Ancho Completo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Tarjetas de Estadísticas (KPIs) con Incapacitados */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* Total Empleados */}
         <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
@@ -236,9 +237,9 @@ export function Empleados() {
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Total Empleados</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Total</span>
             <span className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{stats.total}</span>
-            <span className="text-[11px] text-gray-400 block">registrados en nómina</span>
+            <span className="text-[11px] text-gray-400 block">en nómina</span>
           </div>
         </div>
 
@@ -248,9 +249,21 @@ export function Empleados() {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">En Funciones (Activos)</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Activos</span>
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 leading-tight">{stats.activos}</span>
-            <span className="text-[11px] text-emerald-500 font-medium block">operando actualmente</span>
+            <span className="text-[11px] text-emerald-500 font-medium block">operando</span>
+          </div>
+        </div>
+
+        {/* Empleados Incapacitados (NUEVO KPI) */}
+        <div className="bg-white dark:bg-gray-900 p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex items-center gap-4 transition-all hover:shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+            <Activity className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Incapacitados</span>
+            <span className="text-2xl font-black text-purple-700 dark:text-purple-300 leading-tight">{stats.incapacitados}</span>
+            <span className="text-[11px] text-purple-500 font-medium block">licencia médica</span>
           </div>
         </div>
 
@@ -260,9 +273,9 @@ export function Empleados() {
             <XCircle className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Inactivos / Pausados</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Inactivos</span>
             <span className="text-2xl font-black text-gray-700 dark:text-gray-300 leading-tight">{stats.inactivos}</span>
-            <span className="text-[11px] text-gray-400 block">sin turno asignado</span>
+            <span className="text-[11px] text-gray-400 block">pausados / finalizados</span>
           </div>
         </div>
 
@@ -274,30 +287,30 @@ export function Empleados() {
           <div>
             <span className="text-xs text-gray-400 dark:text-gray-500 block font-medium uppercase tracking-wider">Papelera</span>
             <span className="text-2xl font-black text-amber-600 dark:text-amber-400 leading-tight">{stats.papelera}</span>
-            <span className="text-[11px] text-amber-500 font-medium block">disponibles para restaurar</span>
+            <span className="text-[11px] text-amber-500 font-medium block">recuperables</span>
           </div>
         </div>
 
       </div>
 
-      {/* Barra de Búsqueda y Filtros Optimizada para Pantallas Anchas */}
+      {/* Barra de Búsqueda y Filtros Optimizada */}
       <div className="bg-white dark:bg-gray-900 p-4 sm:p-5 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-4">
         
-        {/* Buscador Multicriterio Flexible a la Izquierda */}
+        {/* Buscador Multicriterio Flexible con Documento de Primero */}
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por ID, documento, nombre, cargo, salario (ej: 1.300.000), teléfono, correo..."
+            placeholder="Buscar por documento, nombre, rol, salario (ej: 1.600.000), teléfono, correo..."
             className="w-full pl-11 pr-10 py-2.5 bg-gray-50/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs sm:text-sm text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all outline-none"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
               title="Limpiar búsqueda"
             >
               <X className="w-3.5 h-3.5" />
@@ -308,10 +321,10 @@ export function Empleados() {
         {/* Filtros a la Derecha */}
         <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap sm:flex-nowrap justify-between lg:justify-end shrink-0">
           
-          {/* Pastillas de Estado */}
+          {/* Pastillas de Estado: Todos, Activo, Inactivo, Incapacitado */}
           <div className="flex items-center gap-1.5 text-xs bg-gray-100/70 dark:bg-gray-800 p-1 rounded-2xl border border-gray-200/60 dark:border-gray-700">
             <span className="text-gray-400 font-semibold px-2">Estado:</span>
-            {["Todos", "Activo", "Inactivo"].map((st) => (
+            {["Todos", "Activo", "Inactivo", "Incapacitado"].map((st) => (
               <button
                 key={st}
                 onClick={() => setFilterEstado(st)}
@@ -326,16 +339,16 @@ export function Empleados() {
             ))}
           </div>
 
-          {/* Selector de Cargo */}
+          {/* Selector de Rol (Antes Cargo) */}
           <div className="flex items-center gap-2 text-xs">
             <select
-              value={filterCargo}
-              onChange={(e) => setFilterCargo(e.target.value)}
+              value={filterRol}
+              onChange={(e) => setFilterRol(e.target.value)}
               className="px-3.5 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs font-semibold outline-none bg-white dark:bg-gray-800 dark:text-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 cursor-pointer"
             >
-              <option value="Todos">Todos los Cargos</option>
-              {cargosDisponibles.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              <option value="Todos">Todos los Roles</option>
+              {rolesDisponibles.map((r) => (
+                <option key={r} value={r}>{r}</option>
               ))}
             </select>
           </div>
@@ -353,7 +366,7 @@ export function Empleados() {
                 Papelera de Empleados
               </h3>
               <p className="text-xs text-amber-700 dark:text-amber-300">
-                Los empleados en esta sección están inactivos. Puedes restaurarlos en cualquier momento.
+                Los empleados en esta sección están en papelera. Puedes restaurarlos en cualquier momento.
               </p>
             </div>
           </div>
@@ -361,10 +374,11 @@ export function Empleados() {
             empleados={papeleraEmpleados}
             onView={handleOpenView}
             onEdit={handleRestore}
-            onToggleStatus={handleRestore}
             onDelete={handleRestore}
+            onRestore={handleRestore}
             canEdit={false}
             canDelete={false}
+            isTrash={true}
           />
         </div>
       ) : (
@@ -372,8 +386,8 @@ export function Empleados() {
           empleados={filteredEmpleados}
           onView={handleOpenView}
           onEdit={handleOpenEdit}
-          onToggleStatus={handleToggleStatus}
           onDelete={handleDelete}
+          isTrash={false}
         />
       )}
 
@@ -383,8 +397,7 @@ export function Empleados() {
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
         empleado={selectedEmpleado}
-        cargosDisponibles={cargosDisponibles}
-        empleadosExistentes={empleados}
+        rolesDisponibles={rolesDisponibles}
       />
 
       <VerEmpleadoModal
@@ -396,4 +409,5 @@ export function Empleados() {
     </div>
   );
 }
+
 export default Empleados;

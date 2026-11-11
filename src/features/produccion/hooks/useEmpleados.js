@@ -12,9 +12,9 @@ const cleanMojibake = (str) => {
     .replace(/Ã³/g, "ó")
     .replace(/Ãº/g, "ú")
     .replace(/Ã±/g, "ñ")
-    .replace(/Ã/g, "Á")
+    .replace(/Ã /g, "Á")
     .replace(/Ã‰/g, "É")
-    .replace(/Ã/g, "Í")
+    .replace(/Ã /g, "Í")
     .replace(/Ã“/g, "Ó")
     .replace(/Ãš/g, "Ú")
     .replace(/Ã‘/g, "Ñ");
@@ -22,14 +22,40 @@ const cleanMojibake = (str) => {
 
 const sanitizeEmpleado = (emp) => {
   if (!emp) return emp;
+
+  let estadoNormalizado = "Activo";
+  if (emp.estado === "Incapacitado" || emp.estado === 2 || emp.estado === "2") {
+    estadoNormalizado = "Incapacitado";
+  } else if (emp.estado === 0 || emp.estado === "0" || emp.estado === "Inactivo" || emp.estado === false) {
+    estadoNormalizado = "Inactivo";
+  } else {
+    estadoNormalizado = "Activo";
+  }
+
+  // Regla de negocio de contratación: si tiene fechaFin y ya pasó la fecha, su contrato finalizó
+  const fFin = emp.fechaFin ? String(emp.fechaFin).split("T")[0] : null;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const contratoVencido = Boolean(fFin && todayStr > fFin);
+
+  if (contratoVencido && estadoNormalizado === "Activo") {
+    estadoNormalizado = "Inactivo";
+  }
+
+  const rolLimpio = cleanMojibake(emp.cargo || emp.rol || "Cocinero");
+
   return {
     ...emp,
     nombre: cleanMojibake(emp.nombre),
     apellidos: cleanMojibake(emp.apellidos),
-    cargo: cleanMojibake(emp.cargo),
-    tipoContrato: cleanMojibake(emp.tipoContrato),
-    turno: cleanMojibake(emp.turno),
-    direccion: cleanMojibake(emp.direccion)
+    cargo: rolLimpio,
+    rol: rolLimpio,
+    tipoContrato: cleanMojibake(emp.tipoContrato) || "Término Fijo",
+    turno: cleanMojibake(emp.turno) || "Completo",
+    direccion: cleanMojibake(emp.direccion) || "",
+    fechaInicio: emp.fechaInicio || emp.fechaContratacion || "",
+    fechaFin: emp.fechaFin || null,
+    contratoVencido,
+    estado: estadoNormalizado
   };
 };
 
@@ -40,7 +66,7 @@ export function useEmpleados() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEstado, setFilterEstado] = useState("Todos");
-  const [filterCargo, setFilterCargo] = useState("Todos");
+  const [filterRol, setFilterRol] = useState("Todos");
 
   const fetchEmpleados = useCallback(async () => {
     try {
@@ -63,31 +89,31 @@ export function useEmpleados() {
     fetchEmpleados();
   }, [fetchEmpleados]);
 
-  // Cargos únicos disponibles (Cargos base conectados con roles + escalables)
-  const cargosDisponibles = useMemo(() => {
-    const defaultCargos = ["Administrador", "Cocinero", "Vendedor"];
-    const fromData = empleados.map((e) => e.cargo).filter(Boolean);
-    return Array.from(new Set([...defaultCargos, ...fromData]));
+  // Roles únicos disponibles en la organización
+  const rolesDisponibles = useMemo(() => {
+    const defaultRoles = ["Administrador", "Cocinero", "Vendedor"];
+    const fromData = empleados.map((e) => e.rol || e.cargo).filter(Boolean);
+    return Array.from(new Set([...defaultRoles, ...fromData]));
   }, [empleados]);
 
-  // Estadísticas del módulo
+  // Estadísticas del módulo (KPIs)
   const stats = useMemo(() => {
     const total = empleados.length;
-    const activos = empleados.filter((e) => e.estado === 1 || e.estado === "1" || e.estado === "Activo").length;
-    const inactivos = total - activos;
+    const activos = empleados.filter((e) => e.estado === "Activo").length;
+    const incapacitados = empleados.filter((e) => e.estado === "Incapacitado").length;
+    const inactivos = empleados.filter((e) => e.estado === "Inactivo").length;
     const papelera = papeleraEmpleados.length;
-    return { total, activos, inactivos, papelera };
+    return { total, activos, incapacitados, inactivos, papelera };
   }, [empleados, papeleraEmpleados]);
 
   // Lista filtrada
   const filteredEmpleados = useMemo(() => {
     return empleados.filter((emp) => {
-      const isActivo = emp.estado === 1 || emp.estado === "1" || emp.estado === "Activo";
-      
-      if (filterEstado === "Activo" && !isActivo) return false;
-      if (filterEstado === "Inactivo" && isActivo) return false;
+      // Filtrado por estado
+      if (filterEstado !== "Todos" && emp.estado !== filterEstado) return false;
 
-      if (filterCargo !== "Todos" && emp.cargo !== filterCargo) return false;
+      // Filtrado por rol
+      if (filterRol !== "Todos" && emp.rol !== filterRol && emp.cargo !== filterRol) return false;
 
       if (!searchTerm || !searchTerm.trim()) return true;
 
@@ -100,56 +126,57 @@ export function useEmpleados() {
         return emp.idEmpleado === targetId;
       }
 
-      // 2. Detección de Usuario vinculado (ej: "Usuario #4", "usuario 4", "usuario #27")
-      const userMatch = rawQuery.match(/^(?:usuario\s*[:#-]?\s*|user\s*[:#-]?\s*)(\d+)$/i);
-      if (userMatch) {
-        const targetUserId = Number(userMatch[1]);
-        return emp.idUsuario === targetUserId;
-      }
-
       const numSalario = Number(emp.salario) || 0;
       const formattedSalario = numSalario > 0 ? Math.round(numSalario).toLocaleString("es-CO") : "";
       const currencySalario = numSalario > 0 ? `$ ${formattedSalario}` : "";
 
-      const fechaContratoStr = emp.fechaContratacion
-        ? new Date(emp.fechaContratacion).toLocaleDateString("es-CO", {
+      const fechaInicioStr = emp.fechaInicio
+        ? new Date(emp.fechaInicio).toLocaleDateString("es-CO", {
             year: "numeric",
             month: "long",
             day: "numeric"
           })
         : "";
-      const fechaContratoCorta = emp.fechaContratacion
-        ? new Date(emp.fechaContratacion).toLocaleDateString("es-CO")
+      const fechaFinStr = emp.fechaFin
+        ? new Date(emp.fechaFin).toLocaleDateString("es-CO", {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+          })
         : "";
 
       return matchesSmartSearch(
         [
+          // Documento de primero
+          emp.numeroDocumento,
+          emp.tipoDocumento,
+          `${emp.tipoDocumento} ${emp.numeroDocumento}`,
+          `${emp.tipoDocumento}. ${emp.numeroDocumento}`,
+          // Empleado
           emp.idEmpleado,
           `ID #${emp.idEmpleado}`,
           `#${emp.idEmpleado}`,
           emp.nombre,
           emp.apellidos,
           `${emp.nombre} ${emp.apellidos}`,
-          emp.numeroDocumento,
-          emp.tipoDocumento,
-          `${emp.tipoDocumento} ${emp.numeroDocumento}`,
-          `${emp.tipoDocumento}. ${emp.numeroDocumento}`,
+          // Rol y turno
+          emp.rol,
           emp.cargo,
+          emp.turno,
+          // Contacto
           emp.correo,
           emp.telefono,
           emp.telefono ? String(emp.telefono).replace(/\D/g, "") : "",
           emp.direccion,
+          // Contratación
           emp.tipoContrato,
-          emp.turno,
-          emp.idUsuario ? `Usuario #${emp.idUsuario}` : "",
-          emp.idUsuario ? `user_${emp.idUsuario}` : "",
-          emp.nombreUsuario || "",
-          emp.usuario?.nombreUsuario || "",
-          emp.usuario?.correo || "",
-          isActivo ? "Activo" : "Inactivo",
-          emp.fechaContratacion,
-          fechaContratoStr,
-          fechaContratoCorta,
+          emp.fechaInicio,
+          emp.fechaFin,
+          fechaInicioStr,
+          fechaFinStr,
+          emp.contratoVencido ? "Contrato Vencido" : "",
+          // Estado
+          emp.estado,
           // Salario en formatos numérico, con puntos y con divisa
           emp.salario,
           numSalario,
@@ -163,7 +190,7 @@ export function useEmpleados() {
         rawQuery
       );
     });
-  }, [empleados, filterEstado, filterCargo, searchTerm]);
+  }, [empleados, filterEstado, filterRol, searchTerm]);
 
   const createEmpleado = async (formData) => {
     try {
@@ -185,18 +212,6 @@ export function useEmpleados() {
       return true;
     } catch (err) {
       notify.error("Error", err.response?.data?.message || err.message || "Error al actualizar el empleado");
-      return false;
-    }
-  };
-
-  const toggleEstadoEmpleado = async (id) => {
-    try {
-      const res = await empleadosService.toggleEstadoEmpleado(id);
-      notify.success("Estado Actualizado", res.message || "Estado del empleado modificado con éxito");
-      await fetchEmpleados();
-      return true;
-    } catch (err) {
-      notify.error("Error", err.response?.data?.message || err.message || "Error al cambiar el estado");
       return false;
     }
   };
@@ -229,21 +244,22 @@ export function useEmpleados() {
     empleados,
     papeleraEmpleados,
     filteredEmpleados,
-    cargosDisponibles,
+    rolesDisponibles,
+    cargosDisponibles: rolesDisponibles,
     stats,
     loading,
     searchTerm,
     setSearchTerm,
     filterEstado,
     setFilterEstado,
-    filterCargo,
-    setFilterCargo,
+    filterRol,
+    setFilterRol,
+    filterCargo: filterRol,
+    setFilterCargo: setFilterRol,
     fetchEmpleados,
     createEmpleado,
     updateEmpleado,
-    toggleEstadoEmpleado,
     deleteEmpleado,
     restoreEmpleado
   };
 }
-
