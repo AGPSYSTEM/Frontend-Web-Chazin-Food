@@ -111,12 +111,12 @@ const fichasTecnicasDefault = {};
 
 export const OFFICIAL_DRINK_IMAGES = {
   coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
-  coca_cola_light: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png",
+  coca_cola_light: "/images/drinks/coca_cola_light_400ml.png",
   manzana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135903/lhmojjdrn1bzp3dsz47f.png",
   pepsi: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135953/upv7fsv9osr2f7ap6cbn.png",
   colombiana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png",
   sprite: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136141/cpxa3npdfd0lyxjizicy.png",
-  quatro: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342730/tqchagzkgl2z1jckvyrb.png",
+  quatro: "/images/drinks/quatro_400ml.png",
   agua: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342838/pj5qlfpmxeddkkmjauyw.png",
   uva: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790137310/fxidthj8xu1nuvp0khfo.png",
   naranja: "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png"
@@ -897,7 +897,8 @@ export function ClienteLanding() {
         else if (n.includes("coca")) compImg = "/images/drinks/coca_cola-removebg-preview.png";
         else if (n.includes("pepsi")) compImg = "/images/drinks/pepsi_400ml-removebg-preview.png";
         else if (n.includes("sprite")) compImg = "/images/drinks/sprite-removebg-preview.png";
-        else if (n.includes("quatro") || n.includes("cuatro")) compImg = "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+        else if (n.includes("coca") && (n.includes("light") || n.includes("sin az") || n.includes("zero"))) compImg = "/images/drinks/coca_cola_light_400ml.png";
+        else if (n.includes("quatro") || n.includes("cuatro") || n.includes("toronja")) compImg = "/images/drinks/quatro_400ml.png";
       }
       return {
         id: p.id || p.idProducto,

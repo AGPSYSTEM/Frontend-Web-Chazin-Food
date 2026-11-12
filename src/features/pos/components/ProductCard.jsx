@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Plus, Sliders, Sparkles, Flame, Layers, Clock } from "lucide-react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { isDrinkProduct, resolveDrinkImage } from "@/shared/components/ui/FastFoodProductModal";
 
 export function ProductCard({ producto, onAdd, onCustomize }) {
   const [imageError, setImageError] = useState(false);
@@ -90,7 +91,30 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     }
   };
 
-  const productImage = producto.imagen || producto.imagenUrl || producto.urlImagen || producto.foto || producto.img;
+  const isDrink = useMemo(() => isDrinkProduct(producto), [producto]);
+  const productImage = useMemo(() => {
+    if (isDrink) {
+      return resolveDrinkImage(producto);
+    }
+    return producto.imagen || producto.imagenUrl || producto.urlImagen || producto.foto || producto.img;
+  }, [isDrink, producto]);
+
+  const displayProductName = useMemo(() => {
+    const rawName = String(producto.nombre || "").trim();
+    const desc = String(producto.descripcion || "").toLowerCase();
+    if (/^(\(?)400\s*ml(\)?)$/i.test(rawName) || rawName === "400 ml" || rawName === "(400 ml)") {
+      if (desc.includes("quatro") || desc.includes("cuatro") || desc.includes("toronja")) {
+        return "Gaseosa Quatro Toronja 400ml";
+      }
+      if (desc.includes("coca") && (desc.includes("light") || desc.includes("sin az"))) {
+        return "Coca-Cola Sin Azúcar / Light 400ml";
+      }
+      if (desc.includes("coca")) {
+        return "Coca-Cola Original 400ml";
+      }
+    }
+    return rawName;
+  }, [producto.nombre, producto.descripcion]);
 
   return (
     <article
@@ -129,7 +153,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
         {productImage && !imageError ? (
           <img
             src={productImage}
-            alt={producto.nombre}
+            alt={displayProductName}
             width="200"
             height="150"
             style={{ aspectRatio: "4 / 3" }}

@@ -64,12 +64,12 @@ export const getAdicionDisplayImage = (ad) => {
 
 export const OFFICIAL_DRINK_IMAGES = {
   coca_cola: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135864/hynoiytmhuddsnatwcxz.png",
-  coca_cola_light: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136235/wrexzfrkodlfb3n4cp7w.png",
+  coca_cola_light: "/images/drinks/coca_cola_light_400ml.png",
   manzana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135903/lhmojjdrn1bzp3dsz47f.png",
   pepsi: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790135953/upv7fsv9osr2f7ap6cbn.png",
   colombiana: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png",
   sprite: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790136141/cpxa3npdfd0lyxjizicy.png",
-  quatro: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342730/tqchagzkgl2z1jckvyrb.png",
+  quatro: "/images/drinks/quatro_400ml.png",
   agua: "https://res.cloudinary.com/dckwtknmq/image/upload/v1789342838/pj5qlfpmxeddkkmjauyw.png",
   uva: "https://res.cloudinary.com/dckwtknmq/image/upload/v1790137310/fxidthj8xu1nuvp0khfo.png",
   naranja: "/images/drinks/images__Gaseosa_naranja_-removebg-preview.png"
@@ -177,7 +177,7 @@ export const getDrinkBrandMeta = (name = "") => {
   if (n.includes("sprite")) {
     return { color: "#059669", badge: "Lima-Limón", badgeColor: "bg-emerald-600 text-white", marca: "The Coca-Cola Company" };
   }
-  if (n.includes("cuatro")) {
+  if (n.includes("cuatro") || n.includes("quatro") || n.includes("toronja")) {
     return { color: "#D97706", badge: "Toronja", badgeColor: "bg-amber-600 text-white", marca: "The Coca-Cola Company" };
   }
   if (n.includes("cristal") || n.includes("agua")) {
@@ -262,7 +262,7 @@ export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, 
       dietActive = true;
     } else if (variantName.includes("light") || variantName.includes("sin az") || variantName.includes("zero") || variantName.includes("black")) {
       dietActive = true;
-    } else if (!variantName && (prodName.includes("light") || prodName.includes("sin az") || prodName.includes("zero"))) {
+    } else if (prodName.includes("light") || prodName.includes("sin az") || prodName.includes("zero") || prodName.includes("cero")) {
       dietActive = true;
     }
   }
@@ -292,7 +292,7 @@ export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, 
     if (hasColombiana) return "https://res.cloudinary.com/dckwtknmq/image/upload/v1789001495/qy8wy9igmgb0wppnjavw.png";
     if (hasManzana) return "/images/drinks/manzana_400ml-removebg-preview.png";
     if (hasCoca) {
-      if (dietActive) return OFFICIAL_DRINK_IMAGES.coca_cola_light;
+      if (dietActive) return "/images/drinks/coca_cola_light_400ml.png";
       return OFFICIAL_DRINK_IMAGES.coca_cola;
     }
     if (hasPepsi) {
@@ -300,7 +300,7 @@ export const getDrinkBottleImage = (sizeId, prod, activeFlavorOrVariant = null, 
       return "/images/drinks/pepsi_400ml-removebg-preview.png";
     }
     if (hasSprite) return "/images/drinks/sprite-removebg-preview.png";
-    if (hasQuatro) return "/images/drinks/gaseosa-quatro-15-lt-removebg-preview.png";
+    if (hasQuatro) return "/images/drinks/quatro_400ml.png";
     return (typeof activeFlavorOrVariant === "object" && activeFlavorOrVariant?.imagen) || prod?.imagen || "/images/drinks/uva_postobon-removebg-preview.png";
   }
 
@@ -958,8 +958,20 @@ export function FastFoodProductModal({
       setSelectedVariant(match);
     } else {
       let defaultPrice;
-      if (selectedSizeId === "400ml" && Number(producto?.precio) > 0) {
-        defaultPrice = Number(producto.precio);
+      if (selectedSizeId === "400ml") {
+        const pPrice = Number(producto?.precio || 0);
+        if (pPrice > 0 && pPrice <= 6000) {
+          defaultPrice = pPrice;
+        } else {
+          defaultPrice = isPostobonDrink ? sizeObj.defaultPostobonPrice : sizeObj.defaultPremiumPrice;
+        }
+      } else if (selectedSizeId === "1.5L") {
+        const pPrice = Number(producto?.precio || 0);
+        if (pPrice >= 7000 && pPrice <= 10500) {
+          defaultPrice = pPrice;
+        } else {
+          defaultPrice = isPostobonDrink ? sizeObj.defaultPostobonPrice : sizeObj.defaultPremiumPrice;
+        }
       } else {
         defaultPrice = isPostobonDrink ? sizeObj.defaultPostobonPrice : sizeObj.defaultPremiumPrice;
       }
@@ -1577,7 +1589,12 @@ export function FastFoodProductModal({
   const isCoca = String(producto?.nombre || "").toLowerCase().includes("coca");
 
   const isDietSelected = Boolean(
-    selectedVariant && (() => {
+    (() => {
+      const pn = String(producto?.nombre || "").toLowerCase();
+      const isDietProduct = pn.includes("sin az") || pn.includes("light") || pn.includes("zero") || pn.includes("cero");
+
+      if (!selectedVariant) return isDietProduct;
+
       const vn = String(selectedVariant.nombre || "").toLowerCase();
       if (vn.includes("con az") || vn.includes("original") || vn.includes("regular")) return false;
       if (selectedVariant.idVariante === 78) return false;
@@ -1590,12 +1607,9 @@ export function FastFoodProductModal({
         selectedVariant.idVariante === 77 ||
         selectedVariant.idVariante === 79 ||
         selectedVariant.idVariante === 80 ||
-        /sin azúcar|sin azucar|light|zero|black/i.test(vn)
+        /sin azúcar|sin azucar|light|zero|black|cero/i.test(vn)
       ) return true;
-      if (selectedVariant.esOriginal) {
-        const pn = String(producto?.nombre || "").toLowerCase();
-        return pn.includes("sin az") || pn.includes("light") || pn.includes("zero");
-      }
+      if (isDietProduct) return true;
       return false;
     })()
   );
@@ -1628,18 +1642,22 @@ export function FastFoodProductModal({
     const prodName = String(producto?.nombre || "").toLowerCase();
     const isCocaProd = prodName.includes("coca");
     const isPepsiProd = prodName.includes("pepsi");
+    const isQuatroProd = prodName.includes("cuatro") || prodName.includes("quatro") || prodName.includes("toronja");
 
     let baseName = "";
 
-    if (selectedVariant && !selectedVariant.esOriginal) {
-      const vName = String(selectedVariant.nombre || "").trim();
-      const vNameLower = vName.toLowerCase();
+    const vName = String(selectedVariant?.nombre || "").trim();
+    const vNameLower = vName.toLowerCase();
+    const isGenericSizeVariant =
+      !vName ||
+      /^(botella|presentaci[oó]n|tama[ñn]o|personal|familiar|mega)?\s*(400\s*ml|1\.?5\s*l|2\.?5\s*l)?$/i.test(vNameLower);
 
-      if (isCocaProd && (vNameLower.includes("sin az") || vNameLower.includes("light") || vNameLower.includes("zero"))) {
+    if (selectedVariant && !selectedVariant.esOriginal && !isGenericSizeVariant) {
+      if (isCocaProd && (vNameLower.includes("sin az") || vNameLower.includes("light") || vNameLower.includes("zero") || vNameLower.includes("cero"))) {
         baseName = "Coca-Cola Sin Azúcar / Light";
       } else if (isCocaProd && (vNameLower.includes("con az") || vNameLower.includes("original") || vNameLower.includes("regular"))) {
         baseName = "Coca-Cola Original";
-      } else if (isPepsiProd && (vNameLower.includes("light") || vNameLower.includes("black") || vNameLower.includes("zero"))) {
+      } else if (isPepsiProd && (vNameLower.includes("light") || vNameLower.includes("black") || vNameLower.includes("zero") || vNameLower.includes("cero"))) {
         baseName = "Pepsi Light / Black";
       } else if (isPepsiProd && (vNameLower.includes("con az") || vNameLower.includes("original") || vNameLower.includes("regular"))) {
         baseName = "Pepsi Regular";
@@ -1653,17 +1671,18 @@ export function FastFoodProductModal({
         baseName = "Gaseosa Manzana Postobón";
       } else if (vNameLower.includes("sprite")) {
         baseName = "Gaseosa Sprite";
-      } else if (vNameLower.includes("cuatro") || vNameLower.includes("quatro")) {
+      } else if (vNameLower.includes("cuatro") || vNameLower.includes("quatro") || vNameLower.includes("toronja")) {
         baseName = "Gaseosa Quatro Toronja";
       } else {
-        baseName = vName.replace(/\s*400\s*ml/gi, "").replace(/botella\s*/gi, "").trim();
+        const cleaned = vName.replace(/\s*400\s*ml/gi, "").replace(/botella\s*/gi, "").trim();
+        baseName = cleaned || (isQuatroProd ? "Gaseosa Quatro Toronja" : producto?.nombre || "Bebida");
       }
     } else {
       if (isCocaProd) {
-        const isDietProd = prodName.includes("sin az") || prodName.includes("light") || prodName.includes("zero");
+        const isDietProd = isDietSelected || prodName.includes("sin az") || prodName.includes("light") || prodName.includes("zero") || prodName.includes("cero");
         baseName = isDietProd ? "Coca-Cola Sin Azúcar / Light" : "Coca-Cola Original";
       } else if (isPepsiProd) {
-        const isDietProd = prodName.includes("light") || prodName.includes("black") || prodName.includes("zero");
+        const isDietProd = isDietSelected || prodName.includes("light") || prodName.includes("black") || prodName.includes("zero") || prodName.includes("cero");
         baseName = isDietProd ? "Pepsi Light / Black" : "Pepsi Regular";
       } else if (prodName.includes("uva")) {
         baseName = "Gaseosa Uva Postobón";
@@ -1675,18 +1694,23 @@ export function FastFoodProductModal({
         baseName = "Gaseosa Manzana Postobón";
       } else if (prodName.includes("sprite")) {
         baseName = "Gaseosa Sprite";
-      } else if (prodName.includes("cuatro") || prodName.includes("quatro")) {
+      } else if (isQuatroProd) {
         baseName = "Gaseosa Quatro Toronja";
       } else {
-        baseName = (producto?.nombre || "").replace(/\s*400\s*ml/gi, "").trim();
+        const cleaned = (producto?.nombre || "").replace(/\s*400\s*ml/gi, "").trim();
+        baseName = cleaned || (producto?.nombre || "Bebida");
       }
+    }
+
+    if (!baseName || baseName.trim() === "" || /^(\(?)400\s*ml(\)?)$/i.test(baseName.trim())) {
+      baseName = isQuatroProd ? "Gaseosa Quatro Toronja" : (producto?.nombre ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : "Bebida");
     }
 
     if (drinkHasSizes) {
       return `${baseName} (${selectedSizeObj.label})`;
     }
     return baseName;
-  })();
+  })()
 
   const brandMeta = getDrinkBrandMeta(
     isDietSelected 
@@ -2386,8 +2410,16 @@ export function FastFoodProductModal({
                       const displayPrice = matchedVar
                         ? Number(matchedVar.precio)
                         : (size.id === "400ml"
-                            ? (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0 ? Number(selectedVariant.precio) : Number(producto?.precio || 0))
-                            : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice));
+                            ? (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0 && Number(selectedVariant.precio) <= 6000
+                                ? Number(selectedVariant.precio)
+                                : (Number(producto?.precio || 0) > 0 && Number(producto?.precio || 0) <= 6000
+                                    ? Number(producto.precio)
+                                    : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice)))
+                            : (size.id === "1.5L"
+                                ? (selectedVariant?.precio !== undefined && Number(selectedVariant.precio) >= 7000 && Number(selectedVariant.precio) <= 10500
+                                    ? Number(selectedVariant.precio)
+                                    : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice))
+                                : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice)));
                       const bottleImg = getDrinkBottleImage(size.id, producto, selectedVariant, isDietSelected);
 
                       return (
