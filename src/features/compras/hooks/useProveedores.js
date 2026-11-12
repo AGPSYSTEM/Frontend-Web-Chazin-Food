@@ -191,6 +191,14 @@ export function useProveedores() {
     const id = item.id || item.idProveedor;
     const isActivo = item.estado === "Activo" || item.estado === 1;
     const nuevoEstado = isActivo ? "Inactivo" : "Activo";
+    const confirmed = await notify.confirmAction(
+      isActivo ? "¿Inactivar proveedor?" : "¿Activar proveedor?",
+      isActivo
+        ? `¿Estás seguro de que deseas inactivar a "${item.nombre}"? No estará disponible para nuevas compras hasta que sea activado nuevamente.`
+        : `¿Deseas activar nuevamente a "${item.nombre}"? Volverá a estar disponible para nuevas compras.`,
+      isActivo ? "Sí, inactivar" : "Sí, activar"
+    );
+    if (!confirmed) return false;
     try {
       await proveedoresService.toggleEstadoProveedor(id, nuevoEstado);
       await fetchProveedores();
