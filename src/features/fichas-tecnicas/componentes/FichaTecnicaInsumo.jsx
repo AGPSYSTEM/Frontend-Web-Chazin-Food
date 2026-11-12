@@ -91,6 +91,25 @@ function FieldError({ msg }) {
   );
 }
 
+/**
+ * Validador oficial de insumos: identifica insumos vencidos o agotados (Requerimiento 38)
+ */
+export const checkInsumoInvalido = (insumoItem) => {
+  if (!insumoItem) return { vencido: false, agotado: false };
+  const rawVenc = insumoItem.fechaVencimiento || insumoItem.insumo?.fechaVencimiento;
+  let vencido = false;
+  if (rawVenc) {
+    const fVenc = new Date(String(rawVenc).includes("T") ? rawVenc : `${rawVenc}T00:00:00`);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    vencido = !isNaN(fVenc.getTime()) && fVenc < hoy;
+  }
+  const stockVal = Number(insumoItem.stock ?? insumoItem.insumo?.stock ?? 1);
+  const estadoVal = String(insumoItem.estado ?? insumoItem.insumo?.estado ?? "");
+  const agotado = stockVal <= 0 || estadoVal.toLowerCase() === "agotado" || estadoVal === "0";
+  return { vencido, agotado };
+};
+
 export function FichaTecnicaInsumo({
   insumoId,
   insumoName,
@@ -478,6 +497,15 @@ export function FichaTecnicaInsumo({
 
   const agregarInsumo = (ins) => {
     clearRestoredCommitFlag();
+    const { vencido, agotado } = checkInsumoInvalido(ins);
+    if (vencido) {
+      notify.error("Insumo Vencido", `No se puede agregar "${ins.nombre}" porque su fecha de caducidad expiró.`);
+      return;
+    }
+    if (agotado) {
+      notify.error("Insumo Agotado", `No se puede agregar "${ins.nombre}" porque no tiene stock disponible.`);
+      return;
+    }
     const id = ins.id || ins.idInsumo;
     if (insumos.some(i => String(i.idInsumo || i.id) === String(id))) {
       notify.info("Insumo ya agregado", `"${ins.nombre}" ya está en la receta.`);
@@ -554,6 +582,28 @@ export function FichaTecnicaInsumo({
   };
 
   const handleSave = async () => {
+    // Requerimiento 38: Validar que no haya insumos vencidos o agotados
+    for (const item of insumos) {
+      const dbMatch = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id)) || item.insumo || item;
+      const { vencido, agotado } = checkInsumoInvalido(dbMatch);
+      if (vencido) {
+        notify.error(
+          "Insumo Vencido",
+          `No se puede guardar: El insumo "${item.nombreInsumo || dbMatch.nombre}" se encuentra VENCIDO. Debes retirarlo o reemplazarlo por un lote vigente.`
+        );
+        setActiveTab("ingredientes");
+        return;
+      }
+      if (agotado) {
+        notify.error(
+          "Insumo Agotado",
+          `No se puede guardar: El insumo "${item.nombreInsumo || dbMatch.nombre}" está AGOTADO en inventario (Stock: 0). Debes retirarlo o abastecer el stock.`
+        );
+        setActiveTab("ingredientes");
+        return;
+      }
+    }
+
     const allTouched = {
       insumos: true,
       procedimiento: true,
@@ -757,12 +807,6 @@ export function FichaTecnicaInsumo({
       id: "calidad", 
       label: "Conservación & Calidad", 
       icon: ShieldCheck 
-    },
-    { 
-      id: "versiones", 
-      label: "Historial de Versiones", 
-      icon: History, 
-      count: versionInfo.versionesAnteriores?.length || 0 
     }
   ];
 
@@ -1330,47 +1374,7 @@ export function FichaTecnicaInsumo({
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* TAB 4: HISTORIAL DE VERSIONES & CONTROL DE CAMBIOS           */}
-        {/* ============================================================ */}
-        {activeTab === "versiones" && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/25 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 flex items-start sm:items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="text-xs">
-                <p className="font-black text-emerald-900 dark:text-emerald-200">
-                  Versión Actual (v{versionInfo.versionActual}) Vigente
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 mt-0.5">
-                  Vigente desde el {formatFechaHoraFicha(versionInfo.fechaInicioVigencia)}. Modificaciones en la fórmula del insumo generarán una nueva versión trazable en el sistema.
-                </p>
-              </div>
-            </div>
-
-            <FichaVersionesHistorial
-              versionActual={versionInfo.versionActual}
-              fechaInicioVigencia={versionInfo.fechaInicioVigencia}
-              versionesAnteriores={versionInfo.versionesAnteriores}
-              onRestoreVersion={handleRestoreVersion}
-              datosEntidadActual={entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData}
-            />
-
-            <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-start">
-              <button
-                type="button"
-                onClick={() => setActiveTab("calidad")}
-                className="px-3.5 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-gray-200/80 dark:border-gray-700/80"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Volver a Conservación & Calidad</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-      </div>
+        </div>
     </div>
   );
 }

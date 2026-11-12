@@ -34,6 +34,7 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
     return () => clearInterval(interval);
   }, [promoItems.length]);
 
+  // Si no hay promociones activas, retornar null (después de registrar todos los hooks)
   if (promoItems.length === 0) return null;
 
   const currentItem = promoItems[currentIndex] || promoItems[0];
@@ -76,13 +77,11 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
     });
   };
 
-  const itemImage = useMemo(() => {
-    if (!currentItem) return "";
-    if (isDrinkProduct(currentItem)) {
-      return resolveDrinkImage(currentItem);
-    }
-    return currentItem.imagen || currentItem.imagenUrl || currentItem.foto || "";
-  }, [currentItem]);
+  const itemImage = currentItem
+    ? (isDrinkProduct(currentItem)
+        ? resolveDrinkImage(currentItem)
+        : currentItem.imagen || currentItem.imagenUrl || currentItem.foto || "")
+    : "";
 
   return (
     <div className="w-full mb-4 select-none">
