@@ -159,8 +159,8 @@ export function useInsumos() {
       const stockStatus = isAgotado
         ? "Agotado agotada stock agotado sin stock sin_stock cero 0 reabastecer"
         : isBajo
-        ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento disponible en stock"
-        : "Normal disponible en stock suficiente";
+          ? "Bajo baja stock bajo alerta stock minimo reabastecer reabastecimiento disponible en stock"
+          : "Normal disponible en stock suficiente";
       const esAdicionStr = (item.esAdicion === 1 || item.esAdicion === true || item.esAdicion === "1")
         ? "Adición Adicion adicion es adicion adicionable si sí"
         : "estandar ingrediente base sin adicion";
@@ -187,7 +187,7 @@ export function useInsumos() {
               if (parts.length === 3) {
                 fechaLoteFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
               }
-            } catch {}
+            } catch { }
           }
 
           lotesTokensArr.push(
@@ -213,7 +213,7 @@ export function useInsumos() {
           if (parts.length === 3) {
             fechaVencFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
           }
-        } catch {}
+        } catch { }
       }
 
       const lotesTokens = lotesTokensArr.join(" ");
@@ -478,6 +478,7 @@ export function useInsumos() {
           precioAdicion: Number(data.precioAdicion) || 0,
           imagen: data.imagen || "",
           incluyeIva: data.incluyeIva !== undefined ? (data.incluyeIva ? 1 : 0) : undefined,
+          porcentajeIva: data.incluyeIva ? (parseFloat(data.porcentajeIva) || 19) : 0,
           estado: data.estado !== undefined ? data.estado : "Activo",
           fechaExpedicion: null, // #62: Eliminada fecha de expedición
           fechaVencimiento: (data.fechaVencimiento && String(data.fechaVencimiento).trim() !== "") ? data.fechaVencimiento : null
@@ -499,6 +500,16 @@ export function useInsumos() {
   const toggleEstadoInsumo = async (item) => {
     const id = item.id || item.idInsumo;
     const nuevoEstado = item.estado === "Activo" ? "Inactivo" : "Activo";
+
+    if (nuevoEstado === "Inactivo") {
+      const confirmed = await notify.confirmAction(
+        "¿Inactivar insumo?",
+        `¿Estás seguro de que deseas inactivar "${item.nombre}"? Este insumo no estará disponible para recetas ni compras hasta que sea activado nuevamente.`,
+        "Sí, inactivar"
+      );
+      if (!confirmed) return false;
+    }
+
     try {
       if (item.tipo === "Preparado") {
         await insumosService.updatePreparado(id, {

@@ -205,7 +205,15 @@ export function useProveedores() {
     }
   };
 
-  const deleteProveedor = async (id, nombre) => {
+  const deleteProveedor = async (id, nombre, item = null) => {
+    if (item?.tieneCompras || (item?.comprasCount && item.comprasCount > 0)) {
+      notify.error(
+        "Proveedor con compras",
+        `No es posible eliminar al proveedor "${nombre}" porque tiene ${item.comprasCount} compra(s) registrada(s) en el sistema.`
+      );
+      return false;
+    }
+
     const confirmed = await notify.confirmDelete(
       "¿Mover a la papelera?",
       `¿Deseas enviar a "${nombre}" a la papelera (inactivar)?`
@@ -217,7 +225,7 @@ export function useProveedores() {
       await fetchProveedores();
       return true;
     } catch (err) {
-      notify.error("Error al inactivar", err.message || "No se pudo inactivar el proveedor");
+      notify.error("Error al inactivar", err.response?.data?.mensaje || err.message || "No se pudo inactivar el proveedor");
       return false;
     }
   };
@@ -243,7 +251,15 @@ export function useProveedores() {
     }
   };
 
-  const deleteDefinitivoProveedor = async (id, nombre) => {
+  const deleteDefinitivoProveedor = async (id, nombre, item = null) => {
+    if (item?.tieneCompras || (item?.comprasCount && item.comprasCount > 0)) {
+      notify.error(
+        "Proveedor con compras",
+        `No es posible eliminar definitivamente al proveedor "${nombre}" porque tiene compras registradas en el sistema.`
+      );
+      return false;
+    }
+
     const confirmed = await notify.confirmDelete(
       "¿Eliminar definitivamente?",
       `Esta acción eliminará permanentemente al proveedor "${nombre}" de la base de datos y no se podrá recuperar.`
@@ -256,7 +272,7 @@ export function useProveedores() {
       await fetchProveedores();
       return true;
     } catch (err) {
-      notify.error("Error al eliminar", err.message || "No se pudo eliminar permanentemente");
+      notify.error("Error al eliminar", err.response?.data?.mensaje || err.message || "No se pudo eliminar permanentemente");
       return false;
     }
   };

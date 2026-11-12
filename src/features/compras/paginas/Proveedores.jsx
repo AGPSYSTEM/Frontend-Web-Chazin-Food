@@ -5,6 +5,7 @@ import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { ProveedoresTable } from "../componentes/proveedores/ProveedoresTable";
 import { ProveedorModal } from "../componentes/proveedores/ProveedorModal";
+import { VerProveedorModal } from "../componentes/proveedores/VerProveedorModal";
 import { TrazabilidadProveedoresModal } from "../componentes/proveedores/TrazabilidadProveedoresModal";
 import { PapeleraProveedoresView } from "../componentes/proveedores/PapeleraProveedoresView";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
@@ -42,6 +43,7 @@ export function Proveedores() {
 
   const [viewMode, setViewMode] = useState("activos"); // "activos" | "papelera"
   const [modalOpen, setModalOpen] = useState(false);
+  const [viewingProveedor, setViewingProveedor] = useState(null);
   const [trazabilidadOpen, setTrazabilidadOpen] = useState(false);
   const [editingProveedor, setEditingProveedor] = useState(null);
 
@@ -67,6 +69,10 @@ export function Proveedores() {
   const handleOpenEdit = (p) => {
     setEditingProveedor(p);
     setModalOpen(true);
+  };
+
+  const handleOpenView = (p) => {
+    setViewingProveedor(p);
   };
 
   const handleSave = async (form) => {
@@ -339,6 +345,7 @@ export function Proveedores() {
           ) : (
             <ProveedoresTable
               proveedores={displayProveedores}
+              onView={handleOpenView}
               onEdit={handleOpenEdit}
               onDelete={deleteProveedor}
               onToggleEstado={toggleEstadoProveedor}
@@ -349,6 +356,17 @@ export function Proveedores() {
         </div>
       )}
 
+
+      {/* Modal Visualizar Proveedor */}
+      <VerProveedorModal
+        isOpen={!!viewingProveedor}
+        onClose={() => setViewingProveedor(null)}
+        proveedor={viewingProveedor}
+        onEdit={(p) => {
+          setViewingProveedor(null);
+          handleOpenEdit(p);
+        }}
+      />
 
       {/* Modal Crear/Editar Proveedor */}
       <ProveedorModal

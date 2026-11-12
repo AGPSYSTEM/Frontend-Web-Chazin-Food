@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Edit, Building, Mail, Phone, MapPin, Power, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Edit, Eye, Building, Mail, Phone, MapPin, Power, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleEstado, canEdit = true, canDelete = true }) {
+export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleEstado, onView, canEdit = true, canDelete = true }) {
   const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -105,6 +105,16 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleE
                     </td>
                     <td className="px-3.5 sm:px-4 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-1.5">
+                        {/* Visualizar proveedor */}
+                        {onView && (
+                          <button
+                            onClick={() => onView(p)}
+                            title="Visualizar proveedor"
+                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         {/* Inactivar / Activar (#68) */}
                         {onToggleEstado && canEdit && (
                           <button
@@ -123,16 +133,20 @@ export function ProveedoresTable({ proveedores = [], onEdit, onDelete, onToggleE
                           <button
                             onClick={() => onEdit(p)}
                             title="Editar proveedor"
-                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
                         {onDelete && canDelete && (
                           <button
-                            onClick={() => onDelete(p.id || p.idProveedor, p.nombre)}
-                            title="Mover a papelera"
-                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                            onClick={() => onDelete(p.id || p.idProveedor, p.nombre, p)}
+                            title={p.tieneCompras || (p.comprasCount && p.comprasCount > 0) ? `No se puede eliminar: tiene ${p.comprasCount} compra(s) asociada(s)` : "Mover a papelera"}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              p.tieneCompras || (p.comprasCount && p.comprasCount > 0)
+                                ? "text-gray-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50/50"
+                                : "hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600"
+                            }`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

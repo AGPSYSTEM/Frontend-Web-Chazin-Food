@@ -59,7 +59,7 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
           try {
             const ft = await fichasTecnicasService.getFichaByInsumoPreparado(id);
             if (ft) setFichaTecnica(ft);
-          } catch (_) {}
+          } catch (_) { }
         }
 
         // Si no tiene lotes cargados en memoria, consultar si el insumo tiene lotes
@@ -69,7 +69,7 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
             if (insumoFull && Array.isArray(insumoFull.lotes) && insumoFull.lotes.length > 0) {
               setLotes(insumoFull.lotes);
             }
-          } catch (_) {}
+          } catch (_) { }
         }
       } finally {
         setLoadingExtra(false);
@@ -90,8 +90,8 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
   const stockBadgeClass = isAgotado
     ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800"
     : isBajo
-    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
 
   // Ingredientes del insumo preparado
   const ingredientes = insumo.ingredientes ||
@@ -114,13 +114,12 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
               const isUrl = Boolean(rawImg && (rawImg.startsWith("http") || rawImg.startsWith("/") || rawImg.startsWith("data:")));
               const esAdic = insumo.esAdicion === 1 || insumo.esAdicion === true || insumo.esAdicion === "1";
               return (
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border shadow-xs ${
-                  esPreparado
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border shadow-xs ${esPreparado
                     ? "bg-purple-100 dark:bg-purple-900/40 border-purple-200/60 text-purple-600 dark:text-purple-300"
                     : esAdic
-                    ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200/60 text-purple-600 dark:text-purple-300"
-                    : "bg-red-50 dark:bg-red-950/40 border-red-200/60 text-[#F05454]"
-                }`}>
+                      ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200/60 text-purple-600 dark:text-purple-300"
+                      : "bg-red-50 dark:bg-red-950/40 border-red-200/60 text-[#F05454]"
+                  }`}>
                   {isUrl ? (
                     <img
                       src={rawImg}
@@ -156,11 +155,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
                   {insumo.nombre}
                 </h2>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                  esPreparado
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${esPreparado
                     ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
                     : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                }`}>
+                  }`}>
                   {esPreparado ? "🧪 Insumo Preparado" : "📦 Insumo Base"}
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${stockBadgeClass}`}>
@@ -184,11 +182,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
         <div className="flex border-b border-gray-100 dark:border-gray-800 px-6 bg-gray-50/30 dark:bg-gray-800/20">
           <button
             onClick={() => setActiveTab("general")}
-            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === "general"
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "general"
                 ? "border-[#F05454] text-[#F05454]"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
+              }`}
           >
             <Info className="w-3.5 h-3.5" />
             Datos Principales
@@ -197,11 +194,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
           {esPreparado && (
             <button
               onClick={() => setActiveTab("receta")}
-              className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "receta"
+              className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "receta"
                   ? "border-[#F05454] text-[#F05454]"
                   : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              }`}
+                }`}
             >
               <ChefHat className="w-3.5 h-3.5" />
               Ficha Técnica e Insumos ({ingredientes.length})
@@ -210,11 +206,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
 
           <button
             onClick={() => setActiveTab("lotes")}
-            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === "lotes"
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === "lotes"
                 ? "border-[#F05454] text-[#F05454]"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
+              }`}
           >
             <Layers className="w-3.5 h-3.5" />
             Lotes y Vencimientos ({lotes.length})
@@ -250,7 +245,7 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
 
                 <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                    {esPreparado ? "Costo Producción" : "Precio Compra"}
+                    {esPreparado ? "Costo Producción" : "Precio Insumo"}
                   </span>
                   <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                     ${Number(insumo.precioUnitario || insumo.costo || insumo.precio || 0).toLocaleString("es-CO")}
@@ -567,13 +562,12 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                             </td>
                             <td className="px-3.5 py-3 text-center">
                               {fechaVenc ? (
-                                <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-                                  estaVencido
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium ${estaVencido
                                     ? "text-red-600 dark:text-red-400 font-bold"
                                     : diasPorVencer <= 5
-                                    ? "text-amber-600 dark:text-amber-400 font-bold"
-                                    : "text-gray-700 dark:text-gray-300"
-                                }`}>
+                                      ? "text-amber-600 dark:text-amber-400 font-bold"
+                                      : "text-gray-700 dark:text-gray-300"
+                                  }`}>
                                   <Calendar className="w-3 h-3 text-amber-500" />
                                   {fechaVenc}
                                   {estaVencido ? (
@@ -587,11 +581,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                               )}
                             </td>
                             <td className="px-3.5 py-3 text-right">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                cantDisp > 0
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${cantDisp > 0
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                                   : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-                              }`}>
+                                }`}>
                                 {cantDisp > 0 ? (lot.estado || "ACTIVO") : "AGOTADO"}
                               </span>
                             </td>

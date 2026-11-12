@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import {
   X,
@@ -22,14 +22,35 @@ import {
   Percent,
   FileText,
   Hash,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  UploadCloud
 } from "lucide-react";
 import { comprasService } from "../../servicios/comprasService";
+import { proveedoresService } from "../../servicios/proveedoresService";
+import { ProveedorModal } from "../proveedores/ProveedorModal";
 import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { isSalsaItem } from "../insumos/InsumoModal";
 import { validateTexto, validateNumeroPositivo, validateRequerido } from "@/shared/utils/validationUtils";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
+import { FoodIcon } from "@/shared/components/ui/FoodIcon";
+import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
+
+const QUICK_ADICION_ICONS = [
+  { slug: "bacon", label: "Tocineta" },
+  { slug: "cheese", label: "Queso" },
+  { slug: "fries", label: "Papas" },
+  { slug: "sauce", label: "Salsa" },
+  { slug: "onion", label: "Cebolla" },
+  { slug: "pepper", label: "Jalapeño" },
+  { slug: "meat", label: "Carne" },
+  { slug: "avocado", label: "Guacamole" },
+  { slug: "tomato", label: "Tomate" },
+  { slug: "egg", label: "Huevo" },
+  { slug: "bread", label: "Pan" },
+  { slug: "pickle", label: "Pepinillos" }
+];
 
 const inputCls =
   "w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-xl focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors text-sm";
@@ -216,9 +237,15 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Modal Crear Proveedor
+  const [modalProveedorOpen, setModalProveedorOpen] = useState(false);
+
   // Apartado lateral / Drawer para crear nuevo insumo (#77)
   const [panelNuevoInsumoOpen, setPanelNuevoInsumoOpen] = useState(false);
   const [savingNuevoInsumo, setSavingNuevoInsumo] = useState(false);
+  const [uploadingNuevoInsumo, setUploadingNuevoInsumo] = useState(false);
+  const nuevoInsumoFileInputRef = useRef(null);
+
   const initialNuevoInsumoForm = {
     nombre: "",
     idCategoriaInsumo: "",
@@ -232,10 +259,27 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     porcentajeIva: "19",
     esAdicion: false,
     precioAdicion: "",
+    imagen: "",
     descripcion: "",
   };
   const [nuevoInsumoForm, setNuevoInsumoForm] = useState(initialNuevoInsumoForm);
   const [nuevoInsumoErrors, setNuevoInsumoErrors] = useState({});
+
+  const handleImageFileChangeNuevoInsumo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingNuevoInsumo(true);
+      const url = await uploadImageToCloudinary(file);
+      setNuevoInsumoForm((prev) => ({ ...prev, imagen: url }));
+      notify.success("Imagen subida", "La imagen se subió exitosamente.");
+    } catch (err) {
+      notify.error("Error al subir imagen", err.message || "No se pudo subir la imagen.");
+    } finally {
+      setUploadingNuevoInsumo(false);
+      if (nuevoInsumoFileInputRef.current) nuevoInsumoFileInputRef.current.value = "";
+    }
+  };
 
   // Campos principales de la factura de compra (#74, #75, #76)
   const [idProveedor, setIdProveedor] = useState("");
@@ -341,6 +385,23 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
     }
   }, []);
 
+  const handleSaveProveedor = async (data) => {
+    try {
+      const res = await proveedoresService.createProveedor(data);
+      const created = res?.data || res;
+      notify.success("Proveedor Creado", `"${data.nombre}" fue registrado correctamente.`);
+      await loadCatalogos();
+      const newId = created?.idProveedor || created?.id;
+      if (newId) {
+        setIdProveedor(String(newId));
+        if (formErrors.idProveedor) setFormErrors((err) => ({ ...err, idProveedor: null }));
+      }
+      setModalProveedorOpen(false);
+    } catch (err) {
+      notify.error("Error al crear proveedor", err.message || "No se pudo registrar el proveedor");
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadCatalogos();
@@ -376,6 +437,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
       categoria: defaultCatNom,
       esAdicion: esSalsa,
       precioAdicion: esSalsa ? "1500" : "",
+      imagen: esSalsa ? "sauce" : "bacon",
     });
     setNuevoInsumoErrors({});
     setNuevoInsumoTouched({});
@@ -424,7 +486,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
           : 0,
         esAdicion: nuevoInsumoForm.esAdicion ? 1 : 0,
         precioAdicion: parseFloat(nuevoInsumoForm.precioAdicion) || 0,
-        imagen: nuevoInsumoForm.esAdicion ? "sauce" : "",
+        imagen: nuevoInsumoForm.esAdicion ? (nuevoInsumoForm.imagen || "bacon") : "",
         estado: 1,
       };
 
@@ -761,9 +823,20 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
             {/* Proveedor Obligatorio (#74) */}
             <div className="sm:col-span-5">
-              <label className={labelCls}>
-                Proveedor <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+                  Proveedor <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setModalProveedorOpen(true)}
+                  className="text-[11px] font-bold text-[#F05454] hover:text-[#d84343] flex items-center gap-0.5 hover:underline cursor-pointer"
+                  title="Crear un nuevo proveedor con el formulario completo del módulo"
+                >
+                  <Plus className="w-3 h-3 stroke-[2.5]" />
+                  <span>Nuevo Proveedor</span>
+                </button>
+              </div>
               <div className="relative">
                 <select
                   value={idProveedor}
@@ -1149,63 +1222,39 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                   ) : (
                     ordenItems.map((it) => {
                       const idStr = String(it.insumo?.idInsumo || it.insumo?.id);
+                      const cantNum = parseFloat(it.cantidad) || 0;
+                      const precioNum = parseFloat(it.precioUnitario) || 0;
+                      const subtotalNum = it.subtotal !== undefined ? it.subtotal : (cantNum * precioNum);
+                      const ivaNum = it.iva !== undefined ? it.iva : 0;
+                      const totalNum = subtotalNum + ivaNum;
+                      const pctIva = it.incluyeIva ? (it.porcentajeIva || 19) : 0;
+
                       return (
                         <div
                           key={idStr}
-                          className="bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 p-3.5 shadow-2xs"
+                          className="bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 p-3.5 shadow-xs space-y-2.5 transition-all hover:border-gray-300 dark:hover:border-gray-600"
                         >
+                          {/* Cabecera del ítem: Nombre + Estado IVA + Acciones */}
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
-                                {it.insumo?.nombre}
-                              </p>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
-                                <span>
-                                  {it.cantidad} {it.insumo?.unidadMedida || "u"}
-                                </span>
-                                <span>×</span>
-                                <span>${parseFloat(it.precioUnitario).toLocaleString("es-CO")}</span>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                                  (Subtotal: ${it.subtotal.toLocaleString("es-CO")})
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                                  {it.insumo?.nombre}
+                                </p>
                                 {it.incluyeIva ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px] font-bold">
                                     <Percent className="w-2.5 h-2.5" />
-                                    IVA {it.porcentajeIva || 19}%: +${(it.iva || 0).toLocaleString("es-CO")}
+                                    IVA {pctIva}%
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 text-[10px] font-medium">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 text-[10px] font-medium">
                                     Exento de IVA
                                   </span>
                                 )}
-                                <span className="font-bold text-[#F05454] text-xs">
-                                  Total: ${((it.subtotal || 0) + (it.iva || 0)).toLocaleString("es-CO")}
-                                </span>
                               </div>
-
-                              {/* Lotes */}
-                              {it.lotes && it.lotes.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  {it.lotes.map((l, li) => (
-                                    <span
-                                      key={li}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-[10px] text-blue-700 dark:text-blue-300 font-medium"
-                                    >
-                                      <Layers className="w-2.5 h-2.5" />
-                                      {l.numeroLote}
-                                      {l.cantidad && <span>({l.cantidad})</span>}
-                                      {l.fechaVencimiento && (
-                                        <span className="text-amber-600 dark:text-amber-400">
-                                          · Vence: {l.fechaVencimiento}
-                                        </span>
-                                      )}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                Presentación: <strong className="text-gray-700 dark:text-gray-300">{it.insumo?.unidadMedida || "und"}</strong>
+                              </p>
                             </div>
 
                             <div className="flex items-center gap-1 shrink-0">
@@ -1216,7 +1265,7 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                                   setMobileTab("catalogo");
                                 }}
                                 className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                                title="Editar ítem"
+                                title="Editar cantidad o costo"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
@@ -1230,36 +1279,102 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                               </button>
                             </div>
                           </div>
+
+                          {/* Tabla/Desglose Claro de Valores e IVA Individual (#5) */}
+                          <div className="bg-gray-50 dark:bg-gray-900/60 rounded-xl p-2.5 border border-gray-100 dark:border-gray-800 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between text-gray-600 dark:text-gray-400">
+                              <span className="flex items-center gap-1.5">
+                                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                                  {it.cantidad} {it.insumo?.unidadMedida || "und"}
+                                </span>
+                                <span>×</span>
+                                <span>${precioNum.toLocaleString("es-CO")}</span>
+                              </span>
+                              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                                Subtotal: ${subtotalNum.toLocaleString("es-CO")}
+                              </span>
+                            </div>
+
+                            {it.incluyeIva ? (
+                              <div className="flex items-center justify-between text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="flex items-center gap-1">
+                                  <Percent className="w-3 h-3" />
+                                  <span>IVA Individual ({pctIva}%):</span>
+                                </span>
+                                <span className="font-bold">+${ivaNum.toLocaleString("es-CO")}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between text-gray-400 text-[11px]">
+                                <span>IVA Individual (0%):</span>
+                                <span>+$0</span>
+                              </div>
+                            )}
+
+                            <div className="pt-1.5 border-t border-gray-200/60 dark:border-gray-800 flex items-center justify-between font-bold">
+                              <span className="text-gray-800 dark:text-gray-200">
+                                Total Insumo:
+                              </span>
+                              <span className="text-sm font-black text-[#F05454]">
+                                ${totalNum.toLocaleString("es-CO")}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Lotes */}
+                          {it.lotes && it.lotes.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {it.lotes.map((l, li) => (
+                                <span
+                                  key={li}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-[10px] text-blue-700 dark:text-blue-300 font-medium"
+                                >
+                                  <Layers className="w-2.5 h-2.5" />
+                                  {l.numeroLote}
+                                  {l.cantidad && <span>({l.cantidad})</span>}
+                                  {l.fechaVencimiento && (
+                                    <span className="text-amber-600 dark:text-amber-400">
+                                      · Vence: {l.fechaVencimiento}
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })
                   )}
                 </div>
 
-                {/* Resumen financiero con sumatoria de IVA por cada insumo */}
-                <div className="px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>Subtotal General:</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">
+                {/* Resumen financiero con sumatoria clara de IVA por cada insumo (#5) */}
+                <div className="px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <span className="font-medium">Subtotal General (Base Insumos):</span>
+                    <span className="font-bold text-gray-800 dark:text-gray-200 text-sm">
                       ${subtotalGeneral.toLocaleString("es-CO")}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400">
-                    <span className="flex items-center gap-1">
-                      <Percent className="w-3 h-3" />
+                  <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/30 p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Percent className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>Total IVA Insumos ({insumosConIvaCount} de {ordenItems.length} gravan IVA):</span>
                     </span>
-                    <span className="font-bold">
+                    <span className="font-extrabold text-sm">
                       +${totalIva.toLocaleString("es-CO")}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-800">
-                    <span className="font-bold text-sm text-gray-800 dark:text-gray-200">
-                      Total de la Compra:
-                    </span>
-                    <span className="text-xl font-black text-[#F05454]">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <div>
+                      <span className="font-black text-sm text-gray-900 dark:text-gray-100 block">
+                        Total de la Compra:
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Subtotal base + sumatoria de IVA individual
+                      </span>
+                    </div>
+                    <span className="text-2xl font-black text-[#F05454]">
                       ${totalGeneral.toLocaleString("es-CO")}
                     </span>
                   </div>
@@ -1537,121 +1652,292 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
                     </div>
                   </div>
 
-                  {/* Switch Aplica IVA (19%) (#83) */}
-                  <div className="p-3.5 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.incluyeIva
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-200 dark:bg-gray-700 text-gray-500"
-                          }`}
-                      >
-                        <Percent className="w-4 h-4 stroke-[2.5]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                          ¿Aplica IVA (19%)?
-                        </p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                          Grava impuesto al valor agregado
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={nuevoInsumoForm.incluyeIva}
-                      onClick={() =>
-                        setNuevoInsumoForm((prev) => ({
-                          ...prev,
-                          incluyeIva: !prev.incluyeIva,
-                        }))
-                      }
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.incluyeIva ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.incluyeIva ? "translate-x-4" : "translate-x-0"
-                          }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Switch Adición para Menú */}
-                  <div
-                    className={`p-3.5 rounded-2xl border transition-all ${nuevoInsumoForm.esAdicion
-                        ? "border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20"
-                        : "border-gray-200 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/30"
-                      }`}
-                  >
+                  {/* ════ SECCIÓN IVA SELECCIONABLE Y MANUAL (#83) ════ */}
+                  <div className={`p-4 rounded-2xl border transition-all ${nuevoInsumoForm.incluyeIva
+                      ? "border-blue-300 dark:border-blue-800/80 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs"
+                      : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40"
+                    }`}>
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.esAdicion
-                              ? "bg-purple-600 text-white"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-500"
-                            }`}
-                        >
-                          <Sparkles className="w-4 h-4" />
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.incluyeIva
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                          }`}>
+                          <Percent className="w-4 h-4 stroke-[2.5]" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                            ¿Disponible como adición en menú?
+                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                            <span>¿Lleva impuesto IVA?</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${nuevoInsumoForm.incluyeIva
+                                ? "bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                              }`}>
+                              {nuevoInsumoForm.incluyeIva ? `IVA ${nuevoInsumoForm.porcentajeIva || 19}% Activo` : "Exento"}
+                            </span>
                           </p>
                           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                            Venta como extra en productos
+                            Indica si este insumo grava IVA y digita el porcentaje de tarifa que le corresponde
                           </p>
                         </div>
                       </div>
+
+                      {/* Switch Toggle */}
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={nuevoInsumoForm.esAdicion}
-                        onClick={() =>
-                          setNuevoInsumoForm((prev) => ({
-                            ...prev,
-                            esAdicion: !prev.esAdicion,
-                          }))
-                        }
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.esAdicion
-                            ? "bg-purple-600"
-                            : "bg-gray-300 dark:bg-gray-700"
+                        aria-checked={nuevoInsumoForm.incluyeIva}
+                        onClick={() => setNuevoInsumoForm(prev => ({
+                          ...prev,
+                          incluyeIva: !prev.incluyeIva,
+                          porcentajeIva: !prev.incluyeIva ? (prev.porcentajeIva || "19") : "0"
+                        }))}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
                           }`}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.esAdicion ? "translate-x-4" : "translate-x-0"
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.incluyeIva ? 'translate-x-5' : 'translate-x-0'
                             }`}
                         />
                       </button>
                     </div>
 
-                    {nuevoInsumoForm.esAdicion && (
-                      <div className="mt-3 pt-3 border-t border-purple-200/60 dark:border-purple-900/40">
-                        <label className={labelCls}>
-                          Precio de Venta como Adición <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
-                          <NumberInput
-                            min="0"
-                            step="100"
-                            formatThousands={true}
-                            placeholder="1500"
-                            value={nuevoInsumoForm.precioAdicion}
-                            onBlur={() => handleNuevoInsumoBlur("precioAdicion")}
-                            onChange={(e) => handleNuevoInsumoChange("precioAdicion", e.target.value)}
-                            className={`${inputCls} pl-8 ${(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion
-                                ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
-                                : ""
-                              }`}
-                          />
+                    {/* Subformulario de Tarifa Manual de IVA */}
+                    {nuevoInsumoForm.incluyeIva && (
+                      <div className="mt-3.5 pt-3.5 border-t border-blue-100 dark:border-blue-900/40 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                          <div>
+                            <label className={labelCls}>
+                              Porcentaje de IVA Manual (%) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <Percent className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <NumberInput
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={nuevoInsumoForm.porcentajeIva}
+                                onChange={(e) => handleNuevoInsumoChange("porcentajeIva", e.target.value)}
+                                className={`${inputCls} pl-8 font-bold text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 focus:ring-2 focus:ring-blue-400`}
+                                placeholder="19"
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                              Digita cualquier tarifa manual aplicable al insumo (ej. 19, 5, 8 ó 0).
+                            </p>
+                          </div>
+
+                          {/* Botones de selección rápida de tarifas comunes */}
+                          <div>
+                            <label className={labelCls}>Tarifas comunes sugeridas</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                { val: "19", label: "19% (General)" },
+                                { val: "5", label: "5% (Reducido)" },
+                                { val: "8", label: "8% (Consumo)" },
+                                { val: "0", label: "0% (Exento)" }
+                              ].map(tarifa => {
+                                const isSelected = String(nuevoInsumoForm.porcentajeIva) === tarifa.val;
+                                return (
+                                  <button
+                                    key={tarifa.val}
+                                    type="button"
+                                    onClick={() => setNuevoInsumoForm(prev => ({ ...prev, porcentajeIva: tarifa.val }))}
+                                    className={`px-2 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                        ? "bg-blue-600 text-white shadow-xs font-bold scale-105"
+                                        : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300"
+                                      }`}
+                                  >
+                                    {tarifa.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
-                        {(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion && (
-                          <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                            {nuevoInsumoErrors.precioAdicion}
-                          </p>
+
+                        {/* Cálculo previo en vivo */}
+                        {Number(nuevoInsumoForm.precioUnitario) > 0 && (
+                          <div className="p-2.5 bg-white dark:bg-gray-800/80 rounded-xl border border-blue-200/60 dark:border-blue-900/40 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span className="text-gray-600 dark:text-gray-300 font-medium text-[11px]">
+                              Base: <strong className="text-gray-900 dark:text-gray-100">${Number(nuevoInsumoForm.precioUnitario).toLocaleString("es-CO")}</strong>
+                            </span>
+                            <span className="text-blue-600 dark:text-blue-400 font-bold text-[11px]">
+                              + IVA ({nuevoInsumoForm.porcentajeIva || 19}%): +${Math.round(Number(nuevoInsumoForm.precioUnitario) * ((Number(nuevoInsumoForm.porcentajeIva) || 19) / 100)).toLocaleString("es-CO")}
+                            </span>
+                            <span className="text-gray-900 dark:text-gray-100 font-extrabold bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-lg border border-blue-200 dark:border-blue-800 text-[11px]">
+                              Total: ${Math.round(Number(nuevoInsumoForm.precioUnitario) * (1 + ((Number(nuevoInsumoForm.porcentajeIva) || 19) / 100))).toLocaleString("es-CO")}
+                            </span>
+                          </div>
                         )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ════ SECCIÓN DISPONIBLE COMO ADICIÓN ════ */}
+                  <div className={`p-4 rounded-2xl border transition-all ${nuevoInsumoForm.esAdicion
+                      ? "border-purple-300 dark:border-purple-800/80 bg-purple-50/40 dark:bg-purple-950/20 shadow-xs"
+                      : "border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40"
+                    }`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${nuevoInsumoForm.esAdicion
+                            ? "bg-purple-600 text-white shadow-xs"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                          }`}>
+                          <Sparkles className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                            <span>¿Disponible como adición en menú?</span>
+                            {nuevoInsumoForm.esAdicion && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+                                Adición Activa
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                            Permite que los clientes o cajeros seleccionen este insumo como extra o ingrediente adicional al ordenar productos
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Switch Toggle */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={nuevoInsumoForm.esAdicion}
+                        onClick={() => {
+                          const nextVal = !nuevoInsumoForm.esAdicion;
+                          setNuevoInsumoForm(prev => ({
+                            ...prev,
+                            esAdicion: nextVal,
+                            precioAdicion: nextVal && !prev.precioAdicion ? "1500" : prev.precioAdicion,
+                            imagen: nextVal && !prev.imagen ? "bacon" : prev.imagen
+                          }));
+                        }}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${nuevoInsumoForm.esAdicion ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${nuevoInsumoForm.esAdicion ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Subformulario de Adición */}
+                    {nuevoInsumoForm.esAdicion && (
+                      <div className="mt-3.5 pt-3.5 border-t border-purple-100 dark:border-purple-900/40 space-y-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className={labelCls}>
+                              Precio de Venta como Adición <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <DollarSign className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+                              <NumberInput
+                                min="0"
+                                step="100"
+                                formatThousands={true}
+                                placeholder="1500"
+                                value={nuevoInsumoForm.precioAdicion}
+                                onBlur={() => handleNuevoInsumoBlur("precioAdicion")}
+                                onChange={(e) => handleNuevoInsumoChange("precioAdicion", e.target.value)}
+                                className={`${inputCls} pl-8 ${(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion
+                                    ? "border-red-500 bg-red-50/50 dark:bg-red-950/20 text-red-900 focus:ring-red-400"
+                                    : ""
+                                  }`}
+                              />
+                            </div>
+                            {(nuevoInsumoTouched.precioAdicion) && nuevoInsumoErrors.precioAdicion ? (
+                              <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1 font-medium">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                {nuevoInsumoErrors.precioAdicion}
+                              </p>
+                            ) : nuevoInsumoForm.precioAdicion !== "" && Number(nuevoInsumoForm.precioAdicion) > 0 ? (
+                              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                <span>Precio de adición válido</span>
+                              </p>
+                            ) : null}
+                            <p className="text-[10px] text-gray-400 mt-0.5">Valor extra que se cobrará al agregar esta adición.</p>
+                          </div>
+
+                          <div>
+                            <label className={labelCls}>
+                              Ícono o Imagen de la Adición
+                            </label>
+                            <div className="flex items-center gap-2">
+                              {/* Preview */}
+                              <div className="w-9 h-9 rounded-xl bg-white dark:bg-gray-900 border-2 border-purple-300 dark:border-purple-700 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                                {nuevoInsumoForm.imagen && (nuevoInsumoForm.imagen.startsWith("http") || nuevoInsumoForm.imagen.startsWith("/")) ? (
+                                  <img src={nuevoInsumoForm.imagen} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                  <FoodIcon name={nuevoInsumoForm.imagen || nuevoInsumoForm.nombre} size={20} stroke={1.75} className="text-purple-600 dark:text-purple-400" />
+                                )}
+                              </div>
+
+                              {/* Input slug / URL */}
+                              <input
+                                type="text"
+                                value={nuevoInsumoForm.imagen}
+                                onChange={(e) => setNuevoInsumoForm(prev => ({ ...prev, imagen: e.target.value }))}
+                                className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500"
+                                placeholder="Slug de ícono (ej. bacon) o URL..."
+                              />
+
+                              {/* Botón subir imagen */}
+                              <button
+                                type="button"
+                                onClick={() => nuevoInsumoFileInputRef.current?.click()}
+                                disabled={uploadingNuevoInsumo}
+                                className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                                title="Subir imagen"
+                              >
+                                {uploadingNuevoInsumo ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <UploadCloud className="w-3.5 h-3.5" />
+                                )}
+                                <span className="hidden sm:inline">{uploadingNuevoInsumo ? "..." : "Subir"}</span>
+                              </button>
+                              <input
+                                ref={nuevoInsumoFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageFileChangeNuevoInsumo}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Paleta rápida de íconos gastronómicos */}
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                            O elige rápidamente un ícono sugerido:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {QUICK_ADICION_ICONS.map((ic) => {
+                              const isSelected = nuevoInsumoForm.imagen === ic.slug;
+                              return (
+                                <button
+                                  key={ic.slug}
+                                  type="button"
+                                  onClick={() => setNuevoInsumoForm(prev => ({ ...prev, imagen: ic.slug }))}
+                                  className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs transition-all cursor-pointer ${isSelected
+                                      ? "bg-purple-600 text-white font-bold shadow-xs scale-105"
+                                      : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-50 hover:border-purple-300"
+                                    }`}
+                                >
+                                  <FoodIcon name={ic.slug} size={13} stroke={1.75} />
+                                  <span>{ic.label}</span>
+                                  {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1710,6 +1996,14 @@ export function NuevaCompraModal({ isOpen, onClose, onCreated, initialInsumo }) 
           to   { opacity: 1; transform: scale(1); }
         }
       `}</style>
+
+      {/* Modal de Proveedor Completo (#74) */}
+      <ProveedorModal
+        isOpen={modalProveedorOpen}
+        onClose={() => setModalProveedorOpen(false)}
+        onSave={handleSaveProveedor}
+        proveedores={proveedores}
+      />
     </div>
   );
 }

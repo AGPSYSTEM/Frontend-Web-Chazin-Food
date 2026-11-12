@@ -401,7 +401,7 @@ export function InsumoModal({
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    // ── Modo Edición: Solo se permite modificar Stock Mínimo, Stock Máximo y Descripción (#78) ──
+    // ── Modo Edición: Se permite modificar Stock Mínimo, Stock Máximo, Descripción, Estado, Adición e IVA ──
     if (isEditing) {
       const minVal = Math.max(0, form.stockMinimo === "" ? 0 : Number(form.stockMinimo));
       const maxVal = Math.max(0, form.stockMaximo === "" ? 0 : Number(form.stockMaximo));
@@ -413,13 +413,44 @@ export function InsumoModal({
         return;
       }
 
-      onSave({
-        ...insumo,
-        stockMinimo: minVal,
-        stockMaximo: maxVal,
-        descripcion: (form.descripcion || "").trim(),
-        estado: form.estado
-      });
+      // Validar precio de adición si está habilitada
+      if (form.esAdicion) {
+        const esSalsa = isSalsaItem(form.nombre, form.categoria);
+        const pAdic = Number(form.precioAdicion);
+        if (!esSalsa && (isNaN(pAdic) || pAdic <= 0)) {
+          notify.warning(
+            "Precio de Adición Requerido",
+            "Al habilitar este insumo como adición, debes ingresar un precio de venta mayor a $0."
+          );
+          return;
+        }
+      }
+
+      const savePayload = async () => {
+        if (insumo?.estado === "Activo" && form.estado === "Inactivo") {
+          const confirmed = await notify.confirmAction(
+            "¿Inactivar insumo?",
+            `¿Estás seguro de que deseas inactivar "${form.nombre || insumo.nombre}"? Este insumo no estará disponible en recetas ni compras mientras permanezca inactivo.`,
+            "Sí, inactivar"
+          );
+          if (!confirmed) return;
+        }
+
+        onSave({
+          ...insumo,
+          stockMinimo: minVal,
+          stockMaximo: maxVal,
+          descripcion: (form.descripcion || "").trim(),
+          estado: form.estado,
+          esAdicion: form.esAdicion ? 1 : 0,
+          precioAdicion: form.esAdicion ? (Number(form.precioAdicion) || 0) : 0,
+          imagen: form.esAdicion ? (form.imagen || "bacon") : "",
+          incluyeIva: form.incluyeIva ? 1 : 0,
+          porcentajeIva: form.incluyeIva ? (parseFloat(form.porcentajeIva) || 19) : 0
+        });
+      };
+
+      savePayload();
       return;
     }
 
@@ -641,7 +672,7 @@ export function InsumoModal({
             <div className="mx-6 mt-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex items-start gap-3 text-xs text-amber-900 dark:text-amber-200 shrink-0">
               <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
               <div>
-                <span className="font-bold">Modo Edición Restringido:</span> Por políticas de trazabilidad y control de inventario, los datos maestros (nombre, categoría, unidad de medida, costo base, stock e impuestos) son <strong>inmutables</strong>. Solo se permite actualizar el <strong>Stock Mínimo</strong>, <strong>Stock Máximo</strong> y la <strong>Descripción</strong>.
+                <span className="font-bold">Modo Edición:</span> Por políticas de inventario, los datos maestros (nombre, categoría, unidad de medida, costo base y stock) son <strong>inmutables</strong>. Puedes actualizar el <strong>Stock Mínimo</strong>, <strong>Stock Máximo</strong>, <strong>Descripción</strong>, <strong>Estado</strong>, <strong>Disponibilidad como Adición</strong> y la sección de <strong>Impuesto IVA</strong>.
               </div>
             </div>
           )}
@@ -1229,10 +1260,9 @@ export function InsumoModal({
                 <button
                   type="button"
                   role="switch"
-                  disabled={isEditing}
                   aria-checked={form.esAdicion}
-                  onClick={() => !isEditing && setForm(prev => ({ ...prev, esAdicion: !prev.esAdicion }))}
-                  className={`relative inline-flex h-6 w-11 shrink-0 ${isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.esAdicion ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'
+                  onClick={() => setForm(prev => ({ ...prev, esAdicion: !prev.esAdicion }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.esAdicion ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-700'
                     }`}
                 >
                   <span
@@ -1248,7 +1278,7 @@ export function InsumoModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelCls}>
-                        Precio de Venta de la Adición ($) {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                        Precio de Venta de la Adición ($) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-600 dark:text-purple-400 font-bold text-sm pointer-events-none">$</span>
@@ -1256,15 +1286,12 @@ export function InsumoModal({
                           min="0"
                           step="100"
                           formatThousands={true}
-                          disabled={isEditing}
                           required={form.esAdicion}
                           value={form.precioAdicion}
                           onChange={(e) => handleNumberInput("precioAdicion", e.target.value)}
                           onBlur={() => handleBlur("precioAdicion")}
                           className={`${baseInputCls} pl-8 font-bold text-purple-700 dark:text-purple-300 ${
-                            isEditing
-                              ? "bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700"
-                              : touched.precioAdicion && errors.precioAdicion
+                            touched.precioAdicion && errors.precioAdicion
                               ? "border-red-500 bg-red-50/30 text-red-900 focus:ring-2 focus:ring-red-400"
                               : touched.precioAdicion && form.precioAdicion !== "" && Number(form.precioAdicion) > 0 && !errors.precioAdicion
                               ? "border-emerald-500/60 dark:border-emerald-500/40 bg-emerald-50/10 focus:ring-2 focus:ring-emerald-400"
@@ -1289,7 +1316,7 @@ export function InsumoModal({
 
                     <div>
                       <label className={labelCls}>
-                        Ícono o Imagen de la Adición {isEditing && <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span>}
+                        Ícono o Imagen de la Adición
                       </label>
                       <div className="flex items-center gap-2">
                         {/* Preview */}
@@ -1304,73 +1331,64 @@ export function InsumoModal({
                         {/* Input slug / URL */}
                         <input
                           type="text"
-                          disabled={isEditing}
                           value={form.imagen}
                           onChange={(e) => setForm({ ...form, imagen: e.target.value })}
-                          className={`flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs ${
-                            isEditing ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-gray-800" : "focus:ring-2 focus:ring-purple-500"
-                          }`}
+                          className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs focus:ring-2 focus:ring-purple-500"
                           placeholder="Slug de ícono (ej. bacon) o URL..."
                         />
 
                         {/* Botón subir imagen */}
-                        {!isEditing && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={uploading}
-                              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
-                              title="Subir imagen"
-                            >
-                              {uploading ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <UploadCloud className="w-3.5 h-3.5" />
-                              )}
-                              <span className="hidden sm:inline">{uploading ? "..." : "Subir"}</span>
-                            </button>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleImageFileChange}
-                            />
-                          </>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+                          title="Subir imagen"
+                        >
+                          {uploading ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <UploadCloud className="w-3.5 h-3.5" />
+                          )}
+                          <span className="hidden sm:inline">{uploading ? "..." : "Subir"}</span>
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageFileChange}
+                        />
                       </div>
                     </div>
                   </div>
 
                   {/* Paleta rápida de íconos gastronómicos */}
-                  {!isEditing && (
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                        O elige rápidamente un ícono sugerido:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {QUICK_ADICION_ICONS.map((ic) => {
-                          const isSelected = form.imagen === ic.slug;
-                          return (
-                            <button
-                              key={ic.slug}
-                              type="button"
-                              onClick={() => setForm({ ...form, imagen: ic.slug })}
-                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs transition-all cursor-pointer ${isSelected
-                                  ? "bg-purple-600 text-white font-bold shadow-xs scale-105"
-                                  : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-50 hover:border-purple-300"
-                                }`}
-                            >
-                              <FoodIcon name={ic.slug} size={14} stroke={1.75} />
-                              <span>{ic.label}</span>
-                              {isSelected && <Check className="w-3 h-3 ml-0.5" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                      O elige rápidamente un ícono sugerido:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUICK_ADICION_ICONS.map((ic) => {
+                        const isSelected = form.imagen === ic.slug;
+                        return (
+                          <button
+                            key={ic.slug}
+                            type="button"
+                            onClick={() => setForm({ ...form, imagen: ic.slug })}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs transition-all cursor-pointer ${isSelected
+                                ? "bg-purple-600 text-white font-bold shadow-xs scale-105"
+                                : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-purple-50 hover:border-purple-300"
+                              }`}
+                          >
+                            <FoodIcon name={ic.slug} size={14} stroke={1.75} />
+                            <span>{ic.label}</span>
+                            {isSelected && <Check className="w-3 h-3 ml-0.5" />}
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1408,14 +1426,13 @@ export function InsumoModal({
                 <button
                   type="button"
                   role="switch"
-                  disabled={isEditing}
                   aria-checked={form.incluyeIva}
-                  onClick={() => !isEditing && setForm(prev => ({
+                  onClick={() => setForm(prev => ({
                     ...prev,
                     incluyeIva: !prev.incluyeIva,
                     porcentajeIva: !prev.incluyeIva ? (prev.porcentajeIva || "19") : "0"
                   }))}
-                  className={`relative inline-flex h-6 w-11 shrink-0 ${isEditing ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${form.incluyeIva ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-700'
                     }`}
                 >
                   <span
@@ -1431,7 +1448,7 @@ export function InsumoModal({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                     <div>
                       <label className={labelCls}>
-                        Porcentaje de IVA Manual (%) {isEditing ? <span className="text-gray-400 font-normal text-[11px]">(Inmutable)</span> : <span className="text-red-500">*</span>}
+                        Porcentaje de IVA Manual (%) <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <Percent className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1439,12 +1456,9 @@ export function InsumoModal({
                           min="0"
                           max="100"
                           step="1"
-                          disabled={isEditing}
                           value={form.porcentajeIva}
                           onChange={(e) => handleNumberInput("porcentajeIva", e.target.value)}
-                          className={`${baseInputCls} pl-9 font-bold text-blue-700 dark:text-blue-300 ${
-                            isEditing ? "bg-gray-100 dark:bg-gray-800 opacity-60 cursor-not-allowed border-gray-200 dark:border-gray-700" : "border-blue-200 dark:border-blue-800 focus:ring-2 focus:ring-blue-400"
-                          }`}
+                          className={`${baseInputCls} pl-9 font-bold text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 focus:ring-2 focus:ring-blue-400`}
                           placeholder="19"
                         />
                       </div>
@@ -1454,34 +1468,32 @@ export function InsumoModal({
                     </div>
 
                     {/* Botones de selección rápida de tarifas comunes */}
-                    {!isEditing && (
-                      <div>
-                        <label className={labelCls}>Tarifas comunes sugeridas</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            { val: "19", label: "19% (General)" },
-                            { val: "5", label: "5% (Reducido)" },
-                            { val: "8", label: "8% (Consumo)" },
-                            { val: "0", label: "0% (Exento)" }
-                          ].map(tarifa => {
-                            const isSelected = String(form.porcentajeIva) === tarifa.val;
-                            return (
-                              <button
-                                key={tarifa.val}
-                                type="button"
-                                onClick={() => setForm(prev => ({ ...prev, porcentajeIva: tarifa.val }))}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isSelected
-                                    ? "bg-blue-600 text-white shadow-xs font-bold scale-105"
-                                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300"
-                                  }`}
-                              >
-                                {tarifa.label}
-                              </button>
-                            );
-                          })}
-                        </div>
+                    <div>
+                      <label className={labelCls}>Tarifas comunes sugeridas</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { val: "19", label: "19% (General)" },
+                          { val: "5", label: "5% (Reducido)" },
+                          { val: "8", label: "8% (Consumo)" },
+                          { val: "0", label: "0% (Exento)" }
+                        ].map(tarifa => {
+                          const isSelected = String(form.porcentajeIva) === tarifa.val;
+                          return (
+                            <button
+                              key={tarifa.val}
+                              type="button"
+                              onClick={() => setForm(prev => ({ ...prev, porcentajeIva: tarifa.val }))}
+                              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isSelected
+                                  ? "bg-blue-600 text-white shadow-xs font-bold scale-105"
+                                  : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 hover:border-blue-300"
+                                }`}
+                            >
+                              {tarifa.label}
+                            </button>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Cálculo previo en vivo */}

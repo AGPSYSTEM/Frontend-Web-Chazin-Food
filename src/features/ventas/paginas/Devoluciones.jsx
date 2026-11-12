@@ -1,18 +1,16 @@
 import { useState } from "react";
-import { Plus, Search, Filter, X, RotateCcw } from "lucide-react";
+import { Search, Filter, X, RotateCcw } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useDevoluciones } from "../hooks/useDevoluciones";
 import { DevolucionesStatsCards } from "../componentes/devoluciones/DevolucionesStatsCards";
 import { DevolucionesTable } from "../componentes/devoluciones/DevolucionesTable";
 import { DevolucionDetalleModal } from "../componentes/devoluciones/DevolucionDetalleModal";
-import { NuevaDevolucionModal } from "../componentes/devoluciones/NuevaDevolucionModal";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 
 export default function Devoluciones() {
   const { user } = useAuth();
   const canManage = hasPrivilege(user, "Devoluciones", "editar") || hasPrivilege(user, "Gestión de Ventas", "editar");
-  const canCreate = hasPrivilege(user, "Devoluciones", "crear") || hasPrivilege(user, "Gestión de Ventas", "crear");
 
   const {
     devoluciones,
@@ -37,7 +35,6 @@ export default function Devoluciones() {
     verificarElegibilidadVenta
   } = useDevoluciones();
 
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDevolucion, setSelectedDevolucion] = useState(null);
 
@@ -60,19 +57,9 @@ export default function Devoluciones() {
             Devoluciones
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Gestión, trazabilidad y control de devoluciones según políticas de la empresa
+            Gestión, revisión, aprobación y resolución de solicitudes de devolución enviadas por los clientes
           </p>
         </div>
-
-        {canCreate && (
-          <button
-            onClick={() => setCreateModalOpen(true)}
-            className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Registrar Devolución</span>
-          </button>
-        )}
       </div>
 
       {/* 4 Stat KPI Cards */}
@@ -174,7 +161,7 @@ export default function Devoluciones() {
         />
       )}
 
-      {/* Modal Detalle */}
+      {/* Modal Detalle y Resolución */}
       <DevolucionDetalleModal
         isOpen={detailModalOpen}
         onClose={() => {
@@ -186,15 +173,6 @@ export default function Devoluciones() {
         onRechazar={rechazarDevolucion}
         onCompletar={completarDevolucion}
         canManage={canManage}
-      />
-
-      {/* Modal Registrar Nueva Devolución */}
-      <NuevaDevolucionModal
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSubmit={crearDevolucion}
-        onCheckElegibilidad={verificarElegibilidadVenta}
-        politicas={politicas}
       />
     </div>
   );
