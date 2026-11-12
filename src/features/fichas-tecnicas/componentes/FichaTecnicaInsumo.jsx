@@ -900,28 +900,54 @@ export function FichaTecnicaInsumo({
               />
 
               {insumosSugeridos.length > 0 && (
-                <div className="absolute z-20 top-full mt-1.5 left-0 right-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
-                  {insumosSugeridos.map((ins) => (
-                    <button
-                      key={ins.id || ins.idInsumo}
-                      type="button"
-                      onClick={() => agregarInsumo(ins)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-[#F05454]">
-                          <Package className="w-3.5 h-3.5" />
+                <div className="absolute z-20 top-full mt-1.5 left-0 right-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700 max-h-60 overflow-y-auto">
+                  {insumosSugeridos.map((ins) => {
+                    const { vencido, agotado } = checkInsumoInvalido(ins);
+                    const isBlocked = vencido || agotado;
+                    return (
+                      <button
+                        key={ins.id || ins.idInsumo}
+                        type="button"
+                        disabled={isBlocked}
+                        onClick={() => agregarInsumo(ins)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 transition text-left ${
+                          isBlocked
+                            ? "opacity-60 bg-red-50/30 dark:bg-red-950/20 cursor-not-allowed"
+                            : "hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-1.5 rounded-lg shrink-0 ${
+                            vencido ? "bg-red-100 text-red-600 dark:bg-red-900/50" : agotado ? "bg-amber-100 text-amber-600 dark:bg-amber-900/50" : "bg-rose-50 dark:bg-rose-950/40 text-[#F05454]"
+                          }`}>
+                            <Package className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{ins.nombre}</p>
+                              {vencido && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300">
+                                  ⛔ VENCIDO
+                                </span>
+                              )}
+                              {agotado && !vencido && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                                  ⚠️ AGOTADO
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400">
+                              {ins.categoria?.nombre || ins.categoria || "Insumo"} • Stock: {ins.stock || 0} {ins.unidadMedida || "und"}
+                              {ins.fechaVencimiento && ` • Vence: ${String(ins.fechaVencimiento).substring(0, 10)}`}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{ins.nombre}</p>
-                          <p className="text-[10px] text-gray-400">{ins.unidadMedida || "und"}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                        ${Number(ins.precioUnitario || ins.costo || 0).toLocaleString("es-CO")}
-                      </span>
-                    </button>
-                  ))}
+                        <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                          ${Number(ins.precioUnitario || ins.costo || 0).toLocaleString("es-CO")}/{ins.unidadMedida || "und"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -940,10 +966,25 @@ export function FichaTecnicaInsumo({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {insumos.map((item, idx) => (
+                      {insumos.map((item, idx) => {
+                        const dbMatch = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id)) || item.insumo || item;
+                        const { vencido, agotado } = checkInsumoInvalido(dbMatch);
+                        return (
                         <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
                           <td className="px-4 py-2.5 font-bold text-gray-800 dark:text-gray-200">
-                            {item.nombreInsumo || item.insumo?.nombre || `Insumo #${item.idInsumo || item.id}`}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{item.nombreInsumo || item.insumo?.nombre || dbMatch?.nombre || `Insumo #${item.idInsumo || item.id}`}</span>
+                              {vencido && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+                                  ⛔ VENCIDO
+                                </span>
+                              )}
+                              {agotado && !vencido && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                  ⚠️ AGOTADO
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-2.5 text-center">
                             <div className="inline-flex items-center gap-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
@@ -987,15 +1028,27 @@ export function FichaTecnicaInsumo({
                             </div>
                           </td>
                           <td className="px-4 py-2.5 text-center">
-                            <select
-                              value={normalizeUnidadMedida(item.unidadMedida)}
-                              onChange={(e) => actualizarUnidad(idx, e.target.value)}
-                              className="px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold outline-none text-gray-700 dark:text-gray-300"
-                            >
-                              {getUnidadesCompatibles(item.insumo?.unidadMedida || item.unidadMedida).map(u => (
-                                <option key={u.value} value={u.value}>{u.value}</option>
-                              ))}
-                            </select>
+                            <div className="flex flex-col items-center gap-1">
+                              <select
+                                value={normalizeUnidadMedida(item.unidadMedida)}
+                                onChange={(e) => actualizarUnidad(idx, e.target.value)}
+                                className="px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold outline-none text-gray-700 dark:text-gray-300"
+                              >
+                                {getUnidadesCompatibles(item.insumo?.unidadMedida || dbMatch?.unidadMedida || item.unidadMedida).map(u => (
+                                  <option key={u.value} value={u.value}>{u.value}</option>
+                                ))}
+                              </select>
+                              {(normalizeUnidadMedida(item.unidadMedida) === "kg" || normalizeUnidadMedida(item.unidadMedida) === "lt") && Number(item.cantidad) >= 0.5 && (
+                                <button
+                                  type="button"
+                                  onClick={() => actualizarUnidad(idx, normalizeUnidadMedida(item.unidadMedida) === "kg" ? "gr" : "ml")}
+                                  className="text-[9px] font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                                  title="Convertir a porción estándar de receta (30 gr/ml)"
+                                >
+                                  Pasar a 30 {normalizeUnidadMedida(item.unidadMedida) === "kg" ? "gr" : "ml"}
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2.5 text-right">
                             <button
@@ -1008,7 +1061,8 @@ export function FichaTecnicaInsumo({
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
