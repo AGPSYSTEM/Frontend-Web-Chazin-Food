@@ -10,6 +10,7 @@ import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
+import { normalizeUnidadMedida, resolveRecetaUnidadYCantidad, convertirUnidadYCantidad } from "../utils/costoUtils";
 import {
   normalizeFichaWithVersions,
   formatFechaHoraFicha,
@@ -483,11 +484,12 @@ export function FichaTecnicaInsumo({
       setSearchInsumo("");
       return;
     }
+    const { cantidad: cantDefault, unidadMedida: uDefault } = resolveRecetaUnidadYCantidad(ins, rendimiento);
     const nuevo = {
       idInsumo: id,
       nombreInsumo: ins.nombre,
-      cantidad: 1,
-      unidadMedida: ins.unidadMedida || "und",
+      cantidad: cantDefault,
+      unidadMedida: uDefault,
       insumo: ins
     };
     const next = [...insumos, nuevo];
@@ -513,15 +515,25 @@ export function FichaTecnicaInsumo({
     setInsumos(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       const actual = Number(item.cantidad) || 0;
-      const step = item.unidadMedida === 'kg' || item.unidadMedida === 'lt' ? 0.1 : 1;
-      const nuevo = Math.max(0.05, Math.round((actual + delta * step) * 100) / 100);
+      const u = normalizeUnidadMedida(item.unidadMedida);
+      let step = 1;
+      if (u === 'gr' || u === 'ml') {
+        step = 5;
+      } else if (u === 'kg' || u === 'lt') {
+        step = 0.05;
+      }
+      const nuevo = Math.max(u === 'gr' || u === 'ml' ? 1 : 0.05, Math.round((actual + delta * step) * 100) / 100);
       return { ...item, cantidad: nuevo };
     }));
   };
 
-  const actualizarUnidad = (idx, unidadMedida) => {
+  const actualizarUnidad = (idx, nuevaUnidad) => {
     clearRestoredCommitFlag();
-    setInsumos((prev) => prev.map((item, i) => (i === idx ? { ...item, unidadMedida } : item)));
+    setInsumos((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const cantConvertida = convertirUnidadYCantidad(item.cantidad, item.unidadMedida, nuevaUnidad);
+      return { ...item, unidadMedida: nuevaUnidad, cantidad: cantConvertida };
+    }));
   };
 
   const handleTiempoChange = (e) => {
@@ -932,7 +944,7 @@ export function FichaTecnicaInsumo({
                           </td>
                           <td className="px-4 py-2.5 text-center">
                             <select
-                              value={item.unidadMedida || "und"}
+                              value={normalizeUnidadMedida(item.unidadMedida)}
                               onChange={(e) => actualizarUnidad(idx, e.target.value)}
                               className="px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold outline-none text-gray-700 dark:text-gray-300"
                             >

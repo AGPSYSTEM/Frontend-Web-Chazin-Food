@@ -19,7 +19,11 @@ import {
 import {
   calculateInsumoCost,
   calculateRecipeTotals,
-  parsePorciones
+  parsePorciones,
+  normalizeUnidadMedida,
+  resolveRecetaUnidadYCantidad,
+  convertirUnidadYCantidad,
+  sanitizeRecetaInsumos
 } from "../utils/costoUtils";
 
 const FASES_DEFAULT = [
@@ -337,18 +341,7 @@ export function FichaTecnicaProducto({
       f._isRestoredVersionCommit = true;
     }
     const rawInsumos = f.detalles || f.insumos || [];
-    setInsumos(rawInsumos.map(item => {
-      const matchDb = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id));
-      const cost = Number(item.costoUnitario || item.precioUnitario || matchDb?.precioUnitario || matchDb?.costo || 0);
-      return {
-        idInsumo: item.idInsumo || item.id,
-        nombreInsumo: item.nombreInsumo || item.insumo?.nombre || item.nombre || (matchDb ? matchDb.nombre : `Insumo #${item.idInsumo}`),
-        cantidad: Number(item.cantidad || 1),
-        unidadMedida: item.unidadMedida || matchDb?.unidadMedida || 'und',
-        costoUnitario: cost,
-        insumo: item.insumo || matchDb || null
-      };
-    }));
+    setInsumos(sanitizeRecetaInsumos(rawInsumos, dbInsumosList, f.rendimiento));
 
     const textoProc = f.procedimiento || f.descripcion || "";
     setProcedimiento(textoProc);
@@ -467,18 +460,19 @@ export function FichaTecnicaProducto({
       return;
     }
 
+    const { cantidad: cantDefault, unidadMedida: uDefault } = resolveRecetaUnidadYCantidad(insumoItem, rendimiento);
     const nuevo = {
       idInsumo: id,
       nombreInsumo: insumoItem.nombre,
-      cantidad: 1,
-      unidadMedida: insumoItem.unidadMedida || "und",
+      cantidad: cantDefault,
+      unidadMedida: uDefault,
       costoUnitario: Number(insumoItem.precioUnitario || insumoItem.costo || 0),
       insumo: insumoItem
     };
     const nextList = [...insumos, nuevo];
     setInsumos(nextList);
     setSearchInsumo("");
-    notify.success("Insumo agregado", `"${insumoItem.nombre}" añadido a la receta.`);
+    notify.success("Insumo agregado", `"${insumoItem.nombre}" añadido a la receta (${cantDefault} ${uDefault}).`);
     if (touched.insumos) {
       const err = validateField("insumos", null, nextList);
       setErrors((prev) => ({ ...prev, insumos: err }));
@@ -500,15 +494,25 @@ export function FichaTecnicaProducto({
     setInsumos(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       const actual = Number(item.cantidad) || 0;
-      const step = item.unidadMedida === 'kg' || item.unidadMedida === 'lt' ? 0.1 : 1;
-      const nuevo = Math.max(0.05, Math.round((actual + delta * step) * 100) / 100);
+      const u = normalizeUnidadMedida(item.unidadMedida);
+      let step = 1;
+      if (u === 'gr' || u === 'ml') {
+        step = 5;
+      } else if (u === 'kg' || u === 'lt') {
+        step = 0.05;
+      }
+      const nuevo = Math.max(u === 'gr' || u === 'ml' ? 1 : 0.05, Math.round((actual + delta * step) * 100) / 100);
       return { ...item, cantidad: nuevo };
     }));
   };
 
-  const actualizarUnidad = (idx, unidadMedida) => {
+  const actualizarUnidad = (idx, nuevaUnidad) => {
     clearRestoredCommitFlag();
-    setInsumos((prev) => prev.map((item, i) => (i === idx ? { ...item, unidadMedida } : item)));
+    setInsumos((prev) => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const cantConvertida = convertirUnidadYCantidad(item.cantidad, item.unidadMedida, nuevaUnidad);
+      return { ...item, unidadMedida: nuevaUnidad, cantidad: cantConvertida };
+    }));
   };
 
   // Cálculo de totales gastronómicos precisos (Food Cost y Porciones)
@@ -1029,12 +1033,7 @@ export function FichaTecnicaProducto({
                         const dbMatch = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id)) || item.insumo || item;
                         const { vencido, agotado } = checkInsumoInvalido(dbMatch);
                         const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
-                        const subtotal = calculateInsumoCost(
-                          item.cantidad,
-                          item.unidadMedida || "und",
-                          unitCost,
-                          item.insumo?.unidadMedida
-                        );
+                        const subtotal = calculateInsumoCost(item.cantidad, item.unidadMedida, unitCost, item.insumo?.unidadMedida || dbMatch?.unidadMedida);
                         return (
                           <tr key={idx} className={`transition ${vencido ? "bg-red-50/50 dark:bg-red-950/20" : agotado ? "bg-amber-50/50 dark:bg-amber-950/20" : "hover:bg-gray-50/50 dark:hover:bg-gray-800/30"}`}>
                             <td className="px-4 py-2.5 font-bold text-gray-800 dark:text-gray-200">
@@ -1095,7 +1094,7 @@ export function FichaTecnicaProducto({
                             </td>
                             <td className="px-4 py-2.5 text-center">
                               <select
-                                value={item.unidadMedida || "und"}
+                                value={normalizeUnidadMedida(item.unidadMedida)}
                                 onChange={(e) => actualizarUnidad(idx, e.target.value)}
                                 className="px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold outline-none text-gray-700 dark:text-gray-300"
                               >
@@ -1108,8 +1107,8 @@ export function FichaTecnicaProducto({
                                 <option value="porción">porción</option>
                               </select>
                             </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-gray-500">
-                              ${unitCost.toLocaleString("es-CO")}
+                            <td className="px-4 py-2.5 text-right font-mono text-gray-500 text-[11px]">
+                              ${unitCost.toLocaleString("es-CO")}{item.insumo?.unidadMedida || dbMatch?.unidadMedida ? ` / ${normalizeUnidadMedida(item.insumo?.unidadMedida || dbMatch?.unidadMedida)}` : ""}
                             </td>
                             <td className="px-4 py-2.5 text-right font-mono font-bold text-gray-900 dark:text-gray-100">
                               ${Math.round(subtotal).toLocaleString("es-CO")}

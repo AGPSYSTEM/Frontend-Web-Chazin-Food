@@ -17,6 +17,7 @@ import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { getAdditionEmoji, stripEmojis, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 import { validateTexto, validateNumeroPositivo, validateRequerido, validatePorcentaje } from "@/shared/utils/validationUtils";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
+import { resolveRecetaUnidadYCantidad, normalizeUnidadMedida } from "@/features/fichas-tecnicas/utils/costoUtils";
 import {
   FoodIcon,
   AVAILABLE_FOOD_SLUGS,
@@ -920,7 +921,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                     key={ins.id || ins.idInsumo}
                                     type="button"
                                     onClick={() => {
-                                      setInsumosSeleccionados([{ id: ins.id || ins.idInsumo, nombre: ins.nombre, cantidad: 1, unidad: ins.unidadMedida || "und" }]);
+                                      const resolvedMedida = resolveRecetaUnidadYCantidad(ins);
+    setInsumosSeleccionados([{ id: ins.id || ins.idInsumo, nombre: ins.nombre, cantidad: 1, unidad: resolvedMedida.unidadMedida }]);
                                       setInsumoSearch("");
                                       setShowInsumoDropdown(false);
                                     }}
