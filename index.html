@@ -37,7 +37,11 @@
     <!-- Tipografía Inter oficial (Carga optimizada con preconnect) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
 
     <!-- Detección y persistencia inmediata de Modo Oscuro / Claro -->
     <script>
@@ -56,8 +60,7 @@
 
     <!-- Estilos de Splash inicial -->
     <link rel="stylesheet" href="/splash.css" />
-    <!-- Script Oficial de Pasarela Wompi (Bancolombia) para Web Checkout instantáneo -->
-    <script type="text/javascript" src="https://checkout.wompi.co/widget.js" async></script>
+    <!-- Pasarela Wompi: se carga dinámicamente bajo demanda vía wompiService.js para no penalizar el bundle ni cookies iniciales -->
   </head>
   <body>
     <div id="root">

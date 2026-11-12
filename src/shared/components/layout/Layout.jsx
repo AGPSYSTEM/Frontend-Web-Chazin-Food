@@ -402,7 +402,7 @@ export function Layout() {
               </div>
               <span className="font-bold text-white text-sm">Chazin Food</span>
             </Link>
-            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
+            <button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú lateral" className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95">
               <X className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -655,10 +655,10 @@ export function Layout() {
 
             <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity" title="Ir al inicio">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shrink-0 border border-amber-300 bg-white">
-                <img src={logoImg} alt="Chazin Food" className="w-full h-full object-contain" />
+                <img src={logoImg} alt="Chazin Food" width="36" height="36" loading="eager" decoding="async" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
-                <span className="text-[10px] font-black tracking-widest text-[#A91B2E] uppercase block leading-tight">
+                <span className="text-[10px] font-black tracking-widest text-[#A91B2E] dark:text-red-400 uppercase block leading-tight">
                   Chazin Food
                 </span>
                 <h1 className="text-sm sm:text-base font-black text-gray-900 dark:text-gray-100 leading-tight">

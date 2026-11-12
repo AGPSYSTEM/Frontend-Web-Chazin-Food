@@ -354,11 +354,15 @@ export default function PosVendedor() {
 
         {/* Right / Center Products Content Area */}
         <section className="flex-1 min-w-0 flex flex-col">
-          {/* Top Promo Carousel */}
-          <KioskPromoCarousel
-            productos={productos}
-            onSelectProduct={handleOpenCustomize}
-          />
+          {/* Top Promo Carousel or Skeleton */}
+          {loading ? (
+            <div className="w-full h-40 sm:h-48 rounded-3xl mb-4 bg-gray-100 dark:bg-gray-800/60 animate-pulse border-2 border-gray-200/50 dark:border-gray-700/40" />
+          ) : (
+            <KioskPromoCarousel
+              productos={productos}
+              onSelectProduct={handleOpenCustomize}
+            />
+          )}
 
           {/* Products Grid */}
           <div className="flex-1">
@@ -371,11 +375,29 @@ export default function PosVendedor() {
                   : stripEmojis(categorias.find((c) => (c.id || c.idCategoriaProducto) === categoriaActiva)?.nombre || "Menú")}
               </h2>
               <span className="text-xs font-black uppercase tracking-wider text-gray-400 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
-                {visibleProducts.length} {visibleProducts.length === 1 ? "producto" : "productos"}
+                {loading ? "Cargando..." : `${visibleProducts.length} ${visibleProducts.length === 1 ? "producto" : "productos"}`}
               </span>
             </div>
 
-            {visibleProducts.length === 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                {[...Array(8)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-3xl p-3.5 sm:p-4 bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-800 animate-pulse flex flex-col justify-between min-h-[290px] sm:min-h-[310px]"
+                  >
+                    <div className="w-full h-36 sm:h-44 rounded-2xl bg-gray-100 dark:bg-gray-800" />
+                    <div className="mt-3 flex-1 flex flex-col justify-between">
+                      <div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-3/4 mb-2" />
+                      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                        <div className="h-6 bg-gray-100 dark:bg-gray-800 rounded-lg w-1/3" />
+                        <div className="h-7 w-16 bg-gray-100 dark:bg-gray-800 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : visibleProducts.length === 0 ? (
               <div className="w-full py-16 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-white text-center p-6">
                 <Utensils className="w-12 h-12 text-gray-300 mb-2" />
                 <p className="text-lg font-black text-gray-700">No hay productos en esta categoría</p>

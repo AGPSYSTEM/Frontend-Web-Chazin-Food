@@ -2420,7 +2420,7 @@ export function FastFoodProductModal({
                                     ? Number(selectedVariant.precio)
                                     : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice))
                                 : (isPostobonDrink ? size.defaultPostobonPrice : size.defaultPremiumPrice)));
-                      const bottleImg = getDrinkBottleImage(size.id, producto, selectedVariant, isDietSelected);
+                      const bottleImg = getOptimizedImageUrl(getDrinkBottleImage(size.id, producto, selectedVariant, isDietSelected), 120);
 
                       return (
                         <div
@@ -2749,7 +2749,7 @@ export function FastFoodProductModal({
                     const selectedObj = selectedAdditions.find((a) => (a.idAdicion || a.id) === adId);
                     const isSelected = Boolean(selectedObj);
                     const itemQty = selectedObj?.cantidad || 1;
-                    const adImg = getAdicionDisplayImage(ad);
+                    const adImg = getOptimizedImageUrl(getAdicionDisplayImage(ad), 120);
 
                     return (
                       <div
@@ -2896,7 +2896,7 @@ export function FastFoodProductModal({
                           className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer select-none"
                         >
                           {(() => {
-                            const imgUrl = resolveDrinkImage(drink);
+                            const imgUrl = getOptimizedImageUrl(resolveDrinkImage(drink), 120);
                             return imgUrl ? (
                               <img
                                 src={imgUrl}

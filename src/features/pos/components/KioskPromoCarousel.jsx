@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Sparkles, ChevronRight, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { isDrinkProduct, resolveDrinkImage } from "@/shared/components/ui/FastFoodProductModal";
 
 export default function KioskPromoCarousel({ productos = [], onSelectProduct }) {
@@ -94,7 +95,7 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
             handleSelectBanner();
           }
         }}
-        aria-label={`Promoción destacada: ${stripEmojis(currentItem?.nombre)}. Toca para ordenar.`}
+        aria-label={`${stripEmojis(activeEvent?.nombre || activeEvent?.nombreEvento || "Promoción destacada")}: ${stripEmojis(currentItem?.nombre)}. Pedir por ${formatPrice(promoPrice)} COP`}
         className="relative w-full h-40 sm:h-48 rounded-3xl overflow-hidden bg-gradient-to-r from-red-600 via-rose-600 to-amber-500 dark:from-[#7f1d1d] dark:via-[#881337] dark:to-[#78350f] shadow-lg dark:shadow-2xl dark:shadow-rose-950/50 text-white flex items-center justify-between p-4 sm:p-6 cursor-pointer border-2 border-amber-300/40 dark:border-amber-400/40 group active:scale-[0.99] transition-transform"
       >
         {/* Ambient background particles/glow */}
@@ -182,11 +183,15 @@ export default function KioskPromoCarousel({ productos = [], onSelectProduct }) 
                   e.stopPropagation();
                   setCurrentIndex(i);
                 }}
-                aria-label={`Ver diapositiva ${i + 1}`}
-                className={`h-2 rounded-full transition-all ${
-                  i === currentIndex ? "w-7 bg-amber-400 shadow-sm" : "w-2 bg-white/40 hover:bg-white/70"
-                }`}
-              />
+                aria-label={`Ver promoción ${i + 1} de ${promoItems.length}`}
+                className="min-w-[28px] min-h-[28px] p-1 flex items-center justify-center cursor-pointer"
+              >
+                <span
+                  className={`h-2 rounded-full transition-all block ${
+                    i === currentIndex ? "w-7 bg-amber-400 shadow-sm" : "w-2 bg-white/40 hover:bg-white/70"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         )}

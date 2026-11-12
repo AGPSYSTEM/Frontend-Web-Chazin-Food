@@ -2,6 +2,7 @@ import React from "react";
 import { Sparkles, Tag, Plus, Ban } from "lucide-react";
 import { motion } from "motion/react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 
 export default function KioskProductCard({ producto, onSelect }) {
   if (!producto) return null;
@@ -65,11 +66,10 @@ export default function KioskProductCard({ producto, onSelect }) {
   };
 
   return (
-    <motion.div
+    <motion.article
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       whileTap={{ scale: 0.97 }}
       onClick={handleCardClick}
-      role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -77,7 +77,6 @@ export default function KioskProductCard({ producto, onSelect }) {
           handleCardClick();
         }
       }}
-      aria-label={`Seleccionar ${stripEmojis(producto.nombre)}, precio ${formatPrice(finalPrice)} COP`}
       className={`group relative flex flex-col justify-between rounded-3xl p-3.5 sm:p-4 transition-all cursor-pointer select-none overflow-hidden min-h-[290px] sm:min-h-[310px] ${
         activeEvent
           ? "bg-linear-to-b from-amber-50/40 via-white to-white dark:from-amber-950/40 dark:via-gray-900 dark:to-gray-900 border-3 border-amber-500 dark:border-amber-500 ring-4 ring-amber-400/40 dark:ring-amber-500/30 shadow-xl shadow-amber-500/20 dark:shadow-amber-500/10"
@@ -117,9 +116,13 @@ export default function KioskProductCard({ producto, onSelect }) {
       <div className="relative w-full h-36 sm:h-44 rounded-2xl bg-gray-50 dark:bg-gray-800/80 overflow-hidden flex items-center justify-center border border-gray-100 dark:border-gray-700/60">
         {producto.imagen ? (
           <img
-            src={producto.imagen}
+            src={getOptimizedImageUrl(producto.imagen, 400)}
             alt={stripEmojis(producto.nombre)}
+            width="200"
+            height="150"
             loading="lazy"
+            decoding="async"
+            style={{ aspectRatio: "4 / 3" }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
@@ -158,7 +161,10 @@ export default function KioskProductCard({ producto, onSelect }) {
           </div>
 
           <div
-            className={`shrink-0 flex items-center justify-center gap-1.5 text-white text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl shadow-xs transition-all whitespace-nowrap min-w-[78px] ${
+            aria-label={isAgotado ? `Producto agotado: ${stripEmojis(producto.nombre)}` : `Pedir ${stripEmojis(producto.nombre)} por ${formatPrice(finalPrice)} COP`}
+          role="button"
+          tabIndex={0}
+          className={`shrink-0 flex items-center justify-center gap-1.5 text-white text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl shadow-xs transition-all whitespace-nowrap min-w-[78px] ${
               isAgotado
                 ? "bg-gray-500 dark:bg-gray-700 cursor-not-allowed opacity-90"
                 : "bg-[#A91B2E] hover:bg-[#8F1626] dark:bg-red-700 dark:hover:bg-red-600 group-hover:scale-105 active:scale-95 cursor-pointer"
@@ -178,6 +184,6 @@ export default function KioskProductCard({ producto, onSelect }) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }

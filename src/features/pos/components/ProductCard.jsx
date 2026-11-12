@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Plus, Sliders, Sparkles, Flame, Layers, Clock } from "lucide-react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { isDrinkProduct, resolveDrinkImage } from "@/shared/components/ui/FastFoodProductModal";
 
