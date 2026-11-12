@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X, Zap, Tag, Search, Trash2, CalendarClock, Sparkles, UploadCloud, Loader2,
-  Utensils, Plus, Minus, Check, Flame, Crown, ChevronRight, ChevronLeft,
+  Utensils, CupSoda, Plus, Minus, Check, Flame, Crown, ChevronRight, ChevronLeft,
   Image as ImageIcon, Clock, Gift, CheckCircle2, Percent, Rocket, Link,
   AlertCircle, Calendar, ArrowRight, ExternalLink, Eye, HelpCircle, Layers,
   ChevronDown, Info, ShieldCheck
@@ -733,7 +733,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
             {(!modoCrearProducto
               ? [
                   { num: 1, label: "1. Dinámica & Beneficio", desc: "Tipo de oferta y título" },
-                  { num: 2, label: `2. Productos (${productosSeleccionados.length})`, desc: "Platillos participantes" },
+                  { num: 2, label: `2. Productos (${productosSeleccionados.length})`, desc: "Productos participantes" },
                   { num: 3, label: "3. Banner & Vigencia", desc: "Fechas y vista previa" }
                 ]
               : [
@@ -1246,10 +1246,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100 flex items-center gap-2">
                         <Utensils className="w-4 h-4 text-orange-600" />
-                        <span>Platillos que participan en la Campaña</span>
+                        <span>Productos que participan en la Campaña</span>
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Agrega o retira platillos del catálogo que tendrán esta promoción activa.
+                        Agrega o retira productos del catálogo que tendrán esta promoción activa.
                       </p>
                     </div>
 
@@ -1300,7 +1300,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 )}
                                 <div>
                                   <p className="font-bold text-gray-900 dark:text-gray-100">{p.nombre}</p>
-                                  <span className="text-[10px] text-gray-400">{p.categoria || "Platillo"}</span>
+                                  <span className="text-[10px] text-gray-400 font-medium">{p.categoria?.nombre || p.categoriaNombre || (typeof p.categoria === "string" ? p.categoria : "") || "Producto"}</span>
                                 </div>
                               </div>
                               <span className="font-black text-gray-900 dark:text-gray-100">
@@ -1341,12 +1341,16 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 <img src={item.imagen} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 shadow-xs" />
                               ) : (
                                 <div className="w-11 h-11 rounded-xl bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center text-orange-600 shrink-0">
-                                  <Utensils className="w-5 h-5" />
+                                  {String(item?.categoria || item?.nombre || '').toLowerCase().includes('bebida') || String(item?.nombre || '').toLowerCase().includes('pola') ? (
+                                    <CupSoda className="w-5 h-5 text-amber-500" />
+                                  ) : (
+                                    <Utensils className="w-5 h-5" />
+                                  )}
                                 </div>
                               )}
                               <div className="min-w-0">
                                 <p className="text-xs font-black text-gray-900 dark:text-gray-100 truncate">{item.nombre}</p>
-                                <span className="text-[10px] font-bold text-gray-400 uppercase">{item.categoria || "Platillo"}</span>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase">{item.categoria?.nombre || item.categoriaNombre || (typeof item.categoria === "string" ? item.categoria : "") || "Producto"}</span>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className="text-xs text-gray-400 line-through">
                                     ${Number(item.precioBase || 0).toLocaleString("es-CO")}
@@ -2069,7 +2073,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             <Tag className="w-4 h-4 text-orange-600" />
                             <span>Variantes o Presentaciones (Opcional)</span>
                           </label>
-                          <p className="text-[11px] text-gray-500">Opciones alternativas (ej. Doble Carne, Tamaño Familiar)</p>
+                          <p className="text-[11px] text-gray-500">Opciones alternativas (ej. Sabor BBQ, Picante, Tamaño Familiar)</p>
                         </div>
                         <button
                           type="button"
@@ -2092,7 +2096,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 type="text"
                                 value={v.nombre}
                                 onChange={(e) => setProdVariantes(prev => prev.map((item, i) => i === idx ? { ...item, nombre: e.target.value } : item))}
-                                placeholder="Nombre variante (ej. Doble Carne, 300g)"
+                                placeholder="Nombre variante (ej. Sabor BBQ, 300g)"
                                 className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-bold"
                               />
                               <button

@@ -251,8 +251,9 @@ export function EmpleadoModal({
     setForm((prev) => {
       const updated = { ...prev, [name]: nextVal };
 
-      // Si cambia tipo de contrato a Término Indefinido, limpiar error de fechaFin si no se ingresa
-      if (name === "tipoContrato" && nextVal === "Término Indefinido" && !updated.fechaFin) {
+      // Si cambia tipo de contrato a Término Indefinido, limpiar fechaFin y errores
+      if (name === "tipoContrato" && nextVal === "Término Indefinido") {
+        updated.fechaFin = "";
         setErrors((errs) => ({ ...errs, fechaFin: null }));
       }
 
@@ -770,18 +771,29 @@ export function EmpleadoModal({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha de Finalización <span className="text-gray-400 font-normal text-[10px]">(Opcional)</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300">
+                      Fecha de Finalización
+                    </label>
+                    <span className={`text-[10px] font-medium ${form.tipoContrato === "Término Indefinido" ? "text-amber-600 dark:text-amber-400" : "text-gray-400"}`}>
+                      {form.tipoContrato === "Término Indefinido" ? "(No aplica en Indefinido)" : "(Requerido en Fijo)"}
+                    </span>
+                  </div>
                   <div className="relative">
                     <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400 pointer-events-none" />
                     <input
                       type="date"
                       name="fechaFin"
                       value={form.fechaFin}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleChange(e);
+                        if (val && form.tipoContrato === "Término Indefinido") {
+                          setForm((prev) => ({ ...prev, fechaFin: val, tipoContrato: "Término Fijo" }));
+                        }
+                      }}
                       onBlur={handleBlur}
-                      placeholder="Opcional si es indefinido"
+                      placeholder="dd/mm/aaaa"
                       className={`w-full pl-8 pr-2.5 py-1.5 rounded-xl border text-xs outline-none dark:bg-gray-750 dark:text-white ${
                         errors.fechaFin && touched.fechaFin
                           ? "border-red-500"
@@ -789,6 +801,11 @@ export function EmpleadoModal({
                       }`}
                     />
                   </div>
+                  {form.tipoContrato === "Término Indefinido" && !form.fechaFin && (
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 italic">
+                      * En contratos a Término Indefinido no hay fecha de fin. Si indicas una fecha, el contrato se cambiará automáticamente a Término Fijo.
+                    </p>
+                  )}
                   {errors.fechaFin && touched.fechaFin && (
                     <p className="text-[10px] text-red-500 mt-1 flex items-center gap-0.5 font-medium">
                       <AlertCircle className="w-3 h-3 shrink-0" />

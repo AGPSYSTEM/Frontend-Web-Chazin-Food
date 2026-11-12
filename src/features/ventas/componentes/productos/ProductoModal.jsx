@@ -721,7 +721,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       ? "Ej. Botella 1.5 Litros / Familiar"
       : isSabor
       ? "Ej. Pepsi Light / Black 400ml"
-      : "Ej. Doble Carne / Con Queso Extra";
+      : "Ej. Sabor BBQ / Picante / Clásica / Familiar";
 
     const badgeCls = isTamano
       ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
@@ -1055,7 +1055,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             setActiveStep(3);
             notify.warning(
               "Variante Inválida",
-              `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar presentaciones distintas (ej. Doble Carne, Familiar, 1.5 Litros).`
+              `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar sabores o presentaciones distintas (ej. Sabor BBQ, Picante, Familiar, 1.5 Litros).`
             );
             return;
           }
@@ -2628,7 +2628,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
                       <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Ejemplos frecuentes:
                     </span>
-                    {["Sencilla", "Doble Carne", "Tamaño Familiar", "Con Queso Extra"].map((sug) => (
+                    {["Original / Clásica", "BBQ Ahumada", "Picante / Jalapeño", "Cebolla Caramelizada", "Personal", "Familiar"].map((sug) => (
                       <button
                         key={sug}
                         type="button"
@@ -2649,7 +2649,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           Sin variantes adicionales
                         </p>
                         <p className="text-[11px] text-gray-400 mt-0.5">
-                          El producto se ofrecerá con su presentación estándar y precio base. Si deseas añadir opciones como "Doble Carne", haz clic en el botón superior.
+                          El producto se ofrecerá con su presentación estándar y precio base. Si deseas ofrecer sabores o presentaciones distintas (como "BBQ Ahumada" o "Familiar"), haz clic en el botón superior.
                         </p>
                       </div>
                     ) : (
