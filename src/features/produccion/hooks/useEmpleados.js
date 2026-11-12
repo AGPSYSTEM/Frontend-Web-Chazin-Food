@@ -20,6 +20,27 @@ const cleanMojibake = (str) => {
     .replace(/Ã‘/g, "Ñ");
 };
 
+const normalizeDate = (raw) => {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  try {
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const d = String(dt.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+  } catch (_) {}
+  return "";
+};
+
 const sanitizeEmpleado = (emp) => {
   if (!emp) return emp;
 
@@ -33,7 +54,8 @@ const sanitizeEmpleado = (emp) => {
   }
 
   // Regla de negocio de contratación: si tiene fechaFin y ya pasó la fecha, su contrato finalizó
-  const fFin = emp.fechaFin ? String(emp.fechaFin).split("T")[0] : null;
+  const fInicio = normalizeDate(emp.fechaInicio || emp.fechaContratacion);
+  const fFin = normalizeDate(emp.fechaFin);
   const todayStr = new Date().toISOString().split("T")[0];
   const contratoVencido = Boolean(fFin && todayStr > fFin);
 
@@ -52,8 +74,9 @@ const sanitizeEmpleado = (emp) => {
     tipoContrato: cleanMojibake(emp.tipoContrato) || "Término Fijo",
     turno: cleanMojibake(emp.turno) || "Completo",
     direccion: cleanMojibake(emp.direccion) || "",
-    fechaInicio: emp.fechaInicio || emp.fechaContratacion || "",
-    fechaFin: emp.fechaFin || null,
+    fechaInicio: fInicio,
+    fechaFin: fFin || null,
+    fechaContratacion: fInicio,
     contratoVencido,
     estado: estadoNormalizado
   };

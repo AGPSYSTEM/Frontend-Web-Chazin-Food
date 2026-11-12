@@ -3,7 +3,7 @@ import { Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } 
 import { FoodIcon } from "@/shared/components/ui/FoodIcon";
 
 export function CategoriaInsumosTable({ categorias = [], onEdit, onDelete, canEdit = true, canDelete = true }) {
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Reset pagination when categorias length changes (#51)

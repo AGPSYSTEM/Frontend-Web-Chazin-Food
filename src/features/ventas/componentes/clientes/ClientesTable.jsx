@@ -4,7 +4,7 @@ import { formatNombreCompleto, formatDireccion } from "@/shared/utils/validation
 import { FidelidadBadge } from "@/shared/components/ui/FidelidadBadge";
 
 export function ClientesTable({ clientes = [], onViewDetail, onEdit, onDelete, canEdit = true, canDelete = true }) {
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalRecords = clientes.length;

@@ -21,7 +21,7 @@ function esEstadoCancelada(estado) {
 }
 
 export function ComprasTable({ compras = [], onViewDetail, onCancelar, procesandoId = null }) {
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Resetear a página 1 cuando cambia el resultado de búsqueda o filtros

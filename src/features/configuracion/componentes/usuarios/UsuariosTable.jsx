@@ -147,7 +147,7 @@ export function UsuariosTable({
   onChangePassword,
   onView,
   currentPage = 1,
-  pageSize = 10,
+  pageSize = 5,
   onPageChange,
   onPageSizeChange,
   canEdit = true,

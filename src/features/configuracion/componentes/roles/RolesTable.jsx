@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Shield, Users, Edit, Trash2, Key, ToggleLeft, ToggleRight, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export function RolesTable({ roles = [], onOpenPermisos, onEdit, onToggleEstado, onDelete, canEdit = true, canDelete = true }) {
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalRecords = roles.length;

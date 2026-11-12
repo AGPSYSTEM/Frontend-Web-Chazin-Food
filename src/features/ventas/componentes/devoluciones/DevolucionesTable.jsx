@@ -7,7 +7,7 @@ export function DevolucionesTable({
   onResolve,
   canManage = true
 }) {
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalRecords = devoluciones.length;

@@ -25,7 +25,7 @@ function formatTimeSafe(dateVal, fallbackHorario = "12:30 PM") {
 
 export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprobarPago, canEdit = true }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
 
   const totalRecords = ventas.length;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
@@ -270,6 +270,7 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
               }}
               className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-medium text-gray-700 dark:text-gray-200 cursor-pointer"
             >
+              <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>

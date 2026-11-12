@@ -30,6 +30,27 @@ import {
   sanitizeTelefono
 } from "@/shared/utils/validationUtils";
 
+const normalizeDate = (raw) => {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  try {
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const d = String(dt.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+  } catch (_) {}
+  return "";
+};
+
 // Helper robusto para extraer y limpiar la dirección
 function extractCleanDireccion(raw) {
   if (!raw) return "";
@@ -93,10 +114,8 @@ export function EmpleadoModal({
       const isBaseOrAvailable = ["Administrador", "Cocinero", "Vendedor", ...availableRoles].includes(currentRol);
 
       const numSalario = Number(empleado.salario) || 0;
-      const fInicio = empleado.fechaInicio || empleado.fechaContratacion
-        ? new Date(empleado.fechaInicio || empleado.fechaContratacion).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
-      const fFin = empleado.fechaFin ? new Date(empleado.fechaFin).toISOString().split("T")[0] : "";
+      const fInicio = normalizeDate(empleado.fechaInicio || empleado.fechaContratacion) || new Date().toISOString().split("T")[0];
+      const fFin = normalizeDate(empleado.fechaFin);
 
       let estadoValue = "Activo";
       if (empleado.estado === "Incapacitado" || empleado.estado === 2 || empleado.estado === "2") {
@@ -192,9 +211,7 @@ export function EmpleadoModal({
         break;
       }
       case "fechaFin": {
-        if (currentForm.tipoContrato === "Término Fijo" && (!value || !value.trim())) {
-          errorMsg = "La fecha de finalización es obligatoria para contratos a Término Fijo.";
-        } else if (value && currentForm.fechaInicio && value < currentForm.fechaInicio) {
+        if (value && currentForm.fechaInicio && value < currentForm.fechaInicio) {
           errorMsg = "La fecha fin no puede ser anterior a la fecha de inicio.";
         }
         break;
@@ -304,9 +321,7 @@ export function EmpleadoModal({
         const r = validateRequerido(val, "La fecha de inicio de contratación");
         if (!r.isValid) msg = r.error;
       } else if (f === "fechaFin") {
-        if (form.tipoContrato === "Término Fijo" && (!val || !val.trim())) {
-          msg = "La fecha de finalización es obligatoria para contratos a Término Fijo.";
-        } else if (val && form.fechaInicio && val < form.fechaInicio) {
+        if (val && form.fechaInicio && val < form.fechaInicio) {
           msg = "La fecha fin no puede ser anterior a la fecha de inicio.";
         }
       } else if (f === "salario" && val && String(val).trim()) {
@@ -342,6 +357,8 @@ export function EmpleadoModal({
         ...form,
         cargo: form.rol, // Para retrocompatibilidad
         salario: parsedSalario,
+        fechaInicio: form.fechaInicio,
+        fechaFin: form.fechaFin ? form.fechaFin : null,
         fechaContratacion: form.fechaInicio
       });
     } finally {
@@ -730,7 +747,7 @@ export function EmpleadoModal({
                     Fecha de Inicio <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400 pointer-events-none" />
                     <input
                       type="date"
                       name="fechaInicio"
@@ -754,10 +771,10 @@ export function EmpleadoModal({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Fecha de Finalización {form.tipoContrato === "Término Fijo" && <span className="text-red-500">*</span>}
+                    Fecha de Finalización <span className="text-gray-400 font-normal text-[10px]">(Opcional)</span>
                   </label>
                   <div className="relative">
-                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400 pointer-events-none" />
                     <input
                       type="date"
                       name="fechaFin"

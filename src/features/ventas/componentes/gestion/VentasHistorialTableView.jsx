@@ -17,7 +17,7 @@ function formatDateSafe(dateVal, fallback = "2026-06-09") {
 
 export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado }) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
 
   // Use ventas directly if provided (even if empty, to respect search results)
   const itemsToDisplay = Array.isArray(ventas) ? ventas : [
@@ -328,6 +328,7 @@ export function VentasHistorialTableView({ ventas, onViewDetail, onUpdateEstado 
               }}
               className="px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg font-medium text-gray-700 dark:text-gray-200 cursor-pointer"
             >
+              <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
