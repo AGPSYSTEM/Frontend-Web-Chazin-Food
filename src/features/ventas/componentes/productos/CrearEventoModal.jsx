@@ -136,7 +136,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
   const [adicionesSeleccionadas, setAdicionesSeleccionadas] = useState([]);
   const [adicionesSearch, setAdicionesSearch] = useState("");
   const [todasBebidas, setTodasBebidas] = useState([]);
-  const [configCombo, setConfigCombo] = useState({ esCombo: false, cantidadBebidas: 1, bebidasPermitidas: [] });
+  const [comboSearch, setComboSearch] = useState("");
+  const [filtroCatCombo, setFiltroCatCombo] = useState("todas");
+  const [configCombo, setConfigCombo] = useState({ esCombo: false, cantidadBebidas: 1, bebidasPermitidas: [], productosAsociados: [] });
   const [tieneCortesia, setTieneCortesia] = useState(false);
   const [toppingCortesia, setToppingCortesia] = useState({ idInsumo: "", nombre: "", cantidad: 1, unidadMedida: "und" });
 
@@ -245,6 +247,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       setProdFichaTecnica(null);
       setProdVariantes([]);
       setAdicionesSeleccionadas([]);
+      setConfigCombo({ esCombo: false, cantidadBebidas: 1, bebidasPermitidas: [], productosAsociados: [] });
+      setComboSearch("");
+      setFiltroCatCombo("todas");
     }
 
     // Cargar catálogos auxiliares
@@ -417,11 +422,19 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         }
         setActiveStep(2);
       } else if (activeStep === 2) {
-        const ft = prodFichaTecnica || {};
-        const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-        if (!ingredientes || ingredientes.length === 0) {
-          notifyWarning("Ficha Técnica Obligatoria", "Por favor agrega al menos un ingrediente o insumo a la Ficha Técnica del platillo.");
-          return;
+        if (configCombo.esCombo || prodTipoEvento === "COMBO_ESPECIAL") {
+          const prods = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+          if (prods.length === 0) {
+            notifyWarning("Armador de Combo", "Debes vincular al menos un producto existente de tu menú para armar este combo.");
+            return;
+          }
+        } else {
+          const ft = prodFichaTecnica || {};
+          const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+          if (!ingredientes || ingredientes.length === 0) {
+            notifyWarning("Ficha Técnica Obligatoria", "Por favor agrega al menos un ingrediente o insumo a la Ficha Técnica del platillo.");
+            return;
+          }
         }
         setActiveStep(3);
       }
@@ -474,12 +487,22 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         return;
       }
 
-      const ft = prodFichaTecnica || {};
-      const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-      if (!ingredientes || ingredientes.length === 0) {
-        setActiveStep(2);
-        notifyWarning("Ficha Técnica Incompleta", "No se puede registrar un platillo sin su Ficha Técnica.");
-        return;
+      const isCombo = Boolean(configCombo.esCombo || prodTipoEvento === "COMBO_ESPECIAL");
+      if (isCombo) {
+        const prods = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+        if (prods.length === 0) {
+          setActiveStep(2);
+          notifyWarning("Combo Incompleto", "Debes vincular al menos un producto existente de tu catálogo para este combo.");
+          return;
+        }
+      } else {
+        const ft = prodFichaTecnica || {};
+        const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+        if (!ingredientes || ingredientes.length === 0) {
+          setActiveStep(2);
+          notifyWarning("Ficha Técnica Incompleta", "No se puede registrar un platillo individual sin su Ficha Técnica.");
+          return;
+        }
       }
 
       setSaving(true);
@@ -488,12 +511,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
         if (prodEtiquetas.length > 0) descParts.push(`[${prodEtiquetas.join(", ")}]`);
         if (prodDestacadoWeb) descParts.push("[DESTACADO_WEB]");
 
+        const ft = prodFichaTecnica || {};
         const payload = {
           crearComoProducto: true,
           nombreEvento: nombreEvento.trim(),
-          descripcion: descParts.filter(Boolean).join(" ") || "Edición especial gastronómica de tiempo limitado.",
-          tipoEvento: prodTipoEvento || "EDICION_LIMITADA",
-          icono: icono || "fire",
+          descripcion: descParts.filter(Boolean).join(" ") || (isCombo ? "Combo festivo exclusivo agrupando productos favoritos." : "Edición especial gastronómica de tiempo limitado."),
+          tipoEvento: prodTipoEvento || (isCombo ? "COMBO_ESPECIAL" : "EDICION_LIMITADA"),
+          icono: icono || (isCombo ? "burger" : "fire"),
           imagen: (eventoImagen || prodImagen || "").trim() || null,
           isTemporal: prodVigenciaTipo === "temporal",
           fechaInicio: prodVigenciaTipo === "temporal" ? fechaInicio : null,
@@ -510,12 +534,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
           }] : null,
           productoNuevo: {
             nombre: prodNombre.trim(),
-            descripcion: prodDescripcion.trim() || "Edición especial gastronómica de tiempo limitado.",
+            descripcion: prodDescripcion.trim() || (isCombo ? "Combo festivo exclusivo agrupando productos favoritos." : "Edición especial gastronómica de tiempo limitado."),
             precio: Number(prodPrecioRegular),
-            idCategoriaProducto: Number(prodCategoria || 3),
+            idCategoriaProducto: isCombo ? 2 : Number(prodCategoria || 3),
+            categoria: isCombo ? "Combos" : undefined,
             imagen: prodImagen.trim(),
-            procedimiento: prodFichaTecnica?.procedimiento || 'Preparar con los más selectos ingredientes de temporada.',
-            tiempoPreparacion: Number(prodFichaTecnica?.tiempoPreparacion) || 12,
+            procedimiento: prodFichaTecnica?.procedimiento || (isCombo ? 'Armar paquete gastronómico reuniendo los productos vinculados del pedido y bebidas seleccionadas para entrega en mesa o despacho.' : 'Preparar con los más selectos ingredientes de temporada.'),
+            tiempoPreparacion: Number(prodFichaTecnica?.tiempoPreparacion) || (isCombo ? 8 : 12),
             rendimiento: prodFichaTecnica?.rendimiento || prodRendimiento || '1 porción',
             especificaciones: prodFichaTecnica?.especificaciones || '',
             caracteristicas: prodFichaTecnica?.caracteristicas || '',
@@ -525,12 +550,19 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
             observaciones: prodFichaTecnica?.observaciones || '',
             estado: prodEstadoInicial === "Activo" ? 1 : 0,
             adiciones: adicionesSeleccionadas,
-            configuracionCombo: configCombo.esCombo ? configCombo : null,
+            configuracionCombo: isCombo ? {
+              esCombo: true,
+              cantidadBebidas: configCombo.cantidadBebidas || 1,
+              bebidasPermitidas: configCombo.bebidasPermitidas || [],
+              productosAsociados: configCombo.productosAsociados || [],
+              itemsCombo: configCombo.productosAsociados || []
+            } : null,
+            itemsCombo: isCombo ? (configCombo.productosAsociados || []) : [],
             variantes: prodVariantes
               .filter(v => v.nombre?.trim() && !isDummyOrBaseVariant(v.nombre, prodNombre))
               .map(v => ({ nombre: v.nombre.trim(), precio: Number(v.precio || prodPrecioEvento) })),
-            fichaTecnica: prodFichaTecnica || null,
-            insumosFicha: ft.detalles || ft.insumos || []
+            fichaTecnica: isCombo ? null : prodFichaTecnica,
+            insumosFicha: isCombo ? [] : (ft.detalles || ft.insumos || [])
           }
         };
 
@@ -737,8 +769,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                   { num: 3, label: "3. Banner & Vigencia", desc: "Fechas y vista previa" }
                 ]
               : [
-                  { num: 1, label: "1. Platillo & Oferta", desc: "Nombre, categoría y precios" },
-                  { num: 2, label: "2. Ficha Técnica", desc: "Receta e ingredientes" },
+                  { num: 1, label: prodTipoEvento === "COMBO_ESPECIAL" || configCombo.esCombo ? "1. Combo & Precio" : "1. Platillo & Oferta", desc: prodTipoEvento === "COMBO_ESPECIAL" || configCombo.esCombo ? "Nombre y precio del paquete" : "Nombre, categoría y precios" },
+                  { num: 2, label: prodTipoEvento === "COMBO_ESPECIAL" || configCombo.esCombo ? `2. Armador de Combo (${configCombo.productosAsociados?.length || 0})` : "2. Ficha Técnica", desc: prodTipoEvento === "COMBO_ESPECIAL" || configCombo.esCombo ? "Vincular productos del menú" : "Receta e ingredientes" },
                   { num: 3, label: "3. Variantes & Publicación", desc: "Presentaciones y vigencia" }
                 ]
             ).map((st, idx) => {
@@ -1035,9 +1067,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
+                            <div className="flex flex-col justify-end">
+                              <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1.5 min-h-[2.25rem] flex items-end">
                                 Precio Especial de Festival ($ COP)
                               </label>
                               <input
@@ -1045,11 +1077,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 value={nuevoPrecio}
                                 onChange={(e) => setNuevoPrecio(e.target.value)}
                                 placeholder="Ej. 24000"
-                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-amber-600 focus:ring-2 focus:ring-orange-500"
+                                className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-amber-600 focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
-                            <div>
-                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                            <div className="flex flex-col justify-end">
+                              <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1.5 min-h-[2.25rem] flex items-end">
                                 O Descuento de Campaña (%)
                               </label>
                               <input
@@ -1059,7 +1091,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 value={descuento}
                                 onChange={(e) => setDescuento(e.target.value)}
                                 placeholder="Ej. 15"
-                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                                className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
                           </div>
@@ -1079,9 +1111,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
+                            <div className="flex flex-col justify-end">
+                              <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1.5 min-h-[2.25rem] flex items-end">
                                 Precio Flash Relámpago ($ COP)
                               </label>
                               <input
@@ -1089,11 +1121,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 value={nuevoPrecio}
                                 onChange={(e) => setNuevoPrecio(e.target.value)}
                                 placeholder="Ej. 17500"
-                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
+                                className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
-                            <div>
-                              <label className="block text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1">
+                            <div className="flex flex-col justify-end">
+                              <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 mb-1.5 min-h-[2.25rem] flex items-end">
                                 O Descuento Flash (%)
                               </label>
                               <input
@@ -1103,7 +1135,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 value={descuento}
                                 onChange={(e) => setDescuento(e.target.value)}
                                 placeholder="Ej. 25"
-                                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                                className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
                               />
                             </div>
                           </div>
@@ -1745,9 +1777,9 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
 
                       {/* Precios (Regular vs Promocional con cálculo dinámico según formato) */}
                       <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                        <div className="grid grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
+                        <div className="grid grid-cols-2 gap-3.5 items-end">
+                          <div className="flex flex-col justify-end">
+                            <label className="text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1.5 min-h-[2rem] flex items-end">
                               {prodTipoEvento === "COMBO_ESPECIAL" ? "Precio Combo Regular ($ COP) *" : "Precio Carta Regular ($ COP) *"}
                             </label>
                             <NumberInput
@@ -1762,12 +1794,12 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 }
                               }}
                               placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 38.000" : "Ej. 28.000"}
-                              className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
+                              className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1">
+                          <div className="flex flex-col justify-end">
+                            <label className="text-[11px] font-black uppercase text-gray-700 dark:text-gray-300 mb-1.5 min-h-[2rem] flex items-end">
                               {prodTipoEvento === "COMBO_ESPECIAL"
                                 ? "Precio Combo Festivo ($ COP) *"
                                 : prodTipoEvento === "2X1"
@@ -1780,7 +1812,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                               value={prodPrecioEvento}
                               onChange={(e) => setProdPrecioEvento(e.target.value)}
                               placeholder={prodTipoEvento === "COMBO_ESPECIAL" ? "Ej. 34.000" : prodTipoEvento === "2X1" ? "Ej. 20.000" : "Ej. 22.000"}
-                              className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
+                              className="w-full h-11 px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-black text-red-600 focus:ring-2 focus:ring-orange-500"
                             />
                           </div>
                         </div>
@@ -2029,35 +2061,296 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                 </div>
               )}
 
-              {/* ── PASO 2: FICHA TÉCNICA DEL PRODUCTO ── */}
+              {/* ── PASO 2: ARMADOR DE COMBO O FICHA TÉCNICA DEL PRODUCTO ── */}
               {activeStep === 2 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
-                  <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
-                        Ficha Técnica & Receta Obligatoria
-                      </h4>
-                      <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed mt-0.5">
-                        Al tratarse de un platillo gastronómico nuevo para el evento, es requisito registrar su receta con ingredientes, cantidades y pasos de preparación para el control automático de stock en inventario y comandas en cocina.
-                      </p>
-                    </div>
-                  </div>
+                  {prodTipoEvento === "COMBO_ESPECIAL" || configCombo.esCombo ? (
+                    /* ── ARMADOR DE COMBO (AGRUPACIÓN VIRTUAL DE PRODUCTOS EXISTENTES) ── */
+                    <div className="space-y-4">
+                      {/* Banner Pedagógico de Regla de Negocio */}
+                      <div className="bg-amber-50 dark:bg-amber-950/40 p-4 sm:p-5 rounded-2xl border border-amber-200 dark:border-amber-900/60 flex items-start gap-3 shadow-xs">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <StreamlineDoubleBurger className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                            Agrupación Virtual de Productos Existentes
+                          </h4>
+                          <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed">
+                            El combo funciona como una <strong>agrupación virtual</strong> que vincula artículos que <strong>ya existen en tu catálogo</strong> (ej. Hamburguesas, Papas, Entradas). No requiere crear una receta de insumos crudos: cuando un comensal lo compra, el sistema descuenta automáticamente cada producto individual de tu inventario.
+                          </p>
+                        </div>
+                      </div>
 
-                  <div className="bg-white dark:bg-gray-850 p-2 sm:p-4 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
-                    <FichaTecnicaProducto
-                      productId={null}
-                      productName={prodNombre || "Nuevo Platillo de Festival"}
-                      initialData={prodFichaTecnica || null}
-                      entityData={{
-                        nombre: prodNombre || "Nuevo Platillo de Festival",
-                        precio: Number(prodPrecioRegular) || 0,
-                        descripcion: prodDescripcion || ""
-                      }}
-                      onChange={(data) => setProdFichaTecnica(data)}
-                      onSave={(data) => setProdFichaTecnica(data)}
-                    />
-                  </div>
+                      {/* Buscador y Selector de Productos del Menú */}
+                      <div className="bg-white dark:bg-gray-850 p-4 sm:p-5 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 space-y-4 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div>
+                            <label className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                              <Search className="w-4 h-4 text-orange-600" />
+                              <span>Seleccionar Productos para el Combo</span>
+                            </label>
+                            <p className="text-[11px] text-gray-500">
+                              Busca y agrega los platillos que componen este paquete gastronómico
+                            </p>
+                          </div>
+                          <span className="text-xs font-black text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 px-3 py-1 rounded-xl">
+                            {configCombo.productosAsociados?.length || 0} productos vinculados
+                          </span>
+                        </div>
+
+                        {/* Buscador + Píldoras de Categoría */}
+                        <div className="space-y-2.5">
+                          <div className="relative">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              value={comboSearch}
+                              onChange={(e) => setComboSearch(e.target.value)}
+                              placeholder="Buscar por nombre (ej. Hamburguesa Clásica, Papas Francesas...)"
+                              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-orange-500"
+                            />
+                            {comboSearch && (
+                              <button
+                                type="button"
+                                onClick={() => setComboSearch("")}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                              >
+                                Limpiar
+                              </button>
+                            )}
+                          </div>
+
+                          {categoriasProductosCombo.length > 2 && (
+                            <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 scrollbar-none">
+                              {categoriasProductosCombo.map(cat => (
+                                <button
+                                  key={cat}
+                                  type="button"
+                                  onClick={() => setFiltroCatCombo(cat)}
+                                  className={`px-3 py-1 rounded-xl text-[11px] font-bold capitalize transition shrink-0 cursor-pointer ${
+                                    filtroCatCombo === cat
+                                      ? "bg-orange-600 text-white shadow-xs"
+                                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 border border-gray-200 dark:border-gray-700"
+                                  }`}
+                                >
+                                  {cat === "todas" ? "Todos los productos" : cat}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Catálogo de Productos Elegibles para Añadir */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1 scrollbar-thin">
+                          {productosComboFiltrados.length === 0 ? (
+                            <div className="col-span-full py-8 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                              No se encontraron platillos disponibles con ese criterio.
+                            </div>
+                          ) : (
+                            productosComboFiltrados.map((prod) => {
+                              const pId = prod.id || prod.idProducto;
+                              const itemEnCombo = (configCombo.productosAsociados || []).find(
+                                (a) => String(a.idProducto || a.id) === String(pId)
+                              );
+                              return (
+                                <div
+                                  key={pId}
+                                  onClick={() => agregarProductoACombo(prod)}
+                                  className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ${
+                                    itemEnCombo
+                                      ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 ring-1 ring-amber-400/40 shadow-xs"
+                                      : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700/80 hover:border-orange-300 hover:bg-orange-50/30 dark:hover:bg-gray-800"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl bg-orange-100/70 dark:bg-orange-950/50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-200/50 dark:border-orange-800/40">
+                                      {prod.imagen && (prod.imagen.startsWith("http") || prod.imagen.startsWith("/")) ? (
+                                        <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <FoodIcon name={prod.categoria || prod.nombre} size={18} />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate" title={prod.nombre}>
+                                        {prod.nombre}
+                                      </p>
+                                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                                        ${Number(prod.precio || 0).toLocaleString("es-CO")} COP
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {itemEnCombo ? (
+                                      <span className="text-[10px] font-black text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-lg">
+                                        {itemEnCombo.cantidad} en combo
+                                      </span>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        agregarProductoACombo(prod);
+                                      }}
+                                      className="p-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition cursor-pointer shadow-xs"
+                                      title="Agregar al combo"
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Productos ya incluidos en el Combo */}
+                      <div className="bg-white dark:bg-gray-850 p-4 sm:p-5 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 space-y-3.5 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                            <Layers className="w-4 h-4 text-orange-600" />
+                            <span>Composición del Combo ({configCombo.productosAsociados?.length || 0} artículos)</span>
+                          </h4>
+                          <span className="text-[11px] text-gray-500">
+                            Ajusta la cantidad de cada producto
+                          </span>
+                        </div>
+
+                        {Array.isArray(configCombo.productosAsociados) && configCombo.productosAsociados.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {configCombo.productosAsociados.map((item, idx) => {
+                                const itemSubtotal = (Number(item.precio || 0) * (item.cantidad || 1));
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-2.5 p-3 bg-gray-50/80 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 text-xs shadow-2xs"
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-9 h-9 rounded-xl bg-orange-100/70 dark:bg-orange-950/40 flex items-center justify-center shrink-0 overflow-hidden border border-orange-200/50 dark:border-orange-800/40">
+                                        {item.imagen && (item.imagen.startsWith("http") || item.imagen.startsWith("/")) ? (
+                                          <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <FoodIcon name={item.nombre} size={18} />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="font-bold text-gray-900 dark:text-gray-100 block truncate" title={item.nombre}>
+                                          {item.nombre}
+                                        </span>
+                                        <div className="flex items-center gap-1 text-[10.5px] text-gray-500">
+                                          <span>${Number(item.precio || 0).toLocaleString("es-CO")} c/u</span>
+                                          <span>=</span>
+                                          <span className="font-black text-amber-700 dark:text-amber-400 font-mono">
+                                            ${itemSubtotal.toLocaleString("es-CO")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-xl p-0.5 border border-gray-300 dark:border-gray-700 shadow-2xs">
+                                        <button
+                                          type="button"
+                                          onClick={() => cambiarCantidadProductoCombo(idx, -1)}
+                                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 font-black cursor-pointer text-xs"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="w-6 text-center font-black text-xs text-gray-900 dark:text-gray-100">
+                                          {item.cantidad || 1}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => cambiarCantidadProductoCombo(idx, 1)}
+                                          className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 font-black cursor-pointer text-xs"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => quitarProductoDeCombo(idx)}
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl cursor-pointer transition"
+                                        title="Quitar del combo"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Comparación Económica de la Agrupación */}
+                            <div className="p-4 bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+                              <div>
+                                <p className="font-bold text-gray-700 dark:text-gray-300">
+                                  Valor por separado: <span className="font-mono text-gray-900 dark:text-gray-100 font-black">${subtotalProductosCombo.toLocaleString("es-CO")} COP</span>
+                                </p>
+                                <p className="text-[11px] text-gray-500">
+                                  Precio fijado del combo: <span className="font-black text-amber-700 dark:text-amber-300">${Number(prodPrecioEvento || prodPrecioRegular || 0).toLocaleString("es-CO")} COP</span>
+                                </p>
+                              </div>
+
+                              {subtotalProductosCombo > 0 && prodPrecioEvento && Number(prodPrecioEvento) < subtotalProductosCombo && (
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-600 text-white shadow-xs">
+                                    {Math.round(((subtotalProductosCombo - Number(prodPrecioEvento)) / subtotalProductosCombo) * 100)}% OFF
+                                  </span>
+                                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                                    Ahorro comensal: ${(subtotalProductosCombo - Number(prodPrecioEvento)).toLocaleString("es-CO")} COP
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-8 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 space-y-2">
+                            <StreamlineDoubleBurger className="w-8 h-8 text-gray-400 mx-auto opacity-60" />
+                            <p className="text-xs font-bold text-gray-600 dark:text-gray-400">
+                              Aún no has vinculado ningún producto a este combo.
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              Usa el buscador superior para agregar hamburguesas, acompañamientos o entradas.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── FICHA TÉCNICA CLÁSICA (PLATILLO INDIVIDUAL NUEVO) ── */
+                    <>
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 flex items-start gap-3">
+                        <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                            Ficha Técnica & Receta Obligatoria
+                          </h4>
+                          <p className="text-xs text-amber-900/80 dark:text-amber-300/80 leading-relaxed mt-0.5">
+                            Al tratarse de un platillo gastronómico nuevo para el evento, es requisito registrar su receta con ingredientes, cantidades y pasos de preparación para el control automático de stock en inventario y comandas en cocina.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white dark:bg-gray-850 p-2 sm:p-4 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+                        <FichaTecnicaProducto
+                          productId={null}
+                          productName={prodNombre || "Nuevo Platillo de Festival"}
+                          initialData={prodFichaTecnica || null}
+                          entityData={{
+                            nombre: prodNombre || "Nuevo Platillo de Festival",
+                            precio: Number(prodPrecioRegular) || 0,
+                            descripcion: prodDescripcion || ""
+                          }}
+                          onChange={(data) => setProdFichaTecnica(data)}
+                          onSave={(data) => setProdFichaTecnica(data)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -2284,9 +2577,13 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Insumos en Receta:</span>
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {configCombo.esCombo || prodTipoEvento === "COMBO_ESPECIAL" ? "Productos en Combo:" : "Insumos en Receta:"}
+                        </span>
                         <span className="font-bold text-gray-800 dark:text-white">
-                          {prodFichaTecnica?.detalles?.length || prodFichaTecnica?.insumos?.length || 0} ingredientes
+                          {configCombo.esCombo || prodTipoEvento === "COMBO_ESPECIAL"
+                            ? `${configCombo.productosAsociados?.length || 0} artículos vinculados`
+                            : `${prodFichaTecnica?.detalles?.length || prodFichaTecnica?.insumos?.length || 0} ingredientes`}
                         </span>
                       </div>
                     </div>
