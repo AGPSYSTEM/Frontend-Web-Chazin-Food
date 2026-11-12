@@ -399,6 +399,86 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   }, [fechaInicio, fechaFin]);
 
+  // Categorías y Productos para el Armador de Combos
+  const categoriasProductosCombo = useMemo(() => {
+    const set = new Set();
+    (productosBD || []).forEach(p => {
+      const cat = String(p.categoria || "").trim();
+      const catLower = cat.toLowerCase();
+      if (cat && !catLower.includes("combo") && !catLower.includes("bebida") && !catLower.includes("gaseos") && !catLower.includes("agua")) {
+        set.add(cat);
+      }
+    });
+    return ["todas", ...Array.from(set)];
+  }, [productosBD]);
+
+  const productosComboFiltrados = useMemo(() => {
+    return (productosBD || []).filter(p => {
+      const cat = String(p.categoria || "").trim().toLowerCase();
+      if (cat.includes("combo")) return false;
+      if (cat.includes("bebida") || cat.includes("gaseos") || cat.includes("agua")) return false;
+      if (filtroCatCombo !== "todas" && String(p.categoria || "").trim().toLowerCase() !== filtroCatCombo.toLowerCase()) {
+        return false;
+      }
+      if (comboSearch && comboSearch.trim()) {
+        const q = comboSearch.toLowerCase().trim();
+        return (p.nombre || "").toLowerCase().includes(q) || (p.categoria || "").toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [productosBD, filtroCatCombo, comboSearch]);
+
+  const agregarProductoACombo = (prod) => {
+    const pId = prod.id || prod.idProducto;
+    const actuales = Array.isArray(configCombo.productosAsociados) ? configCombo.productosAsociados : [];
+    const existe = actuales.find(a => String(a.idProducto || a.id) === String(pId));
+    if (existe) {
+      const next = actuales.map(a =>
+        String(a.idProducto || a.id) === String(pId)
+          ? { ...a, cantidad: (a.cantidad || 1) + 1 }
+          : a
+      );
+      setConfigCombo(prev => ({ ...prev, productosAsociados: next }));
+    } else {
+      const nuevoItem = {
+        idProducto: pId,
+        id: pId,
+        nombre: prod.nombre,
+        precio: Number(prod.precio || 0),
+        cantidad: 1,
+        categoria: prod.categoria || '',
+        imagen: prod.imagen || ''
+      };
+      setConfigCombo(prev => ({
+        ...prev,
+        productosAsociados: [...actuales, nuevoItem]
+      }));
+    }
+  };
+
+  const cambiarCantidadProductoCombo = (idx, delta) => {
+    setConfigCombo(prev => ({
+      ...prev,
+      productosAsociados: (prev.productosAsociados || []).map((item, i) => {
+        if (i !== idx) return item;
+        const nuevaCant = Math.max(1, (item.cantidad || 1) + delta);
+        return { ...item, cantidad: nuevaCant };
+      })
+    }));
+  };
+
+  const quitarProductoDeCombo = (idx) => {
+    setConfigCombo(prev => ({
+      ...prev,
+      productosAsociados: (prev.productosAsociados || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  const subtotalProductosCombo = useMemo(() => {
+    if (!Array.isArray(configCombo.productosAsociados)) return 0;
+    return configCombo.productosAsociados.reduce((sum, item) => sum + ((Number(item.precio) || 0) * (item.cantidad || 1)), 0);
+  }, [configCombo.productosAsociados]);
+
   // Validaciones por paso antes de avanzar
   const handleNextStep = () => {
     if (modoCrearProducto) {
