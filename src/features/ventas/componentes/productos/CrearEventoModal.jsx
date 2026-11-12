@@ -1358,10 +1358,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-gray-100 flex items-center gap-2">
                         <Utensils className="w-4 h-4 text-orange-600" />
-                        <span>Productos que participan en la Campaña</span>
+                        <span>Productos que participan en el Evento</span>
                       </h3>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Agrega o retira productos del catálogo que tendrán esta promoción activa.
+                        Agrega o retira productos del catálogo que participarán en este evento o promoción.
                       </p>
                     </div>
 
@@ -1413,6 +1413,11 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                 <div>
                                   <p className="font-bold text-gray-900 dark:text-gray-100">{p.nombre}</p>
                                   <span className="text-[10px] text-gray-400 font-medium">{p.categoria?.nombre || p.categoriaNombre || (typeof p.categoria === "string" ? p.categoria : "") || "Producto"}</span>
+                                  {Array.isArray(p.variantes) && p.variantes.length > 0 && (
+                                    <span className="text-[9.5px] text-orange-600 dark:text-orange-400 font-medium block">
+                                      {p.variantes.length} variantes ({p.variantes.map(v => v.nombre).slice(0, 3).join(", ")}{p.variantes.length > 3 ? "..." : ""})
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <span className="font-black text-gray-900 dark:text-gray-100">
@@ -1471,6 +1476,21 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                     ${Number(calculatedPromoPrice).toLocaleString("es-CO")}
                                   </span>
                                 </div>
+
+                                {/* Requerimiento 37: Variantes de los productos que participan en el evento */}
+                                {Array.isArray(item.variantes) && item.variantes.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                    <span className="text-[9.5px] font-bold text-gray-400">Variantes:</span>
+                                    {item.variantes.map((v, vIdx) => (
+                                      <span
+                                        key={v.id || v.idVariante || vIdx}
+                                        className="px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[9.5px] font-semibold border border-gray-200/60 dark:border-gray-700/60"
+                                      >
+                                        {v.nombre}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
 

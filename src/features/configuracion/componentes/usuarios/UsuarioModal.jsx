@@ -57,7 +57,21 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
       }
       case "documento": {
         const res = validateDocumento(value, currentForm.tipoDocumento);
-        if (!res.isValid) err = res.error;
+        if (!res.isValid) {
+          err = res.error;
+        } else if (Array.isArray(usuariosList)) {
+          const cleanDoc = String(value || "").trim();
+          const currentId = usuario?.id || usuario?.idUsuario;
+          const yaExiste = usuariosList.some((u) => {
+            const uId = u.id || u.idUsuario;
+            if (isEditing && String(uId) === String(currentId)) return false;
+            const uDoc = String(u.documento || u.numeroDocumento || "").trim();
+            return uDoc && uDoc === cleanDoc;
+          });
+          if (yaExiste) {
+            err = "Este número de documento ya se encuentra registrado con otro usuario.";
+          }
+        }
         break;
       }
       case "email": {
@@ -280,11 +294,19 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
             </div>
           )}
 
-          {/* Tipo de Documento y Número de Documento — PRIMER campo del formulario */}
+          {/* Tipo de Documento y Número de Documento — PRIMER campo del formulario (Punto 16: No editable en edición) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Tipo de Documento</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={labelCls}>Tipo de Documento</label>
+                {isEditing && (
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    (Inmutable)
+                  </span>
+                )}
+              </div>
               <select
+                disabled={isEditing}
                 value={form.tipoDocumento}
                 onChange={(e) => {
                   const newTipo = e.target.value;
@@ -295,7 +317,9 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   const err = validateSingleField("documento", newDoc, updated);
                   setErrors((prev) => ({ ...prev, documento: err }));
                 }}
-                className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-[#F05454]/40 cursor-pointer`}
+                className={`${baseInputCls} border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 ${
+                  isEditing ? "opacity-60 bg-gray-100 dark:bg-gray-800/80 cursor-not-allowed" : "focus:ring-2 focus:ring-[#F05454]/40 cursor-pointer"
+                }`}
               >
                 <option value="C.C.">Cédula de Ciudadanía (C.C.)</option>
                 <option value="T.I.">Tarjeta de Identidad (T.I.)</option>
@@ -310,11 +334,13 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
               <div className="flex items-center justify-between mb-1.5">
                 <label className={labelCls}>Número de Identificación *</label>
                 <span className="text-[10px] text-gray-400 font-medium">
-                  {docConfig.helper}
+                  {isEditing ? "Documento no editable" : docConfig.helper}
                 </span>
               </div>
               <input
                 type="text"
+                disabled={isEditing}
+                readOnly={isEditing}
                 value={form.documento}
                 maxLength={docConfig.max}
                 onChange={(e) => {
@@ -322,7 +348,9 @@ export function UsuarioModal({ isOpen, onClose, onSave, usuario = null, rolesLis
                   handleFieldChange("documento", clean);
                 }}
                 onBlur={() => handleFieldBlur("documento")}
-                className={getInputClass("documento")}
+                className={`${getInputClass("documento")} ${
+                  isEditing ? "opacity-60 bg-gray-100 dark:bg-gray-800/80 cursor-not-allowed" : ""
+                }`}
                 placeholder={docConfig.helper}
               />
               {(touched.documento || form.documento) && errors.documento ? (
