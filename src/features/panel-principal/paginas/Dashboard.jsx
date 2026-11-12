@@ -197,7 +197,7 @@ export function Dashboard() {
 
   const axisColor = isDark ? "#e0ecf8" : "#374151";
   const axisColorMuted = isDark ? "#b8cde0" : "#6b7280";
-  const comprasColor = isDark ? "#f87171" : "#ef4444";
+  const comprasColor = isDark ? "#818cf8" : "#4f46e5";
   const ventasColor = isDark ? "#4ade80" : "#16a34a";
   const tooltipStyle = {
     borderRadius: "12px",
