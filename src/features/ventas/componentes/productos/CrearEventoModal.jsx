@@ -1034,7 +1034,7 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                     type="button"
                                     onClick={() => {
                                       const resolvedMedida = resolveRecetaUnidadYCantidad(ins);
-    setInsumosSeleccionados([{ id: ins.id || ins.idInsumo, nombre: ins.nombre, cantidad: 1, unidad: resolvedMedida.unidadMedida }]);
+    setInsumosSeleccionados([{ id: ins.id || ins.idInsumo, nombre: ins.nombre, cantidad: resolvedMedida.cantidad || 1, unidad: resolvedMedida.unidadMedida || "und" }]);
                                       setInsumoSearch("");
                                       setShowInsumoDropdown(false);
                                     }}

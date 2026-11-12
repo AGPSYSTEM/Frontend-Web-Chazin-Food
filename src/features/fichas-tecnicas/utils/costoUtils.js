@@ -49,6 +49,31 @@ export function normalizeUnidadMedida(raw) {
  * Resuelve la unidad de medida y cantidad lógica gastronómica al agregar un insumo a una receta.
  * Evita que insumos comprados por Kg (ej. tocineta a $35.000/kg) se agreguen como 1 Kg por plato.
  */
+/**
+ * Retorna la lista de unidades de medida compatibles según la naturaleza física del insumo
+ * (evita opciones absurdas como seleccionar 'ml' para tocineta o 'kg' para un pan).
+ */
+export function getUnidadesCompatibles(unidadBaseRaw) {
+  const u = normalizeUnidadMedida(unidadBaseRaw);
+  if (u === 'kg' || u === 'gr' || u === 'mg') {
+    return [
+      { value: 'gr', label: 'gr (Gramos)' },
+      { value: 'kg', label: 'kg (Kilos)' }
+    ];
+  }
+  if (u === 'lt' || u === 'ml' || u === 'cc') {
+    return [
+      { value: 'ml', label: 'ml (Mililitros)' },
+      { value: 'lt', label: 'lt (Litros)' }
+    ];
+  }
+  return [
+    { value: 'und', label: 'und (Unidad)' },
+    { value: 'porción', label: 'porción' },
+    { value: 'paq', label: 'paq' }
+  ];
+}
+
 export function resolveRecetaUnidadYCantidad(insumoItem, rendimiento = 1) {
   if (!insumoItem) return { cantidad: 1, unidadMedida: "und" };
 
@@ -163,16 +188,15 @@ export function sanitizeRecetaInsumos(insumos = [], dbList = [], rendimiento = 1
     const uBase = normalizeUnidadMedida(matchDb?.unidadMedida || item.insumo?.unidadMedida || uReceta);
 
     // Detección y corrección de anomalía: 1 kg o 1 lt en receta de plato individual
-    if (esPlatoIndividual && cant <= 1) {
-      if ((uReceta === "kg" || (uReceta === "und" && uBase === "kg"))) {
-        const resolved = resolveRecetaUnidadYCantidad(matchDb || item, rendimiento);
-        uReceta = resolved.unidadMedida;
-        cant = resolved.cantidad;
-      } else if ((uReceta === "lt" || (uReceta === "und" && uBase === "lt"))) {
-        const resolved = resolveRecetaUnidadYCantidad(matchDb || item, rendimiento);
-        uReceta = resolved.unidadMedida;
-        cant = resolved.cantidad;
-      }
+    // En comidas rápidas un plato individual NUNCA lleva 1 kg de tocineta/cebolla o 1 lt de salsa
+    if ((uReceta === "kg" || (uReceta === "und" && uBase === "kg")) && cant >= 0.5) {
+      const resolved = resolveRecetaUnidadYCantidad(matchDb || item, rendimiento);
+      uReceta = resolved.unidadMedida;
+      cant = resolved.cantidad;
+    } else if ((uReceta === "lt" || (uReceta === "und" && uBase === "lt")) && cant >= 0.5) {
+      const resolved = resolveRecetaUnidadYCantidad(matchDb || item, rendimiento);
+      uReceta = resolved.unidadMedida;
+      cant = resolved.cantidad;
     }
 
     const unitCost = Number(item.costoUnitario || item.precioUnitario || matchDb?.precioUnitario || matchDb?.costo || 0);
@@ -206,7 +230,12 @@ export function calculateInsumoCost(cantidadRaw, unidadRecetaRaw, costoUnitarioR
 
   // Si las unidades coinciden exactamente
   if (uReceta === uBase && uReceta !== "") {
-    // Si la unidad es kg o lt y el costo es alto (por kg) pero la cantidad es un valor normal de kg
+    // Protección contra anomalía: si en un plato individual un insumo quedó en 'kg' con cantidad >= 0.8
+    // y costo unitario alto (ej: $35.000/kg de tocineta o $3.500/kg de cebolla),
+    // calculamos la porción en gramos (~30g) para evitar inflar el Food Cost astronómicamente.
+    if ((uReceta === "kg" || uReceta === "lt") && cantidad >= 0.8 && costoUnitario >= 2000) {
+      return (30 / 1000) * costoUnitario;
+    }
     return cantidad * costoUnitario;
   }
 

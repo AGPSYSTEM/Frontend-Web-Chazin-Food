@@ -10,7 +10,7 @@ import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { fichasTecnicasService } from "../servicios/fichasTecnicasService";
 import { FichaVersionesHistorial } from "./FichaVersionesHistorial";
-import { normalizeUnidadMedida, resolveRecetaUnidadYCantidad, convertirUnidadYCantidad } from "../utils/costoUtils";
+import { normalizeUnidadMedida, resolveRecetaUnidadYCantidad, convertirUnidadYCantidad, getUnidadesCompatibles } from "../utils/costoUtils";
 import {
   normalizeFichaWithVersions,
   formatFechaHoraFicha,
@@ -948,12 +948,9 @@ export function FichaTecnicaInsumo({
                               onChange={(e) => actualizarUnidad(idx, e.target.value)}
                               className="px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs font-semibold outline-none text-gray-700 dark:text-gray-300"
                             >
-                              <option value="gr">gr</option>
-                              <option value="kg">kg</option>
-                              <option value="ml">ml</option>
-                              <option value="lt">lt</option>
-                              <option value="und">und</option>
-                              <option value="porción">porción</option>
+                              {getUnidadesCompatibles(item.insumo?.unidadMedida || item.unidadMedida).map(u => (
+                                <option key={u.value} value={u.value}>{u.value}</option>
+                              ))}
                             </select>
                           </td>
                           <td className="px-3 py-2.5 text-right">
