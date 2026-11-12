@@ -139,14 +139,16 @@ export function useProductos() {
       const createdId = created?.idProducto || created?.id || created?._id;
       // Los combos no llevan ficha técnica
       const esCombo = data.configuracionCombo?.esCombo;
+      let createdFicha = null;
       if (data.fichaTecnica && createdId && !esCombo) {
         try {
-          await fichasTecnicasService.saveFichaProducto(createdId, data.fichaTecnica);
+          createdFicha = await fichasTecnicasService.saveFichaProducto(createdId, data.fichaTecnica);
         } catch (e) {
           console.error("Error guardando ficha técnica del producto:", e);
         }
       }
-      notify.success("Producto creado", "El producto fue creado exitosamente");
+      const finalVersion = Number(createdFicha?.versionActual || data.fichaTecnica?.versionActual || 1).toFixed(1);
+      notify.success("Producto Creado", `Producto creado exitosamente con la versión ${finalVersion}`);
       await fetchProductos();
       return true;
     } catch (err) {

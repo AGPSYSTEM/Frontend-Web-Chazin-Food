@@ -96,6 +96,25 @@ function FieldError({ msg }) {
   );
 }
 
+/**
+ * Validador oficial de insumos: identifica insumos vencidos o agotados (Requerimiento 10)
+ */
+export const checkInsumoInvalido = (insumoItem) => {
+  if (!insumoItem) return { vencido: false, agotado: false };
+  const rawVenc = insumoItem.fechaVencimiento || insumoItem.insumo?.fechaVencimiento;
+  let vencido = false;
+  if (rawVenc) {
+    const fVenc = new Date(String(rawVenc).includes("T") ? rawVenc : `${rawVenc}T00:00:00`);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    vencido = !isNaN(fVenc.getTime()) && fVenc < hoy;
+  }
+  const stockVal = Number(insumoItem.stock ?? insumoItem.insumo?.stock ?? 1);
+  const estadoVal = String(insumoItem.estado ?? insumoItem.insumo?.estado ?? "");
+  const agotado = stockVal <= 0 || estadoVal.toLowerCase() === "agotado" || estadoVal === "0";
+  return { vencido, agotado };
+};
+
 export function FichaTecnicaProducto({
   productId,
   productName,
@@ -105,7 +124,8 @@ export function FichaTecnicaProducto({
   readOnly = false,
   entityData = null,
   prevEntityData = null,
-  onRestoreEntityData = null
+  onRestoreEntityData = null,
+  onPrecioSugeridoChange = null
 }) {
   const notify = useNotifications();
   const [activeTab, setActiveTab] = useState("ingredientes"); // "ingredientes" | "proceso" | "calidad" | "versiones"
@@ -429,6 +449,24 @@ export function FichaTecnicaProducto({
       setSearchInsumo("");
       return;
     }
+
+    // Requerimiento 10: No permitir insumos vencidos o agotados
+    const { vencido, agotado } = checkInsumoInvalido(insumoItem);
+    if (vencido) {
+      notify.error(
+        "Insumo Vencido",
+        `El insumo "${insumoItem.nombre}" se encuentra VENCIDO (${insumoItem.fechaVencimiento ? String(insumoItem.fechaVencimiento).substring(0, 10) : "Caducado"}). No puede ser utilizado en la ficha técnica.`
+      );
+      return;
+    }
+    if (agotado) {
+      notify.error(
+        "Insumo Agotado",
+        `El insumo "${insumoItem.nombre}" está AGOTADO en inventario (Stock: 0). No puede agregarse a la receta.`
+      );
+      return;
+    }
+
     const nuevo = {
       idInsumo: id,
       nombreInsumo: insumoItem.nombre,
@@ -477,6 +515,13 @@ export function FichaTecnicaProducto({
   const recipeTotals = useMemo(() => {
     return calculateRecipeTotals(insumos, rendimiento);
   }, [insumos, rendimiento]);
+
+  // Requerimiento 5: Sincronizar precio de venta sugerido con la sección Datos & Tipo
+  useEffect(() => {
+    if (typeof onPrecioSugeridoChange === "function" && recipeTotals.precioSugerido > 0) {
+      onPrecioSugeridoChange(recipeTotals.precioSugerido);
+    }
+  }, [recipeTotals.precioSugerido, onPrecioSugeridoChange]);
 
   // Pasos de preparación
   const agregarPaso = () => {
@@ -554,6 +599,28 @@ export function FichaTecnicaProducto({
   };
 
   const handleSave = async () => {
+    // Requerimiento 10: Validar que no haya insumos vencidos o agotados
+    for (const item of insumos) {
+      const dbMatch = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id)) || item.insumo || item;
+      const { vencido, agotado } = checkInsumoInvalido(dbMatch);
+      if (vencido) {
+        notify.error(
+          "Insumo Vencido",
+          `No se puede guardar: El insumo "${item.nombreInsumo || dbMatch.nombre}" se encuentra VENCIDO. Debes retirarlo o reemplazarlo por un lote vigente.`
+        );
+        setActiveTab("ingredientes");
+        return;
+      }
+      if (agotado) {
+        notify.error(
+          "Insumo Agotado",
+          `No se puede guardar: El insumo "${item.nombreInsumo || dbMatch.nombre}" está AGOTADO en inventario (Stock: 0). Debes retirarlo o abastecer el stock.`
+        );
+        setActiveTab("ingredientes");
+        return;
+      }
+    }
+
     const allTouched = {
       insumos: true,
       procedimiento: true,
@@ -767,12 +834,6 @@ export function FichaTecnicaProducto({
       label: "Calidad & Almacenamiento", 
       icon: ShieldCheck,
       isValid: Boolean(especificaciones && caracteristicas && condicionesAlmacenamiento)
-    },
-    { 
-      id: "versiones", 
-      label: "Historial de Versiones", 
-      icon: History, 
-      count: versionInfo.versionesAnteriores?.length || 0 
     }
   ];
 
@@ -854,40 +915,33 @@ export function FichaTecnicaProducto({
         {/* ============================================================ */}
         {activeTab === "ingredientes" && (
           <div className="space-y-4 animate-in fade-in duration-150">
-            {/* KPI Cards con Métricas Reales */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 bg-gray-50/80 dark:bg-gray-800/60 rounded-2xl border border-gray-150 dark:border-gray-750">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">
-                  Costo Total del Lote ({factorEscala > 1 ? `${factorEscala}x` : "Base"})
-                </span>
-                <p className="text-lg font-black text-gray-900 dark:text-gray-100 font-mono">
-                  ${(recipeTotals.costoTotalBatch * (factorEscala > 1 ? factorEscala : 1)).toLocaleString("es-CO")} COP
-                </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">Suma neta de insumos</p>
+            {/* Requerimiento 4: Se retiraron las tarjetas de 'Costo Total del Lote' y 'Costo por Porción Real' */}
+            {/* Requerimiento 5: Referencia de Precio de Venta Sugerido (sincronizado con Datos & Tipo) */}
+            <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/25 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shrink-0">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wide block">
+                    Precio de Venta Sugerido (Ficha Técnica)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-black text-amber-800 dark:text-amber-200 font-mono">
+                      ${recipeTotals.precioSugerido.toLocaleString("es-CO")} COP
+                    </p>
+                    <span className="text-[10px] text-amber-700/80 dark:text-amber-400/80 font-medium">
+                      Margen Food Cost (~33%)
+                    </span>
+                  </div>
+                </div>
               </div>
-
-              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl border border-blue-150 dark:border-blue-900/40">
-                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1">
-                  Costo por Porción Real
-                </span>
-                <p className="text-lg font-black text-blue-700 dark:text-blue-300 font-mono">
-                  ${recipeTotals.costoPorPorcion.toLocaleString("es-CO")} COP
-                </p>
-                <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-0.5">Para: {rendimiento || "1 porción"}</p>
-              </div>
-
-              <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-150 dark:border-amber-900/40">
-                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide block mb-1">
-                  Precio de Venta Sugerido
-                </span>
-                <p className="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
-                  ${recipeTotals.precioSugerido.toLocaleString("es-CO")} COP
-                </p>
-                <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-0.5">Margen Food Cost (~33%)</p>
-              </div>
+              <span className="text-[10px] text-amber-700/80 dark:text-amber-300/80 bg-amber-100/70 dark:bg-amber-900/40 px-2.5 py-1 rounded-xl font-bold self-start sm:self-auto">
+                ✓ Se carga automáticamente en Datos & Tipo
+              </span>
             </div>
 
-            {/* Barra de Búsqueda y Escalabilidad */}
+            {/* Barra de Búsqueda de Insumos (Requerimiento 8: Escalar retirado) */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
               {/* Buscador de Insumos */}
               <div className="relative flex-1">
@@ -900,51 +954,58 @@ export function FichaTecnicaProducto({
                   className="w-full pl-10 pr-4 py-2.5 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#F05454]/30 focus:border-[#F05454] outline-none"
                 />
 
-                {/* Dropdown de Sugerencias */}
+                {/* Dropdown de Sugerencias con Detección de Insumos Vencidos o Agotados (Requerimiento 10) */}
                 {insumosSugeridos.length > 0 && (
-                  <div className="absolute z-20 top-full mt-1.5 left-0 right-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700">
-                    {insumosSugeridos.map((ins) => (
-                      <button
-                        key={ins.id || ins.idInsumo}
-                        type="button"
-                        onClick={() => agregarInsumo(ins)}
-                        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition text-left cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-[#F05454]">
-                            <Package className="w-3.5 h-3.5" />
+                  <div className="absolute z-20 top-full mt-1.5 left-0 right-0 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700 max-h-60 overflow-y-auto">
+                    {insumosSugeridos.map((ins) => {
+                      const { vencido, agotado } = checkInsumoInvalido(ins);
+                      const isBlocked = vencido || agotado;
+                      return (
+                        <button
+                          key={ins.id || ins.idInsumo}
+                          type="button"
+                          disabled={isBlocked}
+                          onClick={() => agregarInsumo(ins)}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 transition text-left ${
+                            isBlocked
+                              ? "opacity-60 bg-red-50/30 dark:bg-red-950/20 cursor-not-allowed"
+                              : "hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className={`p-1.5 rounded-lg shrink-0 ${
+                              vencido ? "bg-red-100 text-red-600 dark:bg-red-900/50" : agotado ? "bg-amber-100 text-amber-600 dark:bg-amber-900/50" : "bg-rose-50 dark:bg-rose-950/40 text-[#F05454]"
+                            }`}>
+                              <Package className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{ins.nombre}</p>
+                                {vencido && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300">
+                                    ⛔ VENCIDO
+                                  </span>
+                                )}
+                                {agotado && !vencido && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                                    ⚠️ AGOTADO
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-gray-400">
+                                {ins.categoria?.nombre || ins.categoria || "Insumo"} • Stock: {ins.stock || 0} {ins.unidadMedida || "und"}
+                                {ins.fechaVencimiento && ` • Vence: ${String(ins.fechaVencimiento).substring(0, 10)}`}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{ins.nombre}</p>
-                            <p className="text-[10px] text-gray-400">{ins.categoria?.nombre || ins.categoria || "Insumo"}</p>
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
-                          ${Number(ins.precioUnitario || 0).toLocaleString("es-CO")}/{ins.unidadMedida || "und"}
-                        </span>
-                      </button>
-                    ))}
+                          <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300 shrink-0">
+                            ${Number(ins.precioUnitario || 0).toLocaleString("es-CO")}/{ins.unidadMedida || "und"}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-              </div>
-
-              {/* Selector de Escalado Gastronómico */}
-              <div className="flex items-center gap-1.5 self-start md:self-auto shrink-0 bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Escalar:</span>
-                {[1, 2, 5, 10].map((factor) => (
-                  <button
-                    key={factor}
-                    type="button"
-                    onClick={() => setFactorEscala(factor)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
-                      factorEscala === factor
-                        ? "bg-[#F05454] text-white shadow-2xs"
-                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    {factor}x
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -957,9 +1018,6 @@ export function FichaTecnicaProducto({
                       <tr className="bg-gray-50 dark:bg-gray-800 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                         <th className="px-4 py-3">Insumo</th>
                         <th className="px-4 py-3 text-center">Cantidad</th>
-                        {factorEscala > 1 && (
-                          <th className="px-4 py-3 text-center text-[#F05454]">Lote ({factorEscala}x)</th>
-                        )}
                         <th className="px-4 py-3 text-center">Unidad</th>
                         <th className="px-4 py-3 text-right">Costo Inv.</th>
                         <th className="px-4 py-3 text-right">Subtotal</th>
@@ -968,6 +1026,8 @@ export function FichaTecnicaProducto({
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {insumos.map((item, idx) => {
+                        const dbMatch = dbInsumosList.find(d => String(d.id || d.idInsumo) === String(item.idInsumo || item.id)) || item.insumo || item;
+                        const { vencido, agotado } = checkInsumoInvalido(dbMatch);
                         const unitCost = Number(item.costoUnitario || item.precioUnitario || item.insumo?.precioUnitario || item.insumo?.costo || 0);
                         const subtotal = calculateInsumoCost(
                           item.cantidad,
@@ -975,11 +1035,22 @@ export function FichaTecnicaProducto({
                           unitCost,
                           item.insumo?.unidadMedida
                         );
-                        const cantEscalada = Math.round((Number(item.cantidad || 0) * factorEscala) * 100) / 100;
                         return (
-                          <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition">
+                          <tr key={idx} className={`transition ${vencido ? "bg-red-50/50 dark:bg-red-950/20" : agotado ? "bg-amber-50/50 dark:bg-amber-950/20" : "hover:bg-gray-50/50 dark:hover:bg-gray-800/30"}`}>
                             <td className="px-4 py-2.5 font-bold text-gray-800 dark:text-gray-200">
-                              {item.nombreInsumo || item.insumo?.nombre || `Insumo #${item.idInsumo}`}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{item.nombreInsumo || item.insumo?.nombre || `Insumo #${item.idInsumo}`}</span>
+                                {vencido && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+                                    ⛔ VENCIDO
+                                  </span>
+                                )}
+                                {agotado && !vencido && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                                    ⚠️ AGOTADO
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-2.5 text-center">
                               <div className="inline-flex items-center gap-1 bg-gray-50 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
@@ -1022,11 +1093,6 @@ export function FichaTecnicaProducto({
                                 </button>
                               </div>
                             </td>
-                            {factorEscala > 1 && (
-                              <td className="px-4 py-2.5 text-center font-black text-[#F05454] bg-red-50/20 dark:bg-red-950/10">
-                                {cantEscalada} {item.unidadMedida || "und"}
-                              </td>
-                            )}
                             <td className="px-4 py-2.5 text-center">
                               <select
                                 value={item.unidadMedida || "und"}
@@ -1394,14 +1460,6 @@ export function FichaTecnicaProducto({
                 <span>Anterior: Preparación</span>
               </button>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("versiones")}
-                  className="px-3 py-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition flex items-center gap-1 cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>Ver Historial</span>
-                </button>
                 {!readOnly && (
                   <button
                     type="button"
@@ -1414,46 +1472,6 @@ export function FichaTecnicaProducto({
                   </button>
                 )}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* TAB 4: HISTORIAL DE VERSIONES & CONTROL DE CAMBIOS           */}
-        {/* ============================================================ */}
-        {activeTab === "versiones" && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/25 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 flex items-start sm:items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div className="text-xs">
-                <p className="font-black text-emerald-900 dark:text-emerald-200">
-                  Versión Actual (v{versionInfo.versionActual}) Vigente
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 mt-0.5">
-                  Vigente desde el {formatFechaHoraFicha(versionInfo.fechaInicioVigencia)}. Cada vez que guardes modificaciones en ingredientes o proceso, se archivará un snapshot inmutable para auditoría gastronómica.
-                </p>
-              </div>
-            </div>
-
-            <FichaVersionesHistorial
-              versionActual={versionInfo.versionActual}
-              fechaInicioVigencia={versionInfo.fechaInicioVigencia}
-              versionesAnteriores={versionInfo.versionesAnteriores}
-              onRestoreVersion={handleRestoreVersion}
-              datosEntidadActual={entityData || versionInfo.prevFichaSnapshot?.datosEntidad || prevEntityData}
-            />
-
-            <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-start">
-              <button
-                type="button"
-                onClick={() => setActiveTab("calidad")}
-                className="px-3.5 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-gray-200/80 dark:border-gray-700/80"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Volver a Calidad & Almacenamiento</span>
-              </button>
             </div>
           </div>
         )}

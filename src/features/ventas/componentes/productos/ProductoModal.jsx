@@ -3,10 +3,10 @@ import {
   X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, 
   Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText, 
   Search, Check, ChevronDown, ChevronRight, CheckCircle2, PackageCheck, 
-  Info, Eye, ArrowRight, ArrowLeft, Copy
+  Info, Eye, ArrowRight, ArrowLeft, Copy, History, RotateCcw
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
-import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
+import { FichaTecnicaProducto, checkInsumoInvalido } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { getAdditionEmoji, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
@@ -75,8 +75,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const isEditing = Boolean(producto && !isCloning);
   const tieneVentasProtegido = Boolean(isEditing && (producto?.tieneVentas || Number(producto?.ventas || 0) > 0));
 
-  // Paso actual del proceso de creación (1: Datos Básicos, 2: Variantes, 3: Complementos/Combo)
+  // Requerimiento 1: Orden de Pasos Oficial:
+  // Paso 1: Datos & Tipo -> Paso 2: Ficha Técnica (o Combo) -> Paso 3: Variantes -> Paso 4: Adiciones
   const [activeStep, setActiveStep] = useState(1);
+
+  // Requerimiento 2: Diferenciar entre producto preparado vs producto base
+  const [tipoElaboracion, setTipoElaboracion] = useState("preparado");
+
+  // Requerimiento 5: Sincronización en vivo del precio sugerido de Ficha Técnica
+  const [precioSugeridoLive, setPrecioSugeridoLive] = useState(0);
+
+  // Requerimiento 7: Modal de Confirmación antes de guardar nueva versión
+  const [showConfirmVersionModal, setShowConfirmVersionModal] = useState(false);
+
+  // Requerimiento 9: Filtro de versionamiento superior
+  const [selectedVersionFilter, setSelectedVersionFilter] = useState("actual");
 
   const [form, setForm] = useState({
     nombre: "",
@@ -185,6 +198,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     setTouched({});
     setSubmitted(false);
     setActiveStep(1);
+    setShowConfirmVersionModal(false);
+    setSelectedVersionFilter("actual");
     onClose();
   };
 
@@ -204,6 +219,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     setPreviewUrl(producto?.imagen || "");
     setModoVariantesManual(null);
     setBusquedaAdicion("");
+    setShowConfirmVersionModal(false);
+    setSelectedVersionFilter("actual");
+    setPrecioSugeridoLive(0);
 
     // Cargar adiciones
     adicionesService.getAdiciones().then(setTodasAdiciones).catch(console.error);
@@ -253,6 +271,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                             /batido|smoothie|malteada|preparad/i.test(producto.descripcion || "");
       const hasFicha = Boolean(producto.fichaTecnica && (producto.fichaTecnica.detalles?.length > 0 || producto.fichaTecnica.insumos?.length > 0));
       setEsBebidaPreparada(isSpecialName || hasFicha);
+
+      // Requerimiento 2: Inicializar tipoElaboracion
+      const catLower = String(producto.categoria || selectedCat?.nombre || "").toLowerCase();
+      const isDrinkCategory = catLower.includes("bebida") || catLower.includes("gaseos") || catLower.includes("refresco");
+      const isExplicitBase = producto.tipoElaboracion === "base" || (isDrinkCategory && !hasFicha && !isSpecialName);
+      setTipoElaboracion(isExplicitBase ? "base" : "preparado");
 
       const pLower = String(producto.nombre || "").toLowerCase();
       const cLower = String(producto.categoria || selectedCat?.nombre || "").toLowerCase();
@@ -339,6 +363,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       });
       setFichaTecnica(null);
       setEsBebidaPreparada(false);
+      setTipoElaboracion(firstCat.toLowerCase().includes("bebida") ? "base" : "preparado");
       setConfigCombo({
         esCombo: isFirstCombo,
         cantidadBebidas: 1,
@@ -380,11 +405,64 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
   const isCommercialDrink = isDrink && !esBebidaPreparada;
 
+  // Requerimiento 3: Si se elige producto base, las adiciones deben limpiarse
   useEffect(() => {
-    if (activeStep === 4 && (isCommercialDrink || configCombo.esCombo)) {
-      setActiveStep(3);
+    if (tipoElaboracion === "base" && form.adiciones?.length > 0) {
+      setForm(prev => ({ ...prev, adiciones: [] }));
     }
-  }, [activeStep, isCommercialDrink, configCombo.esCombo]);
+  }, [tipoElaboracion]);
+
+  // Requerimiento 9: Lista de versiones anteriores para el filtro superior
+  const listaVersionesAnteriores = useMemo(() => {
+    const raw = fichaTecnica?.versionesAnteriores || producto?.fichaTecnica?.versionesAnteriores || [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }, [fichaTecnica?.versionesAnteriores, producto?.fichaTecnica?.versionesAnteriores]);
+
+  const versionActualNum = Number(fichaTecnica?.versionActual || producto?.fichaTecnica?.versionActual || 1);
+
+  const selectedHistoricalVersionObj = useMemo(() => {
+    if (selectedVersionFilter === "actual") return null;
+    return listaVersionesAnteriores.find(
+      (v, idx) => String(v.version || idx + 1) === String(selectedVersionFilter)
+    ) || null;
+  }, [selectedVersionFilter, listaVersionesAnteriores]);
+
+  const handleRestoreHistoricalVersion = () => {
+    if (!selectedHistoricalVersionObj) return;
+    if (selectedHistoricalVersionObj.datosEntidad) {
+      handleRestoreEntityData(selectedHistoricalVersionObj.datosEntidad);
+    }
+    const detallesSnap = selectedHistoricalVersionObj.detalles || selectedHistoricalVersionObj.insumos || [];
+    setFichaTecnica(prev => ({
+      ...prev,
+      rendimiento: selectedHistoricalVersionObj.rendimiento || prev?.rendimiento || 1,
+      detalles: detallesSnap,
+      insumos: detallesSnap,
+      procedimiento: selectedHistoricalVersionObj.procedimiento || "",
+      tiempoPreparacion: selectedHistoricalVersionObj.tiempoPreparacion || "",
+      especificaciones: selectedHistoricalVersionObj.especificaciones || "",
+      caracteristicas: selectedHistoricalVersionObj.caracteristicas || "",
+      informacionNutricional: selectedHistoricalVersionObj.informacionNutricional || "",
+      condicionesAlmacenamiento: selectedHistoricalVersionObj.condicionesAlmacenamiento || "",
+      vidaUtil: selectedHistoricalVersionObj.vidaUtil || "",
+      observaciones: selectedHistoricalVersionObj.observaciones || "",
+      _isRestoredVersionCommit: true
+    }));
+    setSelectedVersionFilter("actual");
+    notify.success(
+      "Versión Restaurada",
+      `Se cargaron en el borrador los datos de la versión histórica ${Number(selectedHistoricalVersionObj.version || 1).toFixed(1)}.`
+    );
+  };
 
   // Cálculo de Precio de Referencia gastronómico
   const totalsFicha = useMemo(() => {
@@ -393,7 +471,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   }, [fichaTecnica]);
 
   const costoTotalInsumos = totalsFicha.costoPorPorcion;
-  const precioReferenciaSugerido = totalsFicha.precioSugerido;
+  // Requerimiento 5: Priorizar precio sugerido en vivo si fue notificado por FichaTecnicaProducto
+  const precioReferenciaSugerido = precioSugeridoLive > 0 ? precioSugeridoLive : totalsFicha.precioSugerido;
 
   const sizeVariantes = useMemo(() => {
     return variantes.filter((v) => {
@@ -412,6 +491,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   }, [variantes, isDrink]);
 
   const toggleAdicion = (adicion) => {
+    // Requerimiento 3: Producto base no admite adiciones
+    if (tipoElaboracion === "base") {
+      notify.info("Producto Base", "Los productos base (gaseosas, salsas comerciales) no admiten adiciones.");
+      return;
+    }
     const adId = adicion.idAdicion || adicion.id;
     const isSelected = form.adiciones.some((a) => (a.idAdicion || a.id || a) === adId);
     let nuevasAdiciones;
@@ -752,10 +836,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     categoria: form.categoria || "",
     idCategoriaProducto: form.idCategoriaProducto || null,
     precio: Number(form.precio) || 0,
+    tipoElaboracion,
     descripcion: form.descripcion || "",
     imagen: form.imagen || "",
     estado: form.estado || "Activo",
-    adiciones: Array.isArray(form.adiciones) ? form.adiciones : []
+    adiciones: tipoElaboracion === "base" ? [] : (Array.isArray(form.adiciones) ? form.adiciones : [])
   };
 
   const prevEntityDataInicial = producto
@@ -786,75 +871,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }));
   };
 
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-    setSubmitted(true);
-    if (uploading) return;
-
-    const errNombre = validateField("nombre", form.nombre);
-    const errPrecio = validateField("precio", form.precio);
-    const errDesc = validateField("descripcion", form.descripcion);
-    const errs = {};
-    if (errNombre) errs.nombre = errNombre;
-    if (errPrecio) errs.precio = errPrecio;
-    if (errDesc) errs.descripcion = errDesc;
-    setErrors(errs);
-    setTouched({ nombre: true, precio: true, descripcion: true });
-
-    if (Object.keys(errs).length > 0) {
-      setActiveStep(1);
-      notify.warning("Campo Requerido", Object.values(errs)[0]);
-      return;
-    }
-
-    if (configCombo.esCombo) {
-      if (!Array.isArray(configCombo.productosAsociados) || configCombo.productosAsociados.length === 0) {
-        setActiveStep(3);
-        notify.warning("Combo Vacío", "Por favor agrega al menos un plato o bebida al combo en el Paso 3 (Armador de Combo).");
-        return;
-      }
-    } else {
-      // 1. Validar variantes si existen
-      if (variantes.length > 0) {
-        for (let i = 0; i < variantes.length; i++) {
-          const v = variantes[i];
-          if (!v.nombre || !v.nombre.trim()) {
-            setActiveStep(2);
-            const typeLabel = isDrink 
-              ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
-              : "de variante";
-            notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
-            return;
-          }
-          if (v.nombre.trim().toLowerCase() === form.nombre.trim().toLowerCase()) {
-            setActiveStep(2);
-            notify.warning(
-              "Variante Inválida",
-              `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar presentaciones distintas (ej. Doble Carne, Familiar, 1.5 Litros).`
-            );
-            return;
-          }
-        }
-      }
-
-      // 2. Validar Ficha Técnica obligatoria para platos/comidas preparadas y bebidas especiales (batidos, jugos, malteadas...)
-      // Las bebidas y refrescos comerciales son productos terminados de compra directa y no requieren ficha técnica
-      if (!isCommercialDrink) {
-        const ft = fichaTecnica || producto?.fichaTecnica || {};
-        const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
-        if (!ingredientes || ingredientes.length === 0) {
-          setActiveStep(4);
-          notify.warning(
-            "Ficha Técnica Obligatoria",
-            isDrink
-              ? "Para registrar esta bebida preparada o batido debes agregar al menos un ingrediente base en el Paso 4 (Ficha Técnica)."
-              : "Sin la ficha técnica no puede existir un producto preparado. Por favor agrega al menos un ingrediente o insumo en el Paso 4."
-          );
-          return;
-        }
-      }
-    }
-
+  // Requerimiento 7: Guardado efectivo tras confirmación o creación directa
+  const executeActualSave = async () => {
     try {
       setUploading(true);
       let finalImageUrl = form.imagen;
@@ -885,12 +903,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
         })
       );
 
+      // Requerimiento 2: Construir payload según tipo de elaboración
       await onSave({
         ...form,
         imagen: finalImageUrl,
         idCategoriaProducto: form.idCategoriaProducto || resolvedCat?.id || resolvedCat?.idCategoriaProducto || null,
         precio: basePrice,
+        tipoElaboracion,
         variantes: processedVariants,
+        adiciones: tipoElaboracion === "base" ? [] : form.adiciones,
         itemsCombo: configCombo.esCombo ? (configCombo.productosAsociados || []) : [],
         configuracionCombo: configCombo.esCombo
           ? {
@@ -901,15 +922,40 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               itemsCombo: configCombo.productosAsociados || []
             }
           : { esCombo: false, cantidadBebidas: 0, bebidasPermitidas: [], productosAsociados: [] },
-        fichaTecnica: (configCombo.esCombo || isCommercialDrink)
+        fichaTecnica: (configCombo.esCombo)
           ? null
+          : tipoElaboracion === "base"
+          ? {
+              tipo: "PRODUCTO",
+              tipoElaboracion: "base",
+              descripcion: form.descripcion || "Producto Base Comercial / Terminado",
+              rendimiento: 1,
+              insumos: [],
+              detalles: [],
+              procedimiento: "Producto terminado para venta directa sin receta culinaria.",
+              tiempoPreparacion: "0 min",
+              especificaciones: form.descripcion || "Producto terminado de compra directa.",
+              caracteristicas: "Producto comercial de reventa.",
+              condicionesAlmacenamiento: fichaTecnica?.condicionesAlmacenamiento || "Almacenar según especificaciones del fabricante.",
+              vidaUtil: fichaTecnica?.vidaUtil || "Según fecha de vencimiento del lote comercial",
+              observaciones: "Producto base sin preparación culinaria interna.",
+              datosEntidad: {
+                ...entityDataActual,
+                tipoElaboracion: "base",
+                imagen: finalImageUrl,
+                precio: basePrice,
+                adiciones: []
+              }
+            }
           : fichaTecnica
           ? {
               ...fichaTecnica,
+              tipoElaboracion: "preparado",
               idFichaTecnica: isCloning ? null : fichaTecnica.idFichaTecnica,
               idProducto: isCloning ? null : fichaTecnica.idProducto,
               datosEntidad: {
                 ...entityDataActual,
+                tipoElaboracion: "preparado",
                 imagen: finalImageUrl,
                 precio: basePrice
               },
@@ -920,12 +966,111 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
 
       setFileToUpload(null);
       setPreviewUrl("");
+      setShowConfirmVersionModal(false);
     } catch (err) {
       console.error("Error al guardar producto:", err);
       notify.error("Error", err.message || "Error al subir imagen o guardar el producto");
     } finally {
       setUploading(false);
     }
+  };
+
+  // Interceptor de guardado: Valida y en modo edición abre modal de confirmación
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    setSubmitted(true);
+    if (uploading) return;
+
+    const errNombre = validateField("nombre", form.nombre);
+    const errPrecio = validateField("precio", form.precio);
+    const errDesc = validateField("descripcion", form.descripcion);
+    const errs = {};
+    if (errNombre) errs.nombre = errNombre;
+    if (errPrecio) errs.precio = errPrecio;
+    if (errDesc) errs.descripcion = errDesc;
+    setErrors(errs);
+    setTouched({ nombre: true, precio: true, descripcion: true });
+
+    if (Object.keys(errs).length > 0) {
+      setActiveStep(1);
+      notify.warning("Campo Requerido", Object.values(errs)[0]);
+      return;
+    }
+
+    if (configCombo.esCombo) {
+      if (!Array.isArray(configCombo.productosAsociados) || configCombo.productosAsociados.length === 0) {
+        setActiveStep(2); // Paso 2 es Armador de Combo en el nuevo orden
+        notify.warning("Combo Vacío", "Por favor agrega al menos un plato o bebida al combo en el Paso 2 (Armador de Combo).");
+        return;
+      }
+    } else {
+      // Requerimiento 10: Validar Ficha Técnica obligatoria e insumos vencidos/agotados para Producto Preparado
+      if (tipoElaboracion === "preparado") {
+        const ft = fichaTecnica || producto?.fichaTecnica || {};
+        const ingredientes = ft.detalles || ft.insumos || ft.ingredientes || [];
+        if (!ingredientes || ingredientes.length === 0) {
+          setActiveStep(2); // Paso 2 es Ficha Técnica
+          notify.warning(
+            "Ficha Técnica Obligatoria",
+            "Sin la ficha técnica no puede existir un producto preparado. Por favor agrega al menos un insumo en el Paso 2 (Ficha Técnica)."
+          );
+          return;
+        }
+
+        // Requerimiento 10: Rechazar insumos vencidos o agotados
+        for (const item of ingredientes) {
+          const { vencido, agotado } = checkInsumoInvalido(item);
+          if (vencido) {
+            setActiveStep(2);
+            notify.error(
+              "Insumo Vencido",
+              `No se puede guardar: El insumo "${item.nombreInsumo || item.nombre}" se encuentra VENCIDO. Debes retirarlo o reemplazarlo en el Paso 2 (Ficha Técnica).`
+            );
+            return;
+          }
+          if (agotado) {
+            setActiveStep(2);
+            notify.error(
+              "Insumo Agotado",
+              `No se puede guardar: El insumo "${item.nombreInsumo || item.nombre}" está AGOTADO en inventario. Debes abastecer el stock o retirarlo en el Paso 2 (Ficha Técnica).`
+            );
+            return;
+          }
+        }
+      }
+
+      // Validar variantes si existen
+      if (variantes.length > 0) {
+        for (let i = 0; i < variantes.length; i++) {
+          const v = variantes[i];
+          if (!v.nombre || !v.nombre.trim()) {
+            setActiveStep(3); // Paso 3 es Variantes
+            const typeLabel = isDrink 
+              ? (v.tipo === "tamano" ? "de tamaño / presentación" : "de sabor / variante")
+              : "de variante";
+            notify.warning("Campo Requerido", `Por favor escribe el nombre ${typeLabel} #${i + 1}`);
+            return;
+          }
+          if (v.nombre.trim().toLowerCase() === form.nombre.trim().toLowerCase()) {
+            setActiveStep(3);
+            notify.warning(
+              "Variante Inválida",
+              `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar presentaciones distintas (ej. Doble Carne, Familiar, 1.5 Litros).`
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Requerimiento 7: Si estamos editando un producto existente, pedir confirmación antes de archivar/crear nueva versión
+    if (isEditing && !isCloning) {
+      setShowConfirmVersionModal(true);
+      return;
+    }
+
+    // Si es creación nueva o duplicación directa
+    await executeActualSave();
   };
 
   const handleImageSelected = (e) => {
@@ -990,26 +1135,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 }`}>
                   {configCombo.esCombo ? "Combo Especial" : isDrink ? "Bebida" : "Comida / Plato"}
                 </span>
+                {!configCombo.esCombo && (
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    tipoElaboracion === "base"
+                      ? "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300"
+                      : "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  }`}>
+                    {tipoElaboracion === "base" ? "Producto Base" : "Producto Preparado"}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {configCombo.esCombo
-                  ? `Paso ${activeStep === 3 ? "2 de 2" : "1 de 2"} • ${activeStep === 1 ? "Información Principal & Precio" : "Armador de Combo Gastronómico"}`
-                  : isDrink
-                  ? `Paso ${activeStep} de 3 • ${
-                      activeStep === 1
-                        ? "Información Principal & Tipo"
-                        : activeStep === 2
-                        ? "Presentaciones & Tamaños"
-                        : "Adiciones / Extras"
-                    }`
+                  ? `Paso ${activeStep === 2 ? "2 de 2" : "1 de 2"} • ${activeStep === 1 ? "Información Principal & Precio" : "Armador de Combo Gastronómico"}`
                   : `Paso ${activeStep} de 4 • ${
                       activeStep === 1
                         ? "Información Principal & Tipo"
                         : activeStep === 2
-                        ? "Presentaciones & Variantes"
+                        ? (tipoElaboracion === "base" ? "Ficha Técnica (Producto Base)" : "Ficha Técnica & Receta")
                         : activeStep === 3
-                        ? "Adiciones Disponibles"
-                        : "Ficha Técnica & Receta Culinaria"
+                        ? "Presentaciones & Variantes"
+                        : "Adiciones Permitidas"
                     }`}
               </p>
             </div>
@@ -1025,10 +1171,101 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           </button>
         </div>
 
-        {/* STEPPER NAVEGADOR DE PASOS (Aprovecha el espacio y explica el proceso claramente) */}
-        <div className={`grid ${isCommercialDrink || configCombo.esCombo ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4"} border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0`}>
+        {/* Requerimiento 9: FILTRO SUPERIOR DE VERSIONAMIENTO (Arriba del menú de pasos) */}
+        <div className="px-5 py-2.5 bg-slate-50 dark:bg-gray-850/90 border-b border-gray-150 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-[#F05454] flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-900/30 shadow-2xs">
+              <History className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black text-gray-800 dark:text-gray-200">
+                Versión del Producto:
+              </span>
+              {listaVersionesAnteriores.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedVersionFilter}
+                    onChange={(e) => setSelectedVersionFilter(e.target.value)}
+                    className="text-xs font-bold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1 text-gray-800 dark:text-gray-100 focus:ring-1 focus:ring-[#F05454] cursor-pointer shadow-2xs"
+                  >
+                    <option value="actual">
+                      🟢 Versión Actual v{versionActualNum.toFixed(1)} (Vigente / En Edición)
+                    </option>
+                    {listaVersionesAnteriores.map((ver, idx) => (
+                      <option key={idx} value={String(ver.version || idx + 1)}>
+                        🕒 Versión v{Number(ver.version || idx + 1).toFixed(1)} — {ver.fechaFinVigencia ? new Date(ver.fechaFinVigencia).toLocaleDateString("es-CO") : "Archivada"} ({ver.detalles?.length || ver.insumos?.length || 0} insumos)
+                      </option>
+                    ))}
+                  </select>
+
+                  {selectedVersionFilter !== "actual" && (
+                    <button
+                      type="button"
+                      onClick={handleRestoreHistoricalVersion}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                      title="Restaurar datos de esta versión en el borrador"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Restaurar esta versión</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  v{versionActualNum.toFixed(1)} (Vigente)
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+            {selectedVersionFilter !== "actual" ? (
+              <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                <Eye className="w-3.5 h-3.5" />
+                Visualizando versión histórica v{selectedVersionFilter}
+              </span>
+            ) : isEditing ? (
+              <span className="text-gray-400">Las modificaciones confirmadas archivarán una nueva versión</span>
+            ) : (
+              <span className="text-gray-400">El producto se registrará con la versión inicial 1.0</span>
+            )}
+          </div>
+        </div>
+
+        {/* Alerta de Modo Consulta Histórica en Filtro Superior */}
+        {selectedVersionFilter !== "actual" && selectedHistoricalVersionObj && (
+          <div className="p-3 bg-amber-50/90 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/60 px-6 flex items-center justify-between gap-3 text-xs shrink-0">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>
+                Estás visualizando el snapshot de la <strong>Versión v{Number(selectedHistoricalVersionObj.version || 1).toFixed(1)}</strong> ({selectedHistoricalVersionObj.fechaFinVigencia ? `Archivada el ${new Date(selectedHistoricalVersionObj.fechaFinVigencia).toLocaleDateString("es-CO")}` : "Versión anterior"}).
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRestoreHistoricalVersion}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition cursor-pointer shadow-2xs flex items-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Restaurar Esta Versión</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedVersionFilter("actual")}
+                className="px-2.5 py-1 text-gray-600 hover:text-gray-900 font-semibold text-xs cursor-pointer"
+              >
+                Volver a Versión Actual
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Requerimiento 1: STEPPER NAVEGADOR DE PASOS REORGANIZADO
+            1. Datos & Tipo -> 2. Ficha Técnica / Combo -> 3. Variantes -> 4. Adiciones */}
+        <div className={`grid ${configCombo.esCombo ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"} border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-850 shrink-0`}>
           
-          {/* Paso 1 */}
+          {/* Paso 1: Datos & Tipo */}
           <button
             type="button"
             onClick={() => setActiveStep(1)}
@@ -1049,66 +1286,19 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black truncate leading-tight">1. Datos & Tipo</p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Nombre, precio y foto</p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Nombre, precio y elaboración</p>
             </div>
             {activeStep === 1 && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
             )}
           </button>
 
-          {/* Paso 2 */}
+          {/* Paso 2: Ficha Técnica (o Armador de Combo) - REQUERIMIENTO 1 */}
           <button
             type="button"
-            onClick={() => {
-              if (configCombo.esCombo) {
-                setActiveStep(3);
-                notify.info("Modo Combo", "Los combos no requieren variantes individuales. Pasa directamente al Armador de Combo.");
-                return;
-              }
-              setActiveStep(2);
-            }}
+            onClick={() => setActiveStep(2)}
             className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-b md:border-b-0 border-gray-100 dark:border-gray-800 relative ${
-              configCombo.esCombo
-                ? "opacity-60 hover:opacity-100 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
-                : activeStep === 2
-                ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
-                : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
-            }`}
-          >
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-              configCombo.esCombo
-                ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
-                : variantes.length > 0
-                ? "bg-purple-600 text-white shadow-xs"
-                : activeStep === 2
-                ? "bg-[#F05454] text-white shadow-xs"
-                : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-            }`}>
-              {configCombo.esCombo ? "—" : (variantes.length > 0 ? variantes.length : "2")}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-black truncate leading-tight">
-                {configCombo.esCombo ? "2. Variantes (N/A)" : isDrink ? "2. Presentaciones" : "2. Variantes"}
-              </p>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {configCombo.esCombo
-                  ? "No aplica para Combos"
-                  : isDrink
-                  ? "Tamaños y sabores"
-                  : "Opciones o tamaños"}
-              </p>
-            </div>
-            {activeStep === 2 && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
-            )}
-          </button>
-
-          {/* Paso 3 */}
-          <button
-            type="button"
-            onClick={() => setActiveStep(3)}
-            className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
-              activeStep === 3
+              activeStep === 2
                 ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
                 : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
             }`}
@@ -1117,51 +1307,106 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               configCombo.esCombo
                 ? configCombo.productosAsociados?.length > 0
                   ? "bg-blue-600 text-white shadow-xs"
-                  : activeStep === 3 ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700"
-                : form.adiciones?.length > 0
+                  : activeStep === 2 ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700"
+                : tipoElaboracion === "base"
+                ? "bg-purple-600 text-white shadow-xs"
+                : (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
                 ? "bg-emerald-600 text-white shadow-xs"
-                : activeStep === 3 ? "bg-[#F05454] text-white" : "bg-gray-200 dark:bg-gray-700"
+                : activeStep === 2 ? "bg-[#F05454] text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-600"
             }`}>
-              {configCombo.esCombo ? (configCombo.productosAsociados?.length || "3") : (form.adiciones?.length || "3")}
+              {configCombo.esCombo 
+                ? (configCombo.productosAsociados?.length || "2") 
+                : tipoElaboracion === "base"
+                ? "✓"
+                : ((fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0 ? <Check className="w-4 h-4 stroke-[3]" /> : "2")}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black truncate leading-tight">
-                {configCombo.esCombo ? "3. Armador de Combo" : "3. Adiciones"}
+                {configCombo.esCombo ? "2. Armador de Combo" : "2. Ficha Técnica"}
               </p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
-                {configCombo.esCombo ? "Platos incluidos" : "Extras permitidos"}
+                {configCombo.esCombo 
+                  ? "Platos incluidos" 
+                  : tipoElaboracion === "base" 
+                  ? "Producto Base Terminado" 
+                  : "Receta, insumos y proceso"}
               </p>
             </div>
-            {activeStep === 3 && (
+            {activeStep === 2 && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
             )}
           </button>
 
-          {/* Paso 4: Ficha Técnica (Visible para platos cocinados y bebidas especiales preparadas como batidos) */}
-          {!configCombo.esCombo && !isCommercialDrink && (
+          {/* Paso 3: Variantes (Solo productos regulares) */}
+          {!configCombo.esCombo && (
             <button
               type="button"
-              onClick={() => setActiveStep(4)}
-              className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
-                activeStep === 4
+              onClick={() => setActiveStep(3)}
+              className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer border-r border-gray-100 dark:border-gray-800 relative ${
+                activeStep === 3
                   ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
                   : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
               }`}
             >
               <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
-                (fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : activeStep === 4
+                variantes.length > 0
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : activeStep === 3
                   ? "bg-[#F05454] text-white shadow-xs"
                   : "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
               }`}>
-                {(fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length) > 0
-                  ? <Check className="w-4 h-4 stroke-[3]" />
-                  : "4"}
+                {variantes.length > 0 ? variantes.length : "3"}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-black truncate leading-tight">4. Ficha Técnica</p>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">Receta, insumos y proceso</p>
+                <p className="text-xs font-black truncate leading-tight">
+                  {isDrink ? "3. Presentaciones" : "3. Variantes"}
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
+                  {isDrink ? "Tamaños y sabores" : "Opciones o tamaños"}
+                </p>
+              </div>
+              {activeStep === 3 && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
+              )}
+            </button>
+          )}
+
+          {/* Paso 4: Adiciones (Requerimiento 3: Bloqueado visualmente para Producto Base) */}
+          {!configCombo.esCombo && (
+            <button
+              type="button"
+              onClick={() => {
+                if (tipoElaboracion === "base") {
+                  notify.info("Adiciones Desactivadas", "Los productos base (gaseosas, salsas comerciales) no admiten adiciones.");
+                }
+                setActiveStep(4);
+              }}
+              className={`p-3.5 flex items-center gap-2.5 transition text-left cursor-pointer relative ${
+                tipoElaboracion === "base"
+                  ? "opacity-60 bg-gray-50/50 dark:bg-gray-900/30 text-gray-400"
+                  : activeStep === 4
+                  ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-2xs"
+                  : "text-gray-500 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${
+                tipoElaboracion === "base"
+                  ? "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                  : form.adiciones?.length > 0
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : activeStep === 4
+                  ? "bg-[#F05454] text-white"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-600"
+              }`}>
+                {tipoElaboracion === "base" ? <Lock className="w-3.5 h-3.5" /> : (form.adiciones?.length || "4")}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black truncate leading-tight">
+                  {tipoElaboracion === "base" ? "4. Adiciones (N/A)" : "4. Adiciones"}
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate hidden sm:block">
+                  {tipoElaboracion === "base" ? "Bloqueado para Producto Base" : "Extras permitidos"}
+                </p>
               </div>
               {activeStep === 4 && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F05454]" />
@@ -1303,6 +1548,66 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     </div>
                   </button>
                 </div>
+
+                {/* REQUERIMIENTO 2: Selector de Modalidad de Elaboración (Preparado vs Base) */}
+                {!configCombo.esCombo && (
+                  <div className="pt-2">
+                    <div className="p-3.5 bg-slate-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200/80 dark:border-gray-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                          <Utensils className="w-3.5 h-3.5 text-[#F05454]" />
+                          Modalidad de Elaboración:
+                        </span>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black ${
+                          tipoElaboracion === "preparado"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            : "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
+                        }`}>
+                          {tipoElaboracion === "preparado" ? "Cocina con Receta (Insumos)" : "Producto Terminado (Sin Receta)"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTipoElaboracion("preparado")}
+                          className={`p-3 rounded-xl text-left transition border cursor-pointer ${
+                            tipoElaboracion === "preparado"
+                              ? "bg-white dark:bg-gray-900 border-[#F05454] shadow-2xs ring-1 ring-[#F05454]/30"
+                              : "bg-white/60 dark:bg-gray-850/60 border-gray-200 dark:border-gray-700 hover:bg-white"
+                          }`}
+                        >
+                          <p className="text-xs font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                            <span>👨‍🍳 Producto Preparado</span>
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                            Se cocina en el negocio con insumos del inventario (Hamburguesas, perros calientes, batidos preparados, papas locas). Requiere Ficha Técnica culinaria.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTipoElaboracion("base");
+                            setForm(prev => ({ ...prev, adiciones: [] }));
+                          }}
+                          className={`p-3 rounded-xl text-left transition border cursor-pointer ${
+                            tipoElaboracion === "base"
+                              ? "bg-white dark:bg-gray-900 border-purple-500 shadow-2xs ring-1 ring-purple-500/30"
+                              : "bg-white/60 dark:bg-gray-850/60 border-gray-200 dark:border-gray-700 hover:bg-white"
+                          }`}
+                        >
+                          <p className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                            <span>📦 Producto Base (Terminado)</span>
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                            Ya viene elaborado de fábrica o proveedor (Gaseosas embotelladas, salsas industriales compradas como salsa roja, rosada o BBQ, snacks). <strong>Sin adiciones</strong>.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Subtipo de Bebida: Comercial vs Especial/Preparada */}
                 {isDrink && !configCombo.esCombo && (
@@ -1568,31 +1873,35 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       </p>
                     )}
 
-                    {/* Precio de referencia gastronómico si existe ficha técnica */}
-                    {!configCombo.esCombo && costoTotalInsumos > 0 ? (
-                      <div className="mt-2.5 p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-xl flex items-center justify-between gap-2">
+                    {/* REQUERIMIENTO 5: Precio de venta sugerido cargado en la sección Datos & Tipo */}
+                    {!configCombo.esCombo && (precioReferenciaSugerido > 0 || costoTotalInsumos > 0) && (
+                      <div className="mt-2.5 p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-xl flex items-center justify-between gap-2 animate-in fade-in duration-150">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0">
                             <Calculator className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-amber-900 dark:text-amber-200 truncate">
-                              Precio Sugerido según Insumos:
+                              Precio Sugerido según Ficha Técnica:
                             </p>
                             <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                              Costo: <span className="font-semibold font-mono">${costoTotalInsumos.toLocaleString("es-CO")}</span> &bull; Sugerido: <span className="font-bold font-mono text-amber-900 dark:text-amber-100">${precioReferenciaSugerido.toLocaleString("es-CO")} COP</span>
+                              Costo insumos: <span className="font-semibold font-mono">${costoTotalInsumos.toLocaleString("es-CO")} COP</span> &bull; Sugerido: <span className="font-bold font-mono text-amber-900 dark:text-amber-100">${precioReferenciaSugerido.toLocaleString("es-CO")} COP</span>
                             </p>
                           </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleMainPriceChange(String(precioReferenciaSugerido))}
-                          className="shrink-0 text-xs font-bold px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition cursor-pointer shadow-xs"
+                          onClick={() => {
+                            handleMainPriceChange(String(precioReferenciaSugerido));
+                            notify.success("Precio Aplicado", `Se cargó el precio sugerido de $${precioReferenciaSugerido.toLocaleString("es-CO")} COP.`);
+                          }}
+                          className="shrink-0 text-xs font-bold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition cursor-pointer shadow-xs flex items-center gap-1"
                         >
-                          Usar Sugerido
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Usar Sugerido</span>
                         </button>
                       </div>
-                    ) : null}
+                    )}
                   </div>
 
                   {/* Descripción */}
@@ -1621,222 +1930,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
           )}
 
-          {/* PASO 2: PRESENTACIONES & VARIANTES */}
+          {/* ========================================================================= */}
+          {/* PASO 2: FICHA TÉCNICA (O ARMADOR DE COMBO) - REQUERIMIENTO 1 & 2           */}
+          {/* ========================================================================= */}
           {activeStep === 2 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              
-              {/* Encabezado Explicativo */}
-              <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5 text-xs">
-                  <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                    {isDrink ? "Configuración de Tamaños y Sabores de Bebida" : "Presentaciones y Variantes de la Comida"}
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Las variantes representan opciones que el cliente puede elegir (como porciones, sabores o tamaños de botella). Todas comparten el precio base configurado en el Paso 1.
-                  </p>
-                </div>
-              </div>
-
-              {/* Si es Combo Especial: no lleva variantes ya que agrupa productos */}
+            <div className="space-y-4 animate-in fade-in duration-150">
               {configCombo.esCombo ? (
-                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-3xl border border-blue-200/80 dark:border-blue-900/40 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto">
-                    <FoodIcon name="combo" size={28} />
-                  </div>
-                  <div className="max-w-md mx-auto space-y-1">
-                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
-                      Los Combos no requieren variantes manuales
-                    </h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                      Un combo es una combinación de productos individuales del catálogo. La configuración de qué platillos y bebidas incluye se realiza directamente en el <strong>Paso 3 (Armador de Combo)</strong>.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep(3)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                  >
-                    <span>Ir al Armador de Combo</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : isDrink ? (
-                /* Modo Bebidas (2 Paneles: Tamaños y Sabores) */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* Panel Tamaños */}
-                  <div className="border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 text-xs font-black flex items-center justify-center">
-                          {sizeVariantes.length}
-                        </span>
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
-                          Tamaños y Botellas
-                        </h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddTamano()}
-                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-amber-50 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar Tamaño</span>
-                      </button>
-                    </div>
-
-                    {/* Sugerencias Rápidas */}
-                    <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
-                      {["Personal 400ml", "1.5 Litros", "Mega 2.5L"].map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          onClick={() => handleAddTamano(sug)}
-                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-amber-200 hover:border-amber-400 text-amber-800 dark:text-amber-200 font-medium transition cursor-pointer"
-                        >
-                          +{sug}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="space-y-2 flex-1 overflow-y-auto max-h-72 pr-1">
-                      {sizeVariantes.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 border border-dashed border-amber-200 rounded-xl">
-                          <p className="text-xs">No hay tamaños adicionales.</p>
-                          <p className="text-[10px] text-gray-400">Se venderá en presentación estándar.</p>
-                        </div>
-                      ) : (
-                        sizeVariantes.map((v, idx) => renderVariantRow(v, idx, "tamano"))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Panel Sabores */}
-                  <div className="border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 text-xs font-black flex items-center justify-center">
-                          {flavorVariantes.length}
-                        </span>
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
-                          Sabores y Alternativas
-                        </h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddSabor()}
-                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-purple-50 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar Sabor</span>
-                      </button>
-                    </div>
-
-                    {/* Sugerencias Rápidas */}
-                    <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
-                      {["Original", "Sin Azúcar / Zero", "Manzana", "Uva"].map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          onClick={() => handleAddSabor(sug)}
-                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-purple-200 hover:border-purple-400 text-purple-800 dark:text-purple-200 font-medium transition cursor-pointer"
-                        >
-                          +{sug}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="space-y-2 flex-1 overflow-y-auto max-h-72 pr-1">
-                      {flavorVariantes.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 border border-dashed border-purple-200 rounded-xl">
-                          <p className="text-xs">No hay sabores adicionales.</p>
-                          <p className="text-[10px] text-gray-400">Se venderá en sabor clásico.</p>
-                        </div>
-                      ) : (
-                        flavorVariantes.map((v, idx) => renderVariantRow(v, idx, "sabor"))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Modo Comida (Presentaciones del Plato) */
-                <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/20 dark:bg-orange-950/10 rounded-2xl p-5 space-y-4 shadow-2xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                          Presentaciones Disponibles del Plato
-                        </h4>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-700">
-                          {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Opciones que el comensal puede elegir al momento de ordenar.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAddVariante()}
-                        className="px-3 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Añadir Presentación</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sugerencias rápidas de comida */}
-                  <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white dark:bg-gray-800 rounded-xl border border-orange-150 text-xs">
-                    <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Ejemplos frecuentes:
-                    </span>
-                    {["Sencilla", "Doble Carne", "Tamaño Familiar", "Con Queso Extra"].map((sug) => (
-                      <button
-                        key={sug}
-                        type="button"
-                        onClick={() => handleAddVariante(sug)}
-                        className="px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 text-orange-800 dark:text-orange-200 text-[11px] font-semibold transition cursor-pointer"
-                      >
-                        +{sug}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Lista de Variantes de Comida */}
-                  <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-                    {variantes.length === 0 ? (
-                      <div className="text-center py-10 px-4 rounded-2xl border border-dashed border-orange-200 dark:border-orange-900/60 bg-white/60 dark:bg-gray-850">
-                        <FoodIcon name="burger" size={32} className="mx-auto mb-2 text-orange-400" />
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                          Sin variantes adicionales
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          El producto se ofrecerá con su presentación estándar y precio base. Si deseas añadir opciones como "Doble Carne", haz clic en el botón superior.
-                        </p>
-                      </div>
-                    ) : (
-                      variantes.map((v, idx) => renderVariantRow(v, idx, "general"))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* PASO 3: COMPLEMENTOS (ARMADOR DE COMBO O ADICIONES DISPONIBLES) */}
-          {activeStep === 3 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              
-              {/* CASO A: ARMADOR DE COMBO ESPECIAL */}
-              {configCombo.esCombo ? (
+                /* CASO A: ARMADOR DE COMBO GASTRONÓMICO (Paso 2 para combos) */
                 <div className="space-y-5">
                   <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 rounded-2xl border border-blue-200/80 dark:border-blue-900/50 flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0 mt-0.5">
@@ -2211,7 +2311,381 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     )}
                   </div>
                 </div>
+              ) : tipoElaboracion === "base" ? (
+                /* CASO B: FICHA TÉCNICA DE PRODUCTO BASE (REQUERIMIENTO 2) */
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div className="p-4 bg-purple-50/70 dark:bg-purple-950/20 rounded-2xl border border-purple-200/80 dark:border-purple-900/40 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <PackageCheck className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                          Ficha Técnica de Producto Base / Terminado
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          Reventa / Sin Preparación en Cocina
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                        Este producto viene <strong>elaborado o envasado de fábrica por el proveedor</strong> (ej. gaseosas en botella o lata, agua envasada, salsas industriales compradas como BBQ, salsa roja o rosada en galón/pote, paquetes o snacks).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-1.5 shadow-2xs">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                        Operación en Cocina
+                      </span>
+                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                        Sin receta culinaria
+                      </p>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        No consume ingredientes de receta ni requiere tiempo de preparación en cocina. Se despacha sellado.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-1.5 shadow-2xs">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                        Regla de Adiciones (Requerimiento 3)
+                      </span>
+                      <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                        Adiciones Desactivadas
+                      </p>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        Por ser un producto base cerrado o estándar, el sistema bloquea automáticamente la selección de adiciones.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-1.5 shadow-2xs">
+                      <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                        Control de Inventario
+                      </span>
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        Descuento 1 a 1 por Unidad
+                      </p>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        Cada venta descuenta directamente 1 unidad del producto o de la presentación comercial seleccionada.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    <h5 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Info className="w-4 h-4 text-purple-600" />
+                      Especificaciones de Almacenamiento & Manipulación Comercial
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
+                          Condiciones de Conservación / Almacén:
+                        </label>
+                        <input
+                          type="text"
+                          value={fichaTecnica?.condicionesAlmacenamiento || "Almacenar en lugar fresco, seco y protegido de la luz solar directa."}
+                          onChange={(e) => setFichaTecnica(prev => ({ ...prev, condicionesAlmacenamiento: e.target.value }))}
+                          className={inputCls}
+                          placeholder="Ej. Mantener refrigerado entre 2°C y 6°C"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-1">
+                          Vida Útil / Rotación Comercial:
+                        </label>
+                        <input
+                          type="text"
+                          value={fichaTecnica?.vidaUtil || "Según fecha de vencimiento impresa por el fabricante"}
+                          onChange={(e) => setFichaTecnica(prev => ({ ...prev, vidaUtil: e.target.value }))}
+                          className={inputCls}
+                          placeholder="Ej. 6 meses a partir de la fecha de envasado"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
+                /* CASO C: PRODUCTO PREPARADO (EDITOR COMPLETO DE FICHA TÉCNICA) */
+                <div className="space-y-4">
+                  <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5 text-xs">
+                      <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                        {isDrink ? "Ficha Técnica de Bebida Especial / Preparada (Paso 2 de 4)" : "Ficha Técnica Oficial del Producto (Paso 2 de 4)"}
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                        {isDrink
+                          ? "Configura la receta (leche, fruta, jarabes, hielo), fases de elaboración y costos reales de este batido o bebida especial."
+                          : "Configura los ingredientes / insumos necesarios con sus cantidades, las fases de preparación, tiempo, porciones y costos reales."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <FichaTecnicaProducto
+                    productId={producto?.id || producto?.idProducto}
+                    productName={form.nombre}
+                    initialData={fichaTecnica || producto?.fichaTecnica || null}
+                    entityData={entityDataActual}
+                    prevEntityData={prevEntityDataInicial}
+                    onRestoreEntityData={handleRestoreEntityData}
+                    onPrecioSugeridoChange={(sug) => {
+                      setPrecioSugeridoLive(sug);
+                    }}
+                    onChange={(data) => {
+                      setFichaTecnica(data);
+                      if (data?.precioSugerido) {
+                        setPrecioSugeridoLive(data.precioSugerido);
+                      }
+                    }}
+                    onSave={(data) => {
+                      setFichaTecnica(data);
+                      notify.success("Ficha Técnica Actualizada", "Los datos de la receta fueron sincronizados con el producto.");
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* PASO 3: PRESENTACIONES & VARIANTES (REQUERIMIENTO 1)                       */}
+          {/* ========================================================================= */}
+          {activeStep === 3 && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              
+              {/* Encabezado Explicativo */}
+              <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5 text-xs">
+                  <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                    {isDrink ? "Configuración de Tamaños y Sabores de Bebida" : "Presentaciones y Variantes de la Comida"}
+                  </h4>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    Las variantes representan opciones que el cliente puede elegir (como porciones, sabores o tamaños de botella). Todas comparten el precio base configurado en el Paso 1.
+                  </p>
+                </div>
+              </div>
+
+              {/* Si es Combo Especial: no lleva variantes ya que agrupa productos */}
+              {configCombo.esCombo ? (
+                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-3xl border border-blue-200/80 dark:border-blue-900/40 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto">
+                    <FoodIcon name="combo" size={28} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-1">
+                    <h4 className="font-extrabold text-sm text-gray-900 dark:text-gray-100">
+                      Los Combos no requieren variantes manuales
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                      Un combo es una combinación de productos individuales del catálogo. La configuración de qué platillos y bebidas incluye se realiza directamente en el <strong>Paso 3 (Armador de Combo)</strong>.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(3)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  >
+                    <span>Ir al Armador de Combo</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : isDrink ? (
+                /* Modo Bebidas (2 Paneles: Tamaños y Sabores) */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Panel Tamaños */}
+                  <div className="border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 text-xs font-black flex items-center justify-center">
+                          {sizeVariantes.length}
+                        </span>
+                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
+                          Tamaños y Botellas
+                        </h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddTamano()}
+                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-amber-50 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Agregar Tamaño</span>
+                      </button>
+                    </div>
+
+                    {/* Sugerencias Rápidas */}
+                    <div className="flex flex-wrap gap-1 text-[10px]">
+                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
+                      {["Personal 400ml", "1.5 Litros", "Mega 2.5L"].map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => handleAddTamano(sug)}
+                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-amber-200 hover:border-amber-400 text-amber-800 dark:text-amber-200 font-medium transition cursor-pointer"
+                        >
+                          +{sug}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2 flex-1 overflow-y-auto max-h-72 pr-1">
+                      {sizeVariantes.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 border border-dashed border-amber-200 rounded-xl">
+                          <p className="text-xs">No hay tamaños adicionales.</p>
+                          <p className="text-[10px] text-gray-400">Se venderá en presentación estándar.</p>
+                        </div>
+                      ) : (
+                        sizeVariantes.map((v, idx) => renderVariantRow(v, idx, "tamano"))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Panel Sabores */}
+                  <div className="border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 text-xs font-black flex items-center justify-center">
+                          {flavorVariantes.length}
+                        </span>
+                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
+                          Sabores y Alternativas
+                        </h4>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddSabor()}
+                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-purple-50 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Agregar Sabor</span>
+                      </button>
+                    </div>
+
+                    {/* Sugerencias Rápidas */}
+                    <div className="flex flex-wrap gap-1 text-[10px]">
+                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
+                      {["Original", "Sin Azúcar / Zero", "Manzana", "Uva"].map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => handleAddSabor(sug)}
+                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-purple-200 hover:border-purple-400 text-purple-800 dark:text-purple-200 font-medium transition cursor-pointer"
+                        >
+                          +{sug}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2 flex-1 overflow-y-auto max-h-72 pr-1">
+                      {flavorVariantes.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 border border-dashed border-purple-200 rounded-xl">
+                          <p className="text-xs">No hay sabores adicionales.</p>
+                          <p className="text-[10px] text-gray-400">Se venderá en sabor clásico.</p>
+                        </div>
+                      ) : (
+                        flavorVariantes.map((v, idx) => renderVariantRow(v, idx, "sabor"))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Modo Comida (Presentaciones del Plato) */
+                <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/20 dark:bg-orange-950/10 rounded-2xl p-5 space-y-4 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                          Presentaciones Disponibles del Plato
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-700">
+                          {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Opciones que el comensal puede elegir al momento de ordenar.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAddVariante()}
+                        className="px-3 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Añadir Presentación</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sugerencias rápidas de comida */}
+                  <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white dark:bg-gray-800 rounded-xl border border-orange-150 text-xs">
+                    <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Ejemplos frecuentes:
+                    </span>
+                    {["Sencilla", "Doble Carne", "Tamaño Familiar", "Con Queso Extra"].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => handleAddVariante(sug)}
+                        className="px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 text-orange-800 dark:text-orange-200 text-[11px] font-semibold transition cursor-pointer"
+                      >
+                        +{sug}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Lista de Variantes de Comida */}
+                  <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                    {variantes.length === 0 ? (
+                      <div className="text-center py-10 px-4 rounded-2xl border border-dashed border-orange-200 dark:border-orange-900/60 bg-white/60 dark:bg-gray-850">
+                        <FoodIcon name="burger" size={32} className="mx-auto mb-2 text-orange-400" />
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          Sin variantes adicionales
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          El producto se ofrecerá con su presentación estándar y precio base. Si deseas añadir opciones como "Doble Carne", haz clic en el botón superior.
+                        </p>
+                      </div>
+                    ) : (
+                      variantes.map((v, idx) => renderVariantRow(v, idx, "general"))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* PASO 4: ADICIONES PERMITIDAS (REQUERIMIENTO 1 & 3)                         */}
+          {/* ========================================================================= */}
+          {activeStep === 4 && (
+            <div className="space-y-5 animate-in fade-in duration-150">
+              {tipoElaboracion === "base" ? (
+                /* REQUERIMIENTO 3: ADICIONES DESACTIVADAS PARA PRODUCTO BASE */
+                <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xs">
+                    <Lock className="w-7 h-7" />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <h4 className="font-extrabold text-base text-gray-900 dark:text-gray-100">
+                      Adiciones Desactivadas para Producto Base
+                    </h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                      Al haber clasificado este ítem como <strong>Producto Base / Terminado</strong> (gaseosas embotelladas, salsas industriales, snacks empacados), el producto se comercializa tal como viene del fabricante y no admite adiciones ni extras en el pedido.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-bold">
+                    <span>✓ Configuración conforme a normas gastronómicas</span>
+                  </div>
+                </div>
+              ) : (
+                /* PRODUCTO PREPARADO: ADICIONES PERMITIDAS */
                 /* CASO B: ADICIONES DISPONIBLES PARA PRODUCTO REGULAR */
                 <div className="space-y-4">
                   
@@ -2335,101 +2809,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
           )}
 
-          {/* PASO 4: FICHA TÉCNICA OBLIGATORIA DEL PRODUCTO */}
-          {activeStep === 4 && (
-            <div className="space-y-4 animate-in fade-in duration-150">
-              {configCombo.esCombo ? (
-                /* Combos: Composición y explicación de fichas técnicas heredadas */
-                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-3xl border border-blue-200/80 dark:border-blue-900/40 space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto shadow-xs">
-                    <FoodIcon name="combo" size={32} />
-                  </div>
-                  <div className="max-w-md mx-auto space-y-1.5">
-                    <h4 className="font-extrabold text-base text-gray-900 dark:text-gray-100">
-                      Ficha Técnica Heredada de los Platillos
-                    </h4>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                      Los combos no requieren una Ficha Técnica propia porque cada uno de los productos individuales incluidos ya cuenta con su respectiva Ficha Técnica y receta culinaria. El inventario de insumos se descontará automáticamente de cada platillo al momento de la venta.
-                    </p>
-                  </div>
-
-                  {Array.isArray(configCombo.productosAsociados) && configCombo.productosAsociados.length > 0 && (
-                    <div className="max-w-md mx-auto bg-white dark:bg-gray-900 rounded-2xl p-4 border border-blue-150 dark:border-blue-900/50 text-left space-y-2">
-                      <p className="text-[11px] font-black uppercase text-gray-400 tracking-wider">
-                        Platos vinculados en el combo:
-                      </p>
-                      <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {configCombo.productosAsociados.map((item, idx) => (
-                          <div key={idx} className="py-1.5 flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-800 dark:text-gray-200">
-                              {item.cantidad}x {item.nombre}
-                            </span>
-                            <span className="text-[11px] font-mono text-gray-500">
-                              ${(Number(item.precio || 0) * (item.cantidad || 1)).toLocaleString("es-CO")} COP
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : isCommercialDrink ? (
-                /* Bebida o Refresco Comercial: No requiere Ficha Técnica */
-                <div className="p-8 text-center bg-purple-50/50 dark:bg-purple-950/20 rounded-3xl border border-purple-200/80 dark:border-purple-900/40 space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center shadow-xs">
-                    <FoodIcon name="drink" size={34} />
-                  </div>
-                  <div className="max-w-md mx-auto space-y-1.5">
-                    <h3 className="text-base font-black text-gray-900 dark:text-gray-100">
-                      Bebida Comercial / Insumo Terminado
-                    </h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                      Las gaseosas, aguas embotelladas, jugos industriales y refrescos comprados a proveedores no requieren receta culinaria ni mise & place.
-                    </p>
-                  </div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-100/80 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs font-bold">
-                    <span>✓ Ficha técnica no requerida para este producto</span>
-                  </div>
-                </div>
-              ) : (
-                /* Producto (Comida o Bebida Especial / Batido): Editor completo de Ficha Técnica */
-                <div className="space-y-4">
-                  <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/60 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="space-y-0.5 text-xs">
-                      <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                        {isDrink ? "Ficha Técnica de Bebida Especial / Preparada (Paso 4 de 4)" : "Ficha Técnica Oficial del Producto (Paso 4 de 4)"}
-                      </h4>
-                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                        {isDrink
-                          ? "Configura la receta (leche, fruta, azúcar, jarabes, hielo), fases de elaboración y costos reales de este batido o bebida especial."
-                          : "Configura los ingredientes / insumos necesarios con sus cantidades, las fases de preparación, tiempo, porciones y costos reales."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <FichaTecnicaProducto
-                    productId={producto?.id || producto?.idProducto}
-                    productName={form.nombre}
-                    initialData={fichaTecnica || producto?.fichaTecnica || null}
-                    entityData={entityDataActual}
-                    prevEntityData={prevEntityDataInicial}
-                    onRestoreEntityData={handleRestoreEntityData}
-                    onChange={(data) => {
-                      setFichaTecnica(data);
-                    }}
-                    onSave={(data) => {
-                      setFichaTecnica(data);
-                      notify.success("Ficha Técnica Actualizada", "Los datos de la receta fueron sincronizados con el producto.");
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Footer de Navegación y Guardado */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 shrink-0">
             
@@ -2446,7 +2825,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               <span className="font-semibold text-gray-600 dark:text-gray-300">
                 {configCombo.esCombo
                   ? `Combo (${configCombo.productosAsociados?.length || 0} platos)`
-                  : isDrink ? `${variantes.length} opciones • ${form.adiciones?.length || 0} adic.` : `${variantes.length} var. • ${form.adiciones?.length || 0} adic. • ${fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length || 0} insumos`}
+                  : tipoElaboracion === "base"
+                  ? `Base (${variantes.length} opciones • Sin adic.)`
+                  : `${variantes.length} var. • ${form.adiciones?.length || 0} adic. • ${fichaTecnica?.detalles?.length || fichaTecnica?.insumos?.length || 0} insumos`}
               </span>
             </div>
 
@@ -2463,17 +2844,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               {activeStep > 1 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (activeStep === 4) {
-                      setActiveStep(3);
-                      return;
-                    }
-                    if (activeStep === 3 && configCombo.esCombo) {
-                      setActiveStep(1);
-                      return;
-                    }
-                    setActiveStep(prev => prev - 1);
-                  }}
+                  onClick={() => setActiveStep(prev => prev - 1)}
                   className="px-3.5 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -2481,7 +2852,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 </button>
               )}
 
-              {((configCombo.esCombo && activeStep < 3) || (isCommercialDrink && activeStep < 3) || (!configCombo.esCombo && !isCommercialDrink && activeStep < 4)) && (
+              {/* Botón Siguiente */}
+              {((configCombo.esCombo && activeStep < 2) || (!configCombo.esCombo && activeStep < 4)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2494,25 +2866,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                         notify.warning("Datos Incompletos", "Por favor ingresa el nombre y precio del producto.");
                         return;
                       }
-                      if (configCombo.esCombo) {
-                        setActiveStep(3);
-                        return;
-                      }
+                      setActiveStep(2);
+                      return;
                     }
-                    if (activeStep === 3 && !configCombo.esCombo && !isCommercialDrink) {
+                    if (activeStep === 2) {
+                      if (configCombo.esCombo) return;
+                      setActiveStep(3);
+                      return;
+                    }
+                    if (activeStep === 3) {
                       setActiveStep(4);
                       return;
                     }
-                    setActiveStep(prev => prev + 1);
                   }}
                   className="px-4 py-2 text-xs font-bold text-white bg-[#F05454] hover:bg-[#d84343] rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1"
                 >
                   <span>
-                    {configCombo.esCombo && activeStep === 1
-                      ? "Ir a Armador de Combo"
-                      : !configCombo.esCombo && !isCommercialDrink && activeStep === 3
-                      ? "Ir a Ficha Técnica"
-                      : "Siguiente"}
+                    {activeStep === 1
+                      ? (configCombo.esCombo ? "Ir a Armador de Combo" : "Ir a Ficha Técnica")
+                      : activeStep === 2
+                      ? "Ir a Variantes"
+                      : "Ir a Adiciones"}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -2523,7 +2897,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 type="submit"
                 disabled={uploading}
                 className={`px-5 py-2 text-xs font-bold text-white rounded-xl transition cursor-pointer shadow-xs flex items-center gap-1.5 disabled:opacity-50 ${
-                  (configCombo.esCombo && activeStep === 3) || (isCommercialDrink && activeStep === 3) || (!configCombo.esCombo && !isCommercialDrink && activeStep === 4)
+                  (configCombo.esCombo && activeStep === 2) || (!configCombo.esCombo && activeStep === 4)
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : isStep1Valid
                     ? "bg-gray-900 hover:bg-black dark:bg-gray-100 dark:text-gray-900"
@@ -2540,6 +2914,90 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
           </div>
         </form>
+
+        {/* ========================================================================= */}
+        {/* REQUERIMIENTO 7: MODAL DE CONFIRMACIÓN ANTES DE GUARDAR NUEVA VERSIÓN       */}
+        {/* ========================================================================= */}
+        {showConfirmVersionModal && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-lg w-full border border-gray-100 dark:border-gray-800 p-6 space-y-5 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
+                  <AlertCircle className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900 dark:text-gray-100">
+                    ¿Confirmas guardar esta nueva versión?
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Revisión de datos para evitar generar versiones erróneas
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 leading-relaxed space-y-1.5">
+                <p className="font-bold">
+                  ⚠️ Al guardar los cambios, el sistema archivará la versión actual y generará una nueva versión histórica del producto.
+                </p>
+                <p className="text-amber-800 dark:text-amber-300">
+                  Por favor verifica que el precio, descripción, variantes e insumos sean definitivos antes de confirmar. Si necesitas corregir algún dato, presiona <strong>"Revisar Información"</strong>.
+                </p>
+              </div>
+
+              {/* Resumen de Datos Clave */}
+              <div className="bg-gray-50 dark:bg-gray-800/60 rounded-2xl p-4 border border-gray-200/80 dark:border-gray-700 space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                  <span className="text-gray-500">Producto:</span>
+                  <span className="font-bold text-gray-900 dark:text-gray-100 truncate max-w-[200px]">{form.nombre}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                  <span className="text-gray-500">Precio de Venta:</span>
+                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                    ${Number(form.precio || 0).toLocaleString("es-CO")} COP
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                  <span className="text-gray-500">Modalidad:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {configCombo.esCombo ? "Combo Especial" : tipoElaboracion === "base" ? "Producto Base (Terminado)" : "Producto Preparado"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-200/60 dark:border-gray-700/60">
+                  <span className="text-gray-500">Versión:</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    v{versionActualNum.toFixed(1)} ➔ v{(versionActualNum + 0.1).toFixed(1)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-gray-500">Variantes / Adiciones:</span>
+                  <span className="text-gray-700 dark:text-gray-300">
+                    {variantes.length} variantes • {tipoElaboracion === "base" ? "0 adiciones (Base)" : `${form.adiciones?.length || 0} adiciones`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmVersionModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+                >
+                  Revisar Información (Cancelar)
+                </button>
+                <button
+                  type="button"
+                  onClick={executeActualSave}
+                  disabled={uploading}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Confirmar y Guardar Versión</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
