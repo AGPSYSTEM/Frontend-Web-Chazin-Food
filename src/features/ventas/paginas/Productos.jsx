@@ -1,16 +1,16 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Search, Package, Star, TrendingUp, AlertCircle, Sparkles, FileText, X } from "lucide-react";
+import { Plus, Search, Package, Star, TrendingUp, Sparkles, Trash2, RotateCcw, X } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/shared/utils/privilegiosUtils";
 import { useProductos } from "../hooks/useProductos";
 import { ProductosTable } from "../componentes/productos/ProductosTable";
+import { PapeleraProductosView } from "../componentes/productos/PapeleraProductosView";
 import { ProductoModal } from "../componentes/productos/ProductoModal";
 import { VerProductoModal } from "../componentes/productos/VerProductoModal";
 import { EventosModal } from "../componentes/productos/EventosModal";
 import { CrearEventoModal } from "../componentes/productos/CrearEventoModal";
 import { eventosService } from "../servicios/eventosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
-import { FichaTecnicaProducto } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
 
 export function Productos() {
   const { user } = useAuth();
@@ -20,6 +20,7 @@ export function Productos() {
 
   const {
     productos,
+    papeleraProductos,
     filteredProductos,
     categorias,
     loading,
@@ -29,17 +30,22 @@ export function Productos() {
     setFilterCategoria,
     filterEstado,
     setFilterEstado,
+    lastDeletedProducto,
+    dismissLastDeleted,
     createProducto,
     updateProducto,
+    toggleEstadoProducto,
     deleteProducto,
+    restoreProducto,
+    deleteDefinitivoProducto,
     refetch
   } = useProductos();
 
+  const [viewMode, setViewMode] = useState("activos"); // "activos" | "papelera"
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isDuplicateMode, setIsDuplicateMode] = useState(false);
-  const [editingFichaProducto, setEditingFichaProducto] = useState(null);
   const [eventosModalOpen, setEventosModalOpen] = useState(false);
   const [crearEventoModalOpen, setCrearEventoModalOpen] = useState(false);
   const [productoParaEvento, setProductoParaEvento] = useState(null);
@@ -233,72 +239,141 @@ export function Productos() {
         </div>
       </div>
 
-      {/* Search + Filter + Actions Bar */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar producto..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
-            />
-          </div>
-
-          {/* Category Filter Select */}
-          <select
-            value={filterCategoria}
-            onChange={(e) => setFilterCategoria(e.target.value)}
-            className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors shrink-0 cursor-pointer"
-          >
-            <option value="Todas">Todas las categorías</option>
-            {categorias.map((c) => (
-              <option key={c.id || c.nombre} value={c.nombre}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
-
-          {/* Eventos Button (Coordinado con el contorno de productos con evento) */}
-          <button
-            onClick={() => setEventosModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:via-amber-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-md shadow-orange-500/25 ring-2 ring-orange-400/30 transition-all active:scale-95 cursor-pointer shrink-0"
-          >
-            <Sparkles className="w-5 h-5 text-amber-100" />
-            <span>Eventos</span>
-          </button>
-
-          {/* Nuevo Producto Button */}
-          {canCreate && (
-            <button
-              onClick={handleOpenCreate}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Nuevo Producto</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <ChazinLoader text="CARGANDO PRODUCTOS" size="md" />
-      ) : (
-        <ProductosTable
-          productos={filteredProductos}
-          onEdit={handleOpenEdit}
-          onDelete={deleteProducto}
-          onView={handleOpenView}
-          onDuplicate={handleOpenDuplicate}
-          onCreateEvento={handleCreateEvento}
-          onEditFicha={(p) => setEditingFichaProducto(p)}
+      {/* VIEW MODE: PAPELERA VS ACTIVOS */}
+      {viewMode === "papelera" ? (
+        <PapeleraProductosView
+          papeleraProductos={papeleraProductos}
+          onVolverActivos={() => setViewMode("activos")}
+          onRestaurarProducto={restoreProducto}
+          onEliminarDefinitivoProducto={deleteDefinitivoProducto}
           canEdit={canEdit}
           canDelete={canDelete}
         />
+      ) : (
+        <div className="space-y-6">
+          {/* Quick Trash / Recover Banner right after deleting a product */}
+          {lastDeletedProducto && (
+            <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-2xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5 text-sm text-amber-900 dark:text-amber-100">
+                <Trash2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>
+                  <strong className="font-semibold">"{lastDeletedProducto.nombre}"</strong> se envió a la papelera de reciclaje.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => restoreProducto(lastDeletedProducto)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Recuperar</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewMode("papelera")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100/70 dark:hover:bg-gray-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Ir a la papelera ({papeleraProductos.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissLastDeleted}
+                  className="p-1 text-amber-600 hover:text-amber-800 dark:text-amber-400 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Cerrar aviso"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Search + Filter + Actions Bar */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar producto..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors"
+                />
+              </div>
+
+              {/* Category Filter Select */}
+              <select
+                value={filterCategoria}
+                onChange={(e) => setFilterCategoria(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-[#F05454] focus:border-transparent transition-colors shrink-0 cursor-pointer"
+              >
+                <option value="Todas">Todas las categorías</option>
+                {categorias.map((c) => (
+                  <option key={c.id || c.nombre} value={c.nombre}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+
+              {/* Papelera Button */}
+              <button
+                type="button"
+                onClick={() => setViewMode("papelera")}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200 font-semibold text-sm rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
+                title="Ver productos eliminados y recuperarlos"
+              >
+                <Trash2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span>Papelera ({papeleraProductos.length})</span>
+              </button>
+
+              {/* Eventos Button (Coordinado con el contorno de productos con evento) */}
+              <button
+                onClick={() => setEventosModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-600 hover:via-amber-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-md shadow-orange-500/25 ring-2 ring-orange-400/30 transition-all active:scale-95 cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-5 h-5 text-amber-100" />
+                <span>Eventos</span>
+              </button>
+
+              {/* Nuevo Producto Button */}
+              {canCreate && (
+                <button
+                  onClick={handleOpenCreate}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F05454] hover:bg-[#d84343] text-white font-medium rounded-xl shadow-md transition-colors shrink-0"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Nuevo Producto</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Table */}
+          {loading ? (
+            <ChazinLoader text="CARGANDO PRODUCTOS" size="md" />
+          ) : (
+            <ProductosTable
+              productos={filteredProductos}
+              onEdit={handleOpenEdit}
+              onDelete={(id, nombre) =>
+                deleteProducto(id, nombre, {
+                  onGoToTrash: () => setViewMode("papelera")
+                })
+              }
+              onToggleEstado={toggleEstadoProducto}
+              onView={handleOpenView}
+              onDuplicate={handleOpenDuplicate}
+              onCreateEvento={handleCreateEvento}
+              canEdit={canEdit}
+              canDelete={canDelete}
+            />
+          )}
+        </div>
       )}
 
       {/* Producto Modal (Create/Edit/Duplicate) */}
@@ -366,49 +441,6 @@ export function Productos() {
         eventoToEdit={eventoParaEditar}
         onCreated={handleEventoCreated}
       />
-      {/* Modal Dedicado: Solo Editar Ficha Técnica */}
-      {editingFichaProducto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl border border-gray-100 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between shrink-0 bg-gray-50/50 dark:bg-gray-800/40">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-gray-900 dark:text-gray-100">
-                    Ficha Técnica: {editingFichaProducto.nombre}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Edita únicamente la receta, proporciones, costos y pasos de preparación de este producto.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingFichaProducto(null)}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-1 scrollbar-thin">
-              <FichaTecnicaProducto
-                productId={editingFichaProducto.id || editingFichaProducto.idProducto}
-                productName={editingFichaProducto.nombre}
-                initialData={editingFichaProducto.fichaTecnica || null}
-                onSave={() => {
-                  refetch();
-                  setEditingFichaProducto(null);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

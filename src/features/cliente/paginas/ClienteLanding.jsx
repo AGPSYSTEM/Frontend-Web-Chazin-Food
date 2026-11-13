@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban, ArrowRight, Globe, AlertCircle, CheckCircle2 } from "lucide-react";
+import { LogOut, LogIn, ShoppingCart, User, Search, Package, Clock, X, Plus, Minus, FileText, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CheckCircle, Check, MapPin, CreditCard, Banknote, Smartphone, RefreshCw, Sun, Moon, Zap, Truck, Store, Info, Flame, Sparkles, AlertTriangle, ShieldCheck, Loader2, Star, Sliders, Coins, Beaker, Ban, ArrowRight, Globe, AlertCircle, CheckCircle2, Layers } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -19,6 +19,8 @@ import { eventosService } from "@/features/ventas/servicios/eventosService";
 import { EventosCarousel, THEMES } from "../componentes/EventosCarousel";
 import { BrandHeroBanner } from "../componentes/BrandHeroBanner";
 import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis } from "@/shared/components/ui/FoodIcon";
+import { parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
+import { getProductVariantSummary } from "@/shared/utils/productVariantUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
@@ -2495,6 +2497,47 @@ export function ClienteLanding() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                       {producto.descripcion || "Platillo gourmet preparado con ingredientes frescos de primera calidad."}
                     </p>
+
+                    {(() => {
+                      const variantSummary = getProductVariantSummary(producto);
+                      if (!variantSummary.hasVariants) return null;
+                      const basePrice = Number(producto.precio || 0);
+                      return (
+                        <div
+                          className="mt-2 flex items-center flex-wrap gap-1"
+                          title={`Variantes disponibles: ${variantSummary.names.join(", ")}`}
+                        >
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60">
+                            <Layers className="w-2.5 h-2.5 shrink-0" />
+                            <span>
+                              {variantSummary.count} {variantSummary.count === 1 ? "variante" : "variantes"}:
+                            </span>
+                          </span>
+                          {variantSummary.variants.slice(0, 2).map((v, vIdx) => {
+                            const vp = Number(v.precio || 0);
+                            const customPrice = vp > 0 && vp !== basePrice;
+                            return (
+                              <span
+                                key={v.idVariante || v.id || `${v.nombre}-${vIdx}`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50/50 dark:bg-gray-800 text-indigo-800 dark:text-indigo-200 border border-indigo-200/60 dark:border-gray-700 max-w-[130px] truncate"
+                              >
+                                <span className="truncate">{v.nombre}</span>
+                                {customPrice && (
+                                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-300 shrink-0">
+                                    ${vp.toLocaleString("es-CO")}
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })}
+                          {variantSummary.count > 2 && (
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                              +{variantSummary.count - 2}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                     
                     {/* Rating Stars Summary */}
                     <div className="mt-2.5 flex items-center justify-between">
@@ -2543,8 +2586,16 @@ export function ClienteLanding() {
                   <div className="flex flex-col">
                     {activeEvent ? (
                       <>
-                        <div className="flex items-center gap-1.5 mb-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
                           <EventBadge event={activeEvent} product={producto} variant="pill" />
+                          {parseEventoInsumos(activeEvent).length > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-800/60 max-w-full truncate"
+                              title={`Incluye gratis: ${formatEventoToppingsText(activeEvent)}`}
+                            >
+                              + Gratis: {formatEventoToppingsText(activeEvent)}
+                            </span>
+                          )}
                         </div>
                         {(activeEvent.tipoEvento === "Promoción Precio" || activeEvent.tipoEvento === "Descuento" || activeEvent.nuevoPrecio) ? (
                           <>

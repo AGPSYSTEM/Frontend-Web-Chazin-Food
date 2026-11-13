@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Plus, Sliders, Sparkles, Flame, Layers, Clock } from "lucide-react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getProductVariantSummary } from "@/shared/utils/productVariantUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { isDrinkProduct, resolveDrinkImage } from "@/shared/components/ui/FastFoodProductModal";
@@ -12,6 +13,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
     () => producto.variantes || [{ id: producto.id, nombre: producto.nombre, precio: producto.precio }],
     [producto]
   );
+  const variantSummary = useMemo(() => getProductVariantSummary(producto), [producto]);
 
   const currentVariante = variantes[0] || { id: producto.id, precio: producto.precio || 0 };
 
@@ -191,7 +193,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
         {/* Additions count badge */}
         {adiciones.length > 0 && (
           <span className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs z-10">
-            <Layers className="w-2.5 h-2.5 text-amber-400" />
+            <Plus className="w-2.5 h-2.5 text-amber-400" />
             <span>{adiciones.length} adic.</span>
           </span>
         )}
@@ -227,6 +229,22 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
               {producto.nombre}
             </h3>
           </div>
+
+          {/* Variants identification pill (distinct from orange/amber Event badges) */}
+          {variantSummary.hasVariants && (
+            <div
+              className="mt-1 mb-0.5 flex items-center justify-center flex-wrap gap-1 w-full px-1"
+              title={`Variantes: ${variantSummary.names.join(", ")}`}
+            >
+              <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800/70 max-w-full">
+                <Layers className="w-2.5 h-2.5 shrink-0" />
+                <span className="truncate">
+                  {variantSummary.count} {variantSummary.count === 1 ? "variante" : "var."}: {variantSummary.names.slice(0, 2).join(" · ")}
+                  {variantSummary.count > 2 ? ` +${variantSummary.count - 2}` : ""}
+                </span>
+              </span>
+            </div>
+          )}
 
           {/* Description */}
           <div className="h-4 flex items-center justify-center text-center mt-0.5 w-full px-1">
@@ -269,7 +287,7 @@ export function ProductCard({ producto, onAdd, onCustomize }) {
             {/* Additions count chip (cleanly separated on the right) */}
             {adiciones.length > 0 && (
               <span className="shrink-0 self-end mb-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100/90 dark:bg-gray-800/90 px-2.5 py-1 rounded-lg border border-gray-200/60 dark:border-gray-700/60 shadow-2xs">
-                <Layers className="w-3 h-3 text-amber-500 shrink-0" />
+                <Plus className="w-3 h-3 text-amber-500 shrink-0" />
                 <span>{adiciones.length} extras</span>
               </span>
             )}

@@ -5,6 +5,10 @@ export const productosService = {
     return await apiClient.get("/productos");
   },
 
+  getPapeleraProductos: async () => {
+    return await apiClient.get("/productos/papelera");
+  },
+
   getCategorias: async () => {
     return await apiClient.get("/categorias-producto");
   },
@@ -19,5 +23,13 @@ export const productosService = {
 
   deleteProducto: async (id) => {
     return await apiClient.delete(`/productos/${id}`);
+  },
+
+  restoreProducto: async (id) => {
+    return await apiClient.put(`/productos/${id}/restaurar`);
+  },
+
+  hardDeleteProducto: async (id) => {
+    return await apiClient.delete(`/productos/${id}/fisico`);
   }
 };

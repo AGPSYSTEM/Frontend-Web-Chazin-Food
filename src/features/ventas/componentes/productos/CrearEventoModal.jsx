@@ -14,7 +14,7 @@ import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fich
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { productosService } from "@/features/ventas/servicios/productosService";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
-import { getAdditionEmoji, stripEmojis, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
+import { getAdditionEmoji, stripEmojis, isDummyOrBaseVariant, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 import { validateTexto, validateNumeroPositivo, validateRequerido, validatePorcentaje } from "@/shared/utils/validationUtils";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 import { resolveRecetaUnidadYCantidad, normalizeUnidadMedida } from "@/features/fichas-tecnicas/utils/costoUtils";
@@ -180,13 +180,8 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
       setNuevoPrecio(eventoToEdit.nuevoPrecio != null ? String(eventoToEdit.nuevoPrecio) : "");
       setDescuento(eventoToEdit.descuento != null ? String(eventoToEdit.descuento) : "");
 
-      let parsedInsumos = [];
-      try {
-        parsedInsumos = typeof eventoToEdit.insumosAsociados === "string" ? JSON.parse(eventoToEdit.insumosAsociados) : (eventoToEdit.insumos || []);
-      } catch (e) {
-        parsedInsumos = [];
-      }
-      setInsumosSeleccionados(Array.isArray(parsedInsumos) ? parsedInsumos : []);
+      const parsedInsumos = parseEventoInsumos(eventoToEdit);
+      setInsumosSeleccionados(parsedInsumos);
 
       let parsedProds = [];
       try {
@@ -1034,7 +1029,24 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                     type="button"
                                     onClick={() => {
                                       const resolvedMedida = resolveRecetaUnidadYCantidad(ins);
-    setInsumosSeleccionados([{ id: ins.id || ins.idInsumo, nombre: ins.nombre, cantidad: resolvedMedida.cantidad || 1, unidad: resolvedMedida.unidadMedida || "und" }]);
+                                      const idInsumoVal = ins.id || ins.idInsumo;
+                                      const unitVal = resolvedMedida.unidadMedida || ins.unidadMedida || "und";
+                                      const cantVal = resolvedMedida.cantidad || 1;
+                                      setInsumosSeleccionados(prev => {
+                                        const exists = prev.some(s => String(s.idInsumo || s.id) === String(idInsumoVal));
+                                        if (exists) return prev;
+                                        return [
+                                          ...prev,
+                                          {
+                                            id: idInsumoVal,
+                                            idInsumo: idInsumoVal,
+                                            nombre: ins.nombre,
+                                            cantidad: cantVal,
+                                            unidad: unitVal,
+                                            unidadMedida: unitVal
+                                          }
+                                        ];
+                                      });
                                       setInsumoSearch("");
                                       setShowInsumoDropdown(false);
                                     }}
@@ -1049,74 +1061,87 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           </div>
 
                           {insumosSeleccionados.length > 0 && (
-                            <div className="mt-3 p-3.5 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center shrink-0">
-                                  <Gift className="w-5 h-5" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-black text-purple-950 dark:text-purple-200 truncate">
-                                    {insumosSeleccionados[0].nombre}
-                                  </p>
-                                  <p className="text-[10.5px] text-purple-700 dark:text-purple-300 font-medium">
-                                    Topping adicional incluido sin costo con el platillo
-                                  </p>
-                                </div>
-                              </div>
+                            <div className="mt-3 space-y-2">
+                              {insumosSeleccionados.map((insSel, idx) => {
+                                const selId = insSel.idInsumo || insSel.id || idx;
+                                const unitVal = insSel.unidadMedida || insSel.unidad || "porción";
+                                return (
+                                  <div
+                                    key={selId}
+                                    className="p-3.5 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 flex items-center justify-center shrink-0">
+                                        <Gift className="w-5 h-5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-black text-purple-950 dark:text-purple-200 truncate">
+                                          {insSel.nombre}
+                                        </p>
+                                        <p className="text-[10.5px] text-purple-700 dark:text-purple-300 font-medium">
+                                          Topping adicional incluido sin costo ({insSel.cantidad || 1} {unitVal})
+                                        </p>
+                                      </div>
+                                    </div>
 
-                              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
-                                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Cantidad:</span>
-                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-xl border border-purple-300 dark:border-purple-700 p-0.5 shadow-2xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setInsumosSeleccionados(prev => [{
-                                        ...prev[0],
-                                        cantidad: Math.max(1, (Number(prev[0].cantidad) || 1) - 1)
-                                      }]);
-                                    }}
-                                    className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
-                                  >
-                                    -
-                                  </button>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="50"
-                                    value={insumosSeleccionados[0].cantidad || 1}
-                                    onChange={(e) => {
-                                      const val = Math.max(1, Number(e.target.value) || 1);
-                                      setInsumosSeleccionados(prev => [{
-                                        ...prev[0],
-                                        cantidad: val
-                                      }]);
-                                    }}
-                                    className="w-9 text-center text-xs font-black bg-transparent border-0 p-0 text-purple-950 dark:text-purple-200 focus:ring-0"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setInsumosSeleccionados(prev => [{
-                                        ...prev[0],
-                                        cantidad: (Number(prev[0].cantidad) || 1) + 1
-                                      }]);
-                                    }}
-                                    className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                                <span className="text-xs font-bold text-purple-800 dark:text-purple-300">
-                                  {insumosSeleccionados[0].unidad || "porción"}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setInsumosSeleccionados([])}
-                                  className="ml-2 text-xs text-red-500 hover:text-red-700 font-bold underline cursor-pointer"
-                                >
-                                  Cambiar
-                                </button>
-                              </div>
+                                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                                      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Cantidad:</span>
+                                      <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-xl border border-purple-300 dark:border-purple-700 p-0.5 shadow-2xs">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setInsumosSeleccionados(prev => prev.map((item, i) => i === idx ? {
+                                              ...item,
+                                              cantidad: Math.max(1, (Number(item.cantidad) || 1) - 1)
+                                            } : item));
+                                          }}
+                                          className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
+                                        >
+                                          -
+                                        </button>
+                                        <input
+                                          type="number"
+                                          min="0.1"
+                                          step="any"
+                                          max="5000"
+                                          value={insSel.cantidad || 1}
+                                          onChange={(e) => {
+                                            const parsed = Number(e.target.value);
+                                            const val = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+                                            setInsumosSeleccionados(prev => prev.map((item, i) => i === idx ? {
+                                              ...item,
+                                              cantidad: val
+                                            } : item));
+                                          }}
+                                          className="w-11 text-center text-xs font-black bg-transparent border-0 p-0 text-purple-950 dark:text-purple-200 focus:ring-0"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setInsumosSeleccionados(prev => prev.map((item, i) => i === idx ? {
+                                              ...item,
+                                              cantidad: (Number(item.cantidad) || 1) + 1
+                                            } : item));
+                                          }}
+                                          className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-black cursor-pointer transition"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      <span className="text-xs font-bold text-purple-800 dark:text-purple-300">
+                                        {unitVal}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setInsumosSeleccionados(prev => prev.filter((_, i) => i !== idx))}
+                                        className="ml-2 text-xs text-red-500 hover:text-red-700 font-bold underline cursor-pointer"
+                                      >
+                                        Quitar
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -1300,7 +1325,15 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                           <div className="absolute top-2.5 left-2.5">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-md border border-white/25 flex items-center gap-1">
                               <Flame className="w-3 h-3" />
-                              <span>{tipoEvento === "Descuento" ? `${descuento || 15}% OFF` : tipoEvento === "2x1 / Combo Especial" ? "2X1" : "OFERTA"}</span>
+                              <span>
+                                {tipoEvento === "Descuento"
+                                  ? `${descuento || 15}% OFF`
+                                  : tipoEvento === "2x1 / Combo Especial"
+                                  ? "2X1"
+                                  : tipoEvento === "Añadir Insumos"
+                                  ? "+ TOPPING GRATIS"
+                                  : "OFERTA"}
+                              </span>
                             </span>
                           </div>
                         </div>
@@ -1317,11 +1350,20 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                             {descripcion || "Aprovecha esta promoción especial válida por tiempo limitado en Chazin Food."}
                           </p>
 
+                          {insumosSeleccionados.length > 0 && (
+                            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 flex items-center gap-2 text-[11px]">
+                              <Gift className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                              <span className="font-bold text-purple-900 dark:text-purple-200 truncate">
+                                Incluye Gratis: {formatEventoToppingsText({ insumosAsociados: insumosSeleccionados })}
+                              </span>
+                            </div>
+                          )}
+
                           <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
                             <div>
                               <p className="text-[10px] text-gray-400 uppercase font-bold">Precio Promoción</p>
                               <div className="flex items-center gap-1.5">
-                                {currentProducto && (
+                                {currentProducto && (tipoEvento === "Promoción Precio" || tipoEvento === "Descuento") && (
                                   <span className="text-xs text-gray-400 line-through">
                                     ${Number(currentProducto.precio || 0).toLocaleString("es-CO")}
                                   </span>
@@ -1331,6 +1373,10 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                                     ? `$${Number(nuevoPrecio).toLocaleString("es-CO")}`
                                     : tipoEvento === "Descuento" && currentProducto
                                     ? `$${Math.round(Number(currentProducto.precio || 0) * (1 - Number(descuento || 0) / 100)).toLocaleString("es-CO")}`
+                                    : insumosSeleccionados.length > 0 && currentProducto
+                                    ? `$${Number(currentProducto.precio || 0).toLocaleString("es-CO")} (+ Topping Gratis)`
+                                    : insumosSeleccionados.length > 0
+                                    ? "+ Topping Extra Gratis"
                                     : "Beneficio Activo"}
                                 </span>
                               </div>
@@ -1688,12 +1734,34 @@ export function CrearEventoModal({ isOpen, onClose, producto, onCreated, eventoT
                         <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 flex items-center justify-between">
                           <div>
                             <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-black">Dinámica</p>
-                            <p className="font-bold text-gray-900 dark:text-white">{tipoEvento}</p>
+                            <p className="font-bold text-gray-900 dark:text-white">
+                              {tipoEvento === "Añadir Insumos" ? "Topping Extra Gratis" : tipoEvento}
+                            </p>
                           </div>
                           <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-red-600 text-white shadow-xs">
-                            {tipoEvento === "Descuento" ? `${descuento || 15}% OFF` : tipoEvento === "2x1 / Combo Especial" ? "2X1" : "OFERTA"}
+                            {tipoEvento === "Descuento"
+                              ? `${descuento || 15}% OFF`
+                              : tipoEvento === "2x1 / Combo Especial"
+                              ? "2X1"
+                              : tipoEvento === "Añadir Insumos"
+                              ? "+ TOPPING"
+                              : "OFERTA"}
                           </span>
                         </div>
+
+                        {insumosSeleccionados.length > 0 && (
+                          <div className="p-3 bg-purple-50 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800/60 flex items-start gap-2.5">
+                            <Gift className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <p className="text-[10px] text-purple-700 dark:text-purple-300 uppercase font-black">
+                                Topping(s) Extra Incluido(s) Sin Costo
+                              </p>
+                              <p className="font-bold text-purple-950 dark:text-purple-100 text-xs mt-0.5 break-words">
+                                {formatEventoToppingsText({ insumosAsociados: insumosSeleccionados })}
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 flex items-center justify-between">
                           <div>

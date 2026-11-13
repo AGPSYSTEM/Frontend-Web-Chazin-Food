@@ -1,7 +1,8 @@
 import React from "react";
-import { Sparkles, Tag, Plus, Ban } from "lucide-react";
+import { Sparkles, Tag, Plus, Ban, Layers } from "lucide-react";
 import { motion } from "motion/react";
 import { stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getProductVariantSummary } from "@/shared/utils/productVariantUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 
 export default function KioskProductCard({ producto, onSelect }) {
@@ -9,6 +10,7 @@ export default function KioskProductCard({ producto, onSelect }) {
 
   const prodStock = Number(producto.stock !== undefined ? producto.stock : 0);
   const isAgotado = Boolean(producto.agotado || prodStock <= 0 || producto.estado === "Inactivo" || producto.estado === 0);
+  const variantSummary = getProductVariantSummary(producto);
 
   const now = new Date();
   const eventos = Array.isArray(producto.eventos) ? producto.eventos : [];
@@ -143,9 +145,25 @@ export default function KioskProductCard({ producto, onSelect }) {
 
       {/* Product Details (Legible at 1 meter, max 2 lines title) */}
       <div className="mt-3 flex-1 flex flex-col justify-between">
-        <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 group-hover:text-[#A91B2E] dark:group-hover:text-red-400 transition-colors">
-          {stripEmojis(producto.nombre)}
-        </h3>
+        <div>
+          <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 group-hover:text-[#A91B2E] dark:group-hover:text-red-400 transition-colors">
+            {stripEmojis(producto.nombre)}
+          </h3>
+          {variantSummary.hasVariants && (
+            <div
+              className="mt-1.5 flex items-center flex-wrap gap-1"
+              title={`Variantes: ${variantSummary.names.join(", ")}`}
+            >
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 max-w-full">
+                <Layers className="w-3 h-3 shrink-0" />
+                <span className="truncate">
+                  {variantSummary.count} {variantSummary.count === 1 ? "variante" : "var."}: {variantSummary.names.slice(0, 2).join(" · ")}
+                  {variantSummary.count > 2 ? ` +${variantSummary.count - 2}` : ""}
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Pricing & CTA Button area (Tactile fast-food action button) */}
         <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex items-end justify-between gap-1.5">

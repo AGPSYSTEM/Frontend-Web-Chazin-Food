@@ -90,45 +90,16 @@ export const getProductEmoji = (name = "") => {
   return "plate";
 };
 
-/**
- * Normaliza y formatea el nombre visual del tipo de evento para clientes y administración.
- * En particular, convierte "Añadir Insumos" o referencias a insumos de cortesía a "Topping Extra".
- */
-export const formatTipoEvento = (tipo) => {
-  if (!tipo) return "Evento Activo";
-  const str = String(tipo).trim();
-  const lower = str.toLowerCase();
-  if (lower.includes("insumo") || lower.includes("topping")) {
-    return "Topping Extra";
-  }
-  if (lower === "edicion_limitada") return "Edición Limitada";
-  if (lower === "combo_especial") return "Combo Especial";
-  if (lower === "promocion_2x1") return "Promoción 2x1";
-  if (lower === "descuento_general" || lower === "descuento") return "Descuento";
-  return str;
-};
+export {
+  formatTipoEvento,
+  parseEventoInsumos,
+  formatEventoToppingItem,
+  formatEventoToppingsText,
+  isToppingEvento
+} from "./eventoUtils.js";
 
-
-/**
- * Detecta si una variante es redundante o equivalente al producto base (dummy/tautológica).
- */
-export const isDummyOrBaseVariant = (vName, pName) => {
-  if (!vName) return true;
-  const vn = String(vName).trim().toLowerCase();
-  const pn = String(pName || "").trim().toLowerCase();
-  if (vn === pn) return true;
-  if (vn === `${pn} - base` || vn === `${pn} - completo` || vn === `${pn} base` || vn === `${pn} completo`) return true;
-  if (["base", "estándar", "estandar", "completo", "combo", "única", "unica"].includes(vn)) return true;
-  if (vn.startsWith("porción individual") || vn.startsWith("porcion individual")) return true;
-  if (vn === "edición especial" || vn === "edicion especial") return true;
-  if (vn === "edición especial burger fest" || vn === "edicion especial burger fest") return true;
-  if (vn === "porción costeña grande" || vn === "porcion costeña grande") return true;
-  if (vn === "salchipapa personal grande") return true;
-  if (["perro especial", "perro suizo gourmet", "perro mexicano clásico", "perro mexicano clasico", "perro criollo gourmet"].includes(vn)) return true;
-  if (vn === "clásica 150g" || vn === "clasica 150g") return true;
-  if (vn === "doble carne 300g" && pn.includes("doble carne")) return true;
-  if (vn === "pollo crispy 180g" && pn.includes("pollo crispy")) return true;
-  if (vn === "individual campesina" && pn.includes("campesina")) return true;
-  if (vn === "botella 500ml" && pn.includes("cristal")) return true;
-  return false;
-};
+export {
+  isDummyOrBaseVariant,
+  getDisplayProductVariants,
+  getProductVariantSummary
+} from "./productVariantUtils.js";

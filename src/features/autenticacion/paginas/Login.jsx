@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { useAuth, getLoginErrorToast } from "@/features/autenticacion/hooks/useAuth";
 const GoogleAuthButton = lazy(() => import("@/features/autenticacion/componentes/GoogleAuthButton").then((m) => ({ default: m.GoogleAuthButton })));
 import {
   Lock,
@@ -205,16 +205,8 @@ export function Login() {
       toast.success("¡Bienvenido!", "Inicio de sesión exitoso");
       setTimeout(() => navigate("/"), 500);
     } else {
-      const msg = result?.message || "";
-      if (
-        msg.toLowerCase().includes("la cuenta no existe") ||
-        msg.toLowerCase().includes("no existe") ||
-        result?.status === 404
-      ) {
-        toast.error("La cuenta no existe", "No se encontró ninguna cuenta registrada con este correo.");
-      } else {
-        toast.error("Error de autenticación", msg || "Correo o contraseña incorrectos");
-      }
+      const [errTitle, errMsg] = getLoginErrorToast(result);
+      toast.error(errTitle, errMsg);
     }
     setIsLoginLoading(false);
   };

@@ -7,7 +7,7 @@ import { StarRating } from "@/shared/components/ui/StarRating";
 import { apiClient } from "@/shared/api/apiClient";
 import { isSizeVariantName } from "./ProductoModal";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { formatTipoEvento, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
+import { formatTipoEvento, isDummyOrBaseVariant, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
 
 export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicate }) {
@@ -696,9 +696,15 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                             )}
                           </span>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">{evt.descripcion}</p>
+                          {parseEventoInsumos(evt).length > 0 && (
+                            <p className="text-[11px] font-bold text-purple-700 dark:text-purple-300 mt-1.5 inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800/50">
+                              <Sparkles className="w-3 h-3 text-purple-500 shrink-0" />
+                              Topping extra incluido: {formatEventoToppingsText(evt)}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right shrink-0 ml-3">
+                      <div className="text-right shrink-0 ml-3 flex flex-col items-end gap-1">
                         {evt.tipoEvento === "Descuento" && evt.descuento && (
                           <span className="text-emerald-700 dark:text-emerald-300 font-extrabold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg">
                             -{Number(evt.descuento)}% OFF
@@ -712,6 +718,11 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                         {evt.tipoEvento === "2x1 / Combo Especial" && (
                           <span className="text-amber-700 dark:text-amber-300 font-extrabold bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg">
                             2x1 COMBO
+                          </span>
+                        )}
+                        {parseEventoInsumos(evt).length > 0 && (
+                          <span className="text-purple-700 dark:text-purple-300 font-extrabold bg-purple-100 dark:bg-purple-950/60 px-2.5 py-1 rounded-lg border border-purple-200/80 dark:border-purple-800/40 text-xs">
+                            + TOPPING GRATIS
                           </span>
                         )}
                       </div>

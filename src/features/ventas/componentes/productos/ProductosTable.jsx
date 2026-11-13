@@ -12,10 +12,13 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Lock,
-  FileText,
-  Copy
+  Copy,
+  Layers,
+  Power
 } from "lucide-react";
 import { FoodIcon, EventBadge } from "@/shared/components/ui/FoodIcon";
+import { parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
+import { getProductVariantSummary } from "@/shared/utils/productVariantUtils";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export const getActiveProductEvent = (producto) => {
@@ -83,10 +86,10 @@ export function ProductosTable({
   productos = [],
   onEdit,
   onDelete,
+  onToggleEstado,
   onView,
   onDuplicate,
   onCreateEvento,
-  onEditFicha,
   canEdit = true,
   canDelete = true
 }) {
@@ -195,31 +198,112 @@ export function ProductosTable({
                       <div>
                         {(() => {
                           const activeEvt = getActiveEvent(p);
+                          const variantSummary = getProductVariantSummary(p);
+                          const basePrice = Number(p.precio || 0);
+                          const toppings = activeEvt ? parseEventoInsumos(activeEvt) : [];
+                          const isToppingEvt = Boolean(
+                            activeEvt && (
+                              toppings.length > 0 ||
+                              activeEvt.tipoEvento === "Añadir Insumos" ||
+                              String(activeEvt.tipoEvento).toLowerCase().includes("insumo") ||
+                              String(activeEvt.tipoEvento).toLowerCase().includes("topping")
+                            )
+                          );
+
                           return (
                             <>
-                              <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                                   {p.nombre}
                                 </span>
+                                {variantSummary.hasVariants && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70"
+                                    title={`Producto con variantes: ${variantSummary.names.join(", ")}`}
+                                  >
+                                    <Layers className="w-3 h-3 shrink-0" />
+                                    <span>
+                                      {variantSummary.count} {variantSummary.count === 1 ? "variante" : "variantes"}
+                                    </span>
+                                  </span>
+                                )}
                                 {activeEvt && (
                                   <EventBadge event={activeEvt} product={p} variant="pill" className="text-[10px] py-0.5" />
                                 )}
                               </div>
+
                               <div className="flex items-center gap-2 text-xs text-gray-400 font-mono mt-0.5">
                                 <span>{p.codigo || `PRD-${p.id}`}</span>
-                                {activeEvt && (() => {
-                                  if (activeEvt.tipoEvento === "Descuento" && activeEvt.descuento) {
-                                    return <span className="text-emerald-600 dark:text-emerald-400 font-bold">(-{Number(activeEvt.descuento)}% OFF)</span>;
-                                  }
-                                  if (activeEvt.tipoEvento === "Promoción Precio" && activeEvt.nuevoPrecio) {
-                                    return <span className="text-orange-600 dark:text-orange-400 font-bold">(Promo: ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")})</span>;
-                                  }
-                                  if (activeEvt.tipoEvento === "Añadir Insumos" || String(activeEvt.tipoEvento).toLowerCase().includes("insumo") || String(activeEvt.tipoEvento).toLowerCase().includes("topping")) {
-                                    return <span className="text-amber-600 dark:text-amber-400 font-bold">(Topping extra)</span>;
-                                  }
-                                  return null;
-                                })()}
                               </div>
+
+                              {variantSummary.hasVariants && (
+                                <div className="flex items-center gap-1 flex-wrap mt-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mr-0.5">
+                                    <Layers className="w-2.5 h-2.5 shrink-0" />
+                                    <span>Variantes:</span>
+                                  </span>
+                                  {variantSummary.variants.slice(0, 3).map((v, vIdx) => {
+                                    const vPrice = Number(v.precio || 0);
+                                    const hasCustomPrice = vPrice > 0 && vPrice !== basePrice;
+                                    return (
+                                      <span
+                                        key={v.idVariante || v.id || `${v.nombre}-${vIdx}`}
+                                        title={hasCustomPrice ? `${v.nombre} ($${vPrice.toLocaleString("es-CO")})` : v.nombre}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-semibold bg-indigo-50/90 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800/60 max-w-[165px] truncate"
+                                      >
+                                        <span className="truncate">{v.nombre}</span>
+                                        {hasCustomPrice && (
+                                          <span className="text-[9.5px] font-bold text-indigo-600 dark:text-indigo-300 shrink-0">
+                                            ${vPrice.toLocaleString("es-CO")}
+                                          </span>
+                                        )}
+                                      </span>
+                                    );
+                                  })}
+                                  {variantSummary.count > 3 && (
+                                    <span
+                                      title={variantSummary.names.slice(3).join(", ")}
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
+                                    >
+                                      +{variantSummary.count - 3} más
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {activeEvt && (
+                                <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px]">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                    <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                    <span>Evento:</span>
+                                  </span>
+                                  {activeEvt.tipoEvento === "Descuento" && activeEvt.descuento && (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                      (-{Number(activeEvt.descuento)}% OFF)
+                                    </span>
+                                  )}
+                                  {activeEvt.tipoEvento === "Promoción Precio" && activeEvt.nuevoPrecio && (
+                                    <span className="text-orange-600 dark:text-orange-400 font-bold">
+                                      (Promo: ${Number(activeEvt.nuevoPrecio).toLocaleString("es-CO")})
+                                    </span>
+                                  )}
+                                  {isToppingEvt && (
+                                    <span
+                                      className="text-purple-600 dark:text-purple-400 font-bold"
+                                      title={toppings.length > 0 ? formatEventoToppingsText(toppings) : "Topping extra gratis"}
+                                    >
+                                      {toppings.length > 0 ? `(+ ${formatEventoToppingsText(toppings)})` : "(Topping extra)"}
+                                    </span>
+                                  )}
+                                  {!(activeEvt.tipoEvento === "Descuento" && activeEvt.descuento) &&
+                                    !(activeEvt.tipoEvento === "Promoción Precio" && activeEvt.nuevoPrecio) &&
+                                    !isToppingEvt && (
+                                      <span className="text-orange-700 dark:text-orange-300 font-semibold">
+                                        {activeEvt.nombreEvento || activeEvt.nombre || activeEvt.tipoEvento || "Promoción activa"}
+                                      </span>
+                                    )}
+                                </div>
+                              )}
                             </>
                           );
                         })()}
@@ -267,6 +351,21 @@ export function ProductosTable({
                       }
                       return <span>${Number(p.precio || 0).toLocaleString("es-CO")}</span>;
                     })()}
+                    {(() => {
+                      const variantSummary = getProductVariantSummary(p);
+                      if (!variantSummary.hasDifferentPrices) return null;
+                      return (
+                        <span
+                          className="block text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 whitespace-nowrap"
+                          title="Rango de precio entre las variantes del producto"
+                        >
+                          Var: ${variantSummary.minPrice.toLocaleString("es-CO")}
+                          {variantSummary.minPrice !== variantSummary.maxPrice
+                            ? ` – $${variantSummary.maxPrice.toLocaleString("es-CO")}`
+                            : ""}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-5 py-2.5">
                     {Number(p.stockDisponible !== undefined ? p.stockDisponible : (p.stock !== undefined ? p.stock : 0)) > 0 ? (
@@ -292,15 +391,20 @@ export function ProductosTable({
                     )}
                   </td>
                   <td className="px-5 py-2.5">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        p.estado === "Activo"
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                          : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                      }`}
-                    >
-                      {p.estado || "Activo"}
-                    </span>
+                    {(() => {
+                      const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
+                      return (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            isActivo
+                              ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                              : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                          }`}
+                        >
+                          {isActivo ? "Activo" : "Inactivo"}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-5 py-2.5">
                     <div className="flex items-center justify-center gap-1.5">
@@ -310,6 +414,7 @@ export function ProductosTable({
                         if (activeEvt) {
                           return (
                             <button
+                              type="button"
                               onClick={() => onCreateEvento && onCreateEvento(p, activeEvt)}
                               title={`Editar Evento Activo: ${activeEvt.nombreEvento || activeEvt.nombre || "Evento"}`}
                               className="p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 text-orange-700 dark:text-orange-300 border border-orange-300/80 dark:border-orange-800 transition-all shadow-2xs active:scale-95 cursor-pointer relative group"
@@ -321,6 +426,7 @@ export function ProductosTable({
                         }
                         return (
                           <button
+                            type="button"
                             onClick={() => onCreateEvento && onCreateEvento(p, null)}
                             title="Crear Evento / Promoción"
                             className="p-1.5 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-500 dark:text-orange-400 transition-colors cursor-pointer"
@@ -331,6 +437,7 @@ export function ProductosTable({
                       })()}
                       {/* Ver detalle */}
                       <button
+                        type="button"
                         onClick={() => onView && onView(p)}
                         title="Ver detalle del producto"
                         className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer"
@@ -341,6 +448,7 @@ export function ProductosTable({
                       {/* Duplicar producto (Ítem 125) */}
                       {canEdit && (
                         <button
+                          type="button"
                           onClick={() => onDuplicate && onDuplicate(p)}
                           title="Duplicar producto (crear nuevo plato a partir de este)"
                           className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer"
@@ -349,22 +457,31 @@ export function ProductosTable({
                         </button>
                       )}
 
-                      {/* Solo editar Ficha Técnica (solo aplica a platos cocinados, nunca a combos ni bebidas comerciales) */}
-                      {canEdit && !p.esCombo && !p.configuracionCombo?.esCombo && !isProductDrink(p) && (
-                        <button
-                          onClick={() => onEditFicha && onEditFicha(p)}
-                          title="Solo editar Ficha Técnica (receta, insumos y preparación)"
-                          className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </button>
-                      )}
+                      {/* Inactivar / Activar producto */}
+                      {onToggleEstado && canEdit && (() => {
+                        const isActivo = p.estado === "Activo" || p.estado === 1 || p.estado === "1";
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => onToggleEstado(p)}
+                            title={isActivo ? "Inactivar producto" : "Activar producto"}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              isActivo
+                                ? "text-emerald-600 dark:text-emerald-400 hover:text-amber-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                : "text-gray-400 hover:text-emerald-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                            }`}
+                          >
+                            <Power className="w-4 h-4" />
+                          </button>
+                        );
+                      })()}
 
                       {/* Solo editar producto (datos comerciales) */}
                       {canEdit && (() => {
                         const hasSalesLock = Boolean(p.tieneVentas || Number(p.ventas || 0) > 0);
                         return (
                           <button
+                            type="button"
                             onClick={() => onEdit && onEdit(p)}
                             title={
                               hasSalesLock
@@ -387,7 +504,8 @@ export function ProductosTable({
                       {/* Eliminar */}
                       {canDelete && (
                         <button
-                          onClick={() => onDelete(p.id, p.nombre)}
+                          type="button"
+                          onClick={() => onDelete && onDelete(p.id || p.idProducto, p.nombre)}
                           title="Eliminar producto"
                           className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
                         >

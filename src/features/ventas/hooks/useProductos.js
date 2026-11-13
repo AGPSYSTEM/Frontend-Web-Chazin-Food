@@ -7,19 +7,31 @@ import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUti
 export function useProductos() {
   const notify = useNotifications();
   const [productos, setProductos] = useState([]);
+  const [papeleraProductos, setPapeleraProductos] = useState([]);
+  const [lastDeletedProducto, setLastDeletedProducto] = useState(null);
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategoria, setFilterCategoria] = useState("Todas");
   const [filterEstado, setFilterEstado] = useState("Todos");
 
+  const fetchPapelera = useCallback(async () => {
+    try {
+      const trash = await productosService.getPapeleraProductos();
+      setPapeleraProductos(Array.isArray(trash) ? trash : []);
+    } catch {
+      setPapeleraProductos([]);
+    }
+  }, []);
+
   const fetchProductos = useCallback(async () => {
     try {
       setLoading(true);
-      const [prods, cats, fichas] = await Promise.all([
+      const [prods, cats, fichas, trash] = await Promise.all([
         productosService.getProductos(),
         productosService.getCategorias(),
-        fichasTecnicasService.getFichas().catch(() => [])
+        fichasTecnicasService.getFichas().catch(() => []),
+        productosService.getPapeleraProductos().catch(() => [])
       ]);
       const fichaMap = new Map();
       const variantFichaMap = new Map();
@@ -56,6 +68,7 @@ export function useProductos() {
         };
       });
       setProductos(enrichedProds);
+      setPapeleraProductos(Array.isArray(trash) ? trash : []);
       setCategorias(cats || []);
     } catch (err) {
       console.error(err);
@@ -207,16 +220,56 @@ export function useProductos() {
     }
   };
 
-  const deleteProducto = async (id, nombre) => {
+  const toggleEstadoProducto = async (producto) => {
+    if (!producto) return false;
+    const id = producto.id || producto.idProducto;
+    const isActivo = producto.estado === "Activo" || producto.estado === 1 || producto.estado === "1";
+    const nuevoEstado = isActivo ? "Inactivo" : "Activo";
+    const confirmed = await notify.confirmAction(
+      isActivo ? "¿Inactivar producto?" : "¿Activar producto?",
+      isActivo
+        ? `¿Estás seguro de que deseas inactivar "${producto.nombre}"? No estará disponible para ventas ni en el catálogo hasta que sea activado nuevamente.`
+        : `¿Deseas activar nuevamente "${producto.nombre}"? Volverá a estar disponible para ventas y en el catálogo.`,
+      isActivo ? "Sí, inactivar" : "Sí, activar"
+    );
+    if (!confirmed) return false;
+    try {
+      await productosService.updateProducto(id, { estado: nuevoEstado });
+      await fetchProductos();
+      notify.success(
+        nuevoEstado === "Activo" ? "Producto activado" : "Producto inactivado",
+        `"${producto.nombre}" ahora está ${nuevoEstado}.`
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al cambiar estado", err.message || "No se pudo actualizar el estado del producto");
+      return false;
+    }
+  };
+
+  const deleteProducto = async (id, nombre, options = {}) => {
     const confirmed = await notify.confirmDelete(
       "¿Eliminar producto?",
-      `¿Estás seguro de que deseas eliminar "${nombre}"?`
+      `¿Estás seguro de que deseas eliminar "${nombre}"? El producto se moverá a la papelera de reciclaje y podrás recuperarlo cuando lo necesites.`
     );
     if (!confirmed) return false;
     try {
       await productosService.deleteProducto(id);
-      notify.success("Producto eliminado", "El producto fue eliminado del sistema");
+      setLastDeletedProducto({ id, nombre });
       await fetchProductos();
+      notify.success(
+        "Producto enviado a la papelera",
+        `"${nombre}" se movió a la papelera.`,
+        options?.onGoToTrash
+          ? {
+              duration: 7000,
+              action: {
+                label: "Ir a la papelera",
+                onClick: options.onGoToTrash
+              }
+            }
+          : undefined
+      );
       return true;
     } catch (err) {
       notify.error("Error al eliminar", err.message || "No se pudo eliminar el producto");
@@ -224,8 +277,54 @@ export function useProductos() {
     }
   };
 
+  const restoreProducto = async (itemOrId) => {
+    const id = typeof itemOrId === "object" && itemOrId !== null
+      ? (itemOrId.id || itemOrId.idProducto)
+      : itemOrId;
+    const nombre = typeof itemOrId === "object" && itemOrId !== null
+      ? itemOrId.nombre
+      : "";
+    if (!id) return false;
+    try {
+      await productosService.restoreProducto(id);
+      setLastDeletedProducto((prev) => (prev && Number(prev.id) === Number(id) ? null : prev));
+      await fetchProductos();
+      notify.success(
+        "Producto recuperado",
+        nombre ? `"${nombre}" volvió al catálogo activo.` : "El producto volvió al catálogo activo."
+      );
+      return true;
+    } catch (err) {
+      notify.error("Error al recuperar", err.message || "No se pudo recuperar el producto");
+      return false;
+    }
+  };
+
+  const deleteDefinitivoProducto = async (id, nombre) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Eliminar definitivamente?",
+      `Esta acción eliminará permanentemente "${nombre}" de la base de datos y no se podrá recuperar.`
+    );
+    if (!confirmed) return false;
+    try {
+      await productosService.hardDeleteProducto(id);
+      setLastDeletedProducto((prev) => (prev && Number(prev.id) === Number(id) ? null : prev));
+      await fetchPapelera();
+      notify.success("Eliminado permanente", `"${nombre}" fue eliminado definitivamente.`);
+      return true;
+    } catch (err) {
+      notify.error("Error al eliminar", err.message || "No se pudo eliminar permanentemente");
+      return false;
+    }
+  };
+
+  const dismissLastDeleted = useCallback(() => {
+    setLastDeletedProducto(null);
+  }, []);
+
   return {
     productos,
+    papeleraProductos,
     filteredProductos,
     categorias,
     loading,
@@ -235,9 +334,14 @@ export function useProductos() {
     setFilterCategoria,
     filterEstado,
     setFilterEstado,
+    lastDeletedProducto,
+    dismissLastDeleted,
     refetch: fetchProductos,
     createProducto,
     updateProducto,
-    deleteProducto
+    toggleEstadoProducto,
+    deleteProducto,
+    restoreProducto,
+    deleteDefinitivoProducto
   };
 }

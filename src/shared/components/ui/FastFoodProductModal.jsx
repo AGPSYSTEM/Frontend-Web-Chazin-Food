@@ -27,9 +27,9 @@ import {
   AlertCircle,
   Globe
 } from "lucide-react";
-import { getProductEmoji, getAdditionEmoji, stripEmojis, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
+import { getProductEmoji, getAdditionEmoji, stripEmojis, isDummyOrBaseVariant, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
-import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
+import { FoodIcon, FoodIconBadge, EventoToppingsCard } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
@@ -1482,6 +1482,7 @@ export function FastFoodProductModal({
 
     return {
       ...evt,
+      insumosAsociados: parseEventoInsumos(evt),
       nombre: stripEmojis(evt.nombreEvento || evt.nombre || "Edición Especial"),
       descripcion: stripEmojis(evt.descripcion) || "Receta conmemorativa de edición limitada con precio y presentación especial.",
       regularPrice: rawPrice,
@@ -1984,6 +1985,10 @@ export function FastFoodProductModal({
     if (is2x1Promo) {
       fullNotes.push(`¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${quantity} pagada + ${kitchenPrepQty - quantity} gratis)`);
     }
+    const eventToppingsForNote = eventInfo ? parseEventoInsumos(eventInfo) : [];
+    if (eventToppingsForNote.length > 0) {
+      fullNotes.push(`Topping Extra Evento (Gratis): ${formatEventoToppingsText(eventToppingsForNote)}`);
+    }
     if (isComboWithDrinks && selectedDrinks.length > 0) {
       const drinksSummary = selectedDrinks
         .map((d) => `${d.cantidad || 1}x ${d.nombre}`)
@@ -2307,29 +2312,47 @@ export function FastFoodProductModal({
 
               {/* Grid simétrico y perfectamente balanceado en altura */}
               <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-3 border-t border-amber-200/70 dark:border-amber-800/50">
-                {(eventInfo.tipo === "Añadir Insumos" || String(eventInfo.tipo).toLowerCase().includes("topping") || String(eventInfo.tipo).toLowerCase().includes("insumo")) ? (
-                  <div className="p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 col-span-2 flex flex-col justify-center text-center shadow-2xs">
-                    <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Toppings Incluidos Sin Costo</p>
-                    <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">
-                      {Array.isArray(eventInfo.insumosAsociados) && eventInfo.insumosAsociados.length > 0
-                        ? eventInfo.insumosAsociados.map(i => i.nombre).join(" + ")
-                        : "Toppings seleccionados gratis"}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
-                      <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Ahorro Directo</p>
-                      <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
-                        {eventInfo.savings > 0 ? `$${eventInfo.savings.toLocaleString('es-CO')} (-${eventInfo.discountPercent}%)` : `${eventInfo.discountPercent}% OFF`}
-                      </p>
-                    </div>
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
-                      <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Receta Exclusiva</p>
-                      <p className="text-xs sm:text-sm font-black text-orange-700 dark:text-orange-300">100% Gourmet</p>
-                    </div>
-                  </>
-                )}
+                {(() => {
+                  const eventToppings = parseEventoInsumos(eventInfo);
+                  const isToppingType =
+                    eventInfo.tipo === "Añadir Insumos" ||
+                    String(eventInfo.tipo).toLowerCase().includes("topping") ||
+                    String(eventInfo.tipo).toLowerCase().includes("insumo");
+
+                  if (isToppingType) {
+                    return (
+                      <div className="p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-purple-200/90 dark:border-purple-900/50 col-span-2 flex flex-col justify-center text-center shadow-2xs">
+                        <p className="text-[10px] sm:text-[11px] text-purple-700 dark:text-purple-300 font-bold uppercase tracking-wider mb-0.5">
+                          Toppings Incluidos Sin Costo
+                        </p>
+                        <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 break-words">
+                          {eventToppings.length > 0
+                            ? formatEventoToppingsText(eventToppings)
+                            : "Toppings seleccionados gratis"}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
+                        <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Ahorro Directo</p>
+                        <p className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          {eventInfo.savings > 0 ? `$${eventInfo.savings.toLocaleString('es-CO')} (-${eventInfo.discountPercent}%)` : `${eventInfo.discountPercent}% OFF`}
+                        </p>
+                      </div>
+                      <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
+                        <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">
+                          {eventToppings.length > 0 ? "Topping Extra" : "Receta Exclusiva"}
+                        </p>
+                        <p className="text-xs sm:text-sm font-black text-purple-700 dark:text-purple-300 truncate">
+                          {eventToppings.length > 0 ? formatEventoToppingsText(eventToppings) : "100% Gourmet"}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
                 <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-gray-800/90 border border-amber-100/90 dark:border-amber-900/40 flex flex-col justify-center text-center shadow-2xs min-h-[66px]">
                   <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-semibold mb-0.5">Disponibilidad</p>
                   <p className={`text-xs sm:text-sm font-black ${eventInfo.vigencia?.urgente ? 'text-rose-600 dark:text-rose-400 animate-pulse' : 'text-orange-700 dark:text-orange-300'}`}>
@@ -2707,6 +2730,7 @@ export function FastFoodProductModal({
             )}
 
             {/* ─── TAB 1: PERSONALIZAR INGREDIENTES (MISE EN PLACE CON LÓGICA HUMANA DE COCINA) ─── */}
+            {!isDrink && activeTab === "personalizar" && eventInfo && <EventoToppingsCard event={eventInfo} />}
             {!isDrink && activeTab === "personalizar" && (personalizables.length > 0 || foodVariants.length > 0) && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
