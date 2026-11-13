@@ -1525,7 +1525,7 @@ export function FastFoodProductModal({
       final = eventInfo.eventPrice;
       discount = true;
       label = eventInfo.savings > 0 
-        ? `-${eventInfo.discountPercent}% OFF (Ahorro ${eventInfo.savings.toLocaleString()})`
+        ? `-${eventInfo.discountPercent}% OFF (Ahorro ${Number(eventInfo.savings || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })})`
         : "Edición Especial";
     } else if (producto.precioPromo !== undefined && Number(producto.precioPromo) < original) {
       final = Number(producto.precioPromo);

@@ -1126,29 +1126,29 @@ export function PersonalizarEventoModal({
                         <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                         <span>Qué incluye esta promoción</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="space-y-2">
                         {comboRecipeInfo.comboItems.map((item) => (
                           <div
                             key={item.id}
-                            className="p-2.5 rounded-xl bg-white/95 dark:bg-gray-800/90 border border-amber-200/60 dark:border-amber-900/40 flex flex-col gap-1.5 shadow-2xs"
+                            className="w-full p-3 rounded-xl bg-white/95 dark:bg-gray-800/90 border border-amber-200/70 dark:border-amber-900/50 shadow-2xs transition-colors"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="flex items-center gap-2 min-w-0 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                <span className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/70 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300">
-                                  <FoodIcon name={item.nombre} size={15} stroke={1.75} />
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="flex items-center gap-2.5 min-w-0 flex-1 text-xs sm:text-[13px] font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                                <span className="w-8 h-8 rounded-xl bg-amber-100/90 dark:bg-amber-950/70 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300">
+                                  <FoodIcon name={item.nombre} size={16} stroke={1.75} />
                                 </span>
-                                <span className="truncate">{item.nombre}</span>
+                                <span>{item.nombre}</span>
                               </span>
-                              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/40 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
+                              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/40 px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
                                 <Check className="w-3 h-3 stroke-[3]" /> {item.tag}
                               </span>
                             </div>
                             {Array.isArray(item.ingredientes) && item.ingredientes.length > 0 && (
-                              <div className="flex flex-wrap gap-1 pl-9">
+                              <div className="mt-2 pt-2 border-t border-amber-100/80 dark:border-gray-700/60 pl-10 flex flex-wrap gap-1.5">
                                 {item.ingredientes.map((ing, iIdx) => (
                                   <span
                                     key={iIdx}
-                                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700/80 text-gray-600 dark:text-gray-300"
+                                    className="inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-md bg-amber-50/70 dark:bg-gray-700/80 border border-amber-200/50 dark:border-gray-600/40 text-gray-700 dark:text-gray-200"
                                   >
                                     {ing}
                                   </span>

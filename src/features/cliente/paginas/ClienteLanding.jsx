@@ -2548,22 +2548,22 @@ export function ClienteLanding() {
                         </div>
                         {(activeEvent.tipoEvento === "Promoción Precio" || activeEvent.tipoEvento === "Descuento" || activeEvent.nuevoPrecio) ? (
                           <>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${producto.precio.toLocaleString()}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 line-through">${Number(producto.precio || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })}</span>
                             <span className="text-2xl font-black text-[#f05454] dark:text-red-400 flex items-center gap-1">
                               <Sparkles className="w-4 h-4 text-amber-500" />
                               ${(() => {
-                                if (activeEvent.nuevoPrecio) return Number(activeEvent.nuevoPrecio).toLocaleString();
-                                if (activeEvent.descuento) return Math.round(producto.precio * (1 - Number(activeEvent.descuento)/100)).toLocaleString();
-                                return producto.precio.toLocaleString();
+                                if (activeEvent.nuevoPrecio) return Number(activeEvent.nuevoPrecio).toLocaleString("es-CO", { maximumFractionDigits: 0 });
+                                if (activeEvent.descuento) return Math.round(Number(producto.precio || 0) * (1 - Number(activeEvent.descuento)/100)).toLocaleString("es-CO", { maximumFractionDigits: 0 });
+                                return Number(producto.precio || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 });
                               })()}
                             </span>
                           </>
                         ) : (
-                          <p className="text-2xl font-black text-[#f05454] dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                          <p className="text-2xl font-black text-[#f05454] dark:text-red-400">${Number(producto.precio || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })}</p>
                         )}
                       </>
                     ) : (
-                      <p className="text-2xl font-black text-red-700 dark:text-red-400">${producto.precio.toLocaleString()}</p>
+                      <p className="text-2xl font-black text-red-700 dark:text-red-400">${Number(producto.precio || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })}</p>
                     )}
                   </div>
                   <button

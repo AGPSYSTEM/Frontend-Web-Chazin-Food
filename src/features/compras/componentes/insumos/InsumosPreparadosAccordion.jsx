@@ -81,7 +81,7 @@ export function InsumosPreparadosAccordion({
               <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800">
                 <div className="text-right">
                   <div className="font-bold text-gray-900 dark:text-gray-100 text-base">
-                    ${(item.precio || item.costo || 0).toLocaleString()}
+                    ${Number(item.precio || item.costo || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 })}
                   </div>
                   <div className="text-xs text-gray-400">
                     por {item.unidadMedida || "und"}
