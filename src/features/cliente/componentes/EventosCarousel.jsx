@@ -26,7 +26,7 @@ import {
   IconServingCloche,
   IconBaconStrip
 } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
+import { stripEmojis, formatTipoEvento, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { calculateCountdown } from "@/shared/utils/dateUtils";
 
@@ -694,6 +694,15 @@ export function EventosCarousel({ eventos = [], productos = [], ratingsMap = {},
                           ? evt.descripcion
                           : "Disfruta de este plato seleccionado preparado con los ingredientes más frescos de la casa."}
                       </p>
+
+                      {parseEventoInsumos(evt).length > 0 && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/25 border border-purple-300/40 backdrop-blur-sm max-w-full">
+                          <Gift className="w-4 h-4 text-purple-200 shrink-0" />
+                          <span className="text-xs sm:text-sm font-black text-purple-100 truncate">
+                            Incluye Topping Extra Gratis: {formatEventoToppingsText(evt)}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Comparativa de precio */}
                       <div className="pt-2 flex items-baseline gap-3 flex-wrap">

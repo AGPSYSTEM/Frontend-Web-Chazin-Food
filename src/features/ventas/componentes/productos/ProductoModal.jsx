@@ -123,6 +123,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [variantes, setVariantes] = useState([]);
   const [todosInsumosCatalogo, setTodosInsumosCatalogo] = useState([]);
   const [expandedVariantKey, setExpandedVariantKey] = useState(null);
+  const [variantSubTab, setVariantSubTab] = useState("receta");
+  const [showQuickTemplates, setShowQuickTemplates] = useState(false);
+  const quickTemplatesRef = useRef(null);
   const [newRuleTipo, setNewRuleTipo] = useState('AGREGAR');
   const [newRuleInsumoId, setNewRuleInsumoId] = useState('');
   const [newRuleReemplazadoId, setNewRuleReemplazadoId] = useState('');
@@ -777,6 +780,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     };
   };
 
+  const selectAndResetVariantWorkspace = (key) => {
+    setExpandedVariantKey(key);
+    setVariantSubTab("receta");
+    setNewRuleInsumoId("");
+    setSearchInsumoVariante("");
+    setShowInsumoDropdown(false);
+    resetReplaceForm();
+  };
+
   const handleAddTamano = (suggestedName = "", suggestedImg = "") => {
     let defaultImg = suggestedImg;
     if (!defaultImg && suggestedName) {
@@ -784,7 +796,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
     const newVar = createInitializedVariant(suggestedName, "tamano", defaultImg);
     setVariantes((prev) => [...prev, newVar]);
-    setExpandedVariantKey(newVar._key);
+    selectAndResetVariantWorkspace(newVar._key);
   };
 
   const handleAddSabor = (suggestedName = "", suggestedImg = "") => {
@@ -794,13 +806,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
     const newVar = createInitializedVariant(suggestedName, "sabor", defaultImg);
     setVariantes((prev) => [...prev, newVar]);
-    setExpandedVariantKey(newVar._key);
+    selectAndResetVariantWorkspace(newVar._key);
   };
 
   const handleAddVariante = (suggestedName = "") => {
     const newVar = createInitializedVariant(suggestedName, "general", "");
     setVariantes((prev) => [...prev, newVar]);
-    setExpandedVariantKey(newVar._key);
+    selectAndResetVariantWorkspace(newVar._key);
   };
 
   const handleUpdateVarianteByKey = (key, field, value) => {
@@ -911,6 +923,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       if (baseDropdownRef.current && !baseDropdownRef.current.contains(event.target)) {
         setShowBaseDropdown(false);
       }
+      if (quickTemplatesRef.current && !quickTemplatesRef.current.contains(event.target)) {
+        setShowQuickTemplates(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -1008,87 +1023,6 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             }
           : v
       )
-    );
-  };
-
-  const handleApplyVariantScaleFactor = (variantKey, rawFactor) => {
-    const nextFactor = Math.max(0.25, Math.min(20, Number(rawFactor) || 1));
-    setVariantes((prev) =>
-      prev.map((v) => {
-        if (v._key !== variantKey) return v;
-        const currentDetalles = Array.isArray(v.fichaTecnica?.detalles) && v.fichaTecnica.detalles.length > 0
-          ? v.fichaTecnica.detalles
-          : buildVariantDetallesFromBase(baseIngredients, 1, todosInsumosCatalogo);
-        const baseMap = new Map(baseIngredients.map((b) => [Number(b.idInsumo), b]));
-        const scaledDetalles = currentDetalles.map((det) => {
-          const baseItem = baseMap.get(Number(det.idInsumo));
-          const originQty = det.baseCantidad ?? baseItem?.cantidad;
-          if (originQty === null || originQty === undefined || Number(originQty) <= 0) {
-            return det;
-          }
-          return {
-            ...det,
-            baseCantidad: Number(originQty),
-            cantidad: scaleQuantityByFactor(Number(originQty), nextFactor),
-            _manualEdit: false
-          };
-        });
-        return {
-          ...v,
-          esTamano: nextFactor > 1 || v.tipo === "tamano",
-          factorTamano: nextFactor,
-          hasCustomSizeFactor: true,
-          tipo: nextFactor > 1 ? "tamano" : (v.tipo === "tamano" ? "general" : v.tipo),
-          fichaTecnica: {
-            ...(v.fichaTecnica || {}),
-            rendimiento: nextFactor > 1
-              ? `${nextFactor} porciones (${v.nombre || "Tamaño"})`
-              : (fichaTecnica?.rendimiento || "1 porción"),
-            detalles: scaledDetalles
-          },
-          insumosModificados: computeInsumosModificadosDeltas(scaledDetalles, baseIngredients)
-        };
-      })
-    );
-  };
-
-  const handleToggleVariantIsSize = (variantKey) => {
-    setVariantes((prev) =>
-      prev.map((v) => {
-        if (v._key !== variantKey) return v;
-        const nextIsSize = !v.esTamano;
-        const detected = detectVariantSizeInfo(v.nombre, nextIsSize ? "tamano" : "");
-        const nextFactor = nextIsSize ? (Number(v.factorTamano) > 1 ? Number(v.factorTamano) : (detected.factor > 1 ? detected.factor : 1.5)) : 1;
-        const currentDetalles = Array.isArray(v.fichaTecnica?.detalles) && v.fichaTecnica.detalles.length > 0
-          ? v.fichaTecnica.detalles
-          : buildVariantDetallesFromBase(baseIngredients, 1, todosInsumosCatalogo);
-        const baseMap = new Map(baseIngredients.map((b) => [Number(b.idInsumo), b]));
-        const rescaledDetalles = currentDetalles.map((det) => {
-          const originQty = det.baseCantidad ?? baseMap.get(Number(det.idInsumo))?.cantidad;
-          if (originQty === null || originQty === undefined || Number(originQty) <= 0) return det;
-          return {
-            ...det,
-            baseCantidad: Number(originQty),
-            cantidad: scaleQuantityByFactor(Number(originQty), nextFactor),
-            _manualEdit: false
-          };
-        });
-        return {
-          ...v,
-          esTamano: nextIsSize,
-          factorTamano: nextFactor,
-          hasCustomSizeFactor: true,
-          tipo: nextIsSize ? "tamano" : "general",
-          fichaTecnica: {
-            ...(v.fichaTecnica || {}),
-            rendimiento: nextIsSize
-              ? `${nextFactor} porciones (${v.nombre || "Tamaño"})`
-              : (fichaTecnica?.rendimiento || "1 porción"),
-            detalles: rescaledDetalles
-          },
-          insumosModificados: computeInsumosModificadosDeltas(rescaledDetalles, baseIngredients)
-        };
-      })
     );
   };
 
@@ -1355,235 +1289,210 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     }
   };
 
-  // Fila de variante visualmente optimizada con su propia Ficha Técnica editable
-  const renderVariantRow = (v, idx, type) => {
+  // Workspace lateral limpio para la variante seleccionada (Diseño Master-Detail)
+  const renderVariantStudio = (v, idx) => {
+    if (!v) return null;
+    const type = v.tipo === "sabor" ? "sabor" : (v.tipo === "tamano" || v.esTamano ? "tamano" : "general");
     const isTamano = type === "tamano" || Boolean(v.esTamano) || Number(v.factorTamano || 1) > 1;
     const isSabor = !isTamano && type === "sabor";
-    const placeholderText = isTamano
-      ? "Ej. Botella 1.5 Litros / Familiar / Grande"
-      : isSabor
-      ? "Ej. Pepsi Light / Black 400ml"
-      : "Ej. Sabor BBQ / Picante / Clásica / Familiar / Grande";
-
-    const badgeCls = isTamano
-      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
-      : isSabor
-      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200"
-      : "bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200";
-
-    const borderFocusCls = isTamano
-      ? "focus:ring-amber-500 hover:border-amber-300"
-      : isSabor
-      ? "focus:ring-purple-500 hover:border-purple-300"
-      : "focus:ring-[#F05454] hover:border-orange-300";
-
-    const isExpanded = expandedVariantKey === v._key;
-    const varNombreDisplay = v.nombre?.trim() || `Variante #${idx + 1}`;
+    const varNombreDisplay = v.nombre?.trim() || `Presentación #${idx + 1}`;
     const varDetalles = Array.isArray(v.fichaTecnica?.detalles) ? v.fichaTecnica.detalles : [];
     const detCount = varDetalles.length;
     const factorActual = Number(v.factorTamano || 1);
     const varCostTotals = detCount > 0 ? calculateRecipeTotals(varDetalles, 1) : { costoPorPorcion: 0 };
+    const varCostNum = Math.round(varCostTotals.costoPorPorcion || 0);
+    const effectivePriceNum = Number(v.precio !== undefined && v.precio !== "" ? v.precio : (form.precio || 0));
+    const marginPct = effectivePriceNum > 0 && varCostNum > 0
+      ? Math.round(((effectivePriceNum - varCostNum) / effectivePriceNum) * 100)
+      : null;
 
     return (
       <div
         key={v._key}
-        className={`rounded-xl border transition-all ${
-          isExpanded
-            ? "border-orange-300 dark:border-orange-800 bg-orange-50/20 dark:bg-orange-950/10 shadow-xs"
-            : "border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-800 shadow-2xs hover:shadow-xs"
-        }`}
+        className="rounded-2xl border border-gray-200/90 dark:border-gray-700/80 bg-white dark:bg-gray-850 shadow-xs flex flex-col overflow-visible animate-in fade-in duration-150"
       >
-        <div className="flex items-center gap-2.5 p-2.5 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${badgeCls}`}>
-              {idx + 1}
-            </span>
-            {isTamano && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                Tamaño{factorActual > 1 ? ` ×${factorActual}` : ""}
-              </span>
-            )}
-            {isSabor && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                Sabor
-              </span>
-            )}
-          </div>
+        {/* Cabecera limpia de la variante: Foto, Título editable, Precio y Eliminar */}
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="relative shrink-0 group">
+              <label
+                htmlFor={`variant-img-${v._key}`}
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center overflow-hidden cursor-pointer relative transition-all ${
+                  v.previewUrl || v.imagen
+                    ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                    : "border-dashed border-gray-300 dark:border-gray-600 hover:border-[#F05454] bg-gray-50 dark:bg-gray-800"
+                }`}
+                title={v.previewUrl || v.imagen ? "Cambiar foto" : "Subir foto"}
+              >
+                {v.previewUrl || v.imagen ? (
+                  <>
+                    <img
+                      src={v.previewUrl || v.imagen}
+                      alt={v.nombre || "Variante"}
+                      className="w-full h-full object-contain p-0.5"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                      <Camera className="w-3.5 h-3.5" />
+                    </div>
+                  </>
+                ) : (
+                  <Camera className="w-4 h-4 text-gray-400 group-hover:text-[#F05454] transition-colors" />
+                )}
+                <input
+                  id={`variant-img-${v._key}`}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleVariantImageSelectedByKey(v._key, e)}
+                  className="hidden"
+                />
+              </label>
 
-          <div className="shrink-0 flex items-center gap-1">
-            <label
-              htmlFor={`variant-img-${v._key}`}
-              className={`w-9 h-9 rounded-xl border-2 flex items-center justify-center overflow-hidden cursor-pointer relative group transition-all shrink-0 ${
-                v.previewUrl || v.imagen
-                  ? "border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-850 shadow-2xs"
-                  : "border-dashed border-gray-300 dark:border-gray-600 hover:border-[#F05454] bg-gray-50 dark:bg-gray-800/60"
-              }`}
-              title={v.previewUrl || v.imagen ? "Cambiar foto" : "Subir foto"}
-            >
-              {v.previewUrl || v.imagen ? (
-                <>
-                  <img
-                    src={v.previewUrl || v.imagen}
-                    alt={v.nombre || "Variante"}
-                    className="w-full h-full object-contain p-0.5"
-                  />
-                  <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity">
-                    <Camera className="w-3.5 h-3.5" />
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#F05454] transition-colors">
-                  <Camera className="w-3.5 h-3.5" />
-                </div>
+              {(v.previewUrl || v.imagen) && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveVariantImageByKey(v._key)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-gray-800 text-white hover:bg-red-600 opacity-0 group-hover:opacity-100 flex items-center justify-center transition shadow-xs cursor-pointer"
+                  title="Quitar foto"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
               )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={v.nombre}
+                  onChange={(e) => handleUpdateVarianteByKey(v._key, "nombre", e.target.value)}
+                  placeholder={isTamano ? "Ej. Grande / 1.5 Litros" : isSabor ? "Ej. Sin Azúcar / Zero" : "Nombre de la presentación (ej. BBQ Ahumada)"}
+                  className="w-full text-sm sm:text-[15px] font-bold text-gray-900 dark:text-gray-100 bg-transparent border border-transparent hover:border-gray-200 dark:hover:border-gray-700 focus:border-gray-300 focus:bg-gray-50/70 dark:focus:bg-gray-800 rounded-lg px-2 py-1 -ml-2 outline-none transition"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                {isTamano && (
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">
+                    Tamaño{factorActual > 1 ? ` ×${factorActual}` : ""}
+                  </span>
+                )}
+                {isSabor && (
+                  <span className="text-purple-600 dark:text-purple-400 font-medium">
+                    Sabor
+                  </span>
+                )}
+                {(isTamano || isSabor) && <span>·</span>}
+                <span>
+                  {v.precio !== undefined && v.precio !== "" ? "Precio personalizado" : "Usa precio base"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mr-0.5">Precio</span>
+              <span className="text-xs font-bold text-emerald-600">$</span>
               <input
-                id={`variant-img-${v._key}`}
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleVariantImageSelectedByKey(v._key, e)}
-                className="hidden"
+                type="number"
+                min="1"
+                step="any"
+                value={v.precio ?? ""}
+                onChange={(e) => handleUpdateVarianteByKey(v._key, "precio", e.target.value)}
+                placeholder={form.precio ? Number(form.precio).toLocaleString("es-CO") : "Base"}
+                className="w-20 bg-transparent text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 outline-none tabular-nums text-right"
+                aria-label={`Precio de ${varNombreDisplay}`}
               />
-            </label>
-
-            {(v.previewUrl || v.imagen) && (
-              <button
-                type="button"
-                onClick={() => handleRemoveVariantImageByKey(v._key)}
-                className="p-1 text-gray-400 hover:text-red-500 rounded-md transition cursor-pointer"
-                title="Quitar foto"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-[140px]">
-            <input
-              type="text"
-              value={v.nombre}
-              onChange={(e) => handleUpdateVarianteByKey(v._key, "nombre", e.target.value)}
-              placeholder={placeholderText}
-              className={`w-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg text-xs focus:ring-2 focus:border-transparent transition-colors ${borderFocusCls}`}
-            />
-          </div>
-
-          <div className="shrink-0 flex items-center gap-1.5">
-            {v.precio !== undefined && v.precio !== "" && Number(v.precio) > 0 && Number(v.precio) !== Number(form.precio || 0) && (
-              <span
-                className="px-2 py-1 rounded-lg text-[11px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 tabular-nums"
-                title="Precio personalizado de esta variante"
-              >
-                ${Number(v.precio).toLocaleString("es-CO")}
-              </span>
-            )}
+              {v.precio !== undefined && v.precio !== "" && (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateVarianteByKey(v._key, "precio", "")}
+                  className="text-[10px] font-semibold text-gray-400 hover:text-[#F05454] pl-1.5 ml-0.5 border-l border-gray-200 dark:border-gray-700 cursor-pointer"
+                  title="Volver al precio base"
+                >
+                  Base
+                </button>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={() => {
-                const nextExpand = isExpanded ? null : v._key;
-                setExpandedVariantKey(nextExpand);
+                handleRemoveVarianteByKey(v._key);
                 setNewRuleInsumoId("");
-                setNewRuleCantidad("");
-                setNewRuleUnidad("");
                 setSearchInsumoVariante("");
                 setShowInsumoDropdown(false);
                 resetReplaceForm();
               }}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                detCount > 0
-                  ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
-                  : "bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
-              }`}
-              title="Ver y editar ficha técnica, precio e insumos de esta variante"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition cursor-pointer"
+              title="Eliminar esta presentación"
             >
-              <ChefHat className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-              <span className="hidden sm:inline">Ficha Técnica</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black border ${detCount > 0 ? "bg-amber-200 dark:bg-amber-900 border-amber-400 text-amber-900 dark:text-amber-100" : "bg-white dark:bg-gray-800 border-gray-300 text-gray-600 dark:text-gray-300"}`}>
-                {detCount}
-              </span>
-              {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-500" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-500" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleRemoveVarianteByKey(v._key)}
-              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition cursor-pointer"
-              title="Eliminar opción"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Panel Expandible: Ficha Técnica completa e insumos editables con el nombre de la variante */}
-        {isExpanded && (
-          <div className="px-3 pb-3.5 pt-2 border-t border-orange-100 dark:border-orange-900/30 space-y-3 animate-in fade-in duration-150">
-            {/* Encabezado con nombre de la variante + Control de Tamaño */}
-            <div className="bg-orange-100/70 dark:bg-orange-950/40 p-3 rounded-xl border border-orange-200/80 dark:border-orange-900/50 space-y-2.5">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs font-black uppercase text-orange-900 dark:text-orange-200 flex items-center gap-1.5">
-                    <ChefHat className="w-4 h-4 text-orange-600 shrink-0" />
-                    <span>Ficha Técnica de Variante: {varNombreDisplay}</span>
-                  </p>
-                  <p className="text-[11px] text-gray-600 dark:text-gray-400">
-                    Carga automáticamente los insumos base del producto original. Edita cantidades, reemplaza insumos, ajusta el precio o añade nuevos exclusivos para <strong>{varNombreDisplay}</strong>.
-                  </p>
-                </div>
+        {/* Sub-barra limpia: Pestañas + Costo/Margen + Escala en Popover + Sincronizar */}
+        <div className="px-4 sm:px-5 py-2 bg-gray-50/60 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex items-center p-0.5 rounded-lg bg-gray-200/60 dark:bg-gray-800">
+            <button
+              type="button"
+              onClick={() => setVariantSubTab("receta")}
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                variantSubTab === "receta"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-2xs"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              }`}
+            >
+              <span>Insumos</span>
+              <span className="text-[10.5px] opacity-65 tabular-nums">{detCount}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVariantSubTab("detalles")}
+              className={`px-3 py-1 rounded-md text-xs font-semibold transition cursor-pointer ${
+                variantSubTab === "detalles"
+                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-2xs"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              }`}
+            >
+              Detalles
+            </button>
+          </div>
 
-                {baseIngredients.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleSyncVariantFromBase(v._key)}
-                    className="px-2.5 py-1.5 bg-white dark:bg-gray-800 hover:bg-orange-50 text-orange-800 dark:text-orange-200 border border-orange-300 dark:border-orange-700 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-2xs"
-                    title="Recargar insumos base del producto original"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Sincronizar Base ({baseIngredients.length})</span>
-                  </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {detCount > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 tabular-nums">
+                <span className="text-gray-400">Costo</span>
+                <span className="font-bold text-gray-800 dark:text-gray-200">${varCostNum.toLocaleString("es-CO")}</span>
+                {marginPct !== null && (
+                  <span className={`font-semibold ${marginPct >= 30 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                    · {marginPct}% margen
+                  </span>
                 )}
               </div>
+            )}
 
-              {/* Control de Tamaño & Escalado Automático */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-orange-200/70 dark:border-orange-900/40">
-                <label className="inline-flex items-center gap-2 text-[11px] font-bold text-gray-800 dark:text-gray-200 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(v.esTamano)}
-                    onChange={() => handleToggleVariantIsSize(v._key)}
-                    className="rounded border-orange-300 text-[#F05454] focus:ring-[#F05454] cursor-pointer"
-                  />
-                  <span>Esta variante es de tamaño (aumentar cantidad de insumos)</span>
-                </label>
+            {baseIngredients.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleSyncVariantFromBase(v._key)}
+                className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                title="Cargar o restablecer los insumos base del producto"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span className="hidden sm:inline">Restaurar base</span>
+              </button>
+            )}
+          </div>
+        </div>
 
-                <div className="flex flex-wrap items-center gap-1">
-                  <span className="text-[10px] font-bold uppercase text-gray-500 mr-1">Escala:</span>
-                  {[1, 1.25, 1.5, 2, 2.5, 3].map((f) => {
-                    const active = Math.abs(factorActual - f) < 0.01;
-                    return (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => handleApplyVariantScaleFactor(v._key, f)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black transition cursor-pointer border ${
-                          active
-                            ? "bg-[#F05454] text-white border-[#F05454] shadow-2xs"
-                            : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-orange-400"
-                        }`}
-                      >
-                        ×{f}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Metadatos y Precio Opcional de la Variante */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div className="sm:col-span-5">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                  Descripción de "{varNombreDisplay}" (opcional)
+        {/* Contenido Principal de la Pestaña Seleccionada */}
+        <div className="p-4 sm:p-5">
+          {variantSubTab === "detalles" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+              <div className="sm:col-span-6">
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">
+                  Descripción en menú (opcional)
                 </label>
                 <input
                   type="text"
@@ -1592,42 +1501,13 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     handleUpdateVarianteByKey(v._key, "descripcion", e.target.value);
                     handleUpdateVariantFichaMeta(v._key, "descripcion", e.target.value);
                   }}
-                  placeholder={`Ej. ${varNombreDisplay} preparada con porción especial y salsa de la casa`}
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs focus:ring-1 focus:ring-orange-400 outline-none"
+                  placeholder={`Ej. ${varNombreDisplay} preparada con salsa especial`}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-100 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#F05454]/20 focus:border-[#F05454] outline-none transition"
                 />
               </div>
 
               <div className="sm:col-span-3">
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
-                    <DollarSign className="w-3 h-3 text-emerald-600" />
-                    <span>Precio Variante</span>
-                  </label>
-                  {v.precio !== undefined && v.precio !== "" && (
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateVarianteByKey(v._key, "precio", "")}
-                      className="text-[9.5px] font-bold text-orange-600 hover:underline cursor-pointer"
-                      title="Volver a heredar el precio del producto base"
-                    >
-                      Usar base
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="number"
-                  min="1"
-                  step="any"
-                  value={v.precio ?? ""}
-                  onChange={(e) => handleUpdateVarianteByKey(v._key, "precio", e.target.value)}
-                  placeholder={form.precio ? `Base: $${Number(form.precio).toLocaleString("es-CO")}` : "Igual al base"}
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-500 outline-none"
-                  aria-label={`Precio de variante ${varNombreDisplay}`}
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">
                   Rendimiento
                 </label>
                 <input
@@ -1635,12 +1515,12 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   value={v.fichaTecnica?.rendimiento || ""}
                   onChange={(e) => handleUpdateVariantFichaMeta(v._key, "rendimiento", e.target.value)}
                   placeholder="Ej. 1 porción"
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs focus:ring-1 focus:ring-orange-400 outline-none"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-100 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#F05454]/20 focus:border-[#F05454] outline-none transition"
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+              <div className="sm:col-span-3">
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">
                   Prep (min)
                 </label>
                 <input
@@ -1648,47 +1528,44 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   min="0"
                   value={v.fichaTecnica?.tiempoPreparacion ?? 0}
                   onChange={(e) => handleUpdateVariantFichaMeta(v._key, "tiempoPreparacion", e.target.value)}
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs focus:ring-1 focus:ring-orange-400 outline-none"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-100 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#F05454]/20 focus:border-[#F05454] outline-none transition"
                 />
               </div>
 
               <div className="sm:col-span-12">
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                  Procedimiento de Preparación para "{varNombreDisplay}"
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1.5">
+                  Procedimiento de preparación
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={v.fichaTecnica?.procedimiento || ""}
                   onChange={(e) => handleUpdateVariantFichaMeta(v._key, "procedimiento", e.target.value)}
-                  placeholder="Pasos de preparación específicos para esta variante..."
-                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs focus:ring-1 focus:ring-orange-400 outline-none resize-y"
+                  placeholder="Pasos específicos de cocina para esta presentación..."
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-100 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-[#F05454]/20 focus:border-[#F05454] outline-none resize-y transition"
                 />
               </div>
             </div>
-
-            {/* Tabla Editable de Insumos de la Variante */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black uppercase tracking-wide text-gray-700 dark:text-gray-300">
-                  Insumos de "{varNombreDisplay}" ({detCount}):
-                </span>
-                {detCount > 0 && (
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    Costo estimado: ${Math.round(varCostTotals.costoPorPorcion || 0).toLocaleString("es-CO")}
-                  </span>
-                )}
-              </div>
-
+          ) : (
+            <div className="space-y-3">
+              {/* Lista de Ingredientes limpia */}
               {detCount === 0 ? (
-                <div className="p-3 rounded-xl border border-dashed border-orange-200 dark:border-orange-900/40 bg-white/80 dark:bg-gray-850 text-center space-y-1.5">
-                  <p className="text-[11px] font-medium text-gray-600 dark:text-gray-400">
-                    {baseIngredients.length > 0
-                      ? `No hay insumos cargados en "${varNombreDisplay}". Haz clic en "Sincronizar Base" o añade insumos abajo.`
-                      : `El producto base aún no tiene insumos en el Paso 2. Puedes agregar insumos a "${varNombreDisplay}" usando el buscador de abajo.`}
+                <div className="py-6 px-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center space-y-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Esta presentación aún no tiene ingredientes asignados.
                   </p>
+                  {baseIngredients.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSyncVariantFromBase(v._key)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#F05454] bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/70 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Cargar ingredientes base ({baseIngredients.length})</span>
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
                   {varDetalles.map((det, detIdx) => {
                     const catalogItem = todosInsumosCatalogo.find(
                       (c) => Number(c.idInsumo || c.id) === Number(det.idInsumo)
@@ -1705,140 +1582,126 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     };
                     const rowCost = Math.round(calculateInsumoCost(unitCostItem) || 0);
                     const isScaled = det.esBase && det.baseCantidad !== null && Number(det.cantidad) > Number(det.baseCantidad);
+                    const isQtyChanged = det.esBase && det.baseCantidad !== null && Math.abs(Number(det.cantidad) - Number(det.baseCantidad)) > 0.001;
                     const isReplacingThisRow =
                       replacingDetail?.variantKey === v._key && replacingDetail?.detailIdx === detIdx;
 
                     return (
-                      <div key={`${det.idInsumo}-${detIdx}`} className="space-y-1">
-                        <div
-                          className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2 rounded-xl border text-xs shadow-2xs ${
-                            vencido
-                              ? "bg-red-50/70 dark:bg-red-950/20 border-red-300 dark:border-red-800"
-                              : isReplacingThisRow
-                                ? "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700"
-                                : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {det.esBase ? (
-                              <span
-                                className={`px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase border shrink-0 ${
-                                  isScaled
-                                    ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700"
-                                    : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
-                                }`}
-                              >
-                                {isScaled ? `Base ×${factorActual}` : "Base"}
-                              </span>
-                            ) : det.reemplazaA ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800 shrink-0">
-                                Reemplazo
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
-                                Nuevo
-                              </span>
-                            )}
-
-                            <div className="min-w-0 flex-1">
-                              <p className={`font-bold truncate ${vencido ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}>
+                      <div
+                        key={`${det.idInsumo}-${detIdx}`}
+                        className={`py-2.5 first:pt-1 last:pb-1 transition-colors ${
+                          vencido
+                            ? "bg-red-50/70 dark:bg-red-950/20 px-2 rounded-lg"
+                            : isReplacingThisRow
+                              ? "bg-indigo-50/30 dark:bg-indigo-950/20 px-2 rounded-lg"
+                              : ""
+                        }`}
+                      >
+                        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`font-semibold text-[13px] truncate ${vencido ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}>
                                 {detName}
-                              </p>
-                              {vencido && (
-                                <span className="text-[9.5px] font-black text-red-600 dark:text-red-400 block">
-                                  ⛔ VENCIDO — Retirar o reemplazar antes de guardar
+                              </span>
+                              {vencido ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 shrink-0">
+                                  ⛔ VENCIDO
                                 </span>
-                              )}
-                              {det.reemplazaA && (
-                                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 block truncate">
-                                  Reemplaza a: {det.reemplazaA.nombre}
+                              ) : det.reemplazaA ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 shrink-0 truncate max-w-[160px]" title={`Reemplaza a ${det.reemplazaA.nombre}`}>
+                                  Reemplaza: {det.reemplazaA.nombre}
                                 </span>
-                              )}
-                              {det.esBase && det.baseCantidad !== null && (
-                                <span className="text-[10px] text-gray-400 block">
-                                  Original: {det.baseCantidad} {det.unidadMedida}
+                              ) : !det.esBase ? (
+                                <span className="px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 shrink-0">
+                                  Extra
                                 </span>
-                              )}
+                              ) : isQtyChanged ? (
+                                <span className="text-[10px] text-gray-400 shrink-0">
+                                  {isScaled ? `×${factorActual}` : `Base ${det.baseCantidad}`}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <input
-                              type="number"
-                              step="any"
-                              min="0.01"
-                              value={det.cantidad}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                handleUpdateVariantDetail(v._key, detIdx, {
-                                  cantidad: val === "" ? "" : Number(val)
-                                });
-                              }}
-                              className="w-20 px-2 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-bold text-right focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                              aria-label={`Cantidad de ${detName}`}
-                            />
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800 overflow-hidden focus-within:ring-1 focus-within:ring-[#F05454] focus-within:border-[#F05454]">
+                              <input
+                                type="number"
+                                step="any"
+                                min="0.01"
+                                value={det.cantidad}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleUpdateVariantDetail(v._key, detIdx, {
+                                    cantidad: val === "" ? "" : Number(val)
+                                  });
+                                }}
+                                className="w-16 px-2 py-1 bg-transparent dark:text-gray-100 text-xs font-bold text-right outline-none tabular-nums"
+                                aria-label={`Cantidad de ${detName}`}
+                              />
+                              <select
+                                value={currentUnitNorm}
+                                onChange={(e) => {
+                                  const nextU = e.target.value;
+                                  const conv = convertirUnidadYCantidad(det.cantidad || 0, currentUnitNorm, nextU);
+                                  handleUpdateVariantDetail(v._key, detIdx, {
+                                    cantidad: Number((conv || 0).toFixed(2)),
+                                    unidadMedida: nextU
+                                  });
+                                }}
+                                className="px-1.5 py-1 bg-transparent border-l border-gray-200 dark:border-gray-700 dark:text-gray-200 text-xs font-medium cursor-pointer outline-none"
+                                aria-label={`Unidad de ${detName}`}
+                              >
+                                {unitsList.map((u) => (
+                                  <option key={u.value} value={u.value}>
+                                    {u.label || u.value}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
 
-                            <select
-                              value={currentUnitNorm}
-                              onChange={(e) => {
-                                const nextU = e.target.value;
-                                const conv = convertirUnidadYCantidad(det.cantidad || 0, currentUnitNorm, nextU);
-                                handleUpdateVariantDetail(v._key, detIdx, {
-                                  cantidad: Number((conv || 0).toFixed(2)),
-                                  unidadMedida: nextU
-                                });
-                              }}
-                              className="w-20 px-1.5 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                              aria-label={`Unidad de ${detName}`}
-                            >
-                              {unitsList.map((u) => (
-                                <option key={u.value} value={u.value}>
-                                  {u.label || u.value}
-                                </option>
-                              ))}
-                            </select>
-
-                            <span className="w-16 text-right text-[10.5px] font-mono text-gray-500 dark:text-gray-400 hidden sm:inline">
+                            <span className="w-14 text-right text-[11px] font-medium text-gray-400 tabular-nums hidden sm:inline">
                               ${rowCost.toLocaleString("es-CO")}
                             </span>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (isReplacingThisRow) {
-                                  resetReplaceForm();
-                                } else {
-                                  setReplacingDetail({
-                                    variantKey: v._key,
-                                    detailIdx: detIdx,
-                                    oldInsumoId: det.idInsumo,
-                                    oldNombre: detName
-                                  });
-                                  setReplaceInsumoId("");
-                                  setReplaceCantidad("");
-                                  setReplaceUnidad("");
-                                  setReplaceSearch("");
-                                }
-                              }}
-                              className={`px-2 py-1 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition cursor-pointer ${
-                                isReplacingThisRow
-                                  ? "bg-indigo-600 text-white"
-                                  : "text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800"
-                              }`}
-                              title="Reemplazar este insumo por otro"
-                            >
-                              <ArrowRightLeft className="w-3 h-3" />
-                              <span className="hidden md:inline">Reemplazar</span>
-                            </button>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isReplacingThisRow) {
+                                    resetReplaceForm();
+                                  } else {
+                                    setReplacingDetail({
+                                      variantKey: v._key,
+                                      detailIdx: detIdx,
+                                      oldInsumoId: det.idInsumo,
+                                      oldNombre: detName
+                                    });
+                                    setReplaceInsumoId("");
+                                    setReplaceCantidad("");
+                                    setReplaceUnidad("");
+                                    setReplaceSearch("");
+                                  }
+                                }}
+                                className={`p-1.5 rounded-lg transition cursor-pointer ${
+                                  isReplacingThisRow
+                                    ? "bg-indigo-600 text-white"
+                                    : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                                }`}
+                                title="Reemplazar este insumo por otro"
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariantDetail(v._key, detIdx)}
-                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition cursor-pointer"
-                              title="Quitar insumo de esta variante"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariantDetail(v._key, detIdx)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition cursor-pointer"
+                                title="Quitar insumo"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -1851,16 +1714,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                           );
 
                           return (
-                            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2 animate-in fade-in duration-100">
+                            <div className="mt-2.5 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2 animate-in fade-in duration-100">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-[11px] font-extrabold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                                <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
                                   <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
                                   Reemplazar "{detName}" por:
                                 </span>
                                 <button
                                   type="button"
                                   onClick={resetReplaceForm}
-                                  className="text-[10.5px] font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-0.5 cursor-pointer"
+                                  className="text-[10.5px] font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-0.5 cursor-pointer"
                                 >
                                   <X className="w-3.5 h-3.5" /> Cancelar
                                 </button>
@@ -1874,7 +1737,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                                       type="text"
                                       value={replaceSearch}
                                       onChange={(e) => setReplaceSearch(e.target.value)}
-                                      placeholder="Buscar insumo sustituto por nombre o categoría..."
+                                      placeholder="Buscar insumo sustituto..."
                                       className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                       autoFocus
                                     />
@@ -1882,7 +1745,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                                   <div className="bg-white dark:bg-gray-850 border border-indigo-100 dark:border-indigo-900 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
                                     {filteredReplaceInsumosCatalogo.length === 0 ? (
                                       <p className="p-2.5 text-[11px] text-center text-gray-400">
-                                        No se encontraron insumos con "{replaceSearch}"
+                                        Sin resultados para "{replaceSearch}"
                                       </p>
                                     ) : (
                                       filteredReplaceInsumosCatalogo.map((ins) => {
@@ -1932,7 +1795,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                                   </div>
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                                   <div className="sm:col-span-5">
                                     <div className="flex items-center justify-between px-2.5 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs">
                                       <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
@@ -1994,223 +1857,182 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   })}
                 </div>
               )}
-            </div>
 
-            {/* Añadir un nuevo insumo a la variante */}
-            <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-750 pb-2">
-                <span className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-[#F05454]" />
-                  <span>Añadir Nuevo Insumo a "{varNombreDisplay}"</span>
-                </span>
-                <span className="text-[10px] text-gray-400">
-                  Bloquea insumos vencidos automáticamente
-                </span>
-              </div>
-
-              {(() => {
-                const selectedInsumo = todosInsumosCatalogo.find(
-                  (i) => Number(i.idInsumo || i.id) === Number(newRuleInsumoId)
-                );
-                const compatibleUnits = selectedInsumo
-                  ? getUnidadesCompatibles(newRuleUnidad || selectedInsumo.unidadMedida || "und")
-                  : getUnidadesCompatibles("und");
-
-                let suggestedPortion = null;
-                if (selectedInsumo) {
-                  const resolved = resolveRecetaUnidadYCantidad(selectedInsumo);
-                  const minCant =
-                    Number(selectedInsumo.porcionMinimaCantidad) > 0
-                      ? Number(selectedInsumo.porcionMinimaCantidad)
-                      : resolved.cantidad || 1;
-                  const minUnit = normalizeUnidadMedida(
-                    selectedInsumo.porcionMinimaUnidad || resolved.unidadMedida || selectedInsumo.unidadMedida || "und"
+              {/* Buscador minimalista progresivo: solo muestra Cant/Unidad tras elegir insumo */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                {(() => {
+                  const selectedInsumo = todosInsumosCatalogo.find(
+                    (i) => Number(i.idInsumo || i.id) === Number(newRuleInsumoId)
                   );
-                  suggestedPortion = { cant: minCant, unit: minUnit };
-                }
+                  const compatibleUnits = selectedInsumo
+                    ? getUnidadesCompatibles(newRuleUnidad || selectedInsumo.unidadMedida || "und")
+                    : getUnidadesCompatibles("und");
 
-                return (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                      <div className="sm:col-span-7 relative" ref={insumoDropdownRef}>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                          Insumo del catálogo para "{varNombreDisplay}"
-                        </label>
+                  let suggestedPortion = null;
+                  if (selectedInsumo) {
+                    const resolved = resolveRecetaUnidadYCantidad(selectedInsumo);
+                    const minCant =
+                      Number(selectedInsumo.porcionMinimaCantidad) > 0
+                        ? Number(selectedInsumo.porcionMinimaCantidad)
+                        : resolved.cantidad || 1;
+                    const minUnit = normalizeUnidadMedida(
+                      selectedInsumo.porcionMinimaUnidad || resolved.unidadMedida || selectedInsumo.unidadMedida || "und"
+                    );
+                    suggestedPortion = { cant: minCant, unit: minUnit };
+                  }
 
-                        {newRuleInsumoId ? (
-                          <div className="flex items-center justify-between px-3 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CheckCircle2 className="w-4 h-4 text-[#F05454] shrink-0" />
-                              <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
-                                {selectedInsumo?.nombre || `Insumo #${newRuleInsumoId}`}
-                              </span>
-                              {selectedInsumo && (
-                                <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
-                                  ({selectedInsumo.stock} {selectedInsumo.unidadMedida})
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewRuleInsumoId("");
-                                setSearchInsumoVariante("");
-                                setShowInsumoDropdown(true);
-                              }}
-                              className="ml-2 text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 font-bold underline cursor-pointer shrink-0"
-                            >
-                              Cambiar
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                            <input
-                              type="text"
-                              placeholder="Buscar insumo por nombre o categoría..."
-                              value={searchInsumoVariante}
-                              onFocus={() => setShowInsumoDropdown(true)}
-                              onChange={(e) => {
-                                setSearchInsumoVariante(e.target.value);
-                                setShowInsumoDropdown(true);
-                              }}
-                              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                            />
+                  if (!newRuleInsumoId) {
+                    return (
+                      <div className="relative" ref={insumoDropdownRef}>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder={`Añadir ingrediente a "${varNombreDisplay}"...`}
+                          value={searchInsumoVariante}
+                          onFocus={() => setShowInsumoDropdown(true)}
+                          onChange={(e) => {
+                            setSearchInsumoVariante(e.target.value);
+                            setShowInsumoDropdown(true);
+                          }}
+                          className="w-full pl-9 pr-3 py-2 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-gray-100/70 focus:bg-white dark:focus:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F05454]/20 focus:border-[#F05454] transition"
+                        />
 
-                            {showInsumoDropdown && (
-                              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 animate-in fade-in duration-100">
-                                {filteredInsumosCatalogo.length === 0 ? (
-                                  <div className="p-3 text-center text-xs text-gray-400">
-                                    No se encontraron insumos con "{searchInsumoVariante}"
-                                  </div>
-                                ) : (
-                                  filteredInsumosCatalogo.map((ins) => {
-                                    const insId = ins.idInsumo || ins.id;
-                                    const { vencido } = checkInsumoInvalido(ins);
-                                    return (
-                                      <button
-                                        key={insId}
-                                        type="button"
-                                        disabled={vencido}
-                                        onClick={() => {
-                                          if (vencido) {
-                                            notify.error(
-                                              "Insumo Vencido",
-                                              `El insumo "${ins.nombre}" se encuentra VENCIDO (${ins.fechaVencimiento ? String(ins.fechaVencimiento).substring(0, 10) : "Caducado"}). No puede ser utilizado.`
-                                            );
-                                            return;
-                                          }
-                                          setNewRuleInsumoId(insId);
-                                          const resolved = resolveRecetaUnidadYCantidad(ins);
-                                          const minCant =
-                                            Number(ins.porcionMinimaCantidad) > 0
-                                              ? Number(ins.porcionMinimaCantidad)
-                                              : resolved.cantidad || 1;
-                                          const minUnit = normalizeUnidadMedida(
-                                            ins.porcionMinimaUnidad || resolved.unidadMedida || ins.unidadMedida || "und"
-                                          );
-                                          setNewRuleCantidad(minCant);
-                                          setNewRuleUnidad(minUnit);
-                                          setSearchInsumoVariante("");
-                                          setShowInsumoDropdown(false);
-                                        }}
-                                        className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between transition group ${
-                                          vencido
-                                            ? "opacity-60 bg-red-50/50 dark:bg-red-950/20 cursor-not-allowed"
-                                            : "hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <span className={`text-xs font-semibold truncate ${vencido ? "text-red-700 dark:text-red-400 line-through" : "text-gray-800 dark:text-gray-200 group-hover:text-[#F05454]"}`}>
-                                            {ins.nombre}
-                                          </span>
-                                          {vencido ? (
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 shrink-0">
-                                              ⛔ VENCIDO ({ins.fechaVencimiento ? String(ins.fechaVencimiento).substring(0, 10) : "Caducado"})
-                                            </span>
-                                          ) : ins.categoriaNombre ? (
-                                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 shrink-0">
-                                              {ins.categoriaNombre}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                        <span className="text-[10px] text-gray-400 font-mono shrink-0 ml-2">
-                                          {ins.stock} {ins.unidadMedida}
-                                        </span>
-                                      </button>
-                                    );
-                                  })
-                                )}
+                        {showInsumoDropdown && (
+                          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 animate-in fade-in duration-100">
+                            {filteredInsumosCatalogo.length === 0 ? (
+                              <div className="p-3 text-center text-xs text-gray-400">
+                                No se encontraron insumos con "{searchInsumoVariante}"
                               </div>
+                            ) : (
+                              filteredInsumosCatalogo.map((ins) => {
+                                const insId = ins.idInsumo || ins.id;
+                                const { vencido } = checkInsumoInvalido(ins);
+                                return (
+                                  <button
+                                    key={insId}
+                                    type="button"
+                                    disabled={vencido}
+                                    onClick={() => {
+                                      if (vencido) {
+                                        notify.error(
+                                          "Insumo Vencido",
+                                          `El insumo "${ins.nombre}" se encuentra VENCIDO (${ins.fechaVencimiento ? String(ins.fechaVencimiento).substring(0, 10) : "Caducado"}). No puede ser utilizado.`
+                                        );
+                                        return;
+                                      }
+                                      setNewRuleInsumoId(insId);
+                                      const resolved = resolveRecetaUnidadYCantidad(ins);
+                                      const minCant =
+                                        Number(ins.porcionMinimaCantidad) > 0
+                                          ? Number(ins.porcionMinimaCantidad)
+                                          : resolved.cantidad || 1;
+                                      const minUnit = normalizeUnidadMedida(
+                                        ins.porcionMinimaUnidad || resolved.unidadMedida || ins.unidadMedida || "und"
+                                      );
+                                      setNewRuleCantidad(minCant);
+                                      setNewRuleUnidad(minUnit);
+                                      setSearchInsumoVariante("");
+                                      setShowInsumoDropdown(false);
+                                    }}
+                                    className={`w-full text-left px-3.5 py-2 flex items-center justify-between transition group ${
+                                      vencido
+                                        ? "opacity-60 bg-red-50/50 dark:bg-red-950/20 cursor-not-allowed"
+                                        : "hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`text-xs font-semibold truncate ${vencido ? "text-red-700 dark:text-red-400 line-through" : "text-gray-800 dark:text-gray-200 group-hover:text-[#F05454]"}`}>
+                                        {ins.nombre}
+                                      </span>
+                                      {vencido ? (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 shrink-0">
+                                          ⛔ VENCIDO
+                                        </span>
+                                      ) : ins.categoriaNombre ? (
+                                        <span className="text-[9.5px] text-gray-400 shrink-0">
+                                          · {ins.categoriaNombre}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <span className="text-[10.5px] text-gray-400 font-mono shrink-0 ml-2">
+                                      {ins.stock} {ins.unidadMedida}
+                                    </span>
+                                  </button>
+                                );
+                              })
                             )}
                           </div>
                         )}
                       </div>
+                    );
+                  }
 
-                      <div className="sm:col-span-5">
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-[10px] font-bold text-gray-500 uppercase">Cantidad</label>
-                              {suggestedPortion && (
-                                <span className="text-[9px] text-orange-600 dark:text-orange-400 font-semibold truncate">
-                                  Min: {suggestedPortion.cant} {suggestedPortion.unit}
-                                </span>
-                              )}
-                            </div>
-                            <input
-                              type="number"
-                              step="any"
-                              min="0.001"
-                              placeholder={suggestedPortion ? String(suggestedPortion.cant) : "Ej. 30"}
-                              value={newRuleCantidad}
-                              onChange={(e) => setNewRuleCantidad(e.target.value)}
-                              className="w-full px-2.5 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                            />
-                          </div>
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center p-2 rounded-xl bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                      <div className="sm:col-span-5 flex items-center justify-between px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-xs">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          {selectedInsumo?.nombre || `Insumo #${newRuleInsumoId}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewRuleInsumoId("");
+                            setSearchInsumoVariante("");
+                            setShowInsumoDropdown(true);
+                          }}
+                          className="ml-2 text-[10.5px] text-[#F05454] font-semibold hover:underline cursor-pointer shrink-0"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
 
-                          <div className="w-28">
-                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Unidad</label>
-                            <select
-                              value={normalizeUnidadMedida(newRuleUnidad)}
-                              onChange={(e) => {
-                                const nextU = e.target.value;
-                                const conv = convertirUnidadYCantidad(newRuleCantidad, newRuleUnidad, nextU);
-                                setNewRuleCantidad(conv);
-                                setNewRuleUnidad(nextU);
-                              }}
-                              className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454] cursor-pointer"
-                            >
-                              {compatibleUnits.map((u) => (
-                                <option key={u.value} value={u.value}>
-                                  {u.label || u.value}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                      <div className="sm:col-span-5 flex items-center gap-1.5">
+                        <div className="flex-1 relative">
+                          <input
+                            type="number"
+                            step="any"
+                            min="0.001"
+                            placeholder={suggestedPortion ? `Mín ${suggestedPortion.cant}` : "Cant."}
+                            value={newRuleCantidad}
+                            onChange={(e) => setNewRuleCantidad(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 dark:text-gray-100 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#F05454]"
+                          />
                         </div>
+                        <select
+                          value={normalizeUnidadMedida(newRuleUnidad)}
+                          onChange={(e) => {
+                            const nextU = e.target.value;
+                            const conv = convertirUnidadYCantidad(newRuleCantidad, newRuleUnidad, nextU);
+                            setNewRuleCantidad(conv);
+                            setNewRuleUnidad(nextU);
+                          }}
+                          className="w-24 px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 dark:text-gray-100 rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454] cursor-pointer"
+                        >
+                          {compatibleUnits.map((u) => (
+                            <option key={u.value} value={u.value}>
+                              {u.label || u.value}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAddInsumoToVariant(v._key)}
+                          className="w-full py-1.5 px-3 bg-[#F05454] hover:bg-[#d84343] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Añadir</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-750">
-                      <span className="text-[11px] text-gray-400">
-                        ➕ Este insumo se guardará dentro de la ficha técnica de <strong>{varNombreDisplay}</strong>.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleAddInsumoToVariant(v._key)}
-                        className="px-4 py-2 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Añadir a "{varNombreDisplay}"</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
@@ -3995,26 +3817,10 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           {/* PASO 3: PRESENTACIONES & VARIANTES (REQUERIMIENTO 1)                       */}
           {/* ========================================================================= */}
           {activeStep === 3 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              
-              {/* Encabezado Explicativo */}
-              <div className="p-4 bg-orange-50/70 dark:bg-orange-950/20 rounded-2xl border border-orange-200/80 dark:border-orange-900/40 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <div className="space-y-0.5 text-xs">
-                  <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                    {isDrink ? "Configuración de Tamaños y Sabores de Bebida" : "Presentaciones y Variantes de la Comida"}
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Las variantes representan opciones que el cliente puede elegir (como porciones, sabores o tamaños de botella). Usan por defecto el precio base del Paso 1, pero puedes editar un precio personalizado y configurar su propia receta/insumos al desplegar cada variante.
-                  </p>
-                </div>
-              </div>
-
+            <div className="space-y-4 animate-in fade-in duration-150">
               {/* Si es Combo Especial: no lleva variantes ya que agrupa productos */}
               {configCombo.esCombo ? (
-                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-3xl border border-blue-200/80 dark:border-blue-900/40 space-y-3">
+                <div className="p-8 text-center bg-blue-50/40 dark:bg-blue-950/20 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 space-y-3">
                   <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center mx-auto">
                     <FoodIcon name="combo" size={28} />
                   </div>
@@ -4023,7 +3829,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                       Los Combos no requieren variantes manuales
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                      Un combo es una combinación de productos individuales del catálogo. La configuración de qué platillos y bebidas incluye se realiza directamente en el <strong>Paso 2 (Armador de Combo)</strong>.
+                      Un combo agrupa productos individuales del catálogo. La configuración se realiza directamente en el <strong>Paso 2 (Armador de Combo)</strong>.
                     </p>
                   </div>
                   <button
@@ -4035,171 +3841,247 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ) : isDrink ? (
-                /* Modo Bebidas (2 Paneles: Tamaños y Sabores) */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* Panel Tamaños */}
-                  <div className="border border-amber-200/90 dark:border-amber-900/50 bg-amber-50/30 dark:bg-amber-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 text-xs font-black flex items-center justify-center">
-                          {sizeVariantes.length}
-                        </span>
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
-                          Tamaños y Botellas
-                        </h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddTamano()}
-                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-amber-50 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar Tamaño</span>
-                      </button>
-                    </div>
+              ) : (() => {
+                const activeVariantIndex = variantes.findIndex((item) => item._key === expandedVariantKey);
+                const resolvedIdx = activeVariantIndex >= 0 ? activeVariantIndex : 0;
+                const activeVariant = variantes[resolvedIdx] || null;
 
-                    {/* Sugerencias Rápidas */}
-                    <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
-                      {["Personal 400ml", "1.5 Litros", "Mega 2.5L"].map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          onClick={() => handleAddTamano(sug)}
-                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-amber-200 hover:border-amber-400 text-amber-800 dark:text-amber-200 font-medium transition cursor-pointer"
-                        >
-                          +{sug}
-                        </button>
-                      ))}
-                    </div>
+                const handleSelectRailVariant = (targetKey) => {
+                  selectAndResetVariantWorkspace(targetKey);
+                };
 
-                    <div className="space-y-2 flex-1 overflow-y-auto max-h-[34rem] pr-1">
-                      {sizeVariantes.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 border border-dashed border-amber-200 rounded-xl">
-                          <p className="text-xs">No hay tamaños adicionales.</p>
-                          <p className="text-[10px] text-gray-400">Se venderá en presentación estándar.</p>
-                        </div>
-                      ) : (
-                        sizeVariantes.map((v, idx) => renderVariantRow(v, idx, "tamano"))
+                const renderRailItem = (v) => {
+                  const isSelected = activeVariant?._key === v._key;
+                  const varDetalles = Array.isArray(v.fichaTecnica?.detalles) ? v.fichaTecnica.detalles : [];
+                  const hasCustomPrice = v.precio !== undefined && v.precio !== "" && Number(v.precio) > 0 && Number(v.precio) !== Number(form.precio || 0);
+                  const displayPrice = Number(hasCustomPrice ? v.precio : (form.precio || 0));
+                  const hasExpired = varDetalles.some((det) => {
+                    const cat = todosInsumosCatalogo.find((c) => Number(c.idInsumo || c.id) === Number(det.idInsumo));
+                    return cat ? checkInsumoInvalido(cat).vencido : false;
+                  });
+                  const factorItem = Number(v.factorTamano || 1);
+
+                  return (
+                    <button
+                      key={v._key}
+                      type="button"
+                      onClick={() => handleSelectRailVariant(v._key)}
+                      className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer relative ${
+                        isSelected
+                          ? "bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-900/8 dark:ring-white/10"
+                          : "hover:bg-white/75 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-300"
+                      }`}
+                    >
+                      {isSelected && (
+                        <span className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full bg-[#F05454]" />
                       )}
-                    </div>
-                  </div>
 
-                  {/* Panel Sabores */}
-                  <div className="border border-purple-200/90 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/10 rounded-2xl p-4 space-y-3 shadow-2xs flex flex-col">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 text-xs font-black flex items-center justify-center">
-                          {flavorVariantes.length}
-                        </span>
-                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100">
-                          Sabores y Alternativas
-                        </h4>
+                      <div className={`w-9 h-9 rounded-lg shrink-0 flex items-center justify-center overflow-hidden border ${
+                        v.previewUrl || v.imagen
+                          ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                          : isSelected
+                            ? "border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-950/30 text-[#F05454]"
+                            : "border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-800 text-gray-400"
+                      }`}>
+                        {v.previewUrl || v.imagen ? (
+                          <img src={v.previewUrl || v.imagen} alt={v.nombre || "Opción"} className="w-full h-full object-contain p-0.5" />
+                        ) : (
+                          <Layers className="w-4 h-4" />
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAddSabor()}
-                        className="px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-purple-50 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar Sabor</span>
-                      </button>
-                    </div>
 
-                    {/* Sugerencias Rápidas */}
-                    <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className="text-gray-400 font-semibold mr-1">Rápidos:</span>
-                      {["Original", "Sin Azúcar / Zero", "Manzana", "Uva"].map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          onClick={() => handleAddSabor(sug)}
-                          className="px-2 py-0.5 rounded-md bg-white dark:bg-gray-800 border border-purple-200 hover:border-purple-400 text-purple-800 dark:text-purple-200 font-medium transition cursor-pointer"
-                        >
-                          +{sug}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="space-y-2 flex-1 overflow-y-auto max-h-[34rem] pr-1">
-                      {flavorVariantes.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 border border-dashed border-purple-200 rounded-xl">
-                          <p className="text-xs">No hay sabores adicionales.</p>
-                          <p className="text-[10px] text-gray-400">Se venderá en sabor clásico.</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-xs font-bold truncate ${isSelected ? "text-gray-900 dark:text-gray-100" : "text-gray-700 dark:text-gray-200"}`}>
+                            {v.nombre?.trim() || "Sin nombre"}
+                          </p>
+                          {hasExpired && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" title="Contiene insumos vencidos" />
+                          )}
                         </div>
-                      ) : (
-                        flavorVariantes.map((v, idx) => renderVariantRow(v, idx, "sabor"))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Modo Comida (Presentaciones del Plato) */
-                <div className="border border-orange-200/80 dark:border-orange-900/40 bg-orange-50/20 dark:bg-orange-950/10 rounded-2xl p-5 space-y-4 shadow-2xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate tabular-nums mt-0.5">
+                          <span className={hasCustomPrice ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""}>
+                            ${displayPrice.toLocaleString("es-CO")}
+                          </span>
+                          <span> · {varDetalles.length} ins.</span>
+                          {factorItem > 1 && <span className="text-amber-600 dark:text-amber-400"> · ×{factorItem}</span>}
+                        </p>
+                      </div>
+
+                      <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition ${isSelected ? "text-gray-500 translate-x-0.5" : "text-gray-300 dark:text-gray-600"}`} />
+                    </button>
+                  );
+                };
+
+                return (
+                  <div className="space-y-4">
+                    {/* Cabecera superior minimalista */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
                         <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                          Presentaciones Disponibles del Plato
+                          {isDrink ? "Tamaños y Sabores" : "Presentaciones"}
                         </h4>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-700">
-                          {variantes.length} {variantes.length === 1 ? "presentación" : "presentaciones"}
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 tabular-nums">
+                          {variantes.length}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Opciones que el comensal puede elegir al momento de ordenar.
-                      </p>
+
+                      <div className="flex items-center gap-2">
+                        {!isDrink && (
+                          <div className="relative" ref={quickTemplatesRef}>
+                            <button
+                              type="button"
+                              onClick={() => setShowQuickTemplates((prev) => !prev)}
+                              className="px-2.5 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Plantillas</span>
+                              <ChevronDown className="w-3 h-3 opacity-60" />
+                            </button>
+
+                            {showQuickTemplates && (
+                              <div className="absolute right-0 top-full mt-1.5 w-48 p-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-40 space-y-0.5 animate-in fade-in duration-100">
+                                {["Original / Clásica", "BBQ Ahumada", "Picante / Jalapeño", "Grande", "Doble", "Familiar"].map((sug) => (
+                                  <button
+                                    key={sug}
+                                    type="button"
+                                    onClick={() => {
+                                      handleAddVariante(sug);
+                                      setShowQuickTemplates(false);
+                                    }}
+                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-1.5 transition cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3 text-[#F05454]" />
+                                    <span>{sug}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {isDrink ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleAddTamano()}
+                              className="px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-amber-50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Tamaño</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAddSabor()}
+                              className="px-3 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Sabor</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddVariante()}
+                            className="px-3.5 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>Nueva variante</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleAddVariante()}
-                        className="px-3 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        <span>Añadir Presentación</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sugerencias rápidas de comida */}
-                  <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white dark:bg-gray-800 rounded-xl border border-orange-150 text-xs">
-                    <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> Ejemplos frecuentes:
-                    </span>
-                    {["Original / Clásica", "BBQ Ahumada", "Picante / Jalapeño", "Grande", "Doble", "Familiar"].map((sug) => (
-                      <button
-                        key={sug}
-                        type="button"
-                        onClick={() => handleAddVariante(sug)}
-                        className="px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 text-orange-800 dark:text-orange-200 text-[11px] font-semibold transition cursor-pointer"
-                      >
-                        +{sug}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Lista de Variantes de Comida */}
-                  <div className="space-y-2.5 max-h-[34rem] overflow-y-auto pr-1">
+                    {/* Estado Vacío Ultra Limpio */}
                     {variantes.length === 0 ? (
-                      <div className="text-center py-10 px-4 rounded-2xl border border-dashed border-orange-200 dark:border-orange-900/60 bg-white/60 dark:bg-gray-850">
-                        <FoodIcon name="burger" size={32} className="mx-auto mb-2 text-orange-400" />
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                          Sin variantes adicionales
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          El producto se ofrecerá con su presentación estándar y precio base. Si deseas ofrecer sabores o presentaciones distintas (como "BBQ Ahumada" o "Familiar"), haz clic en el botón superior.
-                        </p>
+                      <div className="py-10 px-6 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-900/20 text-center space-y-4">
+                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 flex items-center justify-center mx-auto shadow-2xs">
+                          <FoodIcon name={isDrink ? "drink" : "burger"} size={26} />
+                        </div>
+                        <div className="max-w-md mx-auto space-y-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            Sin presentaciones configuradas
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Se venderá en su versión estándar ({form.precio ? `$${Number(form.precio).toLocaleString("es-CO")}` : "precio base"}). Agrega opciones solo si este producto tiene tamaños, sabores o preparaciones distintas.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                          {(isDrink
+                            ? [
+                                { label: "Personal 400ml", action: () => handleAddTamano("Personal 400ml") },
+                                { label: "1.5 Litros", action: () => handleAddTamano("1.5 Litros") },
+                                { label: "Sin Azúcar / Zero", action: () => handleAddSabor("Sin Azúcar / Zero") },
+                                { label: "Manzana", action: () => handleAddSabor("Manzana") }
+                              ]
+                            : ["Original / Clásica", "BBQ Ahumada", "Picante / Jalapeño", "Familiar"].map((sug) => ({
+                                label: sug,
+                                action: () => handleAddVariante(sug)
+                              }))
+                          ).map((item) => (
+                            <button
+                              key={item.label}
+                              type="button"
+                              onClick={item.action}
+                              className="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-[#F05454]/50 hover:text-[#F05454] text-xs font-medium text-gray-600 dark:text-gray-300 transition shadow-2xs cursor-pointer"
+                            >
+                              + {item.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     ) : (
-                      variantes.map((v, idx) => renderVariantRow(v, idx, "general"))
+                      /* Estudio Master-Detail: Lista limpia a la izquierda + Editor enfocado a la derecha */
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                        {/* Columna Izquierda: Lista de Presentaciones */}
+                        <div className="lg:col-span-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-2 space-y-2">
+                          {isDrink ? (
+                            <>
+                              {sizeVariantes.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="px-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                    Tamaños ({sizeVariantes.length})
+                                  </p>
+                                  {sizeVariantes.map(renderRailItem)}
+                                </div>
+                              )}
+                              {flavorVariantes.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="px-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                    Sabores ({flavorVariantes.length})
+                                  </p>
+                                  {flavorVariantes.map(renderRailItem)}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="space-y-1">
+                              {variantes.map(renderRailItem)}
+                            </div>
+                          )}
+
+                          {!isDrink && (
+                            <button
+                              type="button"
+                              onClick={() => handleAddVariante()}
+                              className="w-full py-2 px-3 rounded-xl border border-dashed border-gray-300/90 dark:border-gray-700 hover:border-[#F05454]/60 hover:bg-white dark:hover:bg-gray-800 text-xs font-semibold text-gray-500 hover:text-[#F05454] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Agregar otra</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Columna Derecha: Estudio Enfocado de la Variante Activa */}
+                        <div className="lg:col-span-8">
+                          {activeVariant && renderVariantStudio(activeVariant, resolvedIdx)}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 

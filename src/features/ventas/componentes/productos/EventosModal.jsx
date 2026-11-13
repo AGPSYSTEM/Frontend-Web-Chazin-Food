@@ -16,7 +16,7 @@ import {
   Edit
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
+import { formatTipoEvento, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 import { eventosService } from "../../servicios/eventosService";
 
 export function EventosModal({
@@ -380,6 +380,13 @@ export function EventosModal({
                         {evt.descuento && Number(evt.descuento) > 0 && (
                           <span className="font-black text-rose-600 dark:text-rose-400 text-[11px] bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-800/50">
                             -{Math.round(Number(evt.descuento))}% OFF
+                          </span>
+                        )}
+
+                        {parseEventoInsumos(evt).length > 0 && (
+                          <span className="font-black text-purple-700 dark:text-purple-300 text-[11px] bg-purple-50 dark:bg-purple-950/40 px-2.5 py-0.5 rounded-md border border-purple-200 dark:border-purple-800/50 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-purple-500 shrink-0" />
+                            Topping Extra Gratis: {formatEventoToppingsText(evt)}
                           </span>
                         )}
                       </div>

@@ -38,6 +38,7 @@ import {
   IconCrown
 } from "@tabler/icons-react";
 import { ChazinEmblem } from "./ChazinEmblem";
+import { parseEventoInsumos } from "@/shared/utils/foodEmojiUtils";
 
 /**
  * Emblema oficial Chazin Food (Iconografía institucional)
@@ -1470,5 +1471,45 @@ export function EventBadge({
       <Icon size={15} stroke={2} className="shrink-0" />
       <span>{label}</span>
     </span>
+  );
+}
+
+/**
+ * Tarjeta reutilizable para mostrar los toppings/insumos extra incluidos sin costo en un evento.
+ */
+export function EventoToppingsCard({ event, className = "" }) {
+  const toppings = parseEventoInsumos(event);
+  if (toppings.length === 0) return null;
+
+  return (
+    <div className={`p-3.5 rounded-2xl bg-purple-50/90 dark:bg-purple-950/35 border border-purple-200 dark:border-purple-800/60 space-y-2 animate-in fade-in duration-150 ${className}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-black text-purple-900 dark:text-purple-200">
+          <IconBaconStrip size={16} stroke={2} className="text-purple-600 dark:text-purple-400 shrink-0" />
+          <span>Topping(s) Extra de Cortesía en esta Promoción</span>
+        </div>
+        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 shrink-0">
+          Incluido Gratis
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {toppings.map((top, idx) => (
+          <div
+            key={top.idInsumo || top.id || idx}
+            className="p-2.5 rounded-xl bg-white/95 dark:bg-gray-800/95 border border-purple-200/70 dark:border-purple-900/50 flex items-center justify-between gap-2 shadow-2xs"
+          >
+            <span className="flex items-center gap-2 truncate text-xs font-bold text-gray-800 dark:text-gray-200">
+              <span className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/70 flex items-center justify-center shrink-0 text-purple-700 dark:text-purple-300">
+                <FoodIcon name={top.nombre} size={15} stroke={1.75} />
+              </span>
+              <span className="truncate">{top.nombre}</span>
+            </span>
+            <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/50 px-2 py-0.5 rounded-md shrink-0">
+              +{top.cantidad} {top.unidadMedida || top.unidad}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

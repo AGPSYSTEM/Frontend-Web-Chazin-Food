@@ -23,8 +23,8 @@ import { extractPersonalizables, resolveNutritionalSpecs, isEssentialIngredient 
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { apiClient } from "@/shared/api/apiClient";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
-import { stripEmojis, formatTipoEvento } from "@/shared/utils/foodEmojiUtils";
+import { FoodIcon, FoodIconBadge, EventoToppingsCard } from "@/shared/components/ui/FoodIcon";
+import { stripEmojis, formatTipoEvento, parseEventoInsumos, formatEventoToppingsText } from "@/shared/utils/foodEmojiUtils";
 
 const QUICK_KITCHEN_TAGS = [
   "Salsas aparte",
@@ -458,12 +458,19 @@ export function PersonalizarEventoModal({
     );
     const kitchenPrepQty = is2x1 ? cantidad * 2 : cantidad;
 
+    const eventToppings = parseEventoInsumos(evento);
+
     let kitchenNotes = [
       removedIngredients.length > 0 ? `Sin ${removedIngredients.join(", Sin ")}` : "",
       customObservation.trim()
     ]
       .filter(Boolean)
       .join(". ");
+
+    if (eventToppings.length > 0) {
+      const toppingsTag = `Topping Extra Evento (Gratis): ${formatEventoToppingsText(eventToppings)}`;
+      kitchenNotes = kitchenNotes ? `${toppingsTag} • ${kitchenNotes}` : toppingsTag;
+    }
 
     if (is2x1) {
       const promoTag = `¡PROMO 2x1!: Preparar ${kitchenPrepQty} unidades (${cantidad} pagada + ${kitchenPrepQty - cantidad} gratis)`;
@@ -479,6 +486,7 @@ export function PersonalizarEventoModal({
       cantidad: cantidad,
       cantidadCocina: kitchenPrepQty,
       is2x1Promo: is2x1,
+      toppingsEvento: eventToppings,
       stock: Number(selectedProduct.stock !== undefined ? selectedProduct.stock : (selectedProduct.stockActual !== undefined ? selectedProduct.stockActual : 0)),
       imagen: selectedProduct.imagen,
       isEvento: true,
@@ -765,6 +773,14 @@ export function PersonalizarEventoModal({
                   ? evento.descripcion
                   : "Disfruta de esta oferta gastronómica especial por tiempo limitado con receta de la casa."}
               </p>
+              {parseEventoInsumos(evento).length > 0 && (
+                <div className="mt-2 p-2.5 rounded-xl bg-purple-100/80 dark:bg-purple-950/50 border border-purple-300/80 dark:border-purple-800/60 flex items-center gap-2 text-xs">
+                  <Flame className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span className="font-black text-purple-950 dark:text-purple-200">
+                    Topping Extra Incluido Sin Costo: {formatEventoToppingsText(evento)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -851,7 +867,8 @@ export function PersonalizarEventoModal({
 
           {/* ═══ 8. TAB CONTENT PANELS (CON MIN-HEIGHT PARA CERO SALTOS VISUALES) ═══ */}
           <div className="p-4 sm:p-6 space-y-5 min-h-[300px]">
-            
+            {activeTab === "personalizar" && <EventoToppingsCard event={evento} />}
+
             {/* ─── TAB 1: PERSONALIZAR (MISE EN PLACE CON LÓGICA HUMANA DE COCINA) ─── */}
             {activeTab === "personalizar" && personalizables.length > 0 && (
               <div className="space-y-4 animate-in fade-in duration-150">

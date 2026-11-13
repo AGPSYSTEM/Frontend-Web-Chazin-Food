@@ -8,6 +8,7 @@ export function Toast({
   title,
   message,
   duration = 4000,
+  action = null,
   onClose,
   indexFromFront = 0,
   isHovered = false,
@@ -197,6 +198,22 @@ export function Toast({
               {message}
             </p>
           )}
+
+          {action && action.label && typeof action.onClick === "function" && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  action.onClick();
+                  handleClose();
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer"
+              >
+                {action.label}
+              </button>
+            </div>
+          )}
         </div>
 
         <button
@@ -282,6 +299,7 @@ export function ToastContainer({ toasts, onClose, onBringToFront }) {
           title={toast.title}
           message={toast.message}
           duration={toast.duration}
+          action={toast.action}
           onClose={onClose}
           indexFromFront={index}
           isHovered={isHovered}

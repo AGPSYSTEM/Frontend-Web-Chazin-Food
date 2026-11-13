@@ -15,20 +15,20 @@ export function useNotifications() {
   const confirmRef = useRef(confirm);
   confirmRef.current = confirm;
 
-  const success = useCallback((title, message) => {
-    toastRef.current?.success(title, message);
+  const success = useCallback((title, message, options) => {
+    toastRef.current?.success(title, message, options);
   }, []);
 
-  const error = useCallback((title, message) => {
-    toastRef.current?.error(title, message);
+  const error = useCallback((title, message, options) => {
+    toastRef.current?.error(title, message, options);
   }, []);
 
-  const warning = useCallback((title, message) => {
-    toastRef.current?.warning(title, message);
+  const warning = useCallback((title, message, options) => {
+    toastRef.current?.warning(title, message, options);
   }, []);
 
-  const info = useCallback((title, message) => {
-    toastRef.current?.info(title, message);
+  const info = useCallback((title, message, options) => {
+    toastRef.current?.info(title, message, options);
   }, []);
 
   const confirmDelete = useCallback(async (title, message) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { useAuth } from "@/features/autenticacion/hooks/useAuth";
+import { useAuth, getLoginErrorToast } from "@/features/autenticacion/hooks/useAuth";
 import { useToast } from "@/shared/context/ToastContext";
 const GoogleAuthButton = lazy(() => import("@/features/autenticacion/componentes/GoogleAuthButton").then((m) => ({ default: m.GoogleAuthButton })));
 import {
@@ -203,7 +203,8 @@ export function ClienteAuthModal({
         }
         onClose();
       } else {
-        toast.error("Error de autenticación", result?.message || "Correo o contraseña incorrectos");
+        const [errTitle, errMsg] = getLoginErrorToast(result);
+        toast.error(errTitle, errMsg);
       }
     } catch (err) {
       toast.error("Error", "Ocurrió un error al iniciar sesión.");
