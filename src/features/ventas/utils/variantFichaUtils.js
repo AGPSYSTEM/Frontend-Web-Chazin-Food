@@ -160,8 +160,20 @@ export const reconstructVariantDetallesFromDeltas = (baseList = [], varDeltas = 
         });
       }
     } else if (accion === "REEMPLAZAR") {
+      let replacedInfo = null;
       if (delta.idInsumoReemplazado) {
-        result = result.filter((d) => Number(d.idInsumo) !== Number(delta.idInsumoReemplazado));
+        const repId = Number(delta.idInsumoReemplazado);
+        const existingRep = result.find((d) => Number(d.idInsumo) === repId);
+        const repCat = catalog.find((c) => Number(c.idInsumo || c.id) === repId);
+        replacedInfo = {
+          idInsumo: repId,
+          nombre:
+            delta.insumoReemplazado?.nombre ||
+            existingRep?.nombre ||
+            repCat?.nombre ||
+            `Insumo #${repId}`
+        };
+        result = result.filter((d) => Number(d.idInsumo) !== repId);
       }
       result.push({
         idInsumo: idIns,
@@ -173,6 +185,7 @@ export const reconstructVariantDetallesFromDeltas = (baseList = [], varDeltas = 
         insumo: delta.insumo || cat || null,
         esBase: false,
         esNuevo: true,
+        reemplazaA: replacedInfo,
         _manualEdit: true
       });
     } else if (accion === "MODIFICAR_CANTIDAD") {
@@ -211,9 +224,34 @@ export const reconstructVariantDetallesFromDeltas = (baseList = [], varDeltas = 
 export const computeInsumosModificadosDeltas = (variantDetalles = [], baseList = []) => {
   const baseMap = new Map((baseList || []).map((b) => [Number(b.idInsumo || b.id), b]));
   const varMap = new Map((variantDetalles || []).map((d) => [Number(d.idInsumo), d]));
+  const replacedBaseIds = new Set();
+  const handledVarIds = new Set();
   const deltas = [];
 
+  for (const [varId, varItem] of varMap.entries()) {
+    const replacedId = Number(varItem?.reemplazaA?.idInsumo || 0);
+    if (
+      replacedId > 0 &&
+      replacedId !== varId &&
+      baseMap.has(replacedId) &&
+      !varMap.has(replacedId) &&
+      !replacedBaseIds.has(replacedId)
+    ) {
+      replacedBaseIds.add(replacedId);
+      handledVarIds.add(varId);
+      deltas.push({
+        idVarianteInsumo: null,
+        tipoAccion: "REEMPLAZAR",
+        idInsumo: varId,
+        idInsumoReemplazado: replacedId,
+        cantidad: Number(varItem.cantidad || 0),
+        unidadMedida: normalizeUnidadMedida(varItem.unidadMedida || "und")
+      });
+    }
+  }
+
   for (const [baseId, baseItem] of baseMap.entries()) {
+    if (replacedBaseIds.has(baseId)) continue;
     const varItem = varMap.get(baseId);
     if (!varItem) {
       deltas.push({
@@ -243,7 +281,7 @@ export const computeInsumosModificadosDeltas = (variantDetalles = [], baseList =
   }
 
   for (const [varId, varItem] of varMap.entries()) {
-    if (!baseMap.has(varId)) {
+    if (!baseMap.has(varId) && !handledVarIds.has(varId)) {
       deltas.push({
         idVarianteInsumo: null,
         tipoAccion: "AGREGAR",

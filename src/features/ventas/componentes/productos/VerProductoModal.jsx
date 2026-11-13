@@ -532,9 +532,16 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
-                              Opción
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {Number(v.precio) > 0 && Number(v.precio) !== Number(producto?.precio || 0) && (
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md tabular-nums">
+                                  ${Number(v.precio).toLocaleString("es-CO")}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                                Opción
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -579,9 +586,16 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                                 </span>
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
-                              Opción
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {Number(v.precio) > 0 && Number(v.precio) !== Number(producto?.precio || 0) && (
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md tabular-nums">
+                                  ${Number(v.precio).toLocaleString("es-CO")}
+                                </span>
+                              )}
+                              <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-md">
+                                Opción
+                              </span>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -631,9 +645,16 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                             )}
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md shrink-0">
-                          {varDetalles.length > 0 ? `${varDetalles.length} ins.` : "Opción"}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {Number(v.precio) > 0 && Number(v.precio) !== Number(producto?.precio || 0) && (
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md tabular-nums">
+                              ${Number(v.precio).toLocaleString("es-CO")}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md">
+                            {varDetalles.length > 0 ? `${varDetalles.length} ins.` : "Opción"}
+                          </span>
+                        </div>
                       </div>
                       );
                     })}

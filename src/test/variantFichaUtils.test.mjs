@@ -150,3 +150,47 @@ test("computeInsumosModificadosDeltas and reconstructVariantDetallesFromDeltas r
   assert.equal(reconstructed.find((r) => r.idInsumo === 12), undefined);
   assert.equal(reconstructed.find((r) => r.idInsumo === 13).cantidad, 25);
 });
+
+test("REEMPLAZAR insumo emits single REEMPLAZAR delta without duplicate QUITAR/AGREGAR and preserves reemplazaA", () => {
+  const baseRecipe = [
+    { idInsumo: 10, nombre: "Pan", cantidad: 1, unidadMedida: "und" },
+    { idInsumo: 15, nombre: "Queso Cheddar", cantidad: 1, unidadMedida: "und" }
+  ];
+
+  const replacedRecipe = [
+    { idInsumo: 10, nombre: "Pan", cantidad: 1, unidadMedida: "und" },
+    {
+      idInsumo: 16,
+      nombre: "Queso Mozzarella",
+      cantidad: 30,
+      unidadMedida: "g",
+      reemplazaA: { idInsumo: 15, nombre: "Queso Cheddar" }
+    }
+  ];
+
+  const deltas = computeInsumosModificadosDeltas(replacedRecipe, baseRecipe);
+  assert.equal(deltas.length, 1);
+  assert.deepEqual(deltas[0], {
+    idVarianteInsumo: null,
+    tipoAccion: "REEMPLAZAR",
+    idInsumo: 16,
+    idInsumoReemplazado: 15,
+    cantidad: 30,
+    unidadMedida: "gr"
+  });
+
+  const catalog = [
+    { idInsumo: 10, nombre: "Pan", unidadMedida: "und" },
+    { idInsumo: 15, nombre: "Queso Cheddar", unidadMedida: "und" },
+    { idInsumo: 16, nombre: "Queso Mozzarella", unidadMedida: "gr" }
+  ];
+  const reconstructed = reconstructVariantDetallesFromDeltas(baseRecipe, deltas, catalog);
+  assert.equal(reconstructed.length, 2);
+  assert.equal(reconstructed.find((r) => r.idInsumo === 15), undefined);
+  const moz = reconstructed.find((r) => r.idInsumo === 16);
+  assert.ok(moz);
+  assert.equal(moz.cantidad, 30);
+  assert.equal(moz.unidadMedida, "gr");
+  assert.deepEqual(moz.reemplazaA, { idInsumo: 15, nombre: "Queso Cheddar" });
+});
+

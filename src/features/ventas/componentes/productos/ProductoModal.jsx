@@ -4,7 +4,7 @@ import {
   Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText, 
   Search, Check, ChevronDown, ChevronRight, CheckCircle2, PackageCheck, 
   Info, Eye, ArrowRight, ArrowLeft, Copy, History, RotateCcw, ChefHat, ArrowRightLeft, SlidersHorizontal,
-  Ban, AlertTriangle
+  Ban, AlertTriangle, DollarSign
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto, checkInsumoInvalido } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
@@ -131,6 +131,11 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [newRuleObservacion, setNewRuleObservacion] = useState('');
   const [searchInsumoVariante, setSearchInsumoVariante] = useState('');
   const [showInsumoDropdown, setShowInsumoDropdown] = useState(false);
+  const [replacingDetail, setReplacingDetail] = useState(null);
+  const [replaceInsumoId, setReplaceInsumoId] = useState('');
+  const [replaceCantidad, setReplaceCantidad] = useState('');
+  const [replaceUnidad, setReplaceUnidad] = useState('');
+  const [replaceSearch, setReplaceSearch] = useState('');
   const insumoDropdownRef = useRef(null);
   const [showBaseDropdown, setShowBaseDropdown] = useState(false);
   const baseDropdownRef = useRef(null);
@@ -389,6 +394,17 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             const idIns = Number(d.idInsumo || d.insumo?.idInsumo || d.id);
             const isInBase = baseQtyMap.has(idIns);
             const baseQty = isInBase ? baseQtyMap.get(idIns) : null;
+            const repDelta = deltas.find(
+              (dl) =>
+                String(dl.tipoAccion || "").toUpperCase() === "REEMPLAZAR" &&
+                Number(dl.idInsumo) === idIns &&
+                dl.idInsumoReemplazado
+            );
+            const repMatch = repDelta
+              ? initialBaseRaw.find(
+                  (b) => Number(b.idInsumo || b.insumo?.idInsumo || b.id) === Number(repDelta.idInsumoReemplazado)
+                )
+              : null;
             return {
               idInsumo: idIns,
               nombre: d.insumo?.nombre || d.nombreInsumo || d.nombre || `Insumo #${idIns}`,
@@ -399,6 +415,17 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               insumo: d.insumo || null,
               esBase: isInBase,
               esNuevo: !isInBase,
+              reemplazaA: repDelta
+                ? {
+                    idInsumo: Number(repDelta.idInsumoReemplazado),
+                    nombre:
+                      repDelta.insumoReemplazado?.nombre ||
+                      repMatch?.insumo?.nombre ||
+                      repMatch?.nombreInsumo ||
+                      repMatch?.nombre ||
+                      `Insumo #${repDelta.idInsumoReemplazado}`
+                  }
+                : null,
               _manualEdit: true
             };
           });
@@ -419,11 +446,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           }
         }
 
+        const baseProdPrecio = Number(producto.precio || 0);
+        const rawVarPrecio = v.precio !== undefined && v.precio !== null ? Number(v.precio) : 0;
+        const customVarPrecio = rawVarPrecio > 0 && rawVarPrecio !== baseProdPrecio ? String(rawVarPrecio) : "";
+
         return {
           _key: v.idVariante ? `id-${v.idVariante}` : `var-${i}-${Date.now()}`,
           idVariante: v.idVariante || v.id || null,
           nombre: v.nombre || "",
           descripcion: v.descripcion || existingVarFicha?.descripcion || "",
+          precio: customVarPrecio,
           imagen: v.imagen || "",
           tipo: sizeInfo.isSize ? "tamano" : "sabor",
           esTamano: sizeInfo.isSize,
@@ -722,6 +754,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       idVariante: null,
       nombre: suggestedName || "",
       descripcion: "",
+      precio: "",
       imagen: suggestedImg || "",
       tipo: explicitTipo === "tamano" || sizeInfo.isSize ? "tamano" : explicitTipo,
       esTamano: sizeInfo.isSize,
@@ -883,24 +916,60 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredInsumosCatalogo = useMemo(() => {
-    if (!searchInsumoVariante || !searchInsumoVariante.trim()) {
-      return todosInsumosCatalogo.slice(0, 15);
-    }
-    return todosInsumosCatalogo.filter((i) =>
-      matchesSmartSearch(
-        [
-          i.nombre,
-          i.categoria,
-          i.categoriaNombre,
-          i.unidadMedida,
-          String(i.idInsumo || i.id),
-          `#${i.idInsumo || i.id}`
-        ],
-        searchInsumoVariante
+  const filterInsumosCatalog = useCallback(
+    (query) => {
+      if (!query || !query.trim()) {
+        return todosInsumosCatalogo.slice(0, 15);
+      }
+      return todosInsumosCatalogo
+        .filter((i) =>
+          matchesSmartSearch(
+            [
+              i.nombre,
+              i.categoria,
+              i.categoriaNombre,
+              i.unidadMedida,
+              String(i.idInsumo || i.id),
+              `#${i.idInsumo || i.id}`
+            ],
+            query
+          )
+        )
+        .slice(0, 25);
+    },
+    [todosInsumosCatalogo]
+  );
+
+  const filteredInsumosCatalogo = useMemo(
+    () => filterInsumosCatalog(searchInsumoVariante),
+    [filterInsumosCatalog, searchInsumoVariante]
+  );
+
+  const filteredReplaceInsumosCatalogo = useMemo(
+    () => filterInsumosCatalog(replaceSearch),
+    [filterInsumosCatalog, replaceSearch]
+  );
+
+  const resolveDefaultInsumoPortion = (ins) => {
+    const resolved = resolveRecetaUnidadYCantidad(ins);
+    return {
+      cantidad:
+        Number(ins?.porcionMinimaCantidad) > 0
+          ? Number(ins.porcionMinimaCantidad)
+          : resolved.cantidad || 1,
+      unidadMedida: normalizeUnidadMedida(
+        ins?.porcionMinimaUnidad || resolved.unidadMedida || ins?.unidadMedida || "und"
       )
-    ).slice(0, 25);
-  }, [todosInsumosCatalogo, searchInsumoVariante]);
+    };
+  };
+
+  const resetReplaceForm = () => {
+    setReplacingDetail(null);
+    setReplaceInsumoId("");
+    setReplaceCantidad("");
+    setReplaceUnidad("");
+    setReplaceSearch("");
+  };
 
   // Si se agregaron insumos base en el Paso 2 después de crear variantes vacías, cargarlos automáticamente
   useEffect(() => {
@@ -1076,7 +1145,33 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     );
   };
 
+  const buildVariantInsumoEntry = (insObj, fallbackId, qty, unit, overrides = {}) => ({
+    idInsumo: Number(insObj?.idInsumo || insObj?.id || fallbackId),
+    nombre: insObj?.nombre || `Insumo #${fallbackId}`,
+    cantidad: Number(qty),
+    baseCantidad: overrides.baseCantidad ?? null,
+    unidadMedida: normalizeUnidadMedida(unit || insObj?.unidadMedida || "und"),
+    precioUnitario: Number(insObj?.precioUnitario || 0),
+    insumo: insObj
+      ? {
+          idInsumo: insObj.idInsumo || insObj.id,
+          nombre: insObj.nombre,
+          unidadMedida: insObj.unidadMedida,
+          precioUnitario: Number(insObj.precioUnitario || 0),
+          stock: insObj.stock,
+          fechaVencimiento: insObj.fechaVencimiento
+        }
+      : null,
+    esBase: Boolean(overrides.esBase),
+    esNuevo: overrides.esNuevo !== undefined ? overrides.esNuevo : !overrides.esBase,
+    reemplazaA: overrides.reemplazaA || null,
+    _manualEdit: true
+  });
+
   const handleRemoveVariantDetail = (variantKey, detailIdx) => {
+    if (replacingDetail?.variantKey === variantKey) {
+      resetReplaceForm();
+    }
     setVariantes((prev) =>
       prev.map((v) => {
         if (v._key !== variantKey) return v;
@@ -1091,6 +1186,92 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           insumosModificados: computeInsumosModificadosDeltas(cur, baseIngredients)
         };
       })
+    );
+  };
+
+  const handleReplaceVariantDetail = (variantKey, detailIdx) => {
+    if (!replaceInsumoId) {
+      notify.warning("Insumo Requerido", "Busca y selecciona el insumo de reemplazo.");
+      return;
+    }
+    if (!replaceCantidad || Number(replaceCantidad) <= 0) {
+      notify.warning("Cantidad Inválida", "Por favor ingresa una cantidad mayor a cero para el reemplazo.");
+      return;
+    }
+
+    const selectedInsumo = todosInsumosCatalogo.find(
+      (i) => Number(i.idInsumo || i.id) === Number(replaceInsumoId)
+    );
+    if (selectedInsumo) {
+      const { vencido } = checkInsumoInvalido(selectedInsumo);
+      if (vencido) {
+        notify.error(
+          "Insumo Vencido",
+          `No se puede usar "${selectedInsumo.nombre}" porque se encuentra VENCIDO (${selectedInsumo.fechaVencimiento ? String(selectedInsumo.fechaVencimiento).substring(0, 10) : "Caducado"}).`
+        );
+        return;
+      }
+    }
+
+    const targetVar = variantes.find((v) => v._key === variantKey);
+    const curList = Array.isArray(targetVar?.fichaTecnica?.detalles) ? targetVar.fichaTecnica.detalles : [];
+    const oldItem = curList[detailIdx];
+    if (!oldItem) return;
+
+    const duplicateIdx = curList.findIndex(
+      (d, idx) => idx !== detailIdx && Number(d.idInsumo) === Number(replaceInsumoId)
+    );
+    if (duplicateIdx >= 0) {
+      notify.warning(
+        "Insumo ya incluido",
+        `"${selectedInsumo?.nombre || `Insumo #${replaceInsumoId}`}" ya está en la receta de esta variante. Edita su cantidad directamente o quita el insumo anterior.`
+      );
+      return;
+    }
+
+    const newIdNum = Number(replaceInsumoId);
+    const oldIdNum = Number(oldItem.idInsumo);
+    const resolvedUnit = normalizeUnidadMedida(replaceUnidad || selectedInsumo?.unidadMedida || "und");
+    const newQty = Number(replaceCantidad);
+
+    const oldInBase = baseIngredients.find((b) => Number(b.idInsumo || b.id) === oldIdNum);
+    const trackedReemplazaA = oldItem.reemplazaA?.idInsumo
+      ? oldItem.reemplazaA
+      : oldInBase
+        ? { idInsumo: oldIdNum, nombre: oldItem.nombre || oldInBase.nombre || `Insumo #${oldIdNum}` }
+        : null;
+
+    const newInBase = baseIngredients.find((b) => Number(b.idInsumo || b.id) === newIdNum);
+    const finalReemplazaA = newInBase || Number(trackedReemplazaA?.idInsumo) === newIdNum ? null : trackedReemplazaA;
+
+    const replacementEntry = buildVariantInsumoEntry(selectedInsumo, newIdNum, newQty, resolvedUnit, {
+      esBase: Boolean(newInBase),
+      esNuevo: !newInBase,
+      baseCantidad: newInBase ? Number(newInBase.cantidad || 0) : null,
+      reemplazaA: finalReemplazaA
+    });
+
+    setVariantes((prev) =>
+      prev.map((v) => {
+        if (v._key !== variantKey) return v;
+        const nextDetalles = [...(v.fichaTecnica?.detalles || [])];
+        nextDetalles[detailIdx] = replacementEntry;
+        return {
+          ...v,
+          _userCleared: false,
+          fichaTecnica: {
+            ...(v.fichaTecnica || {}),
+            detalles: nextDetalles
+          },
+          insumosModificados: computeInsumosModificadosDeltas(nextDetalles, baseIngredients)
+        };
+      })
+    );
+
+    resetReplaceForm();
+    notify.success(
+      "Insumo Reemplazado",
+      `Se sustituyó "${oldItem.nombre || `Insumo #${oldIdNum}`}" por "${replacementEntry.nombre}".`
     );
   };
 
@@ -1137,25 +1318,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             _manualEdit: true
           };
         } else {
-          cur.push({
-            idInsumo: Number(newRuleInsumoId),
-            nombre: selectedInsumo?.nombre || `Insumo #${newRuleInsumoId}`,
-            cantidad: addQty,
-            baseCantidad: null,
-            unidadMedida: resolvedUnit,
-            precioUnitario: Number(selectedInsumo?.precioUnitario || 0),
-            insumo: selectedInsumo ? {
-              idInsumo: selectedInsumo.idInsumo || selectedInsumo.id,
-              nombre: selectedInsumo.nombre,
-              unidadMedida: selectedInsumo.unidadMedida,
-              precioUnitario: Number(selectedInsumo.precioUnitario || 0),
-              stock: selectedInsumo.stock,
-              fechaVencimiento: selectedInsumo.fechaVencimiento
-            } : null,
-            esBase: false,
-            esNuevo: true,
-            _manualEdit: true
-          });
+          cur.push(buildVariantInsumoEntry(selectedInsumo, newRuleInsumoId, addQty, resolvedUnit));
         }
 
         return {
@@ -1305,6 +1468,15 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
           </div>
 
           <div className="shrink-0 flex items-center gap-1.5">
+            {v.precio !== undefined && v.precio !== "" && Number(v.precio) > 0 && Number(v.precio) !== Number(form.precio || 0) && (
+              <span
+                className="px-2 py-1 rounded-lg text-[11px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 tabular-nums"
+                title="Precio personalizado de esta variante"
+              >
+                ${Number(v.precio).toLocaleString("es-CO")}
+              </span>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -1315,13 +1487,14 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 setNewRuleUnidad("");
                 setSearchInsumoVariante("");
                 setShowInsumoDropdown(false);
+                resetReplaceForm();
               }}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 detCount > 0
                   ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shadow-2xs"
                   : "bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700"
               }`}
-              title="Ver y editar ficha técnica e insumos de esta variante"
+              title="Ver y editar ficha técnica, precio e insumos de esta variante"
             >
               <ChefHat className="w-3.5 h-3.5 text-orange-500 shrink-0" />
               <span className="hidden sm:inline">Ficha Técnica</span>
@@ -1354,7 +1527,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     <span>Ficha Técnica de Variante: {varNombreDisplay}</span>
                   </p>
                   <p className="text-[11px] text-gray-600 dark:text-gray-400">
-                    Carga automáticamente los insumos base del producto original. Edita cantidades, elimina o añade nuevos insumos exclusivos para <strong>{varNombreDisplay}</strong>.
+                    Carga automáticamente los insumos base del producto original. Edita cantidades, reemplaza insumos, ajusta el precio o añade nuevos exclusivos para <strong>{varNombreDisplay}</strong>.
                   </p>
                 </div>
 
@@ -1406,9 +1579,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               </div>
             </div>
 
-            {/* Metadatos de la Ficha Técnica de la Variante */}
+            {/* Metadatos y Precio Opcional de la Variante */}
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-5">
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
                   Descripción de "{varNombreDisplay}" (opcional)
                 </label>
@@ -1424,15 +1597,44 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 />
               </div>
 
-              <div className="sm:col-span-4">
+              <div className="sm:col-span-3">
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                    <DollarSign className="w-3 h-3 text-emerald-600" />
+                    <span>Precio Variante</span>
+                  </label>
+                  {v.precio !== undefined && v.precio !== "" && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateVarianteByKey(v._key, "precio", "")}
+                      className="text-[9.5px] font-bold text-orange-600 hover:underline cursor-pointer"
+                      title="Volver a heredar el precio del producto base"
+                    >
+                      Usar base
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  value={v.precio ?? ""}
+                  onChange={(e) => handleUpdateVarianteByKey(v._key, "precio", e.target.value)}
+                  placeholder={form.precio ? `Base: $${Number(form.precio).toLocaleString("es-CO")}` : "Igual al base"}
+                  className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-emerald-500 outline-none"
+                  aria-label={`Precio de variante ${varNombreDisplay}`}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
-                  Rendimiento / Porción
+                  Rendimiento
                 </label>
                 <input
                   type="text"
                   value={v.fichaTecnica?.rendimiento || ""}
                   onChange={(e) => handleUpdateVariantFichaMeta(v._key, "rendimiento", e.target.value)}
-                  placeholder="Ej. 1 porción grande"
+                  placeholder="Ej. 1 porción"
                   className="w-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs focus:ring-1 focus:ring-orange-400 outline-none"
                 />
               </div>
@@ -1486,7 +1688,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
                   {varDetalles.map((det, detIdx) => {
                     const catalogItem = todosInsumosCatalogo.find(
                       (c) => Number(c.idInsumo || c.id) === Number(det.idInsumo)
@@ -1503,99 +1705,290 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     };
                     const rowCost = Math.round(calculateInsumoCost(unitCostItem) || 0);
                     const isScaled = det.esBase && det.baseCantidad !== null && Number(det.cantidad) > Number(det.baseCantidad);
+                    const isReplacingThisRow =
+                      replacingDetail?.variantKey === v._key && replacingDetail?.detailIdx === detIdx;
 
                     return (
-                      <div
-                        key={`${det.idInsumo}-${detIdx}`}
-                        className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2 rounded-xl border text-xs shadow-2xs ${
-                          vencido
-                            ? "bg-red-50/70 dark:bg-red-950/20 border-red-300 dark:border-red-800"
-                            : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {det.esBase ? (
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase border shrink-0 ${
-                                isScaled
-                                  ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700"
-                                  : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
-                              }`}
-                            >
-                              {isScaled ? `Base ×${factorActual}` : "Base"}
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
-                              Nuevo
-                            </span>
-                          )}
+                      <div key={`${det.idInsumo}-${detIdx}`} className="space-y-1">
+                        <div
+                          className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2 rounded-xl border text-xs shadow-2xs ${
+                            vencido
+                              ? "bg-red-50/70 dark:bg-red-950/20 border-red-300 dark:border-red-800"
+                              : isReplacingThisRow
+                                ? "bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700"
+                                : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {det.esBase ? (
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase border shrink-0 ${
+                                  isScaled
+                                    ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700"
+                                    : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800"
+                                }`}
+                              >
+                                {isScaled ? `Base ×${factorActual}` : "Base"}
+                              </span>
+                            ) : det.reemplazaA ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800 shrink-0">
+                                Reemplazo
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
+                                Nuevo
+                              </span>
+                            )}
 
-                          <div className="min-w-0 flex-1">
-                            <p className={`font-bold truncate ${vencido ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}>
-                              {detName}
-                            </p>
-                            {vencido && (
-                              <span className="text-[9.5px] font-black text-red-600 dark:text-red-400">
-                                ⛔ VENCIDO — Retirar antes de guardar
-                              </span>
-                            )}
-                            {det.esBase && det.baseCantidad !== null && (
-                              <span className="text-[10px] text-gray-400 block">
-                                Original: {det.baseCantidad} {det.unidadMedida}
-                              </span>
-                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className={`font-bold truncate ${vencido ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}>
+                                {detName}
+                              </p>
+                              {vencido && (
+                                <span className="text-[9.5px] font-black text-red-600 dark:text-red-400 block">
+                                  ⛔ VENCIDO — Retirar o reemplazar antes de guardar
+                                </span>
+                              )}
+                              {det.reemplazaA && (
+                                <span className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 block truncate">
+                                  Reemplaza a: {det.reemplazaA.nombre}
+                                </span>
+                              )}
+                              {det.esBase && det.baseCantidad !== null && (
+                                <span className="text-[10px] text-gray-400 block">
+                                  Original: {det.baseCantidad} {det.unidadMedida}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <input
+                              type="number"
+                              step="any"
+                              min="0.01"
+                              value={det.cantidad}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleUpdateVariantDetail(v._key, detIdx, {
+                                  cantidad: val === "" ? "" : Number(val)
+                                });
+                              }}
+                              className="w-20 px-2 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-bold text-right focus:outline-none focus:ring-1 focus:ring-[#F05454]"
+                              aria-label={`Cantidad de ${detName}`}
+                            />
+
+                            <select
+                              value={currentUnitNorm}
+                              onChange={(e) => {
+                                const nextU = e.target.value;
+                                const conv = convertirUnidadYCantidad(det.cantidad || 0, currentUnitNorm, nextU);
+                                handleUpdateVariantDetail(v._key, detIdx, {
+                                  cantidad: Number((conv || 0).toFixed(2)),
+                                  unidadMedida: nextU
+                                });
+                              }}
+                              className="w-20 px-1.5 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F05454]"
+                              aria-label={`Unidad de ${detName}`}
+                            >
+                              {unitsList.map((u) => (
+                                <option key={u.value} value={u.value}>
+                                  {u.label || u.value}
+                                </option>
+                              ))}
+                            </select>
+
+                            <span className="w-16 text-right text-[10.5px] font-mono text-gray-500 dark:text-gray-400 hidden sm:inline">
+                              ${rowCost.toLocaleString("es-CO")}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isReplacingThisRow) {
+                                  resetReplaceForm();
+                                } else {
+                                  setReplacingDetail({
+                                    variantKey: v._key,
+                                    detailIdx: detIdx,
+                                    oldInsumoId: det.idInsumo,
+                                    oldNombre: detName
+                                  });
+                                  setReplaceInsumoId("");
+                                  setReplaceCantidad("");
+                                  setReplaceUnidad("");
+                                  setReplaceSearch("");
+                                }
+                              }}
+                              className={`px-2 py-1 rounded-lg text-[10.5px] font-bold flex items-center gap-1 transition cursor-pointer ${
+                                isReplacingThisRow
+                                  ? "bg-indigo-600 text-white"
+                                  : "text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800"
+                              }`}
+                              title="Reemplazar este insumo por otro"
+                            >
+                              <ArrowRightLeft className="w-3 h-3" />
+                              <span className="hidden md:inline">Reemplazar</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVariantDetail(v._key, detIdx)}
+                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition cursor-pointer"
+                              title="Quitar insumo de esta variante"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            type="number"
-                            step="any"
-                            min="0.01"
-                            value={det.cantidad}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              handleUpdateVariantDetail(v._key, detIdx, {
-                                cantidad: val === "" ? "" : Number(val)
-                              });
-                            }}
-                            className="w-20 px-2 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-bold text-right focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                            aria-label={`Cantidad de ${detName}`}
-                          />
+                        {isReplacingThisRow && (() => {
+                          const replaceSelectedInsumo = todosInsumosCatalogo.find(
+                            (i) => Number(i.idInsumo || i.id) === Number(replaceInsumoId)
+                          );
+                          const replaceUnitsList = getUnidadesCompatibles(
+                            replaceSelectedInsumo?.unidadMedida || replaceUnidad || "und"
+                          );
 
-                          <select
-                            value={currentUnitNorm}
-                            onChange={(e) => {
-                              const nextU = e.target.value;
-                              const conv = convertirUnidadYCantidad(det.cantidad || 0, currentUnitNorm, nextU);
-                              handleUpdateVariantDetail(v._key, detIdx, {
-                                cantidad: Number((conv || 0).toFixed(2)),
-                                unidadMedida: nextU
-                              });
-                            }}
-                            className="w-20 px-1.5 py-1 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                            aria-label={`Unidad de ${detName}`}
-                          >
-                            {unitsList.map((u) => (
-                              <option key={u.value} value={u.value}>
-                                {u.label || u.value}
-                              </option>
-                            ))}
-                          </select>
+                          return (
+                            <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2 animate-in fade-in duration-100">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-extrabold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                                  <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
+                                  Reemplazar "{detName}" por:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={resetReplaceForm}
+                                  className="text-[10.5px] font-bold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 flex items-center gap-0.5 cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" /> Cancelar
+                                </button>
+                              </div>
 
-                          <span className="w-16 text-right text-[10.5px] font-mono text-gray-500 dark:text-gray-400 hidden sm:inline">
-                            ${rowCost.toLocaleString("es-CO")}
-                          </span>
+                              {!replaceInsumoId ? (
+                                <div className="space-y-1.5">
+                                  <div className="relative">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                                    <input
+                                      type="text"
+                                      value={replaceSearch}
+                                      onChange={(e) => setReplaceSearch(e.target.value)}
+                                      placeholder="Buscar insumo sustituto por nombre o categoría..."
+                                      className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <div className="bg-white dark:bg-gray-850 border border-indigo-100 dark:border-indigo-900 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                                    {filteredReplaceInsumosCatalogo.length === 0 ? (
+                                      <p className="p-2.5 text-[11px] text-center text-gray-400">
+                                        No se encontraron insumos con "{replaceSearch}"
+                                      </p>
+                                    ) : (
+                                      filteredReplaceInsumosCatalogo.map((ins) => {
+                                        const insId = Number(ins.idInsumo || ins.id);
+                                        const { vencido: insVencido } = checkInsumoInvalido(ins);
+                                        const isSame = insId === Number(det.idInsumo);
+                                        return (
+                                          <button
+                                            key={insId}
+                                            type="button"
+                                            disabled={insVencido || isSame}
+                                            onClick={() => {
+                                              if (insVencido) return;
+                                              const portion = resolveDefaultInsumoPortion(ins);
+                                              setReplaceInsumoId(insId);
+                                              setReplaceCantidad(portion.cantidad);
+                                              setReplaceUnidad(portion.unidadMedida);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 flex items-center justify-between text-xs transition ${
+                                              insVencido || isSame
+                                                ? "opacity-50 bg-gray-50 dark:bg-gray-900/40 cursor-not-allowed"
+                                                : "hover:bg-indigo-50 dark:hover:bg-indigo-950/50 cursor-pointer"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className={`font-semibold truncate ${insVencido ? "line-through text-red-600" : "text-gray-800 dark:text-gray-200"}`}>
+                                                {ins.nombre}
+                                              </span>
+                                              {insVencido && (
+                                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 shrink-0">
+                                                  VENCIDO
+                                                </span>
+                                              )}
+                                              {isSame && (
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 shrink-0">
+                                                  Actual
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-[10.5px] text-gray-500 shrink-0 ml-2">
+                                              {ins.stock} {ins.unidadMedida}
+                                            </span>
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                                  <div className="sm:col-span-5">
+                                    <div className="flex items-center justify-between px-2.5 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs">
+                                      <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
+                                        {replaceSelectedInsumo?.nombre || `Insumo #${replaceInsumoId}`}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setReplaceInsumoId("")}
+                                        className="text-[10.5px] font-bold text-indigo-600 hover:underline ml-2 shrink-0 cursor-pointer"
+                                      >
+                                        Cambiar
+                                      </button>
+                                    </div>
+                                  </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVariantDetail(v._key, detIdx)}
-                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition cursor-pointer"
-                            title="Quitar insumo de esta variante"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                                  <div className="sm:col-span-3">
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      min="0.01"
+                                      value={replaceCantidad}
+                                      onChange={(e) => setReplaceCantidad(e.target.value)}
+                                      placeholder="Cantidad"
+                                      className="w-full px-2.5 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    />
+                                  </div>
+
+                                  <div className="sm:col-span-2">
+                                    <select
+                                      value={replaceUnidad}
+                                      onChange={(e) => setReplaceUnidad(e.target.value)}
+                                      className="w-full px-2 py-1.5 bg-white dark:bg-gray-850 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    >
+                                      {replaceUnitsList.map((u) => (
+                                        <option key={u.value} value={u.value}>
+                                          {u.label || u.value}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="sm:col-span-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReplaceVariantDetail(v._key, detIdx)}
+                                      className="w-full py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-xs"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Aplicar</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -1924,11 +2317,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                 }
               : null;
 
+          const resolvedVarPrecio =
+            v.precio !== undefined && v.precio !== null && String(v.precio).trim() !== "" && Number(v.precio) > 0
+              ? Number(v.precio)
+              : basePrice;
+
           return {
             idVariante: isCloning ? null : (v.idVariante || null),
             nombre: varName,
             descripcion: (v.descripcion || v.fichaTecnica?.descripcion || "").trim() || null,
-            precio: basePrice,
+            precio: resolvedVarPrecio,
             imagen: varImg || null,
             esTamano: Boolean(v.esTamano),
             factorTamano: Number(v.factorTamano) || 1,
@@ -2091,6 +2489,21 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             notify.warning(
               "Variante Inválida",
               `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar sabores o presentaciones distintas (ej. Sabor BBQ, Picante, Familiar, 1.5 Litros).`
+            );
+            return;
+          }
+
+          if (
+            v.precio !== undefined &&
+            v.precio !== null &&
+            String(v.precio).trim() !== "" &&
+            (Number.isNaN(Number(v.precio)) || Number(v.precio) <= 0)
+          ) {
+            setActiveStep(3);
+            setExpandedVariantKey(v._key);
+            notify.warning(
+              "Precio Inválido en Variante",
+              `El precio personalizado de "${v.nombre}" debe ser mayor a $0 (o déjalo vacío para usar el precio base).`
             );
             return;
           }
@@ -3594,7 +4007,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
                     {isDrink ? "Configuración de Tamaños y Sabores de Bebida" : "Presentaciones y Variantes de la Comida"}
                   </h4>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Las variantes representan opciones que el cliente puede elegir (como porciones, sabores o tamaños de botella). Todas comparten el precio base configurado en el Paso 1.
+                    Las variantes representan opciones que el cliente puede elegir (como porciones, sabores o tamaños de botella). Usan por defecto el precio base del Paso 1, pero puedes editar un precio personalizado y configurar su propia receta/insumos al desplegar cada variante.
                   </p>
                 </div>
               </div>
