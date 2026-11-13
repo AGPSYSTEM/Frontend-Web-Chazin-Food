@@ -465,19 +465,46 @@ export const resolveInsumoPersonalizable = (detalleOrInsumo, producto = null) =>
   };
 };
 
-export const extractPersonalizables = (producto, ficha) => {
+export const extractPersonalizables = (producto, ficha, selectedVariant = null) => {
   if (!producto || isDrinkProduct(producto)) return [];
   const catName = String(producto.categoria || producto.categoriaNombre || "").toLowerCase();
   if (catName.includes("bebida") || catName.includes("gaseosa") || String(producto.nombre || "").toLowerCase().includes("gaseosa")) {
     return [];
   }
 
+  let detalles = ficha?.detalles ? [...ficha.detalles] : (ficha?.insumos ? [...ficha.insumos] : []);
+  const varDeltas = selectedVariant?.insumosModificados || [];
+
+  if (varDeltas && varDeltas.length > 0) {
+    for (const delta of varDeltas) {
+      const accion = String(delta.tipoAccion || "AGREGAR").toUpperCase();
+      if (accion === "AGREGAR") {
+        detalles.push({
+          idInsumo: delta.idInsumo,
+          nombre: delta.insumo?.nombre || `Insumo #${delta.idInsumo}`,
+          insumo: delta.insumo || { idInsumo: delta.idInsumo, nombre: delta.insumo?.nombre }
+        });
+      } else if (accion === "REEMPLAZAR") {
+        if (delta.idInsumoReemplazado) {
+          detalles = detalles.filter(d => Number(d.idInsumo || d.insumo?.idInsumo) !== Number(delta.idInsumoReemplazado));
+        }
+        detalles.push({
+          idInsumo: delta.idInsumo,
+          nombre: delta.insumo?.nombre || `Insumo #${delta.idInsumo}`,
+          insumo: delta.insumo || { idInsumo: delta.idInsumo, nombre: delta.insumo?.nombre }
+        });
+      } else if (accion === "QUITAR") {
+        detalles = detalles.filter(d => Number(d.idInsumo || d.insumo?.idInsumo) !== Number(delta.idInsumo));
+      }
+    }
+  }
+
   const items = [];
   const seenNames = new Set();
 
   // 1. EXTRAER DIRECTAMENTE DE LA FICHA TÉCNICA (DETALLES CON INSUMOS REALES)
-  if (ficha?.detalles && Array.isArray(ficha.detalles) && ficha.detalles.length > 0) {
-    for (const d of ficha.detalles) {
+  if (detalles && Array.isArray(detalles) && detalles.length > 0) {
+    for (const d of detalles) {
       const item = resolveInsumoPersonalizable(d, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
         seenNames.add(item.nombre.toLowerCase());
@@ -487,7 +514,7 @@ export const extractPersonalizables = (producto, ficha) => {
   }
 
   // 2. EXTRAER DE FICHA.INGREDIENTES (SI EXISTE ARRAY DE INGREDIENTES)
-  if (ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
+  if (items.length === 0 && ficha?.ingredientes && Array.isArray(ficha.ingredientes) && ficha.ingredientes.length > 0) {
     for (const s of ficha.ingredientes) {
       const item = resolveInsumoPersonalizable(s, producto);
       if (item && !seenNames.has(item.nombre.toLowerCase())) {
@@ -720,8 +747,10 @@ export function FastFoodProductModal({
         idVariante: v.idVariante || v.id,
         idProducto: v.idProducto || producto?.id || producto?.idProducto,
         nombre: v.nombre,
+        descripcion: v.descripcion || null,
         precio: Number(v.precio || producto.precio || 0),
-        imagen: v.imagen || null
+        imagen: v.imagen || null,
+        insumosModificados: Array.isArray(v.insumosModificados) ? v.insumosModificados : []
       }));
     }
     return [
@@ -729,11 +758,51 @@ export function FastFoodProductModal({
         idVariante: producto?.id || producto?.idProducto || 1,
         idProducto: producto?.id || producto?.idProducto || 1,
         nombre: producto?.nombre || "Estándar",
+        descripcion: null,
         precio: Number(producto?.precio || 0),
-        imagen: producto?.imagen || null
+        imagen: producto?.imagen || null,
+        insumosModificados: []
       }
     ];
   }, [producto]);
+
+  // Variantes de fórmula/preparación para platos de comida (hamburguesas, perros calientes, etc.)
+  const foodVariants = useMemo(() => {
+    if (isDrink) return [];
+    const vars = Array.isArray(producto?.variantes) ? producto.variantes : [];
+    const nonDummy = vars.filter((v) => !isDummyOrBaseVariant(v.nombre, producto?.nombre));
+    if (nonDummy.length === 0) return [];
+
+    const result = [];
+    const hasBase = vars.some((v) => isDummyOrBaseVariant(v.nombre, producto?.nombre));
+    if (!hasBase) {
+      result.push({
+        idVariante: producto?.id || producto?.idProducto,
+        idProducto: producto?.id || producto?.idProducto,
+        nombre: "Preparación Clásica / Estándar",
+        descripcion: "Receta tradicional con los ingredientes originales",
+        precio: Number(producto?.precio || 0),
+        esOriginal: true,
+        insumosModificados: []
+      });
+    }
+
+    vars.forEach((v) => {
+      const isBase = isDummyOrBaseVariant(v.nombre, producto?.nombre);
+      result.push({
+        idVariante: v.idVariante || v.id,
+        idProducto: v.idProducto || producto?.id || producto?.idProducto,
+        nombre: isBase ? "Preparación Clásica / Estándar" : v.nombre,
+        descripcion: v.descripcion || (isBase ? "Receta tradicional con los ingredientes originales" : ""),
+        precio: Number(v.precio || producto?.precio || 0),
+        imagen: v.imagen || null,
+        esOriginal: isBase,
+        insumosModificados: Array.isArray(v.insumosModificados) ? v.insumosModificados : []
+      });
+    });
+
+    return result;
+  }, [isDrink, producto]);
 
   // Variantes de fórmula o sabor para bebidas (excluyendo tamaños como 1.5L, 2.5L que pertenecen al selector de tamaños)
   const drinkFormulaVariants = useMemo(() => {
@@ -848,8 +917,20 @@ export function FastFoodProductModal({
     if (isDrink && drinkFormulaVariants.length > 0) {
       return drinkFormulaVariants[0];
     }
+    if (!isDrink && foodVariants.length > 0) {
+      return foodVariants[0];
+    }
     return realVariants[0];
   });
+
+  useEffect(() => {
+    if (!isDrink && foodVariants.length > 0) {
+      setSelectedVariant((prev) => {
+        const found = foodVariants.find(v => (v.idVariante || v.id) === (prev?.idVariante || prev?.id));
+        return found || foodVariants[0];
+      });
+    }
+  }, [isDrink, foodVariants]);
 
   const isPostobonDrink = useMemo(() => isDrink && isPostobonDrinkProduct(producto), [isDrink, producto]);
   const [selectedSizeId, setSelectedSizeId] = useState(() => detectDefaultDrinkSize(producto));
@@ -1003,10 +1084,10 @@ export function FastFoodProductModal({
     });
   }, [allAdiciones, isPapaOrAccompaniment]);
 
-  // Insumos personalizables (Mise & place)
+  // Insumos personalizables (Mise & place que considera los deltas de la variante activa)
   const personalizables = useMemo(
-    () => extractPersonalizables(producto, liveFicha),
-    [producto, liveFicha]
+    () => extractPersonalizables(producto, liveFicha, selectedVariant),
+    [producto, liveFicha, selectedVariant]
   );
 
   const baseIngredients = useMemo(
@@ -1842,7 +1923,9 @@ export function FastFoodProductModal({
     }
 
     const cleanBaseName = drinkHasSizes ? producto.nombre.replace(/\s*400\s*ml/gi, "").trim() : producto.nombre;
-    let customName = isDrink ? displayDrinkTitle : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : (formulaTitle || cleanBaseName));
+    let customName = isDrink 
+      ? displayDrinkTitle 
+      : (formulaTitle && formulaTitle !== cleanBaseName ? `${cleanBaseName} (${formulaTitle})` : (drinkHasSizes ? `${cleanBaseName} (${selectedSizeObj.label})` : cleanBaseName));
 
     // Detección de promo 2x1 ("Paga 1 y lleva 2")
     const is2x1Promo = Boolean(
@@ -2598,7 +2681,7 @@ export function FastFoodProductModal({
             )}
 
             {/* ─── TAB 1: PERSONALIZAR INGREDIENTES (MISE EN PLACE CON LÓGICA HUMANA DE COCINA) ─── */}
-            {!isDrink && activeTab === "personalizar" && personalizables.length > 0 && (
+            {!isDrink && activeTab === "personalizar" && (personalizables.length > 0 || foodVariants.length > 0) && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -2620,6 +2703,67 @@ export function FastFoodProductModal({
                     </button>
                   )}
                 </div>
+
+                {/* ── SECCIÓN 0: SELECTOR DE VARIANTE PARA COMIDAS / PLATOS ── */}
+                {foodVariants.length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-orange-50/70 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-900/40 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-orange-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-orange-900 dark:text-orange-200">
+                          Variante / Preparación del Plato
+                        </h4>
+                      </div>
+                      <span className="text-[11px] font-bold text-orange-700 dark:text-orange-300">
+                        {selectedVariant?.nombre || "Estándar"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {foodVariants.map((v) => {
+                        const isSel = (selectedVariant?.idVariante || selectedVariant?.id) === (v.idVariante || v.id) ||
+                          (v.esOriginal && (!selectedVariant || selectedVariant.esOriginal || (selectedVariant.idVariante === (producto?.id || producto?.idProducto))));
+                        return (
+                          <div
+                            key={v.idVariante || v.id || v.nombre}
+                            onClick={() => setSelectedVariant(v)}
+                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2.5 transition-all cursor-pointer select-none active:scale-[0.98] ${
+                              isSel
+                                ? "border-orange-500 bg-white dark:bg-gray-800 shadow-xs ring-2 ring-orange-400/40"
+                                : "border-orange-200/60 dark:border-gray-700 bg-white/70 dark:bg-gray-850 hover:bg-white hover:border-orange-300"
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
+                                  {v.nombre}
+                                </span>
+                                {v.esOriginal && (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    Base
+                                  </span>
+                                )}
+                              </div>
+                              {v.descripcion && (
+                                <p className="text-[10.5px] text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                                  {v.descripcion}
+                                </p>
+                              )}
+                            </div>
+                            <div
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                                isSel
+                                  ? "border-orange-500 bg-orange-500 text-white"
+                                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                              }`}
+                            >
+                              {isSel && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* ── SECCIÓN 1: INGREDIENTES BASE OBLIGATORIOS (PROTEGIDOS POR LÓGICA HUMANA) ── */}
                 {baseIngredients.length > 0 && (
