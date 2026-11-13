@@ -27,7 +27,7 @@ import {
   AlertCircle,
   Globe
 } from "lucide-react";
-import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getProductEmoji, getAdditionEmoji, stripEmojis, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
