@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChefHat,
@@ -12,11 +12,11 @@ import KioskPromoCarousel from "../components/KioskPromoCarousel";
 import KioskCategoryRail from "../components/KioskCategoryRail";
 import KioskProductCard from "../components/KioskProductCard";
 import KioskBottomBar from "../components/KioskBottomBar";
-import KioskOrderReviewModal from "../components/KioskOrderReviewModal";
-import PosCheckoutModal from "../components/PosCheckoutModal";
-import KioskConfirmation from "../components/KioskConfirmation";
-import KioskCancelConfirmModal from "../components/KioskCancelConfirmModal";
-import FastFoodProductModal from "@/shared/components/ui/FastFoodProductModal";
+const KioskOrderReviewModal = lazy(() => import("../components/KioskOrderReviewModal"));
+const PosCheckoutModal = lazy(() => import("../components/PosCheckoutModal"));
+const KioskConfirmation = lazy(() => import("../components/KioskConfirmation"));
+const KioskCancelConfirmModal = lazy(() => import("../components/KioskCancelConfirmModal"));
+const FastFoodProductModal = lazy(() => import("@/shared/components/ui/FastFoodProductModal"));
 import { adicionesService } from "@/features/compras/servicios/adicionesService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
@@ -331,11 +331,13 @@ export default function PosVendedor() {
       (lastCreatedOrder?.idVenta ? `VEN-${String(lastCreatedOrder.idVenta).slice(-4).padStart(4, "0")}` : "VEN-0042");
 
     return (
-      <KioskConfirmation
-        orderId={orderNumber}
-        orderData={lastOrderData}
-        onReset={handleResetKiosk}
-      />
+      <Suspense fallback={<div className="min-h-full w-full flex items-center justify-center p-8"><div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin" /></div>}>
+        <KioskConfirmation
+          orderId={orderNumber}
+          orderData={lastOrderData}
+          onReset={handleResetKiosk}
+        />
+      </Suspense>
     );
   }
 
@@ -429,60 +431,76 @@ export default function PosVendedor() {
       />
 
       {/* Modal anterior completo: FastFoodProductModal (mise en place, adiciones, gaseosas y reseñas) */}
-      <FastFoodProductModal
-        isOpen={Boolean(customizingProduct)}
-        onClose={() => {
-          setCustomizingProduct(null);
-          setCustomizingFicha(null);
-        }}
-        producto={customizingProduct}
-        ficha={customizingFicha}
-        allAdiciones={allAdiciones}
-        allBebidas={allBebidas}
-        onConfirm={handleModalConfirm}
-        mode="pos"
-      />
+      {Boolean(customizingProduct) && (
+        <Suspense fallback={null}>
+          <FastFoodProductModal
+            isOpen={Boolean(customizingProduct)}
+            onClose={() => {
+              setCustomizingProduct(null);
+              setCustomizingFicha(null);
+            }}
+            producto={customizingProduct}
+            ficha={customizingFicha}
+            allAdiciones={allAdiciones}
+            allBebidas={allBebidas}
+            onConfirm={handleModalConfirm}
+            mode="pos"
+          />
+        </Suspense>
+      )}
 
       {/* Order Review Modal "Mi Pedido" */}
-      <KioskOrderReviewModal
-        isOpen={isReviewOpen}
-        onClose={() => setIsReviewOpen(false)}
-        cart={cart}
-        orderMode={orderMode}
-        onChangeOrderMode={setOrderMode}
-        onIncrement={increment}
-        onDecrement={decrement}
-        onRemoveItem={removeItem}
-        subtotal={subtotal}
-        descuento={descuento}
-        total={total}
-        onProceedToCheckout={() => {
-          setIsReviewOpen(false);
-          setIsCheckoutOpen(true);
-        }}
-      />
+      {isReviewOpen && (
+        <Suspense fallback={null}>
+          <KioskOrderReviewModal
+            isOpen={isReviewOpen}
+            onClose={() => setIsReviewOpen(false)}
+            cart={cart}
+            orderMode={orderMode}
+            onChangeOrderMode={setOrderMode}
+            onIncrement={increment}
+            onDecrement={decrement}
+            onRemoveItem={removeItem}
+            subtotal={subtotal}
+            descuento={descuento}
+            total={total}
+            onProceedToCheckout={() => {
+              setIsReviewOpen(false);
+              setIsCheckoutOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Modal de Pago Anterior: PosCheckoutModal (clientes, fidelidad, cálculo de vuelto, 16 dígitos de tarjeta) */}
-      <PosCheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        cart={cart}
-        subtotal={subtotal}
-        descuento={descuento}
-        total={total}
-        onConfirm={handleConfirmCheckout}
-        loading={loading}
-      />
+      {isCheckoutOpen && (
+        <Suspense fallback={null}>
+          <PosCheckoutModal
+            isOpen={isCheckoutOpen}
+            onClose={() => setIsCheckoutOpen(false)}
+            cart={cart}
+            subtotal={subtotal}
+            descuento={descuento}
+            total={total}
+            onConfirm={handleConfirmCheckout}
+            loading={loading}
+          />
+        </Suspense>
+      )}
 
       {/* Cancel Confirmation Modal */}
-      <KioskCancelConfirmModal
-        isOpen={isCancelConfirmOpen}
-        onClose={() => setIsCancelConfirmOpen(false)}
-        onConfirmCancel={() => {
-          setIsCancelConfirmOpen(false);
-          handleResetKiosk();
-        }}
-      />
+      {isCancelConfirmOpen && (
+        <Suspense fallback={null}>
+          <KioskCancelConfirmModal
+            isOpen={isCancelConfirmOpen}
+            onClose={() => setIsCancelConfirmOpen(false)}
+            onConfirmCancel={() => {
+              setIsCancelConfirmOpen(false);
+              handleResetKiosk();
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

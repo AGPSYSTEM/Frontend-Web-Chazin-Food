@@ -1,5 +1,5 @@
 import React from "react";
-import emblemSvg from "@/shared/assets/chazin_emblem.svg";
+import emblemWebp from "@/shared/assets/chazin_emblem.webp";
 
 /**
  * Emblema oficial Chazin Food (Iconografía y marca registrada)
@@ -9,15 +9,19 @@ export function ChazinEmblem({
   size = 24,
   className = "",
   alt = "Chazin Food",
+  loading = "lazy",
+  decoding = "async",
   style = {},
   ...props
 }) {
   return (
     <img
-      src={emblemSvg}
+      src={emblemWebp}
       alt={alt}
       width={size}
       height={size}
+      loading={loading}
+      decoding={decoding}
       className={`inline-block shrink-0 object-contain select-none ${className}`}
       style={{
         width: typeof size === "number" ? `${size}px` : size,

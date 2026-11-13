@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Phone, Mail, Instagram, Clock, Sparkles } from "lucide-react";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 
 export function ClienteFooter() {
   return (

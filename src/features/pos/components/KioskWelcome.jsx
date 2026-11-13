@@ -1,7 +1,7 @@
 import React from "react";
 import { UtensilsCrossed, ShoppingBag, ArrowLeft, Sparkles, ChefHat } from "lucide-react";
 import { motion } from "motion/react";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 
 export default function KioskWelcome({ onSelectOrderMode, onExitStaff }) {
   return (

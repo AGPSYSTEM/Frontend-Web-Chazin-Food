@@ -27,7 +27,8 @@ import {
   AlertCircle,
   Globe
 } from "lucide-react";
-import { getProductEmoji, getAdditionEmoji, stripEmojis } from "@/shared/utils/foodEmojiUtils";
+import { getProductEmoji, getAdditionEmoji, stripEmojis, isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
+import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { apiClient } from "@/shared/api/apiClient";
 import { useNotifications } from "@/shared/hooks/useNotifications";
@@ -723,7 +724,7 @@ export function FastFoodProductModal({
         fichasTecnicasService
           .getFichaByProducto(prodId)
           .then((f) => {
-            if (f && (f.detalles || f.idFicha)) setLiveFicha(f);
+            if (f && (f.detalles || f.idFicha || f.idFichaTecnica || f.id || f.procedimiento)) setLiveFicha(f);
           })
           .catch((err) => {
             console.warn("Ficha técnica fetch error in modal:", err);
@@ -1333,6 +1334,21 @@ export function FastFoodProductModal({
   };
 
   const lastInitKeyRef = useRef(null);
+  const fichaInitKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen || !producto) {
+      fichaInitKeyRef.current = null;
+      return;
+    }
+    if (isDrink || (initialTab && initialTab !== "personalizar")) return;
+    const key = `${producto.id || producto.idProducto}`;
+    if (fichaInitKeyRef.current === key) return;
+    if (personalizables.length > 0 || foodVariants.length > 0) {
+      fichaInitKeyRef.current = key;
+      setActiveTab("personalizar");
+    }
+  }, [isOpen, producto, isDrink, initialTab, personalizables.length, foodVariants.length]);
 
   // Re-initialize state only once when a new product is opened or modal opens
   useEffect(() => {
@@ -1357,7 +1373,9 @@ export function FastFoodProductModal({
         }
       } else {
         const canPersonalize = extractPersonalizables(producto, liveFicha).length > 0;
-        setActiveTab(initialTab || (canPersonalize ? "personalizar" : "adiciones"));
+        const hasVarsOrIngs = canPersonalize || foodVariants.length > 0;
+        const fallbackTab = isComboWithDrinks && availableBebidas.length > 0 ? "bebidas" : "adiciones";
+        setActiveTab(initialTab && initialTab !== "personalizar" ? initialTab : (hasVarsOrIngs ? "personalizar" : fallbackTab));
       }
       setQuantity(1);
       setRemovedIngredients([]);
@@ -2366,7 +2384,7 @@ export function FastFoodProductModal({
                 </>
               ) : (
                 <>
-                  {personalizables.length > 0 && (
+                  {(personalizables.length > 0 || foodVariants.length > 0) && (
                     <button
                       type="button"
                       onClick={() => setActiveTab("personalizar")}

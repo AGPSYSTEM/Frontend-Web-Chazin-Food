@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
-import { GoogleAuthButton } from "@/features/autenticacion/componentes/GoogleAuthButton";
+const GoogleAuthButton = lazy(() => import("@/features/autenticacion/componentes/GoogleAuthButton").then((m) => ({ default: m.GoogleAuthButton })));
 import {
   Lock,
   Mail,
@@ -21,7 +21,7 @@ import {
   Check
 } from "lucide-react";
 import { useToast } from "@/shared/context/ToastContext";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 import {
   sanitizeTelefono,
   sanitizeDocumento,
@@ -490,7 +490,9 @@ export function Login() {
                   </div>
                 </div>
 
-                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+                <Suspense fallback={<div className="w-full h-[42px] rounded-xl bg-slate-100 animate-pulse" />}>
+                  <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+                </Suspense>
 
                 <div className="text-center pt-2">
                   <Link to="/forgot-password" className="text-sm text-red-600 hover:text-red-700 font-semibold hover:underline transition-colors">
@@ -853,7 +855,9 @@ export function Login() {
                   </div>
                 </div>
 
-                <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
+                <Suspense fallback={<div className="w-full h-[42px] rounded-xl bg-slate-100 animate-pulse" />}>
+                  <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
+                </Suspense>
               </form>
             )}
           </div>

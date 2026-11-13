@@ -1,12 +1,11 @@
 import { Component } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { CartProvider } from '@/shared/context/CartContext';
 import { AuthProvider } from '@/shared/context/AuthContext';
 import { ToastProvider } from '@/shared/context/ToastContext';
 import { ConfirmProvider } from '@/shared/context/ConfirmContext';
 import { AppRoutes } from '@/routes/AppRoutes';
-import logoImg from '@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png';
+import logoImg from '@/shared/assets/logo_optimized.webp';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -65,11 +64,8 @@ class ErrorBoundary extends Component {
   }
 }
 
-const envClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
-const isRealClientId = envClientId.length > 20 && envClientId.includes(".apps.googleusercontent.com");
-
 export default function App() {
-  const content = (
+  return (
     <ErrorBoundary>
       <AuthProvider>
         <ToastProvider>
@@ -84,10 +80,4 @@ export default function App() {
       </AuthProvider>
     </ErrorBoundary>
   );
-
-  if (isRealClientId) {
-    return <GoogleOAuthProvider clientId={envClientId}>{content}</GoogleOAuthProvider>;
-  }
-
-  return content;
 }

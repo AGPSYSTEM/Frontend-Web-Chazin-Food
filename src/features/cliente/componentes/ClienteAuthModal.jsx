@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useToast } from "@/shared/context/ToastContext";
-import { GoogleAuthButton } from "@/features/autenticacion/componentes/GoogleAuthButton";
+const GoogleAuthButton = lazy(() => import("@/features/autenticacion/componentes/GoogleAuthButton").then((m) => ({ default: m.GoogleAuthButton })));
 import {
   Lock,
   Mail,
@@ -457,7 +457,9 @@ export function ClienteAuthModal({
                   </div>
                 </div>
 
-                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+                <Suspense fallback={<div className="w-full h-[42px] rounded-xl bg-slate-100 dark:bg-gray-800 animate-pulse" />}>
+                  <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+                </Suspense>
 
                 <button
                   type="button"
@@ -572,7 +574,9 @@ export function ClienteAuthModal({
                 </div>
               </div>
 
-              <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+              <Suspense fallback={<div className="w-full h-[42px] rounded-xl bg-slate-100 dark:bg-gray-800 animate-pulse" />}>
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+              </Suspense>
 
               <div className="text-center pt-2">
                 <button
@@ -944,7 +948,9 @@ export function ClienteAuthModal({
                 </div>
               </div>
 
-              <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
+              <Suspense fallback={<div className="w-full h-[42px] rounded-xl bg-slate-100 dark:bg-gray-800 animate-pulse" />}>
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} text="signup_with" />
+              </Suspense>
 
               <div className="text-center pt-2">
                 <button
