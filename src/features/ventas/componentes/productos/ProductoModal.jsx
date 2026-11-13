@@ -3,7 +3,8 @@ import {
   X, Utensils, UploadCloud, Loader2, Plus, Trash2, Layers, Camera, 
   Sparkles, Lightbulb, AlertCircle, Calculator, Lock, FileText, 
   Search, Check, ChevronDown, ChevronRight, CheckCircle2, PackageCheck, 
-  Info, Eye, ArrowRight, ArrowLeft, Copy, History, RotateCcw, ChefHat, ArrowRightLeft, SlidersHorizontal
+  Info, Eye, ArrowRight, ArrowLeft, Copy, History, RotateCcw, ChefHat, ArrowRightLeft, SlidersHorizontal,
+  Ban, AlertTriangle
 } from "lucide-react";
 import { NumberInput } from "@/shared/components/ui/NumberInput";
 import { FichaTecnicaProducto, checkInsumoInvalido } from "@/features/fichas-tecnicas/componentes/FichaTecnicaProducto";
@@ -15,7 +16,13 @@ import { FoodIcon, FoodIconBadge } from "@/shared/components/ui/FoodIcon";
 import { uploadImageToCloudinary } from "@/shared/servicios/cloudinaryService";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { validateTexto, validateNumeroPositivo } from "@/shared/utils/validationUtils";
-import { calculateRecipeTotals } from "@/features/fichas-tecnicas/utils/costoUtils";
+import { 
+  calculateRecipeTotals, 
+  resolveRecetaUnidadYCantidad, 
+  getUnidadesCompatibles, 
+  normalizeUnidadMedida, 
+  convertirUnidadYCantidad 
+} from "@/features/fichas-tecnicas/utils/costoUtils";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
 
 export const isSizeVariantName = (name = "") => {
@@ -115,6 +122,8 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   const [searchInsumoVariante, setSearchInsumoVariante] = useState('');
   const [showInsumoDropdown, setShowInsumoDropdown] = useState(false);
   const insumoDropdownRef = useRef(null);
+  const [showBaseDropdown, setShowBaseDropdown] = useState(false);
+  const baseDropdownRef = useRef(null);
   const [todasAdiciones, setTodasAdiciones] = useState([]);
   const [todasBebidas, setTodasBebidas] = useState([]);
   const [todosProductosCatalogo, setTodosProductosCatalogo] = useState([]);
@@ -750,6 +759,9 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
       if (insumoDropdownRef.current && !insumoDropdownRef.current.contains(event.target)) {
         setShowInsumoDropdown(false);
       }
+      if (baseDropdownRef.current && !baseDropdownRef.current.contains(event.target)) {
+        setShowBaseDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -775,12 +787,16 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
   }, [todosInsumosCatalogo, searchInsumoVariante]);
 
   const handleAddRuleToVariant = (variantKey) => {
-    if (!newRuleInsumoId && newRuleTipo !== "QUITAR") {
-      notify.warning("Insumo Requerido", "Por favor selecciona el insumo que se modificará o agregará a la variante.");
+    if (!newRuleInsumoId && (newRuleTipo === "AGREGAR" || newRuleTipo === "REEMPLAZAR")) {
+      notify.warning("Insumo Requerido", "Por favor selecciona el insumo que se agregará o modificará en la variante.");
       return;
     }
-    if (newRuleTipo === "REEMPLAZAR" && !newRuleReemplazadoId) {
-      notify.warning("Insumo a Reemplazar Requerido", "Por favor selecciona cuál ingrediente de la receta base deseas sustituir.");
+    if ((newRuleTipo === "REEMPLAZAR" || newRuleTipo === "QUITAR") && !newRuleReemplazadoId) {
+      notify.warning("Insumo a Reemplazar Requerido", "Por favor selecciona cuál ingrediente de la receta base deseas sustituir u omitir.");
+      return;
+    }
+    if (newRuleTipo === "MODIFICAR_CANTIDAD" && !newRuleInsumoId) {
+      notify.warning("Insumo a Ajustar Requerido", "Por favor selecciona cuál ingrediente de la receta base deseas ajustar.");
       return;
     }
     if (newRuleTipo !== "QUITAR" && (!newRuleCantidad || Number(newRuleCantidad) <= 0)) {
@@ -791,13 +807,27 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     const selectedInsumo = todosInsumosCatalogo.find((i) => Number(i.idInsumo || i.id) === Number(newRuleInsumoId));
     const selectedReemp = baseIngredients.find((i) => Number(i.idInsumo) === Number(newRuleReemplazadoId));
 
+    // REQUERIMIENTO 3: Bloquear registro de insumos vencidos en variantes
+    if (selectedInsumo && (newRuleTipo === "AGREGAR" || newRuleTipo === "REEMPLAZAR")) {
+      const { vencido } = checkInsumoInvalido(selectedInsumo);
+      if (vencido) {
+        notify.error(
+          "Insumo Vencido",
+          `No se puede registrar esta modificación: El insumo "${selectedInsumo.nombre}" se encuentra VENCIDO (${selectedInsumo.fechaVencimiento ? String(selectedInsumo.fechaVencimiento).substring(0, 10) : "Caducado"}). Por normas de inocuidad alimentaria, no se permite su uso.`
+        );
+        return;
+      }
+    }
+
+    const resolvedUnit = normalizeUnidadMedida(newRuleUnidad || selectedInsumo?.unidadMedida || (selectedReemp ? selectedReemp.unidadMedida : "und"));
+
     const newRule = {
       idVarianteInsumo: null,
       tipoAccion: newRuleTipo,
       idInsumo: newRuleTipo === "QUITAR" ? Number(newRuleReemplazadoId) : Number(newRuleInsumoId),
       idInsumoReemplazado: newRuleTipo === "REEMPLAZAR" ? Number(newRuleReemplazadoId) : null,
       cantidad: newRuleTipo === "QUITAR" ? 0 : Number(newRuleCantidad),
-      unidadMedida: newRuleUnidad || selectedInsumo?.unidadMedida || (selectedReemp ? selectedReemp.unidadMedida : "und"),
+      unidadMedida: resolvedUnit,
       observaciones: newRuleObservacion || null,
       insumo: selectedInsumo ? { idInsumo: selectedInsumo.idInsumo, nombre: selectedInsumo.nombre, unidadMedida: selectedInsumo.unidadMedida } : null,
       insumoReemplazado: selectedReemp ? { idInsumo: selectedReemp.idInsumo, nombre: selectedReemp.nombre, unidadMedida: selectedReemp.unidadMedida } : null
@@ -821,6 +851,7 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
     setNewRuleObservacion("");
     setSearchInsumoVariante("");
     setShowInsumoDropdown(false);
+    setShowBaseDropdown(false);
     notify.success("Regla Añadida", "La modificación de insumo ha sido configurada en esta variante.");
   };
 
@@ -1103,229 +1134,349 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
             </div>
 
             {/* Formulario para añadir nueva regla */}
-            <div className="p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-2.5">
-              <span className="text-[11px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
-                ➕ Añadir Modificación a esta Variante:
-              </span>
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-750 pb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#F05454]" />
+                  <span>Añadir Modificación a esta Variante:</span>
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  Aplica cambios automáticos a la receta base
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Acción</label>
-                  <select
-                    value={newRuleTipo}
-                    onChange={(e) => {
-                      setNewRuleTipo(e.target.value);
-                      setNewRuleInsumoId("");
-                      setNewRuleReemplazadoId("");
-                      setSearchInsumoVariante("");
-                      setShowInsumoDropdown(false);
-                    }}
-                    className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                  >
-                    <option value="AGREGAR">+ Agregar insumo extra</option>
-                    <option value="REEMPLAZAR">🔄 Reemplazar insumo base</option>
-                    <option value="MODIFICAR_CANTIDAD">⚖️ Modificar cantidad</option>
-                    <option value="QUITAR">❌ Quitar / Omitir insumo base</option>
-                  </select>
-                </div>
+              {(() => {
+                const selectedInsumo = todosInsumosCatalogo.find((i) => Number(i.idInsumo || i.id) === Number(newRuleInsumoId));
+                const selectedBaseId = newRuleTipo === "MODIFICAR_CANTIDAD" ? newRuleInsumoId : newRuleReemplazadoId;
+                const selectedBase = baseIngredients.find((b) => Number(b.idInsumo) === Number(selectedBaseId));
 
-                {newRuleTipo === "REEMPLAZAR" && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Insumo a sustituir</label>
-                    <select
-                      value={newRuleReemplazadoId}
-                      onChange={(e) => setNewRuleReemplazadoId(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                    >
-                      <option value="">-- Seleccionar base --</option>
-                      {baseIngredients.map((b) => (
-                        <option key={b.idInsumo} value={b.idInsumo}>
-                          {b.nombre} ({b.cantidad} {b.unidadMedida})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                const targetInsumoForUnit = selectedInsumo || selectedBase;
+                const compatibleUnits = targetInsumoForUnit
+                  ? getUnidadesCompatibles(newRuleUnidad || targetInsumoForUnit.unidadMedida || "und")
+                  : getUnidadesCompatibles("und");
 
-                {newRuleTipo === "MODIFICAR_CANTIDAD" && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Insumo a ajustar</label>
-                    <select
-                      value={newRuleInsumoId}
-                      onChange={(e) => {
-                        setNewRuleInsumoId(e.target.value);
-                        const match = baseIngredients.find((b) => Number(b.idInsumo) === Number(e.target.value));
-                        if (match) {
-                          setNewRuleCantidad(match.cantidad || "");
-                          setNewRuleUnidad(match.unidadMedida || "");
-                        }
-                      }}
-                      className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                    >
-                      <option value="">-- Seleccionar base --</option>
-                      {baseIngredients.map((b) => (
-                        <option key={b.idInsumo} value={b.idInsumo}>
-                          {b.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                let suggestedPortion = null;
+                if (selectedInsumo) {
+                  const resolved = resolveRecetaUnidadYCantidad(selectedInsumo);
+                  const minCant = Number(selectedInsumo.porcionMinimaCantidad) > 0 ? Number(selectedInsumo.porcionMinimaCantidad) : (resolved.cantidad || 1);
+                  const minUnit = normalizeUnidadMedida(selectedInsumo.porcionMinimaUnidad || resolved.unidadMedida || selectedInsumo.unidadMedida || "und");
+                  suggestedPortion = { cant: minCant, unit: minUnit };
+                } else if (selectedBase) {
+                  suggestedPortion = { cant: selectedBase.cantidad || 1, unit: normalizeUnidadMedida(selectedBase.unidadMedida || "und") };
+                }
 
-                {newRuleTipo === "QUITAR" && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Insumo a omitir</label>
-                    <select
-                      value={newRuleReemplazadoId}
-                      onChange={(e) => setNewRuleReemplazadoId(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                    >
-                      <option value="">-- Seleccionar insumo base --</option>
-                      {baseIngredients.map((b) => (
-                        <option key={b.idInsumo} value={b.idInsumo}>
-                          {b.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                return (
+                  <div className="space-y-3">
+                    {/* FILA 1: Tipo de Acción y Selector Moderno de Insumo Base */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                          Tipo de Acción
+                        </label>
+                        <select
+                          value={newRuleTipo}
+                          onChange={(e) => {
+                            setNewRuleTipo(e.target.value);
+                            setNewRuleInsumoId("");
+                            setNewRuleReemplazadoId("");
+                            setSearchInsumoVariante("");
+                            setShowInsumoDropdown(false);
+                            setShowBaseDropdown(false);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454] cursor-pointer"
+                        >
+                          <option value="AGREGAR">➕ Agregar insumo extra</option>
+                          <option value="REEMPLAZAR">🔄 Reemplazar insumo base</option>
+                          <option value="MODIFICAR_CANTIDAD">⚖️ Modificar cantidad de insumo base</option>
+                          <option value="QUITAR">❌ Quitar / Omitir insumo base</option>
+                        </select>
+                      </div>
 
-                {(newRuleTipo === "AGREGAR" || newRuleTipo === "REEMPLAZAR") && (
-                  <div className={`relative ${newRuleTipo === "AGREGAR" ? "sm:col-span-2" : ""}`} ref={insumoDropdownRef}>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">
-                      {newRuleTipo === "REEMPLAZAR" ? "Insumo nuevo" : "Insumo del catálogo"}
-                    </label>
+                      {/* Selector Moderno de Insumo Base (Reemplazo elegante al desplegable nativo cortado) */}
+                      {(newRuleTipo === "REEMPLAZAR" || newRuleTipo === "MODIFICAR_CANTIDAD" || newRuleTipo === "QUITAR") && (
+                        <div className="relative" ref={baseDropdownRef}>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                            {newRuleTipo === "REEMPLAZAR"
+                              ? "Insumo base a sustituir"
+                              : newRuleTipo === "MODIFICAR_CANTIDAD"
+                              ? "Insumo base a ajustar"
+                              : "Insumo base a omitir"}
+                          </label>
 
-                    {newRuleInsumoId ? (
-                      (() => {
-                        const selInsumo = todosInsumosCatalogo.find(
-                          (i) => Number(i.idInsumo || i.id) === Number(newRuleInsumoId)
-                        );
-                        return (
-                          <div className="flex items-center justify-between px-2.5 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg text-xs">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[#F05454] shrink-0" />
-                              <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
-                                {selInsumo?.nombre || `Insumo #${newRuleInsumoId}`}
-                              </span>
-                              {selInsumo && (
-                                <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
-                                  ({selInsumo.stock} {selInsumo.unidadMedida})
-                                </span>
-                              )}
-                            </div>
+                          <div className="relative">
                             <button
                               type="button"
-                              onClick={() => {
-                                setNewRuleInsumoId("");
-                                setSearchInsumoVariante("");
-                                setShowInsumoDropdown(true);
-                              }}
-                              className="ml-2 text-[10px] text-red-600 hover:text-red-700 dark:text-red-400 font-bold underline cursor-pointer shrink-0"
+                              onClick={() => setShowBaseDropdown(!showBaseDropdown)}
+                              className="w-full text-left px-3 py-2 bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700 hover:border-orange-400 dark:hover:border-orange-500 rounded-xl text-xs flex items-center justify-between gap-2 transition cursor-pointer shadow-2xs group"
                             >
-                              Cambiar
+                              {selectedBase ? (
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="font-bold text-gray-800 dark:text-gray-100 truncate">
+                                    {selectedBase.nombre}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-200 shrink-0">
+                                    {selectedBase.cantidad} {selectedBase.unidadMedida}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 dark:text-gray-500 truncate">
+                                  -- Seleccionar ingrediente de la receta base --
+                                </span>
+                              )}
+                              <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${showBaseDropdown ? "rotate-180" : ""}`} />
                             </button>
-                          </div>
-                        );
-                      })()
-                    ) : (
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Buscar insumo (ej. Jalapeño, Salsa)..."
-                          value={searchInsumoVariante}
-                          onFocus={() => setShowInsumoDropdown(true)}
-                          onChange={(e) => {
-                            setSearchInsumoVariante(e.target.value);
-                            setShowInsumoDropdown(true);
-                          }}
-                          className="w-full pl-8 pr-3 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F05454]"
-                        />
 
-                        {showInsumoDropdown && (
-                          <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 animate-in fade-in duration-100">
-                            {filteredInsumosCatalogo.length === 0 ? (
-                              <div className="p-3 text-center text-xs text-gray-400">
-                                No se encontraron insumos con "{searchInsumoVariante}"
+                            {showBaseDropdown && (
+                              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 animate-in fade-in duration-100">
+                                {baseIngredients.length === 0 ? (
+                                  <div className="p-3 text-center text-xs text-gray-400">
+                                    No hay ingredientes registrados en la receta base (Paso 2).
+                                  </div>
+                                ) : (
+                                  baseIngredients.map((b) => {
+                                    const isSelected = Number(selectedBaseId) === Number(b.idInsumo);
+                                    return (
+                                      <button
+                                        key={b.idInsumo}
+                                        type="button"
+                                        onClick={() => {
+                                          if (newRuleTipo === "MODIFICAR_CANTIDAD") {
+                                            setNewRuleInsumoId(b.idInsumo);
+                                            setNewRuleCantidad(b.cantidad || 1);
+                                            setNewRuleUnidad(normalizeUnidadMedida(b.unidadMedida || "und"));
+                                          } else {
+                                            setNewRuleReemplazadoId(b.idInsumo);
+                                            if (newRuleTipo === "REEMPLAZAR") {
+                                              setNewRuleCantidad(b.cantidad || 1);
+                                              setNewRuleUnidad(normalizeUnidadMedida(b.unidadMedida || "und"));
+                                            }
+                                          }
+                                          setShowBaseDropdown(false);
+                                        }}
+                                        className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between transition cursor-pointer group ${
+                                          isSelected
+                                            ? "bg-orange-50 dark:bg-orange-950/40 text-orange-900 dark:text-orange-200 font-bold"
+                                            : "hover:bg-gray-50 dark:hover:bg-gray-750 text-gray-700 dark:text-gray-200"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          {isSelected ? (
+                                            <Check className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                                          ) : (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 shrink-0 group-hover:bg-orange-400" />
+                                          )}
+                                          <span className="truncate text-xs">{b.nombre}</span>
+                                        </div>
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-orange-100 group-hover:text-orange-800 shrink-0 ml-2">
+                                          {b.cantidad} {b.unidadMedida}
+                                        </span>
+                                      </button>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* FILA 2: Insumo Nuevo del Catálogo y Cantidad/Unidad */}
+                    {(newRuleTipo === "AGREGAR" || newRuleTipo === "REEMPLAZAR" || newRuleTipo === "MODIFICAR_CANTIDAD") && (
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2 border-t border-gray-100 dark:border-gray-750">
+                        {(newRuleTipo === "AGREGAR" || newRuleTipo === "REEMPLAZAR") && (
+                          <div className="sm:col-span-7 relative" ref={insumoDropdownRef}>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">
+                              {newRuleTipo === "REEMPLAZAR" ? "Insumo nuevo sustituto" : "Insumo adicional del catálogo"}
+                            </label>
+
+                            {newRuleInsumoId ? (
+                              <div className="flex items-center justify-between px-3 py-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-xl text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <CheckCircle2 className="w-4 h-4 text-[#F05454] shrink-0" />
+                                  <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
+                                    {selectedInsumo?.nombre || `Insumo #${newRuleInsumoId}`}
+                                  </span>
+                                  {selectedInsumo && (
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 shrink-0">
+                                      ({selectedInsumo.stock} {selectedInsumo.unidadMedida})
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewRuleInsumoId("");
+                                    setSearchInsumoVariante("");
+                                    setShowInsumoDropdown(true);
+                                  }}
+                                  className="ml-2 text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 font-bold underline cursor-pointer shrink-0"
+                                >
+                                  Cambiar
+                                </button>
                               </div>
                             ) : (
-                              filteredInsumosCatalogo.map((ins) => {
-                                const insId = ins.idInsumo || ins.id;
-                                return (
-                                  <button
-                                    key={insId}
-                                    type="button"
-                                    onClick={() => {
-                                      setNewRuleInsumoId(insId);
-                                      setNewRuleUnidad(ins.unidadMedida || "und");
-                                      setSearchInsumoVariante("");
-                                      setShowInsumoDropdown(false);
-                                    }}
-                                    className="w-full text-left px-3 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-between transition cursor-pointer group"
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 group-hover:text-[#F05454] truncate">
-                                        {ins.nombre}
-                                      </span>
-                                      {ins.categoriaNombre && (
-                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 shrink-0">
-                                          {ins.categoriaNombre}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="text-[10px] text-gray-400 font-mono shrink-0 ml-2">
-                                      {ins.stock} {ins.unidadMedida}
-                                    </span>
-                                  </button>
-                                );
-                              })
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                                <input
+                                  type="text"
+                                  placeholder="Buscar insumo por nombre o categoría..."
+                                  value={searchInsumoVariante}
+                                  onFocus={() => setShowInsumoDropdown(true)}
+                                  onChange={(e) => {
+                                    setSearchInsumoVariante(e.target.value);
+                                    setShowInsumoDropdown(true);
+                                  }}
+                                  className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F05454]"
+                                />
+
+                                {showInsumoDropdown && (
+                                  <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/60 animate-in fade-in duration-100">
+                                    {filteredInsumosCatalogo.length === 0 ? (
+                                      <div className="p-3 text-center text-xs text-gray-400">
+                                        No se encontraron insumos con "{searchInsumoVariante}"
+                                      </div>
+                                    ) : (
+                                      filteredInsumosCatalogo.map((ins) => {
+                                        const insId = ins.idInsumo || ins.id;
+                                        const { vencido } = checkInsumoInvalido(ins);
+                                        return (
+                                          <button
+                                            key={insId}
+                                            type="button"
+                                            disabled={vencido}
+                                            onClick={() => {
+                                              if (vencido) {
+                                                notify.error(
+                                                  "Insumo Vencido",
+                                                  `El insumo "${ins.nombre}" se encuentra VENCIDO (${ins.fechaVencimiento ? String(ins.fechaVencimiento).substring(0, 10) : "Caducado"}). No puede ser utilizado.`
+                                                );
+                                                return;
+                                              }
+                                              setNewRuleInsumoId(insId);
+                                              
+                                              // Cantidad mínima y unidad de medida oficial (Requerimiento 1)
+                                              const resolved = resolveRecetaUnidadYCantidad(ins);
+                                              const minCant = Number(ins.porcionMinimaCantidad) > 0 ? Number(ins.porcionMinimaCantidad) : (resolved.cantidad || 1);
+                                              const minUnit = normalizeUnidadMedida(ins.porcionMinimaUnidad || resolved.unidadMedida || ins.unidadMedida || "und");
+
+                                              if (newRuleTipo === "REEMPLAZAR" && newRuleReemplazadoId) {
+                                                const matchBase = baseIngredients.find((b) => Number(b.idInsumo) === Number(newRuleReemplazadoId));
+                                                if (matchBase && normalizeUnidadMedida(matchBase.unidadMedida) === minUnit) {
+                                                  setNewRuleCantidad(matchBase.cantidad || minCant);
+                                                  setNewRuleUnidad(minUnit);
+                                                  setSearchInsumoVariante("");
+                                                  setShowInsumoDropdown(false);
+                                                  return;
+                                                }
+                                              }
+
+                                              setNewRuleCantidad(minCant);
+                                              setNewRuleUnidad(minUnit);
+                                              setSearchInsumoVariante("");
+                                              setShowInsumoDropdown(false);
+                                            }}
+                                            className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between transition group ${
+                                              vencido
+                                                ? "opacity-60 bg-red-50/50 dark:bg-red-950/20 cursor-not-allowed"
+                                                : "hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className={`text-xs font-semibold truncate ${vencido ? "text-red-700 dark:text-red-400 line-through" : "text-gray-800 dark:text-gray-200 group-hover:text-[#F05454]"}`}>
+                                                {ins.nombre}
+                                              </span>
+                                              {vencido ? (
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 shrink-0">
+                                                  ⛔ VENCIDO ({ins.fechaVencimiento ? String(ins.fechaVencimiento).substring(0, 10) : "Caducado"})
+                                                </span>
+                                              ) : ins.categoriaNombre ? (
+                                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 shrink-0">
+                                                  {ins.categoriaNombre}
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 font-mono shrink-0 ml-2">
+                                              {ins.stock} {ins.unidadMedida}
+                                            </span>
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
+
+                        {/* Cantidad y Unidad de Medida (Requerimiento 1) */}
+                        <div className={newRuleTipo === "MODIFICAR_CANTIDAD" ? "sm:col-span-12" : "sm:col-span-5"}>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase">Cantidad</label>
+                                {suggestedPortion && (
+                                  <span className="text-[9px] text-orange-600 dark:text-orange-400 font-semibold truncate">
+                                    Sugerido: {suggestedPortion.cant} {suggestedPortion.unit}
+                                  </span>
+                                )}
+                              </div>
+                              <input
+                                type="number"
+                                step="any"
+                                min="0.001"
+                                placeholder={suggestedPortion ? String(suggestedPortion.cant) : "Ej. 30"}
+                                value={newRuleCantidad}
+                                onChange={(e) => setNewRuleCantidad(e.target.value)}
+                                className="w-full px-2.5 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454]"
+                              />
+                            </div>
+
+                            <div className="w-28">
+                              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Unidad</label>
+                              <select
+                                value={normalizeUnidadMedida(newRuleUnidad)}
+                                onChange={(e) => {
+                                  const nextU = e.target.value;
+                                  const conv = convertirUnidadYCantidad(newRuleCantidad, newRuleUnidad, nextU);
+                                  setNewRuleCantidad(conv);
+                                  setNewRuleUnidad(nextU);
+                                }}
+                                className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#F05454] cursor-pointer"
+                              >
+                                {compatibleUnits.map((u) => (
+                                  <option key={u.value} value={u.value}>
+                                    {u.label || u.value}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {newRuleTipo !== "QUITAR" && (
-                  <div className="flex gap-1.5">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Cantidad</label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0.001"
-                        placeholder="Ej. 30"
-                        value={newRuleCantidad}
-                        onChange={(e) => setNewRuleCantidad(e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                      />
-                    </div>
-                    <div className="w-20">
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Unidad</label>
-                      <input
-                        type="text"
-                        placeholder="und"
-                        value={newRuleUnidad}
-                        onChange={(e) => setNewRuleUnidad(e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-850 dark:text-gray-100 rounded-lg text-xs"
-                      />
+                    {/* FILA 3: Pie con leyenda y botón de guardado */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-750">
+                      <span className="text-[11px] text-gray-400">
+                        {newRuleTipo === "AGREGAR" && "➕ Añade un ingrediente extra exclusivo para esta presentación."}
+                        {newRuleTipo === "REEMPLAZAR" && "🔄 Sustituye un ingrediente de la receta original por uno alternativo."}
+                        {newRuleTipo === "MODIFICAR_CANTIDAD" && "⚖️ Ajusta la porción (más o menos cantidad) de un ingrediente base."}
+                        {newRuleTipo === "QUITAR" && "❌ Omite este ingrediente base cuando el cliente elija esta variante."}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleAddRuleToVariant(v._key)}
+                        className="px-4 py-2 bg-[#F05454] hover:bg-[#d84343] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Guardar Modificación en Variante</span>
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleAddRuleToVariant(v._key)}
-                  className="px-3 py-1.5 bg-[#F05454] hover:bg-[#d84343] text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Guardar Modificación en Variante</span>
-                </button>
-              </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1566,6 +1717,26 @@ export function ProductoModal({ isOpen, onClose, onSave, producto = null, catego
               `La variante #${i + 1} ("${v.nombre}") tiene el mismo nombre que el producto principal. Las variantes deben representar sabores o presentaciones distintas (ej. Sabor BBQ, Picante, Familiar, 1.5 Litros).`
             );
             return;
+          }
+
+          // REQUERIMIENTO 3: Bloquear guardado si alguna regla de variante usa insumos vencidos
+          if (Array.isArray(v.insumosModificados)) {
+            for (const rule of v.insumosModificados) {
+              if (rule.tipoAccion !== "QUITAR" && rule.idInsumo) {
+                const insMatch = todosInsumosCatalogo.find((c) => Number(c.idInsumo || c.id) === Number(rule.idInsumo));
+                if (insMatch) {
+                  const { vencido } = checkInsumoInvalido(insMatch);
+                  if (vencido) {
+                    setActiveStep(3);
+                    notify.error(
+                      "Insumo Vencido en Variante",
+                      `No se puede guardar: La variante "${v.nombre}" tiene asignado el insumo "${insMatch.nombre}" que se encuentra VENCIDO (${insMatch.fechaVencimiento ? String(insMatch.fechaVencimiento).substring(0, 10) : "Caducado"}). Debes retirarlo o reemplazarlo en el Paso 3.`
+                    );
+                    return;
+                  }
+                }
+              }
+            }
           }
         }
       }
