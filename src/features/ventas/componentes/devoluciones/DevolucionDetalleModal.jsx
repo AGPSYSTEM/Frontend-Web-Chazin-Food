@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, Calendar, Clock, AlertTriangle, CheckCircle, PackageX, User, Phone, Mail, FileText, Check, Ban, CheckCheck, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Calendar, Clock, AlertTriangle, CheckCircle, PackageX, User, Phone, Mail, FileText, Check, Ban, CheckCheck, AlertCircle, Landmark, Smartphone, MapPin, ShoppingBag, ShieldCheck } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 
 export function DevolucionDetalleModal({
@@ -9,6 +9,7 @@ export function DevolucionDetalleModal({
   onAprobar,
   onRechazar,
   onCompletar,
+  onActualizarReembolso,
   canManage = true
 }) {
   const notify = useNotifications();
@@ -18,6 +19,23 @@ export function DevolucionDetalleModal({
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [showCompletarInput, setShowCompletarInput] = useState(false);
   const [accionRealizada, setAccionRealizada] = useState("");
+  const [reembolsoMode, setReembolsoMode] = useState(null); // "REALIZADO" | "NO_VALIDO" | null
+  const [referenciaReembolso, setReferenciaReembolso] = useState("");
+  const [motivoReembolsoInvalido, setMotivoReembolsoInvalido] = useState("");
+  const [reembolsoActionError, setReembolsoActionError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setShowRechazoInput(false);
+    setMotivoRechazo("");
+    setRechazoError("");
+    setShowCompletarInput(false);
+    setAccionRealizada("");
+    setReembolsoMode(null);
+    setReferenciaReembolso(devolucion?.referenciaReembolso || "");
+    setMotivoReembolsoInvalido("");
+    setReembolsoActionError("");
+  }, [isOpen, devolucion?.idDevolucion]);
 
   if (!isOpen || !devolucion) return null;
 
@@ -32,6 +50,49 @@ export function DevolucionDetalleModal({
 
   const estado = String(devolucion.estado || "PENDIENTE").toUpperCase();
   const prods = Array.isArray(devolucion.productosDevueltos) ? devolucion.productosDevueltos : [];
+  const resLower = String(devolucion.tipoResolucion || "").toLowerCase();
+  const esReembolsoDinero = resLower.includes("dinero");
+  const esCambioProducto = resLower.includes("cambio");
+  const datosReembolso = devolucion.datosReembolso || null;
+  const estadoReembolso = String(devolucion.estadoReembolso || (esReembolsoDinero ? "PENDIENTE" : "")).toUpperCase();
+  const entregaOriginal = devolucion.entregaOriginal || null;
+
+  const handleConfirmarReembolso = async (targetEstadoReembolso) => {
+    if (!onActualizarReembolso) return;
+    if (targetEstadoReembolso === "NO_VALIDO") {
+      if (!motivoReembolsoInvalido.trim() || motivoReembolsoInvalido.trim().length < 5) {
+        setReembolsoActionError("Indica el motivo por el cual el reembolso no es válido (mín. 5 caracteres).");
+        notify.warning("Motivo Requerido", "Debes especificar por qué los datos o solicitud de reembolso no son válidos.");
+        return;
+      }
+    }
+    try {
+      setSubmitting(true);
+      setReembolsoActionError("");
+      const payload = {
+        estadoReembolso: targetEstadoReembolso,
+        ...(targetEstadoReembolso === "REALIZADO"
+          ? {
+              estado: estado === "PENDIENTE" ? "APROBADA" : undefined,
+              referenciaReembolso: referenciaReembolso.trim(),
+              accionRealizada: referenciaReembolso.trim()
+                ? `Reembolso transferido (${referenciaReembolso.trim()})`
+                : "Reembolso realizado y verificado"
+            }
+          : {
+              motivoRechazo: motivoReembolsoInvalido.trim()
+            })
+      };
+      if (!payload.estado) delete payload.estado;
+      await onActualizarReembolso(devolucion.idDevolucion, payload);
+      setReembolsoMode(null);
+      setMotivoReembolsoInvalido("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleAprobar = async () => {
     try {
@@ -211,6 +272,214 @@ export function DevolucionDetalleModal({
               </div>
             )}
           </div>
+
+          {/* Orden de Reposición y Dirección de Entrega (cuando aplica cambio de producto) */}
+          {(esCambioProducto || devolucion.codigoVentaReemplazo) && (
+            <div className="p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/25 border border-sky-200/70 dark:border-sky-900/50 text-xs space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+                  <ShoppingBag className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  Reposición de Alimento (Orden de Devolución)
+                </span>
+                {devolucion.codigoVentaReemplazo ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 dark:bg-sky-900/60 text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700">
+                    Orden generada: {devolucion.codigoVentaReemplazo}
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200">
+                    Se generará al aprobar la devolución
+                  </span>
+                )}
+              </div>
+              {entregaOriginal && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] text-sky-900/90 dark:text-sky-200/90">
+                  <div className="flex items-start gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Dirección / Entrega:</strong> {entregaOriginal.direccion || "-"} ({entregaOriginal.tipoEntrega || "Domicilio"})
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Destinatario / Tel:</strong> {entregaOriginal.clienteNombre || "Cliente"}{entregaOriginal.telefono ? ` · ${entregaOriginal.telefono}` : ""}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Datos Bancarios / Billetera y Confirmación de Reembolso */}
+          {esReembolsoDinero && (
+            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 text-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-bold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
+                  {/nequi|daviplata/i.test(datosReembolso?.banco || "") ? (
+                    <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <Landmark className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  Datos y Confirmación de Reembolso
+                </span>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    estadoReembolso === "REALIZADO"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+                      : estadoReembolso === "NO_VALIDO"
+                        ? "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200 border-rose-300 dark:border-rose-700"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                  }`}
+                >
+                  {estadoReembolso === "REALIZADO"
+                    ? "Reembolso Realizado (Válido)"
+                    : estadoReembolso === "NO_VALIDO"
+                      ? "Reembolso No Válido"
+                      : "Pendiente de validación"}
+                </span>
+              </div>
+
+              {datosReembolso ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white dark:bg-gray-900 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Entidad / Medio</span>
+                    <strong className="text-gray-900 dark:text-white">{datosReembolso.banco}</strong>
+                    <span className="text-[11px] text-gray-500 block">{datosReembolso.tipoCuenta}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Número de Cuenta / Celular</span>
+                    <strong className="text-gray-900 dark:text-white font-mono">{datosReembolso.numeroCuenta}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Titular</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">{datosReembolso.titularNombre}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 block">Documento Titular</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      {datosReembolso.titularTipoDocumento || "CC"} {datosReembolso.titularDocumento}
+                    </span>
+                  </div>
+                  {datosReembolso.observacionesCuenta && (
+                    <div className="sm:col-span-2 text-[11px] text-gray-600 dark:text-gray-300 pt-1 border-t border-gray-100 dark:border-gray-800">
+                      <strong>Nota del cliente:</strong> {datosReembolso.observacionesCuenta}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/50">
+                  Esta devolución no cuenta con datos de cuenta bancaria o billetera adjuntos.
+                </p>
+              )}
+
+              {devolucion.referenciaReembolso && (
+                <div className="text-[11px] text-emerald-800 dark:text-emerald-200 bg-white/80 dark:bg-gray-900/70 px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/50">
+                  <strong>Referencia / Comprobante:</strong> {devolucion.referenciaReembolso}
+                </div>
+              )}
+
+              {canManage && onActualizarReembolso && estado !== "RECHAZADA" && estadoReembolso !== "REALIZADO" && !reembolsoMode && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setReembolsoMode("REALIZADO");
+                      setReembolsoActionError("");
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Confirmar Reembolso Realizado
+                  </button>
+                  {estadoReembolso !== "NO_VALIDO" && (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => {
+                        setReembolsoMode("NO_VALIDO");
+                        setReembolsoActionError("");
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      Marcar Reembolso No Válido
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {reembolsoMode === "REALIZADO" && (
+                <div className="p-3 rounded-xl bg-white dark:bg-gray-900 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                  <label className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200 block">
+                    Número de comprobante / referencia de transferencia (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={referenciaReembolso}
+                    onChange={(e) => setReferenciaReembolso(e.target.value)}
+                    placeholder="Ej: Nequi #849201 o Comp. Bancolombia 00312"
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:border-emerald-500"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReembolsoMode(null)}
+                      className="px-3 py-1.5 rounded-xl text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => handleConfirmarReembolso("REALIZADO")}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      Confirmar Reembolso
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {reembolsoMode === "NO_VALIDO" && (
+                <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 space-y-2">
+                  <label className="text-[11px] font-bold text-rose-900 dark:text-rose-200 block">
+                    Motivo por el que el reembolso no es válido (Obligatorio)
+                  </label>
+                  <textarea
+                    value={motivoReembolsoInvalido}
+                    onChange={(e) => {
+                      setMotivoReembolsoInvalido(e.target.value);
+                      if (reembolsoActionError) setReembolsoActionError("");
+                    }}
+                    rows={2}
+                    placeholder="Ej: El número de cuenta o Nequi no corresponde al titular, o no cumple políticas..."
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-rose-400"
+                  />
+                  {reembolsoActionError && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{reembolsoActionError}</span>
+                    </p>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReembolsoMode(null)}
+                      className="px-3 py-1.5 rounded-xl text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submitting || !motivoReembolsoInvalido.trim()}
+                      onClick={() => handleConfirmarReembolso("NO_VALIDO")}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50"
+                    >
+                      Confirmar No Válido
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tabla de Productos Devueltos */}
           <div className="space-y-2">

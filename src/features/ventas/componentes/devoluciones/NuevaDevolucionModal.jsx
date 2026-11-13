@@ -15,6 +15,12 @@ import {
   ShieldAlert
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import {
+  DatosReembolsoFields,
+  INITIAL_DATOS_REEMBOLSO,
+  requiresDatosReembolso,
+  validateDatosReembolso
+} from "./DatosReembolsoFields";
 
 export function NuevaDevolucionModal({
   isOpen,
@@ -37,6 +43,8 @@ export function NuevaDevolucionModal({
   const [descripcionError, setDescripcionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [touchedVenta, setTouchedVenta] = useState(false);
+  const [datosReembolso, setDatosReembolso] = useState(INITIAL_DATOS_REEMBOLSO);
+  const [reembolsoErrors, setReembolsoErrors] = useState({});
 
   useEffect(() => {
     if (isOpen) {
@@ -49,6 +57,8 @@ export function NuevaDevolucionModal({
       setDescripcion("");
       setDescripcionError("");
       setTouchedVenta(false);
+      setDatosReembolso(INITIAL_DATOS_REEMBOLSO);
+      setReembolsoErrors({});
     }
   }, [isOpen, politicas]);
 
@@ -101,6 +111,13 @@ export function NuevaDevolucionModal({
         notify.error("Venta No Encontrada", msg);
       } else {
         setVentaInfo(res);
+        const cliNombre = res.cliente?.nombre || "";
+        setDatosReembolso({
+          ...INITIAL_DATOS_REEMBOLSO,
+          titularNombre: cliNombre && !/cliente general|mostrador/i.test(cliNombre) ? cliNombre : "",
+          titularDocumento: res.cliente?.documento || ""
+        });
+        setReembolsoErrors({});
         const initial = {};
         (res.productos || []).forEach((p) => {
           initial[p.idVariante] = 0;
@@ -150,7 +167,10 @@ export function NuevaDevolucionModal({
       nombre: p.nombre,
       cantidad: selectedItems[p.idVariante],
       precioUnitario: p.precioUnitario,
-      subtotal: selectedItems[p.idVariante] * p.precioUnitario
+      subtotal: selectedItems[p.idVariante] * p.precioUnitario,
+      ...(p.adiciones ? { adiciones: p.adiciones } : {}),
+      ...(p.exclusiones ? { exclusiones: p.exclusiones } : {}),
+      ...(p.especificaciones ? { especificaciones: p.especificaciones } : {})
     }));
 
   const totalCalculado = prodsDevueltos.reduce((acc, p) => acc + p.subtotal, 0);
@@ -183,6 +203,19 @@ export function NuevaDevolucionModal({
       return;
     }
 
+    let payloadReembolso;
+    if (requiresDatosReembolso(tipoResolucion)) {
+      const checkReembolso = validateDatosReembolso(datosReembolso, { allowCash: true });
+      if (!checkReembolso.valid) {
+        setReembolsoErrors(checkReembolso.errors);
+        const msg = Object.values(checkReembolso.errors)[0] || "Completa los datos válidos para el reembolso.";
+        notify.warning("Datos de Reembolso Requeridos", msg);
+        return;
+      }
+      payloadReembolso = checkReembolso.normalized;
+      setReembolsoErrors({});
+    }
+
     try {
       setSubmitting(true);
       await onSubmit({
@@ -192,7 +225,8 @@ export function NuevaDevolucionModal({
         tipoResolucion,
         productosDevueltos: prodsDevueltos,
         valorDevuelto: totalCalculado,
-        descripcion: descripcion.trim()
+        descripcion: descripcion.trim(),
+        ...(payloadReembolso ? { datosReembolso: payloadReembolso } : {})
       });
       onClose();
     } catch (err) {
@@ -468,6 +502,19 @@ export function NuevaDevolucionModal({
               </select>
             </div>
           </div>
+
+          {requiresDatosReembolso(tipoResolucion) && (
+            <DatosReembolsoFields
+              value={datosReembolso}
+              onChange={(next) => {
+                setDatosReembolso(next);
+                setReembolsoErrors({});
+              }}
+              errors={reembolsoErrors}
+              allowCash={true}
+              disabled={submitting}
+            />
+          )}
 
           {/* Observaciones con Validación en Vivo */}
           <div className="space-y-1">

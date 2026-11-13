@@ -21,25 +21,34 @@ import {
   Thermometer,
   HeartPulse,
   Award,
-  Edit
+  Edit,
+  Trash2
 } from "lucide-react";
 import { apiClient } from "@/shared/api/apiClient";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { normalizeFichaWithVersions, formatFechaHoraFicha } from "@/features/fichas-tecnicas/utils/fichaVersionUtils";
 import { FichaVersionesHistorial } from "@/features/fichas-tecnicas/componentes/FichaVersionesHistorial";
 
-export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
-  const [activeTab, setActiveTab] = useState("general"); // "general" | "receta" | "lotes"
+export function VerInsumoModal({ isOpen, onClose, insumo, onEdit, initialTab = "general", onDeleteLoteVencido, onDeleteLotesVencidos }) {
+  const [activeTab, setActiveTab] = useState(initialTab || "general"); // "general" | "receta" | "lotes"
+  const [deletingLoteId, setDeletingLoteId] = useState(null);
+  const [deletingAllVencidos, setDeletingAllVencidos] = useState(false);
   const [lotes, setLotes] = useState([]);
   const [fichaTecnica, setFichaTecnica] = useState(null);
   const [loadingExtra, setLoadingExtra] = useState(false);
 
   const esPreparado = insumo?.tipo === "Preparado" || Boolean(insumo?.fichaTecnica) || (insumo?.ingredientes && insumo.ingredientes.length > 0);
+  const insumoId = insumo?.idInsumo || insumo?.id;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveTab(initialTab || "general");
+  }, [isOpen, insumoId, initialTab]);
 
   useEffect(() => {
     if (!isOpen || !insumo) return;
 
-    setActiveTab("general");
+
     setLotes(Array.isArray(insumo.lotes) ? insumo.lotes : []);
     const id = insumo.idInsumo || insumo.id;
     setFichaTecnica(
@@ -80,6 +89,67 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
   }, [isOpen, insumo, esPreparado]);
 
   if (!isOpen || !insumo) return null;
+
+  const getTodayColombiaISO = () => {
+    try {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
+    } catch (_) {
+      return new Date().toISOString().split("T")[0];
+    }
+  };
+
+  const getLoteExpiryInfo = (lot) => {
+    const fechaVenc = lot?.fechaVencimiento ? String(lot.fechaVencimiento).split("T")[0] : "";
+    const estadoUpper = String(lot?.estado || "").toUpperCase();
+    const cantDisp = parseFloat(lot?.cantidadDisponible ?? lot?.cantidad ?? 0);
+    if (!fechaVenc) {
+      return {
+        fechaVenc: "",
+        diasPorVencer: null,
+        estaVencido: estadoUpper === "VENCIDO",
+        cantDisp
+      };
+    }
+    const todayStr = getTodayColombiaISO();
+    const vDate = new Date(`${fechaVenc}T00:00:00`);
+    const tDate = new Date(`${todayStr}T00:00:00`);
+    const diasPorVencer = Math.round((vDate.getTime() - tDate.getTime()) / (1000 * 60 * 60 * 24));
+    const estaVencido = estadoUpper === "VENCIDO" || fechaVenc <= todayStr;
+    return { fechaVenc, diasPorVencer, estaVencido, cantDisp };
+  };
+
+  const expiredLotes = lotes.filter((lot) => getLoteExpiryInfo(lot).estaVencido);
+
+  const handleDeleteSingleLote = async (lot) => {
+    const idLote = lot?.idLote || lot?.id;
+    if (!onDeleteLoteVencido || !insumoId || !idLote) return;
+    try {
+      setDeletingLoteId(idLote);
+      const res = await onDeleteLoteVencido(insumoId, idLote, lot?.numeroLote);
+      if (res?.insumo && Array.isArray(res.insumo.lotes)) {
+        setLotes(res.insumo.lotes);
+      } else if (res) {
+        setLotes((prev) => prev.filter((item) => (item.idLote || item.id) !== idLote));
+      }
+    } finally {
+      setDeletingLoteId(null);
+    }
+  };
+
+  const handleDeleteAllExpired = async () => {
+    if (!onDeleteLotesVencidos || !insumoId || expiredLotes.length === 0) return;
+    try {
+      setDeletingAllVencidos(true);
+      const res = await onDeleteLotesVencidos(insumoId, insumo?.nombre);
+      if (res?.insumo && Array.isArray(res.insumo.lotes)) {
+        setLotes(res.insumo.lotes);
+      } else if (res) {
+        setLotes((prev) => prev.filter((item) => !getLoteExpiryInfo(item).estaVencido));
+      }
+    } finally {
+      setDeletingAllVencidos(false);
+    }
+  };
 
   const stockNum = parseFloat(insumo.stock ?? 0);
   const stockMin = parseFloat(insumo.stockMinimo ?? 0);
@@ -123,6 +193,10 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                   {isUrl ? (
                     <img
                       src={rawImg}
+                      width="48"
+                      height="48"
+                      loading="lazy"
+                      decoding="async"
                       alt={insumo.nombre}
                       className="w-full h-full object-cover rounded-2xl"
                       onError={(e) => {
@@ -213,6 +287,11 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
           >
             <Layers className="w-3.5 h-3.5" />
             Lotes y Vencimientos ({lotes.length})
+            {expiredLotes.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                {expiredLotes.length} venc.
+              </span>
+            )}
           </button>
         </div>
 
@@ -505,6 +584,42 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                 </span>
               </div>
 
+              {expiredLotes.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5 text-xs text-red-800 dark:text-red-200">
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">
+                        {expiredLotes.length} lote{expiredLotes.length !== 1 ? "s" : ""} vencido{expiredLotes.length !== 1 ? "s" : ""} detectado{expiredLotes.length !== 1 ? "s" : ""}
+                      </p>
+                      <p className="text-[11px] text-red-700/90 dark:text-red-300/90">
+                        Al eliminar un lote vencido se descontarán{" "}
+                        <strong>
+                          {expiredLotes.reduce((acc, l) => acc + getLoteExpiryInfo(l).cantDisp, 0)}{" "}
+                          {insumo.unidadMedida || "und"}
+                        </strong>{" "}
+                        disponibles del stock del insumo.
+                      </p>
+                    </div>
+                  </div>
+                  {onDeleteLotesVencidos && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteAllExpired}
+                      disabled={deletingAllVencidos}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>
+                        {deletingAllVencidos
+                          ? "Eliminando..."
+                          : `Eliminar vencidos (${expiredLotes.length})`}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
+
               {lotes.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 text-center space-y-2">
                   <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-700/50 text-gray-400 flex items-center justify-center mx-auto">
@@ -526,21 +641,14 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                         <th className="px-3.5 py-3 text-center">Disponible</th>
                         <th className="px-3.5 py-3 text-center">Vencimiento</th>
                         <th className="px-3.5 py-3 text-right">Estado</th>
+                        {onDeleteLoteVencido && (
+                          <th className="px-3.5 py-3 text-right">Acciones</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {lotes.map((lot, idx) => {
-                        const cantDisp = parseFloat(lot.cantidadDisponible ?? lot.cantidad ?? 0);
-                        const fechaVenc = lot.fechaVencimiento;
-                        let estaVencido = false;
-                        let diasPorVencer = null;
-                        if (fechaVenc) {
-                          const vDate = new Date(`${String(fechaVenc).split("T")[0]}T23:59:59`);
-                          const now = new Date();
-                          const diffMs = vDate.getTime() - now.getTime();
-                          diasPorVencer = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                          estaVencido = diffMs < 0;
-                        }
+                        const { fechaVenc, estaVencido, diasPorVencer, cantDisp } = getLoteExpiryInfo(lot);
 
                         return (
                           <tr key={idx} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
@@ -581,13 +689,33 @@ export function VerInsumoModal({ isOpen, onClose, insumo, onEdit }) {
                               )}
                             </td>
                             <td className="px-3.5 py-3 text-right">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${cantDisp > 0
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${estaVencido
+                                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800/50"
+                                  : cantDisp > 0
                                   ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
                                   : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
                                 }`}>
-                                {cantDisp > 0 ? (lot.estado || "ACTIVO") : "AGOTADO"}
+                                {estaVencido ? "VENCIDO" : cantDisp > 0 ? (lot.estado || "ACTIVO") : "AGOTADO"}
                               </span>
                             </td>
+                            {onDeleteLoteVencido && (
+                              <td className="px-3.5 py-3 text-right">
+                                {estaVencido && (lot.idLote || lot.id) ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSingleLote(lot)}
+                                    disabled={deletingLoteId === (lot.idLote || lot.id) || deletingAllVencidos}
+                                    title={`Eliminar lote vencido (${cantDisp} ${insumo.unidadMedida || "und"} se restarán del stock)`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-red-700 dark:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800/60 transition-colors disabled:opacity-50 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>{deletingLoteId === (lot.idLote || lot.id) ? "..." : "Eliminar"}</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400">—</span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}

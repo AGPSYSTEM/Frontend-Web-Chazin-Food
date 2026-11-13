@@ -32,11 +32,15 @@ export default function Devoluciones() {
     aprobarDevolucion,
     rechazarDevolucion,
     completarDevolucion,
+    actualizarReembolso,
     verificarElegibilidadVenta
   } = useDevoluciones();
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDevolucion, setSelectedDevolucion] = useState(null);
+  const activeSelectedDevolucion = selectedDevolucion
+    ? devoluciones.find((item) => item.idDevolucion === selectedDevolucion.idDevolucion) || selectedDevolucion
+    : null;
 
   const handleOpenDetail = (d) => {
     setSelectedDevolucion(d);
@@ -168,10 +172,11 @@ export default function Devoluciones() {
           setDetailModalOpen(false);
           setSelectedDevolucion(null);
         }}
-        devolucion={selectedDevolucion}
+        devolucion={activeSelectedDevolucion}
         onAprobar={aprobarDevolucion}
         onRechazar={rechazarDevolucion}
         onCompletar={completarDevolucion}
+        onActualizarReembolso={actualizarReembolso}
         canManage={canManage}
       />
     </div>

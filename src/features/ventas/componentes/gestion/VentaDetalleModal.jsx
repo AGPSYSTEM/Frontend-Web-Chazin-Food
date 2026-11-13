@@ -207,6 +207,7 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
 
   const origen = (venta.origen || obsMeta.origen || (String(venta.tipoEntrega || obsMeta.tipoEntrega || "").toLowerCase().includes("domicilio") ? "ONLINE" : "PUNTO_FISICO")).toUpperCase();
   const esOnline = origen.includes("ONLINE");
+  const esDevolucion = Boolean(venta.esDevolucion || obsMeta.esDevolucion);
 
   const direccionEntrega = obsMeta.direccion || venta.direccion || "";
   const codigo =
@@ -412,7 +413,14 @@ export function VentaDetalleModal({ isOpen, onClose, venta, onUpdateTiempoEntreg
               <span>{esOnline ? "Online (Web)" : "Punto Físico"}</span>
             </span>
           </div>
-          <div className="text-xl sm:text-2xl font-black tracking-tight mt-1">{codigo}</div>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <div className="text-xl sm:text-2xl font-black tracking-tight">{codigo}</div>
+            {esDevolucion && (
+              <span className="bg-amber-400/30 border border-amber-200/60 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Reposición Devolución{(venta.codigoDevolucionAsociada || obsMeta.codigoDevolucionAsociada) ? ` · ${venta.codigoDevolucionAsociada || obsMeta.codigoDevolucionAsociada}` : ""}
+              </span>
+            )}
+          </div>
           <div className="text-xs sm:text-sm text-red-100 font-medium flex items-center gap-2 mt-1 flex-wrap">
             <span>{cliente}</span>
             {(!String(cliente).toLowerCase().includes("mostrador") && venta?.idCliente !== 26 && clienteFidelidad?.tieneCuenta && clienteFidelidad?.tipo && ["Regular", "Frecuente", "VIP"].includes(clienteFidelidad.tipo)) && (

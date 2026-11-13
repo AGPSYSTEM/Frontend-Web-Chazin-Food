@@ -124,8 +124,13 @@ export function VentasTable({ ventas = [], onViewDetail, onUpdateEstado, onAprob
                 <tr key={v.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   {/* N° Factura / Pedido */}
                   <td className="px-2.5 py-2.5 whitespace-nowrap align-middle">
-                    <div className="font-bold text-gray-900 dark:text-gray-100">
-                      {codigoPedido}
+                    <div className="font-bold text-gray-900 dark:text-gray-100 flex flex-col items-start gap-0.5">
+                      <span>{codigoPedido}</span>
+                      {v.esDevolucion && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          Reposición Devolución
+                        </span>
+                      )}
                     </div>
                   </td>
 

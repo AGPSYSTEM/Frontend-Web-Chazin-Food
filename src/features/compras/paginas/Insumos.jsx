@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Plus, Search, Bell, Download, FileSpreadsheet, FileText, AlertTriangle, ShoppingCart, Filter } from "lucide-react";
+import { Plus, Search, Bell, Download, FileSpreadsheet, FileText, AlertTriangle, ShoppingCart, Filter, Layers } from "lucide-react";
 import { useInsumos } from "../hooks/useInsumos";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
@@ -18,9 +18,14 @@ export function Insumos() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const notify = useNotifications();
+
+
+
+
   const canCreate = hasPrivilege(user, "Insumos", "crear");
   const canEdit = hasPrivilege(user, "Insumos", "editar");
   const canDelete = hasPrivilege(user, "Insumos", "eliminar");
+  const canDeleteLote = canDelete || hasPrivilege(user, "Gestión de Compras", "eliminar");
 
   const {
     insumos,
@@ -45,6 +50,8 @@ export function Insumos() {
     deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
+    deleteLoteVencido,
+    deleteLotesVencidos,
     clearEventos,
     resetUnreadCount,
     toggleEstadoInsumo
@@ -67,6 +74,10 @@ export function Insumos() {
   const [modalInsumoOpen, setModalInsumoOpen] = useState(false);
   const [editingInsumo, setEditingInsumo] = useState(null);
   const [viewingInsumo, setViewingInsumo] = useState(null);
+  const [viewingInsumoInitialTab, setViewingInsumoInitialTab] = useState("general");
+  const activeViewingInsumo = viewingInsumo
+    ? insumos.find((item) => (item.idInsumo || item.id) === (viewingInsumo.idInsumo || viewingInsumo.id)) || viewingInsumo
+    : null;
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportRef = useRef(null);
 
@@ -278,7 +289,7 @@ export function Insumos() {
       {/* Alerta de Lotes Vencidos / Insumos Inactivados (#5) */}
       {insumosVencidos && insumosVencidos.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
-          <div className="flex items-start sm:items-center gap-3.5">
+          <div className="flex items-start sm:items-center gap-3.5 sm:flex-1">
             <div className="w-11 h-11 rounded-2xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-6 h-6 stroke-[2.3]" />
             </div>
@@ -317,6 +328,17 @@ export function Insumos() {
           >
             <ShoppingCart className="w-4 h-4 stroke-[2.5]" />
             <span>Registrar compra</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewingInsumoInitialTab("lotes");
+              setViewingInsumo(insumosVencidos[0]);
+            }}
+            className="px-4 py-2.5 bg-white dark:bg-gray-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 hover:bg-amber-100/80 dark:hover:bg-amber-900/40 font-bold text-xs sm:text-sm rounded-2xl transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer w-full sm:w-auto"
+          >
+            <Layers className="w-4 h-4 stroke-[2.3]" />
+            <span>Ver / Retirar vencidos</span>
           </button>
         </div>
       )}
@@ -517,7 +539,10 @@ export function Insumos() {
               insumos={itemsToShow}
               onEdit={handleOpenEdit}
               onDelete={handleDeleteItem}
-              onView={(item) => setViewingInsumo(item)}
+              onView={(item) => {
+                setViewingInsumoInitialTab("general");
+                setViewingInsumo(item);
+              }}
               onToggleEstado={toggleEstadoInsumo}
               onRegistrarCompra={(item) =>
                 navigate("/compras/gestion", {
@@ -552,9 +577,15 @@ export function Insumos() {
 
       {/* Detail View Modal */}
       <VerInsumoModal
-        isOpen={!!viewingInsumo}
-        onClose={() => setViewingInsumo(null)}
-        insumo={viewingInsumo}
+        isOpen={!!activeViewingInsumo}
+        onClose={() => {
+          setViewingInsumo(null);
+          setViewingInsumoInitialTab("general");
+        }}
+        insumo={activeViewingInsumo}
+        initialTab={viewingInsumoInitialTab}
+        onDeleteLoteVencido={canDeleteLote ? deleteLoteVencido : undefined}
+        onDeleteLotesVencidos={canDeleteLote ? deleteLotesVencidos : undefined}
         onEdit={
           canEdit
             ? (ins) => {

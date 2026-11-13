@@ -166,9 +166,31 @@ export function DevolucionesTable({
 
                     {/* Resolución */}
                     <td className="px-3.5 py-3.5 whitespace-nowrap">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-medium ${getResolucionBadge(d.tipoResolucion)}`}>
-                        {d.tipoResolucion}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-medium ${getResolucionBadge(d.tipoResolucion)}`}>
+                          {d.tipoResolucion}
+                        </span>
+                        {d.codigoVentaReemplazo && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60">
+                            Reposición: {d.codigoVentaReemplazo}
+                          </span>
+                        )}
+                        {String(d.tipoResolucion || "").toLowerCase().includes("dinero") && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            d.estadoReembolso === "REALIZADO"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60"
+                              : d.estadoReembolso === "NO_VALIDO"
+                                ? "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800/60"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/60"
+                          }`}>
+                            {d.estadoReembolso === "REALIZADO"
+                              ? "Reembolso hecho"
+                              : d.estadoReembolso === "NO_VALIDO"
+                                ? "Reembolso no válido"
+                                : `Reembolso pendiente${d.datosReembolso?.banco ? ` (${d.datosReembolso.banco})` : ""}`}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Productos */}

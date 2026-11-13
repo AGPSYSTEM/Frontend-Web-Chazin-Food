@@ -238,7 +238,10 @@ export function useDevoluciones() {
         estado: "APROBADA",
         ...payload
       });
-      notify.success("Devolución Aprobada", "La devolución ha sido aprobada de acuerdo con las políticas.");
+      const reemplazoMsg = res?.codigoVentaReemplazo
+        ? ` Se generó la orden de reposición ${res.codigoVentaReemplazo} hacia la dirección del cliente.`
+        : "";
+      notify.success("Devolución Aprobada", `La devolución ha sido aprobada.${reemplazoMsg}`);
       await fetchData();
       return res;
     } catch (err) {
@@ -268,12 +271,13 @@ export function useDevoluciones() {
     }
   };
 
-  const completarDevolucion = async (id, accionRealizada = "", valorDevuelto = undefined) => {
+  const completarDevolucion = async (id, accionRealizada = "", valorDevuelto = undefined, extraPayload = {}) => {
     try {
       const res = await devolucionesService.updateEstadoDevolucion(id, {
         estado: "COMPLETADA",
         accionRealizada,
-        ...(valorDevuelto !== undefined ? { valorDevuelto } : {})
+        ...(valorDevuelto !== undefined ? { valorDevuelto } : {}),
+        ...extraPayload
       });
       notify.success("Devolución Completada", "Se ha cerrado y completado la gestión de la devolución.");
       await fetchData();
@@ -281,6 +285,25 @@ export function useDevoluciones() {
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Error al completar";
       notify.error("Error al completar", msg);
+      throw new Error(msg);
+    }
+  };
+
+  const actualizarReembolso = async (id, payload = {}) => {
+    try {
+      const res = await devolucionesService.updateEstadoDevolucion(id, payload);
+      const isNoValido = String(payload?.estadoReembolso || "").toUpperCase() === "NO_VALIDO";
+      notify.success(
+        isNoValido ? "Reembolso Marcado como No Válido" : "Reembolso Confirmado",
+        isNoValido
+          ? "Se registró que los datos de reembolso no son válidos."
+          : "Se confirmó la realización del reembolso al cliente."
+      );
+      await fetchData();
+      return res;
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || "Error al actualizar el estado del reembolso";
+      notify.error("Error", msg);
       throw new Error(msg);
     }
   };
@@ -324,6 +347,7 @@ export function useDevoluciones() {
     aprobarDevolucion,
     rechazarDevolucion,
     completarDevolucion,
+    actualizarReembolso,
     verificarElegibilidadVenta
   };
 }

@@ -124,6 +124,11 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
                 <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-gray-100 leading-tight">
                   Orden de Cocina {orden.codigo ? `#${orden.codigo}` : `#OP-00${orden.id}`}
                 </h3>
+                {orden.esDevolucion && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                    Reposición Devolución{orden.codigoDevolucionAsociada ? ` · ${orden.codigoDevolucionAsociada}` : ""}
+                  </span>
+                )}
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-[#F05454]/10 text-[#F05454] border border-[#F05454]/20 shadow-2xs">
                   {totalUnidades} {totalUnidades === 1 ? "unidad" : "unidades"}
                 </span>

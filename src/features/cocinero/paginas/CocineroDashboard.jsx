@@ -1177,6 +1177,15 @@ export function CocineroDashboard() {
                           {ped.codigo || `VEN-${String(orderId).padStart(4, "0")}`}
                         </h3>
 
+                        {ped.esDevolucion && (
+                          <span
+                            className="px-2 py-0.5 rounded-lg text-[10.5px] font-black shrink-0 bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                            title={`Orden de reposición por devolución${ped.codigoDevolucionAsociada ? ` (${ped.codigoDevolucionAsociada})` : ""}`}
+                          >
+                            DEVOLUCIÓN
+                          </span>
+                        )}
+
                         {/* Sequential Priority Turn (Ítem 117) */}
                         {ped.prioridad ? (
                           <span

@@ -124,7 +124,8 @@ import { ventasService } from "@/features/ventas/servicios/ventasService";
 
 import { devolucionesService } from "@/features/ventas/servicios/devolucionesService";
 
-import { SolicitarDevolucionModal } from "@/features/ventas/componentes/devoluciones/SolicitarDevolucionModal";
+import { SolicitarDevolucionModal } from "@/features/ventas/componentes/devoluciones/SolicitarDevolucionModal";
+import { ClientePedidoDevolucionDetalle } from "@/features/ventas/componentes/devoluciones/ClienteDevolucionResumen";
 
 import { wompiService } from "@/features/ventas/servicios/wompiService";
 
@@ -590,7 +591,11 @@ export function ClientePerfil() {
 
             descuentoAplicado: matched.descuentoAplicado || localOrd.descuentoAplicado || 0,
 
-            metodoPago: matchedObs.metodoPago || matched.metodoPago || localOrd.metodoPago || "Wompi",
+            metodoPago: matchedObs.metodoPago || matched.metodoPago || localOrd.metodoPago || "Wompi",
+            esDevolucion: Boolean(matched.esDevolucion || matchedObs.esDevolucion || localOrd.esDevolucion),
+            idDevolucionAsociada: matched.idDevolucionAsociada || matchedObs.idDevolucionAsociada || localOrd.idDevolucionAsociada || null,
+            codigoDevolucionAsociada: matched.codigoDevolucionAsociada || matchedObs.codigoDevolucionAsociada || localOrd.codigoDevolucionAsociada || null,
+            codigoVentaOriginal: matched.codigoVentaOriginal || matchedObs.codigoVentaOriginal || localOrd.codigoVentaOriginal || null,
 
             tipoEntrega: matchedObs.tipoEntrega || matched.tipoEntrega || localOrd.tipoEntrega || "Domicilio",
 
@@ -786,7 +791,11 @@ export function ClientePerfil() {
 
             descuentoAplicado: Number(o.descuentoAplicado) || 0,
 
-            metodoPago: oObs.metodoPago || o.metodoPago || "Wompi",
+            metodoPago: oObs.metodoPago || o.metodoPago || "Wompi",
+            esDevolucion: Boolean(o.esDevolucion || oObs.esDevolucion),
+            idDevolucionAsociada: o.idDevolucionAsociada || oObs.idDevolucionAsociada || null,
+            codigoDevolucionAsociada: o.codigoDevolucionAsociada || oObs.codigoDevolucionAsociada || null,
+            codigoVentaOriginal: o.codigoVentaOriginal || oObs.codigoVentaOriginal || null,
 
             tipoEntrega: oObs.tipoEntrega || o.tipoEntrega || "Domicilio",
 
@@ -842,6 +851,20 @@ export function ClientePerfil() {
 
     if (!ped) return null;
 
+    if (ped.esDevolucion) {
+      const idPed = ped.idVenta || ped.id;
+      const linked = misDevoluciones.find((d) => Number(d.idVentaReemplazo) === Number(idPed));
+      return {
+        existing: null,
+        linkedReplacementFor: linked || null,
+        cumplePlazo: false,
+        horasRestantes: 0,
+        esCompletado: false,
+        puedeSolicitar: false,
+        esPedidoDevolucion: true
+      };
+    }
+
     const idVenta = ped.idVenta || ped.id;
 
     const existing = misDevoluciones.find(
@@ -882,7 +905,7 @@ export function ClientePerfil() {
 
       esCompletado,
 
-      puedeSolicitar: esCompletado && cumplePlazo && (!existing || existing.estado === "RECHAZADA")
+      puedeSolicitar: esCompletado && cumplePlazo && (!existing || existing.estado === "RECHAZADA" || existing.estadoReembolso === "NO_VALIDO")
 
     };
 
@@ -3256,7 +3279,7 @@ export function ClientePerfil() {
 
                             </span>
 
-                            <span className="text-xs text-gray-400 font-medium">{ped.fecha}</span>
+                            {ped.esDevolucion && (<span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">Reposición Devolución{ped.codigoDevolucionAsociada ? ` · ${ped.codigoDevolucionAsociada}` : ""}</span>)}<span className="text-xs text-gray-400 font-medium">{ped.fecha}</span>
 
                           </div>
 
@@ -3320,11 +3343,11 @@ export function ClientePerfil() {
 
                                 return (
 
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10.5px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10.5px] font-bold border ${devInfo.existing.estadoReembolso === "REALIZADO" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" : devInfo.existing.estadoReembolso === "NO_VALIDO" ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800" : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"}`}>
 
                                     <RotateCcw className="w-3 h-3" />
 
-                                    Devolución: {devInfo.existing.estado}
+                                    Devolución: {devInfo.existing.estado}{devInfo.existing.codigoVentaReemplazo ? ` · Reposición ${devInfo.existing.codigoVentaReemplazo}` : ""}{String(devInfo.existing.tipoResolucion || "").toLowerCase().includes("dinero") || devInfo.existing.datosReembolso ? (devInfo.existing.estadoReembolso === "REALIZADO" ? " · Reembolso hecho" : devInfo.existing.estadoReembolso === "NO_VALIDO" ? " · Reembolso no válido" : " · Reembolso en validación") : ""}
 
                                   </span>
 
@@ -5022,6 +5045,7 @@ export function ClientePerfil() {
 
                       </div>
 
+                      <ClientePedidoDevolucionDetalle devInfo={devInfo} ped={selectedPedidoDetalle} detailsOnly={true} onSolicitar={() => { const p = selectedPedidoDetalle; setSelectedPedidoDetalle(null); setPedidoParaDevolucion(p); setSolicitarDevolucionOpen(true); }} />
                       <p className="text-[11px] text-amber-700 dark:text-amber-300">
 
                         Motivo: <strong>{devInfo.existing.motivo}</strong> · Solución: <strong>{devInfo.existing.tipoResolucion}</strong>
@@ -5072,6 +5096,7 @@ export function ClientePerfil() {
 
               })()}
 
+              {selectedPedidoDetalle?.esDevolucion && (<ClientePedidoDevolucionDetalle devInfo={getDevolucionInfo(selectedPedidoDetalle)} ped={selectedPedidoDetalle} />)}
               {/* Close Button */}
 
               <button

@@ -13,6 +13,12 @@ import {
   DollarSign
 } from "lucide-react";
 import { useNotifications } from "@/shared/hooks/useNotifications";
+import {
+  DatosReembolsoFields,
+  INITIAL_DATOS_REEMBOLSO,
+  requiresDatosReembolso,
+  validateDatosReembolso
+} from "./DatosReembolsoFields";
 
 export function SolicitarDevolucionModal({
   isOpen,
@@ -29,6 +35,8 @@ export function SolicitarDevolucionModal({
   const [descripcionError, setDescripcionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [datosReembolso, setDatosReembolso] = useState(INITIAL_DATOS_REEMBOLSO);
+  const [reembolsoErrors, setReembolsoErrors] = useState({});
 
   // Calcular diferencia en días / horas
   const fechaPedido = pedido?.fechaVenta || pedido?.fechaCreacion || pedido?.createdAt || pedido?.fecha;
@@ -48,10 +56,14 @@ export function SolicitarDevolucionModal({
     itemsList = pedido.detalles.map((d) => ({
       idDetalleVenta: d.idDetalleVenta,
       idVariante: d.idVariante || d.variante?.idVariante,
+      idProducto: d.idProducto || d.variante?.idProducto || null,
       nombre: d.variante?.producto?.nombre || d.nombreProducto || d.nombre || "Producto",
       cantidad: Number(d.cantidad || 1),
       precioUnitario: Number(d.precioUnitario || 0),
-      subtotal: Number(d.subtotal || 0)
+      subtotal: Number(d.subtotal || 0),
+      adiciones: d.adiciones || null,
+      exclusiones: d.exclusiones || null,
+      especificaciones: d.especificaciones || null
     }));
   } else if (Array.isArray(pedido?.items)) {
     itemsList = pedido.items.map((it) => ({
@@ -90,6 +102,13 @@ export function SolicitarDevolucionModal({
       setDescripcion("");
       setDescripcionError("");
       setError("");
+      const cliNombre = pedido?.cliente?.nombre || pedido?.clienteNombre || "";
+      setDatosReembolso({
+        ...INITIAL_DATOS_REEMBOLSO,
+        titularNombre: cliNombre && !/cliente general|mostrador/i.test(cliNombre) ? cliNombre : "",
+        titularDocumento: pedido?.cliente?.documento || ""
+      });
+      setReembolsoErrors({});
     }
   }, [isOpen, pedido]);
 
@@ -119,10 +138,14 @@ export function SolicitarDevolucionModal({
     .map((it, idx) => ({
       idDetalleVenta: it.idDetalleVenta,
       idVariante: it.idVariante,
+      idProducto: it.idProducto || null,
       nombre: it.nombre,
       cantidad: selectedItems[it.idVariante || idx],
       precioUnitario: it.precioUnitario,
-      subtotal: selectedItems[it.idVariante || idx] * it.precioUnitario
+      subtotal: selectedItems[it.idVariante || idx] * it.precioUnitario,
+      ...(it.adiciones ? { adiciones: it.adiciones } : {}),
+      ...(it.exclusiones ? { exclusiones: it.exclusiones } : {}),
+      ...(it.especificaciones ? { especificaciones: it.especificaciones } : {})
     }));
 
   const totalCalculado = prodsDevueltos.reduce((acc, p) => acc + p.subtotal, 0);
@@ -158,6 +181,20 @@ export function SolicitarDevolucionModal({
       return;
     }
 
+    let payloadReembolso;
+    if (requiresDatosReembolso(tipoResolucion)) {
+      const checkReembolso = validateDatosReembolso(datosReembolso, { allowCash: false });
+      if (!checkReembolso.valid) {
+        setReembolsoErrors(checkReembolso.errors);
+        const msg = Object.values(checkReembolso.errors)[0] || "Completa los datos bancarios o billetera para el reembolso.";
+        setError(msg);
+        notify.warning("Datos de Reembolso Requeridos", msg);
+        return;
+      }
+      payloadReembolso = checkReembolso.normalized;
+      setReembolsoErrors({});
+    }
+
     try {
       setSubmitting(true);
       await onSubmit({
@@ -167,7 +204,8 @@ export function SolicitarDevolucionModal({
         tipoResolucion,
         productosDevueltos: prodsDevueltos,
         valorDevuelto: totalCalculado,
-        descripcion: descripcion.trim()
+        descripcion: descripcion.trim(),
+        ...(payloadReembolso ? { datosReembolso: payloadReembolso } : {})
       });
       notify.success("Solicitud Enviada", "Tu solicitud de devolución fue registrada con éxito.");
       onClose();
@@ -338,6 +376,20 @@ export function SolicitarDevolucionModal({
               </select>
             </div>
           </div>
+
+          {requiresDatosReembolso(tipoResolucion) && (
+            <DatosReembolsoFields
+              value={datosReembolso}
+              onChange={(next) => {
+                setDatosReembolso(next);
+                setReembolsoErrors({});
+                if (error) setError("");
+              }}
+              errors={reembolsoErrors}
+              allowCash={false}
+              disabled={submitting}
+            />
+          )}
 
           {/* Descripción con Validación en Vivo */}
           <div className="space-y-1">

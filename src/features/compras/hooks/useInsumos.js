@@ -89,7 +89,7 @@ export function useInsumos() {
       setCategorias(categoriasData || []);
       setProveedores(proveedoresData || []);
 
-      const todayStr = new Date().toISOString().split("T")[0];
+      const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
       const vencidos = allInsumos.filter((i) => {
         const tieneLoteVencido = (i.lotes || []).some(
           (l) => l.estado === "VENCIDO" || (l.fechaVencimiento && l.fechaVencimiento <= todayStr)
@@ -620,6 +620,44 @@ export function useInsumos() {
     }
   };
 
+  const deleteLoteVencido = async (idInsumo, idLote, numeroLote, nombreInsumo) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Eliminar lote vencido?",
+      `Se retirará el lote ${numeroLote || `#${idLote}`}${nombreInsumo ? ` de "${nombreInsumo}"` : ""} y se descontará su cantidad disponible del stock actual.`
+    );
+    if (!confirmed) return null;
+
+    try {
+      const res = await insumosService.deleteLoteVencido(idInsumo, idLote);
+      await fetchInsumos();
+      await fetchTrazabilidad();
+      notify.success("Lote vencido eliminado", res?.message || "Se descontó el lote del inventario.");
+      return res;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudo eliminar el lote vencido");
+      return null;
+    }
+  };
+
+  const deleteLotesVencidos = async (idInsumo, nombreInsumo) => {
+    const confirmed = await notify.confirmDelete(
+      "¿Eliminar todos los lotes vencidos?",
+      `Se retirarán todos los lotes vencidos${nombreInsumo ? ` de "${nombreInsumo}"` : ""} y se descontará su cantidad disponible del stock actual.`
+    );
+    if (!confirmed) return null;
+
+    try {
+      const res = await insumosService.deleteLotesVencidos(idInsumo);
+      await fetchInsumos();
+      await fetchTrazabilidad();
+      notify.success("Lotes vencidos retirados", res?.message || "Se descontaron los lotes vencidos del stock.");
+      return res;
+    } catch (err) {
+      notify.error("Error", err.message || "No se pudieron eliminar los lotes vencidos");
+      return null;
+    }
+  };
+
   const clearEventos = async () => {
     try {
       await apiClient.delete("/trazabilidad/clear");
@@ -666,6 +704,8 @@ export function useInsumos() {
     deletePreparado,
     restoreInsumo,
     deleteDefinitivoInsumo,
+    deleteLoteVencido,
+    deleteLotesVencidos,
     clearEventos,
     resetUnreadCount
   };

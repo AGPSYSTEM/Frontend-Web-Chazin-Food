@@ -42,6 +42,13 @@ export const insumosService = {
   },
 
   // --- Insumos Preparados ---
+  deleteLoteVencido: async (idInsumo, idLote) => {
+    return await apiClient.delete(`/insumos/${idInsumo}/lotes/${idLote}`);
+  },
+
+  deleteLotesVencidos: async (idInsumo) => {
+    return await apiClient.delete(`/insumos/${idInsumo}/lotes-vencidos`);
+  },
   getInsumosPreparados: async () => {
     return await apiClient.get("/insumos-preparados");
   },
