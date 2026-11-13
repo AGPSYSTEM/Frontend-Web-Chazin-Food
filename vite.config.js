@@ -179,6 +179,9 @@ export default {
             if (id.includes('sweetalert2')) {
               return 'sweetalert';
             }
+            if (id.includes('@react-oauth/google')) {
+              return 'google-oauth';
+            }
           }
         },
       },

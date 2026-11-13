@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useToast } from "@/shared/context/ToastContext";
 
@@ -75,27 +75,29 @@ export function GoogleAuthButton({ onSuccess, text = "signin_with", width = "100
   return (
     <div className={`w-full flex flex-col items-center ${className}`}>
       {isRealClientId ? (
-        <div className="w-full flex justify-center items-center overflow-hidden min-h-[42px]">
-          {loading ? (
-            <div className="w-full py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-2 text-slate-500 text-sm font-medium">
-              <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-              <span>Conectando con Google...</span>
-            </div>
-          ) : (
-            <div className="w-full flex justify-center [&>div]:w-full [&>div>iframe]:w-full">
-              <GoogleLogin
-                onSuccess={handleOfficialGoogleSuccess}
-                onError={handleOfficialGoogleError}
-                theme="outline"
-                size="large"
-                text={text}
-                shape="pill"
-                locale="es"
-                {...(validPixelWidth ? { width: validPixelWidth } : {})}
-              />
-            </div>
-          )}
-        </div>
+        <GoogleOAuthProvider clientId={envClientId}>
+          <div className="w-full flex justify-center items-center overflow-hidden min-h-[42px]">
+            {loading ? (
+              <div className="w-full py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center gap-2 text-slate-500 text-sm font-medium">
+                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                <span>Conectando con Google...</span>
+              </div>
+            ) : (
+              <div className="w-full flex justify-center [&>div]:w-full [&>div>iframe]:w-full">
+                <GoogleLogin
+                  onSuccess={handleOfficialGoogleSuccess}
+                  onError={handleOfficialGoogleError}
+                  theme="outline"
+                  size="large"
+                  text={text}
+                  shape="pill"
+                  locale="es"
+                  {...(validPixelWidth ? { width: validPixelWidth } : {})}
+                />
+              </div>
+            )}
+          </div>
+        </GoogleOAuthProvider>
       ) : (
         <button
           type="button"
@@ -129,3 +131,5 @@ export function GoogleAuthButton({ onSuccess, text = "signin_with", width = "100
     </div>
   );
 }
+
+export default GoogleAuthButton;

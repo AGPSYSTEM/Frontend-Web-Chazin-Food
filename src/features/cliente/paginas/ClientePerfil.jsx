@@ -132,7 +132,7 @@ import { useCart } from "@/shared/context/CartContext";
 
 import { extractCleanSpecifications } from "@/shared/utils/orderUtils";
 
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 

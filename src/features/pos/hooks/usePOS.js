@@ -36,42 +36,33 @@ export function usePOS({ initialClienteId = null } = {}) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         setLoading(true);
-        const resCategorias = await posService.getCategorias();
+        const [resCategorias, resProductos] = await Promise.all([
+          posService.getCategorias(),
+          posService.getProductos()
+        ]);
+        if (!active) return;
 
-        const rawList = Array.isArray(resCategorias)
+        const rawCats = Array.isArray(resCategorias)
           ? resCategorias
           : (Array.isArray(resCategorias?.data) ? resCategorias.data : (resCategorias?.data?.data || resCategorias?.data?.categorias || []));
 
-        const activeCategorias = rawList.filter(c =>
+        const activeCategorias = rawCats.filter(c =>
           (c.estado === 'Activo' || c.estado === 1) &&
           c.id !== 0 &&
           c.idCategoriaProducto !== 0 &&
           !c.nombre?.startsWith('__SISTEMA')
         );
-
         setCategorias(activeCategorias);
-      } catch (e) {
-        console.error('Error al cargar categorías:', e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const resProductos = await posService.getProductos();
-
-        const rawList = Array.isArray(resProductos)
+        const rawProds = Array.isArray(resProductos)
           ? resProductos
           : (Array.isArray(resProductos?.data) ? resProductos.data : (resProductos?.data?.data || resProductos?.data?.productos || []));
 
-        const activeProductos = rawList
+        const activeProductos = rawProds
           .filter(p =>
             p.id !== 0 &&
             p.idProducto !== 0 &&
@@ -87,14 +78,14 @@ export function usePOS({ initialClienteId = null } = {}) {
               agotado: Boolean(p.agotado || isInactive || finalStock <= 0)
             };
           });
-
         setProductos(activeProductos);
       } catch (e) {
-        console.error('Error al cargar productos:', e);
+        console.error('Error al cargar catálogo POS:', e);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     })();
+    return () => { active = false; };
   }, []);
 
   const subtotal = useMemo(() => {

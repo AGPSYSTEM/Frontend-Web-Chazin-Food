@@ -51,7 +51,7 @@ export default function KioskCategoryRail({
           <span className="text-sm sm:text-base font-black leading-tight break-words">
             Promociones
           </span>
-          <span className={`mt-0.5 text-[10px] font-black px-2 py-0.2 rounded-full ${categoriaActiva === "eventos" ? "bg-white text-red-600" : "bg-amber-500 text-white"}`}>
+          <span className={`mt-0.5 text-[10px] font-black px-2 py-0.2 rounded-full ${categoriaActiva === "eventos" ? "bg-white text-red-700" : "bg-amber-800 text-white"}`}>
             {eventCount} activas
           </span>
         </button>

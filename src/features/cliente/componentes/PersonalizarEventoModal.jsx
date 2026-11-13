@@ -164,7 +164,7 @@ export function PersonalizarEventoModal({
       fichasTecnicasService
         .getFichaByProducto(prodId)
         .then((data) => {
-          if (data && (data.detalles || data.idFicha)) setLiveFicha(data);
+          if (data && (data.detalles || data.idFicha || data.idFichaTecnica || data.id || data.procedimiento)) setLiveFicha(data);
         })
         .catch(() => {});
     }
@@ -983,6 +983,142 @@ export function PersonalizarEventoModal({
                 )}
               </div>
             )}
+
+            {activeTab === "personalizar" && personalizables.length === 0 && (() => {
+              let parsedCfg = selectedProduct?.configuracionCombo || null;
+              if (typeof parsedCfg === "string") {
+                try { parsedCfg = JSON.parse(parsedCfg); } catch { parsedCfg = null; }
+              }
+              const prodLower = String(selectedProduct?.nombre || "").toLowerCase();
+              const catLower = String(selectedProduct?.categoria || selectedProduct?.categoriaNombre || "").toLowerCase();
+              const isComboProd = Boolean(selectedProduct?.esCombo || parsedCfg?.esCombo || catLower.includes("combo") || prodLower.includes("combo"));
+
+              const rawItemsCombo = Array.isArray(selectedProduct?.itemsCombo) ? selectedProduct.itemsCombo : [];
+              const comboItems = rawItemsCombo.length > 0
+                ? rawItemsCombo.map((it, idx) => ({
+                    id: it.idDetalleCombo || it.idProducto || idx,
+                    nombre: `${Number(it.cantidad || 1) > 1 ? `${it.cantidad}x ` : ""}${it.producto?.nombre || it.nombre || "Producto incluido"}`,
+                    tag: it.esOpcional ? "Opcional" : "Incluido"
+                  }))
+                : (() => {
+                    const desc = String(selectedProduct?.descripcion || "").trim();
+                    if (!desc.includes("+")) return [];
+                    const afterColon = desc.includes(":") && desc.indexOf(":") < desc.indexOf("+")
+                      ? desc.slice(desc.indexOf(":") + 1)
+                      : desc;
+                    return afterColon
+                      .replace(/\.$/, "")
+                      .split("+")
+                      .map((part, idx) => ({ id: `desc-${idx}`, nombre: part.trim(), tag: "Incluido en combo" }))
+                      .filter((it) => Boolean(it.nombre));
+                  })();
+
+              const steps = String(liveFicha?.procedimiento || "")
+                .split(/\r?\n/)
+                .map((s) => s.replace(/^\s*\d+[.)]\s*/, "").trim())
+                .filter(Boolean);
+
+              const includedDrinksCount = Number(parsedCfg?.cantidadBebidas || 0) ||
+                (isComboProd ? (prodLower.includes("pareja") || prodLower.includes("2 ") ? 2 : prodLower.includes("familiar") ? 4 : 1) : 0);
+
+              return (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-black text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                        <ChefHat className="w-4 h-4 text-red-500 shrink-0" />
+                        <span>{isComboProd ? "Composición del Combo Promocional" : "Fórmula & Receta de la Promoción"}</span>
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isComboProd
+                          ? "Productos y acompañamientos incluidos en esta promoción:"
+                          : "Preparación estándar de la casa incluida en la oferta:"}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 shrink-0">
+                      Receta cerrada
+                    </span>
+                  </div>
+
+                  {comboItems.length > 0 ? (
+                    <div className="bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl p-3 space-y-2.5">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-800 dark:text-amber-300">
+                        <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Qué incluye esta promoción</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {comboItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="p-2.5 rounded-xl bg-white/95 dark:bg-gray-800/90 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <span className="flex items-center gap-2 min-w-0 text-xs font-bold text-gray-800 dark:text-gray-200">
+                              <span className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950/70 flex items-center justify-center shrink-0 text-amber-700 dark:text-amber-300">
+                                <FoodIcon name={item.nombre} size={15} stroke={1.75} />
+                              </span>
+                              <span className="truncate">{item.nombre}</span>
+                            </span>
+                            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/40 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
+                              <Check className="w-3 h-3 stroke-[3]" /> Incluido
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                      <p className="font-bold text-gray-900 dark:text-gray-100 mb-1">
+                        {selectedProduct?.nombre}
+                      </p>
+                      <p>
+                        {selectedProduct?.descripcion || evento?.descripcion || "Este producto promocional se prepara con la receta estándar de la casa."}
+                      </p>
+                    </div>
+                  )}
+
+                  {steps.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-white dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 space-y-2">
+                      <p className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        Preparación al momento en cocina
+                      </p>
+                      <ol className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300 list-decimal list-inside">
+                        {steps.map((step, idx) => (
+                          <li key={idx} className="leading-relaxed">{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {isComboProd && includedDrinksCount > 0 && allBebidas.length > 0 && (
+                    <div className="p-3 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0">
+                          <FoodIcon name="drink" size={16} />
+                        </span>
+                        <p className="text-blue-900 dark:text-blue-200 font-semibold">
+                          Elige tus bebidas ({includedDrinksCount} {includedDrinksCount === 1 ? "incluida" : "incluidas"}) en la pestaña <strong className="font-black">Bebidas</strong>.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("bebidas")}
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shrink-0 transition cursor-pointer"
+                      >
+                        Ir a Bebidas
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/80 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <Info className="w-4 h-4 text-gray-500 shrink-0 mt-0.5" />
+                    <p>
+                      Si necesitas retirar o ajustar algún ingrediente puntual (ej. <em>“sin cebolla”</em> o <em>“salsas aparte”</em>), indícalo en <strong>Instrucciones o Notas Especiales</strong> abajo o agrega complementos en <strong>Toppings &amp; Extras</strong>.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ─── TAB 2: ADICIONES GOURMET (TOPPINGS Y EXTRAS) ─── */}
             {activeTab === "adiciones" && (

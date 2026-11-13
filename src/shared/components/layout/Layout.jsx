@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { hasPrivilege } from "@/features/configuracion/utils/privilegiosUtils";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { MiPerfilModal } from "@/shared/components/profile/MiPerfilModal";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+const MiPerfilModal = lazy(() => import("@/shared/components/profile/MiPerfilModal").then((m) => ({ default: m.MiPerfilModal })));
+import logoImg from "@/shared/assets/logo_optimized.webp";
 import {
   Menu,
   Home,
@@ -772,7 +772,11 @@ export function Layout() {
       </div>
 
       {/* Modal de perfil staff */}
-      <MiPerfilModal isOpen={perfilOpen} onClose={() => setPerfilOpen(false)} />
+      {perfilOpen && (
+        <Suspense fallback={null}>
+          <MiPerfilModal isOpen={perfilOpen} onClose={() => setPerfilOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

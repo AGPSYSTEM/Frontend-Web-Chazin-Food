@@ -42,7 +42,7 @@ import {
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { useDarkMode } from "@/shared/hooks/useDarkMode";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import logoImg from "@/shared/assets/ChatGPT_Image_1_jun_2026__21_55_04.png";
+import logoImg from "@/shared/assets/logo_optimized.webp";
 import { produccionService } from "@/features/produccion/servicios/produccionService";
 import { fichasTecnicasService } from "@/features/fichas-tecnicas/servicios/fichasTecnicasService";
 import { getAdditionEmoji } from "@/shared/utils/foodEmojiUtils";
@@ -828,7 +828,7 @@ export function CocineroDashboard() {
                 }`}
               >
                 <List className="w-3.5 h-3.5 text-blue-500" />
-                <span>Historial en Lista ({pedidosHistorial.length})</span>
+                <span>Historial en Lista</span>
               </button>
             </div>
 

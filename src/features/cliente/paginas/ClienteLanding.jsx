@@ -22,7 +22,7 @@ import { FoodIcon, FoodIconBadge, EventBadge, getEventBadgeConfig, stripEmojis }
 import { getOptimizedImageUrl } from "@/shared/utils/imageUtils";
 import { ClienteFooter } from "../componentes/ClienteFooter";
 import { isEssentialIngredient } from "@/shared/utils/ingredientUtils";
-import { ClienteAuthModal } from "../componentes/ClienteAuthModal";
+const ClienteAuthModal = lazy(() => import("../componentes/ClienteAuthModal").then((m) => ({ default: m.ClienteAuthModal })));
 import { validateNombre, validateDocumento, sanitizeDocumento } from "@/shared/utils/validationUtils";
 import { formatTime12h, formatDateSafe } from "@/shared/utils/dateUtils";
 import { matchesSmartSearch } from "@/shared/utils/searchUtils";
@@ -565,6 +565,10 @@ export function ClienteLanding() {
                 descripcion: p.descripcion,
                 imagen: p.imagen,
                 variantes: p.variantes || [],
+                esCombo: Boolean(p.esCombo),
+                configuracionCombo: p.configuracionCombo || null,
+                itemsCombo: Array.isArray(p.itemsCombo) ? p.itemsCombo : [],
+                adiciones: Array.isArray(p.adiciones) ? p.adiciones : [],
                 eventos: p.eventos || []
               };
             });
@@ -628,13 +632,7 @@ export function ClienteLanding() {
       }
     };
 
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(() => fetchCatalog(), { timeout: 1500 });
-      return () => window.cancelIdleCallback(idleId);
-    } else {
-      const timerId = setTimeout(fetchCatalog, 200);
-      return () => clearTimeout(timerId);
-    }
+    fetchCatalog();
   }, []);
 
   // Fetch client orders from backend + local history synchronization
@@ -3339,14 +3337,18 @@ export function ClienteLanding() {
 
 
       {/* MODAL INICIAR SESIÓN / REGISTRO PARA PAGAR (EN LÍNEA SIN REDIRIGIR) */}
-      <ClienteAuthModal
-        isOpen={showEmptyCartLoginModal}
-        onClose={() => setShowEmptyCartLoginModal(false)}
-        onSuccess={handleAuthModalSuccess}
-        totalItems={getTotalItems()}
-        cartTotal={clientSubtotal}
-        initialView="choice"
-      />
+      {showEmptyCartLoginModal && (
+        <Suspense fallback={null}>
+          <ClienteAuthModal
+            isOpen={showEmptyCartLoginModal}
+            onClose={() => setShowEmptyCartLoginModal(false)}
+            onSuccess={handleAuthModalSuccess}
+            totalItems={getTotalItems()}
+            cartTotal={clientSubtotal}
+            initialView="choice"
+          />
+        </Suspense>
+      )}
 
       {/* Modal de Personalización Individual de Eventos */}
       {showPersonalizarEventoModal && (
