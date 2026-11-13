@@ -306,7 +306,7 @@ export function ClientePerfil() {
 
   const [darkMode, toggleDarkMode] = useDarkMode();
 
-  const { success, warning, error: notifyError, confirmAction } = useNotifications();
+  const { success, warning, info, error: notifyError, confirmAction } = useNotifications();
 
   const [searchParams] = useSearchParams();
 
@@ -898,7 +898,7 @@ export function ClientePerfil() {
 
       await fetchMisDevoluciones();
 
-      await fetchPedidos();
+      await fetchMyOrders();
 
     } catch (err) {
 
@@ -1762,7 +1762,7 @@ export function ClientePerfil() {
 
       console.error("Error al subir avatar a Cloudinary:", err);
 
-      error("Error al subir foto", err.message || "No se pudo subir la foto de perfil");
+      notifyError("Error al subir foto", err.message || "No se pudo subir la foto de perfil");
 
     }
 

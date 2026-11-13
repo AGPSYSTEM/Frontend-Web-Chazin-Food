@@ -24,11 +24,12 @@ import { imprimirComanda } from "../utils/comandaUtils";
 import { resolveOrderTimings } from "../utils/tiempoProduccionUtils";
 
 export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
-  if (!isOpen || !orden) return null;
+  // Early return movido después de los hooks para evitar React Error #310
 
-  const timings = useMemo(() => resolveOrderTimings(orden), [orden]);
+  const timings = useMemo(() => (orden ? resolveOrderTimings(orden) : null), [orden]);
 
   const productos = useMemo(() => {
+    if (!orden) return [];
     if (Array.isArray(orden.productos) && orden.productos.length > 0) {
       return orden.productos;
     }
@@ -43,10 +44,10 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
     ];
   }, [orden]);
 
-  const parsedNotes = useMemo(() => parseKitchenOrderNotes(orden.observaciones), [orden.observaciones]);
+  const parsedNotes = useMemo(() => parseKitchenOrderNotes(orden?.observaciones), [orden?.observaciones]);
 
   const totalUnidades = useMemo(() => {
-    return productos.reduce((sum, p) => sum + (Number(p.cantidad) || 1), 0) || orden.cantidad || 1;
+    return productos.reduce((sum, p) => sum + (Number(p.cantidad) || 1), 0) || orden?.cantidad || 1;
   }, [productos, orden]);
 
   // Control de estado expandido por platillo
@@ -75,6 +76,8 @@ export function VerOrdenModal({ isOpen, onClose, orden, onOpenChecklist }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  if (!isOpen || !orden) return null;
 
   const toggleExpand = (idx) => {
     setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));

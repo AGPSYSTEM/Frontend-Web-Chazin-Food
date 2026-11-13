@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, User, Save, Eye, EyeOff, UserCircle,
-  Mail, Phone, MapPin, CreditCard, Lock, AlertCircle, CheckCircle2
+  Mail, Phone, MapPin, CreditCard, Lock, AlertCircle, CheckCircle2, Shield
 } from "lucide-react";
 import { useAuth } from "@/features/autenticacion/hooks/useAuth";
 import { DOCUMENTO_CONFIG, sanitizeDocumento, validateDocumento, sanitizeTelefono } from "@/shared/utils/validationUtils";

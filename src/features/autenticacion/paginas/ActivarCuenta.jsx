@@ -5,7 +5,7 @@ import { useToast } from "@/shared/context/ToastContext";
 import { validateContrasena, validateConfirmarContrasena } from "@/shared/utils/validationUtils";
 import apiClient from "@/shared/api/apiClient";
 
-export default function ActivarCuenta() {
+export function ActivarCuenta() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const toast = useToast();
@@ -246,3 +246,6 @@ export default function ActivarCuenta() {
     </div>
   );
 }
+
+
+export default ActivarCuenta;
