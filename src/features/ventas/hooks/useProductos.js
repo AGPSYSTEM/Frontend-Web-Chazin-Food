@@ -22,9 +22,12 @@ export function useProductos() {
         fichasTecnicasService.getFichas().catch(() => [])
       ]);
       const fichaMap = new Map();
+      const variantFichaMap = new Map();
       if (Array.isArray(fichas)) {
         fichas.forEach((f) => {
-          if (f && f.idProducto) {
+          if (f && f.tipo === "VARIANTE" && f.idVariante) {
+            variantFichaMap.set(Number(f.idVariante), f);
+          } else if (f && f.idProducto && !fichaMap.has(Number(f.idProducto))) {
             fichaMap.set(Number(f.idProducto), f);
           }
         });
@@ -33,11 +36,20 @@ export function useProductos() {
         const prodId = Number(p.idProducto || p.id);
         const ficha = fichaMap.get(prodId);
         const ent = ficha?.datosEntidad;
+        const enrichedVars = Array.isArray(p.variantes)
+          ? p.variantes.map((v) => {
+              const vf = v.fichaTecnica || variantFichaMap.get(Number(v.idVariante || v.id)) || null;
+              return vf ? { ...v, fichaTecnica: vf } : v;
+            })
+          : p.variantes;
         if (!ent) {
-          return ficha ? { ...p, fichaTecnica: p.fichaTecnica || ficha } : p;
+          return ficha || enrichedVars !== p.variantes
+            ? { ...p, variantes: enrichedVars, fichaTecnica: p.fichaTecnica || ficha }
+            : p;
         }
         return {
           ...p,
+          variantes: enrichedVars,
           fichaTecnica: p.fichaTecnica || ficha,
           precio: ent.precio !== undefined && Number(ent.precio) > 0 ? Number(ent.precio) : p.precio,
           descripcion: ent.descripcion !== undefined ? ent.descripcion : p.descripcion

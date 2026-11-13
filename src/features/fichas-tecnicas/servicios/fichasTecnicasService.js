@@ -29,6 +29,18 @@ export const fichasTecnicasService = {
       : res;
   },
 
+  getFichaByVariante: async (idVariante) => {
+    const res = await apiClient.get(`/fichas-tecnicas/variante/${idVariante}`);
+    return res && (res.idFichaTecnica || res.id || res.procedimiento || res.detalles)
+      ? normalizeFichaWithVersions(res, "VARIANTE", idVariante)
+      : res;
+  },
+
+  saveFichaVariante: async (idVariante, data) => {
+    const saved = await apiClient.put(`/fichas-tecnicas/variante/${idVariante}`, data);
+    return saved ? normalizeFichaWithVersions(saved, "VARIANTE", idVariante) : saved;
+  },
+
   getFichaByInsumoPreparado: async (idInsumoPreparado) => {
     const res = await apiClient.get(`/fichas-tecnicas/insumo-preparado/${idInsumoPreparado}`);
     return res && (res.idFichaTecnica || res.id || res.procedimiento || res.detalles)

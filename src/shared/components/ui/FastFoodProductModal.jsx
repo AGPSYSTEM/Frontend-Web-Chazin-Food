@@ -473,8 +473,14 @@ export const extractPersonalizables = (producto, ficha, selectedVariant = null) 
     return [];
   }
 
-  let detalles = ficha?.detalles ? [...ficha.detalles] : (ficha?.insumos ? [...ficha.insumos] : []);
-  const varDeltas = selectedVariant?.insumosModificados || [];
+  const varFichaDetalles =
+    Array.isArray(selectedVariant?.fichaTecnica?.detalles) && selectedVariant.fichaTecnica.detalles.length > 0
+      ? selectedVariant.fichaTecnica.detalles
+      : null;
+  let detalles = varFichaDetalles
+    ? [...varFichaDetalles]
+    : (ficha?.detalles ? [...ficha.detalles] : (ficha?.insumos ? [...ficha.insumos] : []));
+  const varDeltas = varFichaDetalles ? [] : (selectedVariant?.insumosModificados || []);
 
   if (varDeltas && varDeltas.length > 0) {
     for (const delta of varDeltas) {
@@ -1513,8 +1519,10 @@ export function FastFoodProductModal({
         rawPrice = isPostobonDrink ? selectedSizeObj.defaultPostobonPrice : selectedSizeObj.defaultPremiumPrice;
       }
     } else {
-      // Ítem #100: Las variantes de un producto mantienen el precio del producto base
-      rawPrice = Number(producto.precio || 0);
+      rawPrice =
+        selectedVariant?.precio !== undefined && Number(selectedVariant.precio) > 0
+          ? Number(selectedVariant.precio)
+          : Number(producto.precio || 0);
     }
     let original = rawPrice;
     let final = original;
@@ -2751,15 +2759,28 @@ export function FastFoodProductModal({
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
-                                  {v.nombre}
-                                </span>
-                                {v.esOriginal && (
-                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                    Base
+                              <div className="flex items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-bold text-gray-900 dark:text-gray-100 truncate">
+                                    {v.nombre}
                                   </span>
-                                )}
+                                  {v.esOriginal && (
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 shrink-0">
+                                      Base
+                                    </span>
+                                  )}
+                                </div>
+                                {(() => {
+                                  const vPrice = Number(v.precio || producto?.precio || 0);
+                                  const pBase = Number(producto?.precio || 0);
+                                  const anyDiff = foodVariants.some((fv) => Number(fv.precio) > 0 && Number(fv.precio) !== pBase);
+                                  if (!anyDiff || vPrice <= 0) return null;
+                                  return (
+                                    <span className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-md tabular-nums shrink-0">
+                                      ${vPrice.toLocaleString("es-CO")}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               {v.descripcion && (
                                 <p className="text-[10.5px] text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
