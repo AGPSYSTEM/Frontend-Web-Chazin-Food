@@ -10,6 +10,7 @@ import { productosService } from "@/features/ventas/servicios/productosService";
 import { insumosService } from "@/features/compras/servicios/insumosService";
 import { ChazinLoader } from "@/shared/components/ui/ChazinLoader";
 import { matchesSmartSearch, formatStatusTokens } from "@/shared/utils/searchUtils";
+import { isDummyOrBaseVariant } from "@/shared/utils/foodEmojiUtils";
 
 export function FichasTecnicas({ readOnly = false }) {
   const [activeTab, setActiveTab] = useState("productos"); // 'productos' | 'preparados'
@@ -91,10 +92,14 @@ export function FichasTecnicas({ readOnly = false }) {
       if (fichasRes.status === "fulfilled" && Array.isArray(fichasRes.value)) {
         const nextMap = {};
         fichasRes.value.forEach((f) => {
-          if (f?.idProducto) {
+          if (f?.tipo === "VARIANTE" && f?.idVariante) {
+            nextMap[`variante:${f.idVariante}`] = f;
+            return;
+          }
+          if (f?.idProducto && !nextMap[`producto:${f.idProducto}`]) {
             nextMap[`producto:${f.idProducto}`] = f;
           }
-          if (f?.idInsumo) {
+          if (f?.idInsumo && !nextMap[`insumo:${f.idInsumo}`]) {
             nextMap[`insumo:${f.idInsumo}`] = f;
           }
         });
@@ -328,6 +333,18 @@ export function FichasTecnicas({ readOnly = false }) {
             const prevCount = Array.isArray(fichaData?.versionesAnteriores)
               ? fichaData.versionesAnteriores.length
               : 0;
+
+            const variantFichasList =
+              isProducto && Array.isArray(item.variantes)
+                ? item.variantes
+                    .filter((v) => v && v.nombre && !isDummyOrBaseVariant(v.nombre))
+                    .map((v) => {
+                      const vId = v.idVariante || v.id;
+                      const vf = (vId && fichasMap[`variante:${vId}`]) || v.fichaTecnica || null;
+                      return vf ? { variant: v, vId, ficha: vf } : null;
+                    })
+                    .filter(Boolean)
+                : [];
             
             return (
               <div
@@ -378,6 +395,37 @@ export function FichasTecnicas({ readOnly = false }) {
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
                         Pendiente
                       </span>
+                    </div>
+                  )}
+
+                  {variantFichasList.length > 0 && (
+                    <div className="pt-1 space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                        Fichas de Variantes ({variantFichasList.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {variantFichasList.map(({ variant, vId, ficha: vf }) => (
+                          <button
+                            key={vId || variant.nombre}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDetalle({
+                                ...item,
+                                nombre: `${item.nombre} — ${variant.nombre}`,
+                                varianteNombre: variant.nombre,
+                                idVariante: vId,
+                                fichaOverride: vf
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-900/50 hover:bg-orange-100 dark:hover:bg-orange-900/60 transition cursor-pointer"
+                            title={`Ver ficha técnica de variante "${variant.nombre}"`}
+                          >
+                            <FileText className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[140px]">{variant.nombre}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

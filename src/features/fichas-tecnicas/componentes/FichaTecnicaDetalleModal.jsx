@@ -56,29 +56,34 @@ export function FichaTecnicaDetalleModal({
       setLoading(true);
       setSelectedHistoricalVersion(null);
 
-      const fetchPromise = isProducto
+      const fetchPromise = item.idVariante
+        ? fichasTecnicasService.getFichaByVariante(item.idVariante).catch(() => item.fichaOverride || null)
+        : item.fichaOverride
+        ? Promise.resolve(item.fichaOverride)
+        : isProducto
         ? fichasTecnicasService.getFichaByProducto(id)
         : fichasTecnicasService.getFichaByInsumoPreparado(id);
 
       fetchPromise
         .then((res) => {
+          const effective = res || item.fichaOverride || null;
           if (
-            res &&
-            (res.idFichaTecnica ||
-              res.procedimiento ||
-              (Array.isArray(res.detalles) && res.detalles.length > 0) ||
-              (Array.isArray(res.insumos) && res.insumos.length > 0) ||
-              res.especificaciones ||
-              res.caracteristicas ||
-              res.condicionesAlmacenamiento ||
-              res.vidaUtil ||
-              res.informacionNutricional)
+            effective &&
+            (effective.idFichaTecnica ||
+              effective.procedimiento ||
+              (Array.isArray(effective.detalles) && effective.detalles.length > 0) ||
+              (Array.isArray(effective.insumos) && effective.insumos.length > 0) ||
+              effective.especificaciones ||
+              effective.caracteristicas ||
+              effective.condicionesAlmacenamiento ||
+              effective.vidaUtil ||
+              effective.informacionNutricional)
           ) {
             setFicha(
               normalizeFichaWithVersions(
-                res,
-                isProducto ? "PRODUCTO" : "INSUMO_PREPARADO",
-                id
+                effective,
+                item.idVariante ? "VARIANTE" : isProducto ? "PRODUCTO" : "INSUMO_PREPARADO",
+                item.idVariante || id
               )
             );
           } else {
@@ -156,7 +161,7 @@ export function FichaTecnicaDetalleModal({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black uppercase tracking-wider bg-rose-100 text-[#F05454] dark:bg-rose-950/60 dark:text-rose-300">
-                {isProducto ? "Ficha de Producto" : "Ficha de Insumo Preparado"}
+                {item.varianteNombre ? "Ficha Técnica de Variante" : isProducto ? "Ficha de Producto" : "Ficha de Insumo Preparado"}
               </span>
               <span className="text-xs text-gray-400 font-medium">• {itemCategoria}</span>
               {ficha ? (
@@ -201,7 +206,7 @@ export function FichaTecnicaDetalleModal({
                 Este {isProducto ? "producto" : "insumo preparado"} aún no tiene receta, procedimiento ni parámetros registrados en la base de datos.
               </p>
             </div>
-            {!readOnly && onEdit && (
+            {!readOnly && onEdit && !item.varianteNombre && (
               <button
                 type="button"
                 onClick={() => {
@@ -480,7 +485,7 @@ export function FichaTecnicaDetalleModal({
           </button>
 
           <div className="flex items-center gap-2">
-            {!readOnly && onEdit && (
+            {!readOnly && onEdit && !item.varianteNombre && (
               <button
                 type="button"
                 onClick={() => {

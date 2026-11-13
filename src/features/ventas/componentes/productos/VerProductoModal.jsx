@@ -600,10 +600,12 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                 </div>
                 <div className="bg-orange-50/40 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-900/30">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {variantes.map((v, i) => (
+                    {variantes.map((v, i) => {
+                      const varDetalles = Array.isArray(v.fichaTecnica?.detalles) ? v.fichaTecnica.detalles : [];
+                      return (
                       <div
                         key={v.idVariante || v.id || i}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-orange-150 dark:border-orange-900/40 shadow-2xs text-xs"
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-orange-150 dark:border-orange-900/40 shadow-2xs text-xs"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           {v.imagen ? (
@@ -617,15 +619,24 @@ export function VerProductoModal({ isOpen, onClose, producto, onEdit, onDuplicat
                               {i + 1}
                             </span>
                           )}
-                          <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">
-                            {v.nombre}
-                          </span>
+                          <div className="min-w-0">
+                            <span className="font-semibold text-gray-800 dark:text-gray-200 truncate block">
+                              {v.nombre}
+                            </span>
+                            {varDetalles.length > 0 && (
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate block">
+                                {varDetalles.slice(0, 3).map((d) => `${d.nombreInsumo || "Insumo"} (${Number(d.cantidad)} ${d.unidadMedida || ""})`).join(" · ")}
+                                {varDetalles.length > 3 ? ` +${varDetalles.length - 3}` : ""}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md">
-                          Opción
+                        <span className="text-[10px] font-bold text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-2 py-0.5 rounded-md shrink-0">
+                          {varDetalles.length > 0 ? `${varDetalles.length} ins.` : "Opción"}
                         </span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
